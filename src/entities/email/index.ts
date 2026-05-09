@@ -24,3 +24,5 @@ export type {
   ImportantOutcome,
   ClassifyImportantParams,
 } from "./api/classifyImportant";
+export { getImportantEmails } from "./api/getImportantEmails";
+export type { ImportantEmailItem } from "./api/getImportantEmails";
