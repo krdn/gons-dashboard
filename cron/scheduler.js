@@ -33,11 +33,10 @@ async function callCron(path, label) {
     const elapsed = Date.now() - startedAt.getTime();
     if (response.ok) {
       console.log(`[cron] ${label} OK ${response.status} (${elapsed}ms)`);
-      // 응답 첫 200자만 — 디버깅 충분, 디스크 절약.
-      console.log(`[cron] ${label} body: ${text.slice(0, 200)}`);
+      console.log(`[cron] ${label} body: ${text.slice(0, 2000)}`);
     } else {
       console.error(
-        `[cron] ${label} FAIL ${response.status} (${elapsed}ms) ${text.slice(0, 200)}`,
+        `[cron] ${label} FAIL ${response.status} (${elapsed}ms) ${text.slice(0, 2000)}`,
       );
     }
   } catch (error) {
