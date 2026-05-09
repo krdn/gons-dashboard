@@ -7,7 +7,7 @@
 //  - classified_at >= now - 7d → 7일 윈도
 //  - ORDER BY importance, classified_at DESC → partial index 활용
 import "server-only";
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import {
   importantEmails,
@@ -72,7 +72,8 @@ export async function getImportantEmails(
       ),
     )
     .orderBy(
-      sql`CASE ${importantEmails.importance} WHEN 'high' THEN 0 ELSE 1 END`,
+      // 'high' < 'med' lexicographic — partial index (importance, classified_at DESC) 활용.
+      asc(importantEmails.importance),
       desc(importantEmails.classifiedAt),
     )
     .limit(limit);

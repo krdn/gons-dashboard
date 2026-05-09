@@ -81,6 +81,13 @@
 - **Why**: 한 위젯 실패가 다른 위젯 영향 안 받게 — 기존 디자인 §4.4의 의도.
 - **Where to start**: `react-error-boundary` 도입 후 각 Suspense를 `<ErrorBoundary fallback={...}>`로 감싸기.
 
+### 10. shared/lib/log.ts 구조화 로거 도입
+
+- **What**: 현재 `console.warn`이 5곳 (`classify-important.ts`, `classifyImportant.ts`, `markAsRead.ts`, `archiveThread.ts`, `syncInbox.ts`)에 `// TODO(logger)` 주석과 함께 사용됨. 구조화 로거(pino 등) 도입 후 일괄 교체.
+- **Why**: ECC TypeScript 규칙(`No console.* in production code`) 준수, 중앙 집중식 로그 레벨 제어, 향후 외부 로그 백엔드 통합.
+- **Where to start**: `src/shared/lib/log.ts` 신설 (pino 또는 가벼운 wrapper). 5곳의 `console.warn` 호출을 `log.warn(...)` 으로 교체.
+- **Cons**: pino 의존성 추가 (~30KB). 기존 동작과 호환되는 인터페이스 설계 필요.
+
 ## 백로그 (확정되지 않음)
 
 - 답장 자동 작성 (A 곁가지) — V0 검증 후 사용자 직접 결정

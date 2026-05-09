@@ -7,6 +7,10 @@ export type {
   OAuthState,
   ThreadInput,
   ClassificationResult,
+  Category,
+  ImportantImportance,
+  ImportantInput,
+  ImportantClassification,
 } from "./model/types";
 export {
   classifyDeterministic,

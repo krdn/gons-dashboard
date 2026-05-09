@@ -8,12 +8,43 @@ import "server-only";
 import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, HAIKU_MODEL } from "./anthropic";
-import type {
-  ImportantInput,
-  ImportantClassification,
-} from "@/entities/email/model/types";
 
 export const IMPORTANT_CLASSIFIER_VERSION = "v1.0-haiku-important-2026-05";
+
+/* ─────────────────────────────────────────────────────────────────────
+ * shared 레이어 자체 타입 — entities/email/model/types.ts와 구조 동일.
+ * FSD 의존성 방향(shared → entities 금지) 준수를 위해 shared가 자기 타입을
+ * 소유한다. entities/email/model/types.ts에서 동명 타입을 별도로 정의하며,
+ * 두 곳이 같은 모양인지 보장하는 책임은 entities 쪽에 둔다.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/** 4종 카테고리. "none"은 분류 결과의 일종이지만 DB 저장 X. */
+export type LlmCategory = "money" | "security" | "schedule" | "notice";
+
+/** "low"는 노이즈로 간주, DB 저장 X. v0.1는 high·med만. */
+export type LlmImportance = "high" | "med";
+
+export interface LlmImportantInput {
+  subject: string;
+  fromName: string | null;
+  fromEmail: string;
+  /** Gmail snippet ≤ 200자. */
+  snippet: string;
+  /** "2026-05-09 14:30 KST" 형태. */
+  receivedAtKst: string;
+}
+
+export interface LlmImportantClassification {
+  category: LlmCategory;
+  importance: LlmImportance;
+  /** 1~3줄, 최대 200자, KST 한국어. */
+  summary: string;
+  /** 분류 단서 — 디버깅·eval용. */
+  rationale: string;
+  classifiedBy: "llm-haiku";
+  /** 분류기 버전 — DB의 classifier_version 컬럼에 저장. */
+  classifierVersion: string;
+}
 
 const SUMMARY_MAX = 200;
 
@@ -52,8 +83,8 @@ JSON으로만 응답. 설명·markdown 금지.
 {"category":"money|security|schedule|notice|none","importance":"high|med","summary":"...","rationale":"..."}`;
 
 export async function classifyImportantWithLlm(
-  input: ImportantInput,
-): Promise<ImportantClassification | null> {
+  input: LlmImportantInput,
+): Promise<LlmImportantClassification | null> {
   const userPrompt = [
     `From: ${input.fromName ?? input.fromEmail} <${input.fromEmail}>`,
     `Subject: ${input.subject}`,
