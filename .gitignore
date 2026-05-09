@@ -68,3 +68,4 @@ drizzle/meta/_journal.json.bak
 
 # Docker (local override만; compose 파일은 커밋)
 docker-compose.override.yml
+.gstack/
