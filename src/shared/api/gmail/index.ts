@@ -18,3 +18,5 @@ export {
   GmailClientError,
   isRetryable,
 } from "./errors";
+export { extractMailingListSignals } from "./headers";
+export type { MailingListSignals } from "./headers";
