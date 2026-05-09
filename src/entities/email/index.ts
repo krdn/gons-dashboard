@@ -19,3 +19,8 @@ export type {
   ClassifyThreadParams,
   ClassifyThreadOutcome,
 } from "./api/classifyThread";
+export { classifyImportantThread } from "./api/classifyImportant";
+export type {
+  ImportantOutcome,
+  ClassifyImportantParams,
+} from "./api/classifyImportant";
