@@ -18,7 +18,7 @@ import {
   formatRelativeKst,
   senderInitials,
   senderDomain,
-} from "../lib/format";
+} from "@/shared/lib/email-format";
 
 interface ReplyCardProps {
   item: ReplyNeededItem;

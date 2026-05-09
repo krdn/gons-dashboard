@@ -9,7 +9,7 @@ import {
   senderInitials,
   senderDomain,
   formatRelativeKst,
-} from "@/widgets/email-digest/lib/format";
+} from "@/shared/lib/email-format";
 import { CategoryBadge } from "./CategoryBadge";
 import type { ImportantEmailItem } from "@/entities/email";
 
