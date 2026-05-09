@@ -8,6 +8,7 @@ import "server-only";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { env } from "@/shared/config/env";
 import {
@@ -60,6 +61,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
       return true;
+    },
+  },
+  events: {
+    // 재인증 성공 시 oauth_state를 active로 복구. adapter가 accounts row를
+    // upsert한 다음에 실행되므로 토큰은 이미 저장된 상태. last_history_id는
+    // 건드리지 않음 — null이면 다음 폴링이 full sync로 떨어지는 게 의도된 동작.
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.id) {
+        await db
+          .update(users)
+          .set({ oauthState: "active", tokenExpiredAt: null })
+          .where(eq(users.id, user.id));
+      }
     },
   },
   pages: {
