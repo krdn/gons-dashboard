@@ -136,6 +136,38 @@ export const replyNeeded = pgTable(
 );
 
 /* =========================================================================
+ * 중요 이메일 — entities/email (별도 위젯 widgets/important-emails)
+ * D6: 답장 필요 활성 시 위젯에서 LEFT JOIN으로 숨김 (read 시점 정책)
+ * ========================================================================= */
+export const importantEmails = pgTable(
+  "important_emails",
+  {
+    threadId: uuid("thread_id")
+      .primaryKey()
+      .references(() => emailThreads.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    category: text("category").notNull(), // 'money' | 'security' | 'schedule' | 'notice'
+    importance: text("importance").notNull(), // 'high' | 'med'
+    summary: text("summary").notNull(), // ≤ 200자 한국어
+    rationale: text("rationale").notNull(), // 디버깅·eval용
+    classifierVersion: text("classifier_version").notNull(),
+    classifiedBy: text("classified_by").notNull(), // 'llm-haiku'
+    classifiedAt: timestamp("classified_at", { mode: "date" })
+      .notNull()
+      .defaultNow(),
+    readAt: timestamp("read_at", { mode: "date" }),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+  },
+  (t) => [
+    index("important_emails_open_idx")
+      .on(t.userId, t.importance, t.classifiedAt.desc())
+      .where(sql`${t.readAt} IS NULL AND ${t.archivedAt} IS NULL`),
+  ],
+);
+
+/* =========================================================================
  * Push 구독
  * ========================================================================= */
 export const pushSubscriptions = pgTable("push_subscriptions", {
