@@ -7,7 +7,7 @@
 | 항목 | 값 |
 |------|-----|
 | 호스트 | 192.168.0.5 (docker context: `home-server`) |
-| 접속 | LAN 전용, http://192.168.0.5:3020 |
+| 운영 URL | https://gons.krdn.kr (외부 도메인 + HTTPS, LAN: http://192.168.0.5:3020) |
 | 컴포즈 위치 | 로컬 `/home/gon/projects/gon/gons-dashboard/docker-compose.yml` |
 | 원격 daemon 제어 | `docker --context home-server`, alias `dserver`, `dcserver` |
 
@@ -33,8 +33,8 @@ dcserver pull app cron
 # 2. 무중단 재시작
 dcserver up -d app cron
 
-# 3. 헬스 체크
-curl -sS http://192.168.0.5:3020/api/health
+curl -sS http://192.168.0.5:3020/api/health  # LAN 직접
+curl -sS https://gons.krdn.kr/api/health      # 도메인 경유
 ```
 
 ## 첫 배포 (one-time)
@@ -48,7 +48,8 @@ curl -sS http://192.168.0.5:3020/api/health
 # 2. Google OAuth Console에 운영 redirect URI 등록
 #    https://console.cloud.google.com/apis/credentials
 #    Authorized redirect URIs에 추가:
-#      http://192.168.0.5:3020/api/auth/callback/google
+#      https://gons.krdn.kr/api/auth/callback/google
+#    (Google은 private IP redirect URI를 거부하므로 도메인 필수)
 
 # 3. 첫 pull + up
 dcserver pull
@@ -100,7 +101,7 @@ pnpm exec tsx src/scripts/_dryrun-oauth-scope.ts
 # 2. 실제 reset
 pnpm exec tsx src/scripts/fix-oauth-scope.ts
 
-# 3. http://192.168.0.5:3020 에서 재로그인
+# 3. https://gons.krdn.kr 에서 재로그인
 ```
 
 ## DB 마이그
@@ -144,9 +145,9 @@ dserver exec gons-dashboard-redis redis-cli ping
 GHCR 패키지가 private. 위의 "첫 배포 #1" 참조.
 
 ### OAuth 콜백 실패
-`NEXTAUTH_URL`과 Google OAuth Console redirect URI 불일치. 둘 다 `http://192.168.0.5:3020`이어야 함.
+`NEXTAUTH_URL`과 Google OAuth Console redirect URI 불일치. 둘 다 `https://gons.krdn.kr` 기반이어야 함. Google은 private IP(192.168.x.x) redirect URI를 `device_id required` 에러로 거부하므로 LAN URL은 사용 불가.
 
 ### cron이 호출 안 됨
 - TZ=Asia/Seoul 확인: `dcserver exec cron date`
 - CRON_BEARER_TOKEN 일치 확인 (app, cron 양쪽 동일)
-- app health: `curl -sS http://192.168.0.5:3020/api/health`
+- app health: `curl -sS https://gons.krdn.kr/api/health`
