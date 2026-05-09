@@ -47,6 +47,8 @@ RUN apk add --no-cache tzdata && \
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3020
+# 0.0.0.0 바인드 (Next.js standalone 기본은 hostname 사용 — 내부 localhost healthcheck 실패 방지)
+ENV HOSTNAME=0.0.0.0
 
 # Non-root user
 RUN addgroup -g 1001 -S nodejs && \
