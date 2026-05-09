@@ -16,6 +16,22 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# 빌드 타임 환경 변수 placeholder.
+# Zod env validation이 page-data-collection 단계에서 import 체인을 타고 실행되므로,
+# 빌드 시 비어 있으면 Failed to collect page data로 실패함. 실제 값은 컨테이너 런타임에
+# docker-compose가 주입한다. ci.yml의 lint-typecheck job과 동일한 placeholder.
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+    REDIS_URL=redis://localhost:6379 \
+    NEXTAUTH_SECRET=a-placeholder-secret-of-at-least-32-characters \
+    NEXTAUTH_URL=http://localhost:3020 \
+    GOOGLE_CLIENT_ID=placeholder \
+    GOOGLE_CLIENT_SECRET=placeholder \
+    ANTHROPIC_BASE_URL=http://placeholder \
+    ANTHROPIC_API_KEY=placeholder \
+    CRON_BEARER_TOKEN=a-placeholder-cron-token-of-at-least-32-characters \
+    ALLOWLIST_EMAILS=build@placeholder.local
+
 RUN pnpm build
 
 # ---- Stage 3: runner (production) ----
