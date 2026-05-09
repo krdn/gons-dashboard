@@ -64,6 +64,6 @@ USER nextjs
 EXPOSE 3020
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD wget --quiet --spider http://localhost:3020/api/health || exit 1
+    CMD wget --quiet --spider http://127.0.0.1:3020/api/health || exit 1
 
 CMD ["node", "server.js"]
