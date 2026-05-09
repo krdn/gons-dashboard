@@ -46,6 +46,48 @@
 - **Depends on**: v0.1 안정화, 인용구 수집 (공개도메인 우선 — 동양 고전, 시인 등)
 - **Where to start**: `shared/lib/quotes.ts`에 `Quote[]` 배열 + `pickQuoteForDate(date: Date): Quote` 함수. 일별 결정적 회전 (해시 기반)
 
+### 5. 중요 이메일 위젯 — Eval CI
+
+- **What**: `important_emails` 분류 결과와 사용자 행동(`read_at`, `archived_at`)을 (입력, 라벨) 페어로 사용한 회귀 eval CI
+- **Why**: v0.1 30일 dogfooding으로 자연 레이블링 데이터셋 누적. 프롬프트·모델 변경 시 precision/recall 게이트로 회귀 자동 차단.
+- **Pros**: 분류 품질의 안전망
+- **Cons**: 1-2일 구현 (eval 스크립트 + GitHub Actions)
+- **Depends on**: 30일 dogfooding 완료
+- **Where to start**: `scripts/eval/run-important-eval.ts`, reply_needed eval과 동일 인프라 공유
+
+### 6. 중요 이메일 위젯 — 5번째 카테고리 (travel)
+
+- **What**: schedule 카테고리가 비대해지면 항공권·호텔 분리
+- **Why**: 여행 중에는 교통 정보가 한 화면에 모이는 게 유용
+- **Cons**: 카테고리 추가는 Zod enum + 프롬프트 + UI 라벨 3곳 동시 수정 필요 (테스트 자동 잡힘)
+- **Depends on**: schedule 카테고리에 여행 관련 메일 비율 측정 (eval 데이터셋 활용)
+
+### 7. 중요 이메일 위젯 — Outlook 다중 계정 검증
+
+- **What**: 현재 Gmail 추상이 List-Unsubscribe 등 RFC 헤더에만 의존하므로 Outlook도 같은 인터페이스로 동작 가능한지 검증
+- **Why**: 이미 답장 필요 위젯의 Outlook 항목과 묶어 진행하면 효율적
+- **Depends on**: Outlook OAuth 등록
+
+### 8. widgets/email-digest의 format.ts를 shared/lib로 이동
+
+- **What**: `senderInitials`·`senderDomain`·`formatRelativeKst`이 현재 `widgets/email-digest/lib/format.ts`에 있음. `widgets/important-emails`가 cross-import해서 사용 중 — FSD 규약 위반.
+- **Why**: 두 위젯 이상에서 쓰이는 포매터는 shared. 향후 다른 위젯이 늘어나면 이 결정이 더 자명해짐.
+- **Where to start**: `src/shared/lib/email-format.ts`로 옮기고 두 widget의 import 경로 갱신.
+- **Cons**: 리팩토링 1개 PR — 회귀 위험 거의 없음.
+
+### 9. 위젯별 ErrorBoundary 적용
+
+- **What**: 현재 `app/page.tsx`는 Suspense만 적용. RSC throw 시 Next.js 기본 error.tsx로 fallback. ImportantEmailsErrorState는 정의만 하고 ErrorBoundary로 감싸지 않음.
+- **Why**: 한 위젯 실패가 다른 위젯 영향 안 받게 — 기존 디자인 §4.4의 의도.
+- **Where to start**: `react-error-boundary` 도입 후 각 Suspense를 `<ErrorBoundary fallback={...}>`로 감싸기.
+
+### 10. shared/lib/log.ts 구조화 로거 도입
+
+- **What**: 현재 `console.warn`이 5곳 (`classify-important.ts`, `classifyImportant.ts`, `markAsRead.ts`, `archiveThread.ts`, `syncInbox.ts`)에 `// TODO(logger)` 주석과 함께 사용됨. 구조화 로거(pino 등) 도입 후 일괄 교체.
+- **Why**: ECC TypeScript 규칙(`No console.* in production code`) 준수, 중앙 집중식 로그 레벨 제어, 향후 외부 로그 백엔드 통합.
+- **Where to start**: `src/shared/lib/log.ts` 신설 (pino 또는 가벼운 wrapper). 5곳의 `console.warn` 호출을 `log.warn(...)` 으로 교체.
+- **Cons**: pino 의존성 추가 (~30KB). 기존 동작과 호환되는 인터페이스 설계 필요.
+
 ## 백로그 (확정되지 않음)
 
 - 답장 자동 작성 (A 곁가지) — V0 검증 후 사용자 직접 결정

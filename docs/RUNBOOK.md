@@ -151,3 +151,47 @@ GHCR 패키지가 private. 위의 "첫 배포 #1" 참조.
 - TZ=Asia/Seoul 확인: `dcserver exec cron date`
 - CRON_BEARER_TOKEN 일치 확인 (app, cron 양쪽 동일)
 - app health: `curl -sS https://gons.krdn.kr/api/health`
+
+## v0.1 중요 이메일 위젯 검증
+
+배포 후 dogfooding 1주일 체크리스트. E2E 테스트 인프라가 없으므로 수동 검증으로 대체.
+
+### 동작 검증 (배포 후 1일 이내)
+- [ ] cron이 매시간 `important_emails`에 행 INSERT (`SELECT count(*), category FROM important_emails GROUP BY category;`)
+- [ ] 대시보드 위젯에 "최근 중요 메일" 섹션 노출 (https://gons.krdn.kr)
+- [ ] 카테고리 4종 모두 한 번 이상 등장 — money / security / schedule / notice
+- [ ] "Gmail" 버튼 클릭 → 새 탭에서 해당 스레드 열림
+- [ ] "읽음" 클릭 → Gmail UNREAD 라벨 제거됨 + 위젯에서 사라짐 (revalidate)
+- [ ] "보관" 클릭 → Gmail INBOX 라벨 제거됨 + 위젯에서 사라짐
+
+### D6 답장 우선 정책 검증
+- [ ] 같은 스레드가 reply_needed에 활성 상태면 important 위젯에서 숨김
+- [ ] reply_needed "답장함" 처리 후 important에 등장
+
+### 7일 윈도 검증 (8일 후)
+- [ ] `classified_at < NOW() - 7d` 행은 위젯에 노출 안 됨
+
+### 비용 검증 (1주일)
+- [ ] 일 LLM 비용 < $0.10 (proxy 로그 또는 Anthropic 콘솔)
+- [ ] 메일링 컷률 30-50% (`important_skipped_mailing_list_total` 메트릭이 있으면)
+
+### 데이터 수집 (Eval CI 준비)
+- [ ] `(category, importance, summary, classifier_version, read_at, archived_at)` 페어 자동 누적 확인
+- [ ] 30일 누적 후 v0.2의 GitHub Actions eval CI 가능
+
+### DB 쿼리 (수동 점검)
+```sql
+-- 카테고리별 분류 결과
+SELECT category, importance, count(*) FROM important_emails GROUP BY 1, 2 ORDER BY 1;
+
+-- 최근 24h 분류 (cron 정상 동작 확인)
+SELECT count(*) FROM important_emails WHERE classified_at > NOW() - INTERVAL '24 hours';
+
+-- 처리율 (read/archive 비율)
+SELECT
+  count(*) AS total,
+  count(read_at) AS read_count,
+  count(archived_at) AS archived_count
+FROM important_emails
+WHERE classified_at > NOW() - INTERVAL '7 days';
+```

@@ -36,3 +36,35 @@ export interface ClassificationResult {
   reason: string;
   classifiedBy: ClassifiedBy;
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * 중요 이메일 분류 (별개 분류 차원, reply_needed와 독립)
+ * ───────────────────────────────────────────────────────────────────── */
+
+/** 4종 카테고리. "none"은 분류 결과의 일종이지만 DB 저장 X. */
+export type Category = "money" | "security" | "schedule" | "notice";
+
+/** "low"는 노이즈로 간주, DB 저장 X. v0.1는 high·med만. */
+export type ImportantImportance = "high" | "med";
+
+export interface ImportantInput {
+  subject: string;
+  fromName: string | null;
+  fromEmail: string;
+  /** Gmail snippet ≤ 200자. */
+  snippet: string;
+  /** "2026-05-09 14:30 KST" 형태. */
+  receivedAtKst: string;
+}
+
+export interface ImportantClassification {
+  category: Category;
+  importance: ImportantImportance;
+  /** 1~3줄, 최대 200자, KST 한국어. */
+  summary: string;
+  /** 분류 단서 — 디버깅·eval용. */
+  rationale: string;
+  classifiedBy: "llm-haiku";
+  /** 분류기 버전 — DB의 classifier_version 컬럼에 저장. */
+  classifierVersion: string;
+}

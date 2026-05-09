@@ -19,10 +19,16 @@ import {
   findHeader,
   HistoryStaleError,
   InvalidGrantError,
+  extractMailingListSignals,
   type MessageDetail,
+  type MailingListSignals,
 } from "@/shared/api/gmail";
 import { fullRescan } from "../lib/full-rescan";
-import { classifyThread, type ThreadInput } from "@/entities/email";
+import {
+  classifyThread,
+  classifyImportantThread,
+  type ThreadInput,
+} from "@/entities/email";
 
 export interface SyncResult {
   kind:
@@ -73,7 +79,15 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
   if (!lastHistoryId) {
     const rescan = await fullRescan(accessToken, userId);
     await persistHistoryId(userId, rescan.newHistoryId);
-    const counts = await classifyAffectedThreads(userId, ownerEmail, rescan.threadCount);
+    // fullRescan은 시그널 Map을 반환하지 않으므로 빈 Map 전달.
+    // 첫 sync 메일들은 다음 cron 사이클에서 important 분류가 자연 채워짐
+    // (last_received_at > classified_at 트리거).
+    const counts = await classifyAffectedThreads(
+      userId,
+      ownerEmail,
+      rescan.threadCount,
+      new Map(),
+    );
     return {
       kind: "ok-first-sync",
       newHistoryId: rescan.newHistoryId,
@@ -99,6 +113,7 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
         userId,
         ownerEmail,
         rescan.threadCount,
+        new Map(),
       );
       return {
         kind: "ok-full-rescan",
@@ -124,11 +139,20 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
   }
 
   // 6. 메시지 fetch + 스레드 단위 그룹핑.
-  const affected = await fetchAndUpsertThreads(accessToken, userId, newRefs);
+  const { count: affected, signalsByGmailThread } = await fetchAndUpsertThreads(
+    accessToken,
+    userId,
+    newRefs,
+  );
   await persistHistoryId(userId, newHistoryId);
 
-  // 7. 영향받은 스레드 분류.
-  const counts = await classifyAffectedThreads(userId, ownerEmail, affected);
+  // 7. 영향받은 스레드 분류 (reply_needed + important).
+  const counts = await classifyAffectedThreads(
+    userId,
+    ownerEmail,
+    affected,
+    signalsByGmailThread,
+  );
 
   return {
     kind: "ok-incremental",
@@ -153,7 +177,10 @@ async function fetchAndUpsertThreads(
   accessToken: string,
   userId: string,
   refs: { id: string; threadId: string }[],
-): Promise<number> {
+): Promise<{
+  count: number;
+  signalsByGmailThread: Map<string, MailingListSignals>;
+}> {
   // 같은 스레드의 가장 최근 메시지 1개만 보관.
   const latestPerThread = new Map<string, MessageDetail>();
 
@@ -169,7 +196,14 @@ async function fetchAndUpsertThreads(
     }
   }
 
+  const signalsByGmailThread = new Map<string, MailingListSignals>();
   for (const [gmailThreadId, msg] of latestPerThread) {
+    // important 분류용 메일링 시그널 채집.
+    signalsByGmailThread.set(
+      gmailThreadId,
+      extractMailingListSignals(msg.payload?.headers),
+    );
+
     const from = findHeader(msg.payload?.headers, "From");
     const subject = findHeader(msg.payload?.headers, "Subject");
     const internalMillis = msg.internalDate ? Number(msg.internalDate) : NaN;
@@ -202,13 +236,14 @@ async function fetchAndUpsertThreads(
       });
   }
 
-  return latestPerThread.size;
+  return { count: latestPerThread.size, signalsByGmailThread };
 }
 
 async function classifyAffectedThreads(
   userId: string,
   ownerEmail: string,
   expectedCount: number,
+  signalsMap: Map<string, MailingListSignals> = new Map(),
 ): Promise<{ classified: number; skipped: number }> {
   // 최근 sync로 영향받은 스레드들 — 단순화: 사용자의 모든 스레드 중 최근 24h.
   // (대량일 때는 비효율이지만 본인 1명·일~수백통 규모에서 충분.)
@@ -253,6 +288,34 @@ async function classifyAffectedThreads(
       input,
     });
 
+    // 중요 메일 분류 (reply_needed와 독립). 한쪽 실패가 다른 쪽을 막지 않도록 try/catch.
+    const signals = signalsMap.get(t.gmailThreadId) ?? {
+      hasListUnsubscribe: false,
+      hasListId: false,
+      precedence: null,
+      fromHeader: null,
+    };
+    try {
+      await classifyImportantThread({
+        userId,
+        threadId: t.id,
+        input: {
+          subject: t.subject ?? "",
+          fromName: t.lastSenderName ?? null,
+          fromEmail: (t.lastSenderEmail ?? "").toLowerCase(),
+          snippet: t.snippet ?? "",
+          receivedAtKst: formatKst(t.lastReceivedAt ?? new Date()),
+        },
+        signals,
+      });
+    } catch (err) {
+      // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
+      console.warn("[syncInbox] important-classify-failed", {
+        threadId: t.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     if (
       outcome.kind === "classified" ||
       outcome.kind === "fallback" ||
@@ -272,4 +335,23 @@ function parseFromHeader(raw?: string): { name?: string; email?: string } {
   const match = raw.match(/^\s*(?:"?([^"<]+?)"?\s+)?<?([^<>\s]+@[^<>\s]+)>?\s*$/);
   if (!match) return { email: undefined, name: undefined };
   return { name: match[1]?.trim(), email: match[2]?.toLowerCase() };
+}
+
+/**
+ * KST(Asia/Seoul) 한국어 로케일 문자열로 포맷.
+ * 예: "2026. 05. 09. 14:30 KST"
+ *
+ * important 분류 LLM 프롬프트의 `receivedAtKst` 필드에 사용.
+ */
+function formatKst(date: Date): string {
+  const fmt = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${fmt.format(date)} KST`;
 }

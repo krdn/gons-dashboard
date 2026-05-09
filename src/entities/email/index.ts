@@ -7,6 +7,10 @@ export type {
   OAuthState,
   ThreadInput,
   ClassificationResult,
+  Category,
+  ImportantImportance,
+  ImportantInput,
+  ImportantClassification,
 } from "./model/types";
 export {
   classifyDeterministic,
@@ -19,3 +23,10 @@ export type {
   ClassifyThreadParams,
   ClassifyThreadOutcome,
 } from "./api/classifyThread";
+export { classifyImportantThread } from "./api/classifyImportant";
+export type {
+  ImportantOutcome,
+  ClassifyImportantParams,
+} from "./api/classifyImportant";
+export { getImportantEmails } from "./api/getImportantEmails";
+export type { ImportantEmailItem } from "./api/getImportantEmails";

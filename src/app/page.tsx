@@ -13,6 +13,10 @@ import {
   EmailDigestSkeleton,
   PushSubscribeButton,
 } from "@/widgets/email-digest";
+import {
+  ImportantEmailsCard,
+  ImportantEmailsSkeleton,
+} from "@/widgets/important-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -60,9 +64,14 @@ export default async function DashboardPage() {
       </section>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
-        <Suspense fallback={<EmailDigestSkeleton />}>
-          <EmailDigestCard />
-        </Suspense>
+        <div className="flex flex-col gap-10">
+          <Suspense fallback={<EmailDigestSkeleton />}>
+            <EmailDigestCard />
+          </Suspense>
+          <Suspense fallback={<ImportantEmailsSkeleton />}>
+            <ImportantEmailsCard />
+          </Suspense>
+        </div>
 
         <aside aria-label="향후 위젯 자리" className="flex flex-col gap-4">
           <h2 className="text-base font-semibold text-[var(--color-text-muted)]">

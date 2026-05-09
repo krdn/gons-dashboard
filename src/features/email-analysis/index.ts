@@ -4,3 +4,6 @@
 // 회피 (FSD boundaries). features/email-analysis는 사용자 액션만 담당.
 export { markAsReplied, unmarkReplied } from "./api/markAsReplied";
 export { dismissThread } from "./api/dismissThread";
+export { markAsRead } from "./api/markAsRead";
+export { archiveThread } from "./api/archiveThread";
+export type { ActionResult } from "./api/markAsRead";
