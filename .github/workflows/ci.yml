@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Build (sanity check)
+        env:
+          # 빌드 시점에는 env 검증을 우회 — 실제 값은 컨테이너 런타임에서 주입.
+          # 검증 우회를 위해 테스트용 placeholder만 제공.
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_SECRET: ${{ secrets.PLACEHOLDER_SECRET || 'a-placeholder-secret-of-at-least-32-characters' }}
+          NEXTAUTH_URL: http://localhost:3020
+          GOOGLE_CLIENT_ID: placeholder
+          GOOGLE_CLIENT_SECRET: placeholder
+          ANTHROPIC_BASE_URL: http://placeholder
+          ANTHROPIC_API_KEY: placeholder
+          CRON_BEARER_TOKEN: a-placeholder-cron-token-of-at-least-32-characters
+          ALLOWLIST_EMAILS: build@placeholder.local
+        run: pnpm build

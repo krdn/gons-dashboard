@@ -1,0 +1,150 @@
+// Drizzle 스키마 — 디자인 문서 §"DB 스키마 (요약)"의 구현.
+// 인덱스·제약은 plan-eng-review의 결정 반영:
+//  - reply_needed_open_idx: partial index for "오픈 상태"
+//  - users.oauth_state: 'active' | 'reauth_required'
+//  - users.last_history_id: Gmail History API incremental polling
+//
+// FSD: 이 파일은 shared/lib/db (모든 도메인이 공유하는 인프라). 도메인별 모델 타입은
+// entities/<domain>/model/*.ts 에서 export하고, 이 스키마를 import하여 사용한다.
+import { sql } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  timestamp,
+  integer,
+  uuid,
+  primaryKey,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+
+/* =========================================================================
+ * Auth.js v5 표준 테이블 (DrizzleAdapter 사양)
+ * https://authjs.dev/getting-started/adapters/drizzle
+ * ========================================================================= */
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name"),
+  email: text("email").notNull().unique(),
+  emailVerified: timestamp("email_verified", { mode: "date" }),
+  image: text("image"),
+
+  // Sprint 2 — Gmail polling 상태
+  lastHistoryId: text("last_history_id"),
+  oauthState: text("oauth_state").notNull().default("active"), // 'active' | 'reauth_required'
+  tokenExpiredAt: timestamp("token_expired_at", { mode: "date" }),
+  lastSyncAt: timestamp("last_sync_at", { mode: "date" }),
+});
+
+// 키 이름이 snake_case인 이유: @auth/drizzle-adapter의 DefaultPostgresAccountsTable
+// 타입이 컬럼 객체 키를 snake_case로 강제. 우리 자체 도메인 테이블은 camelCase 유지.
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
+);
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+);
+
+/* =========================================================================
+ * Email 도메인 — entities/email
+ * ========================================================================= */
+export const emailThreads = pgTable(
+  "email_threads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    subject: text("subject"),
+    lastSenderEmail: text("last_sender_email"),
+    lastSenderName: text("last_sender_name"),
+    lastReceivedAt: timestamp("last_received_at", { mode: "date" }),
+    snippet: text("snippet"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("email_threads_user_thread_idx").on(t.userId, t.gmailThreadId),
+    index("email_threads_user_received_idx").on(t.userId, t.lastReceivedAt),
+  ],
+);
+
+/* =========================================================================
+ * 답장 필요 — entities/email (plan-eng-review에서 features → entities로 이동)
+ * 인덱스: reply_needed_open_idx (partial)
+ * ========================================================================= */
+export const replyNeeded = pgTable(
+  "reply_needed",
+  {
+    threadId: uuid("thread_id")
+      .primaryKey()
+      .references(() => emailThreads.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    severity: text("severity").notNull(), // 'high' | 'med' | 'low'
+    classifierVersion: text("classifier_version").notNull(), // ex: 'v1.0-haiku-deterministic'
+    classifiedBy: text("classified_by").notNull(), // 'deterministic' | 'llm-haiku'
+    classifiedAt: timestamp("classified_at", { mode: "date" })
+      .notNull()
+      .defaultNow(),
+    repliedAt: timestamp("replied_at", { mode: "date" }),
+    dismissedAt: timestamp("dismissed_at", { mode: "date" }),
+    // user_action: 'replied' | 'dismissed' | 'none' — eval CI의 ground truth
+    userAction: text("user_action").notNull().default("none"),
+    userActionAt: timestamp("user_action_at", { mode: "date" }),
+  },
+  (t) => [
+    // 메인 조회: WHERE replied_at IS NULL AND dismissed_at IS NULL ORDER BY classified_at DESC
+    index("reply_needed_open_idx")
+      .on(t.severity, t.classifiedAt.desc())
+      .where(sql`${t.repliedAt} IS NULL AND ${t.dismissedAt} IS NULL`),
+  ],
+);
+
+/* =========================================================================
+ * Push 구독
+ * ========================================================================= */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});

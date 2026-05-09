@@ -1,0 +1,3 @@
+// Public API for entities/email
+// EmailMessage, EmailThread, ReplyNeededRecord, getReplyNeeded, ...
+export {};

@@ -1,0 +1,93 @@
+# gons-dashboard — Docker Compose
+#
+# 배포 대상: 192.168.0.5 (docker context: home-server)
+#
+# 컨테이너 4개:
+#   - gons-dashboard-postgres : Postgres 16, 포트 5440 → 5432
+#   - gons-dashboard-redis    : Redis 7, 포트 6390 → 6379
+#   - gons-dashboard-app      : Next.js, 포트 3020 (Sprint 1.6에서 추가)
+#   - gons-dashboard-cron     : node-cron worker (Sprint 3에서 추가)
+#
+# Sprint 1.4: 인프라(postgres + redis)만 먼저 띄움. app/cron은 코드가 갖춰지는
+# Sprint 1.6/Sprint 3에서 활성화.
+
+name: gons-dashboard
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gons-dashboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gons_dashboard}
+      POSTGRES_USER: ${POSTGRES_USER:-gons}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Seoul
+      PGTZ: Asia/Seoul
+    ports:
+      - "5440:5432"
+    volumes:
+      - gons_dashboard_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gons} -d ${POSTGRES_DB:-gons_dashboard}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gons-dashboard-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "6390:6379"
+    volumes:
+      - gons_dashboard_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  app:
+    image: ghcr.io/krdn/gons-dashboard:${APP_IMAGE_TAG:-latest}
+    container_name: gons-dashboard-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gons}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gons_dashboard}
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CRON_BEARER_TOKEN: ${CRON_BEARER_TOKEN}
+      ALLOWLIST_EMAILS: ${ALLOWLIST_EMAILS}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      OPS_NOTIFY_EMAIL: ${OPS_NOTIFY_EMAIL:-}
+      PG_ENCRYPTION_KEY: ${PG_ENCRYPTION_KEY:-}
+    ports:
+      - "3020:3020"
+    healthcheck:
+      test:
+        ["CMD", "wget", "--quiet", "--spider", "http://localhost:3020/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  gons_dashboard_pgdata:
+  gons_dashboard_redisdata:
