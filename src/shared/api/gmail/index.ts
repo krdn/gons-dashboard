@@ -20,3 +20,5 @@ export {
 } from "./errors";
 export { extractMailingListSignals } from "./headers";
 export type { MailingListSignals } from "./headers";
+export { modifyThread } from "./modify";
+export type { ModifyOptions, ModifyResponse } from "./modify";
