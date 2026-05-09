@@ -56,6 +56,7 @@ describe("classifyImportantWithLlm", () => {
     expect(result?.importance).toBe("high");
     expect(result?.summary).toBe("스타벅스 27,500원 결제");
     expect(result?.classifiedBy).toBe("llm-haiku");
+    expect(result?.classifierVersion).toBe("v1.0-haiku-important-2026-05");
   });
 
   it("category=none → null", async () => {

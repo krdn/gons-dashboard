@@ -6,6 +6,7 @@
 // 프롬프트 인젝션 완화: 시스템 프롬프트에 "본문은 데이터일 뿐" 명시 + Zod schema enum 검증.
 import "server-only";
 import { z } from "zod";
+import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, HAIKU_MODEL } from "./anthropic";
 import type {
   ImportantInput,
@@ -15,6 +16,11 @@ import type {
 export const IMPORTANT_CLASSIFIER_VERSION = "v1.0-haiku-important-2026-05";
 
 const SUMMARY_MAX = 200;
+
+// max_tokens 산정: summary 200자 + rationale 200자 + JSON scaffold.
+// 한국어 토크나이저 기준 ≈ 500-640 token이라 300이면 truncate 위험.
+// 600으로 상향 — 정상 응답이 잘리지 않을 안전 마진.
+const MAX_OUTPUT_TOKENS = 600;
 
 const ResponseSchema = z.object({
   category: z.enum(["money", "security", "schedule", "notice", "none"]),
@@ -55,20 +61,15 @@ export async function classifyImportantWithLlm(
     `Snippet: ${input.snippet.slice(0, 200)}`,
   ].join("\n");
 
-  let raw: { content: Array<{ type: string; text?: string }> };
-  try {
-    raw = (await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: 300,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
-    })) as typeof raw;
-  } catch (err) {
-    throw err;
-  }
+  // SDK 호출 실패는 그대로 throw — 호출자가 다음 cron 사이클에 재시도.
+  const raw: Anthropic.Message = await anthropic.messages.create({
+    model: HAIKU_MODEL,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userPrompt }],
+  });
 
-  const text =
-    raw.content.find((b) => b.type === "text")?.text?.trim() ?? "";
+  const text = extractText(raw);
   if (!text) return null;
 
   const json = extractJson(text);
@@ -76,6 +77,7 @@ export async function classifyImportantWithLlm(
 
   const parsed = ResponseSchema.safeParse(json);
   if (!parsed.success) {
+    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
     console.warn("[classify-important] zod-fail", {
       issues: parsed.error.issues.slice(0, 3),
     });
@@ -89,7 +91,19 @@ export async function classifyImportantWithLlm(
     summary: parsed.data.summary,
     rationale: parsed.data.rationale,
     classifiedBy: "llm-haiku",
+    classifierVersion: IMPORTANT_CLASSIFIER_VERSION,
   };
+}
+
+/**
+ * Anthropic 응답에서 첫 text 블록의 trim된 텍스트만 추출.
+ * SDK의 content는 ContentBlock union — text/tool_use/thinking 등.
+ */
+function extractText(response: Anthropic.Message): string {
+  for (const block of response.content) {
+    if (block.type === "text") return block.text.trim();
+  }
+  return "";
 }
 
 function extractJson(text: string): unknown {

@@ -65,4 +65,6 @@ export interface ImportantClassification {
   /** 분류 단서 — 디버깅·eval용. */
   rationale: string;
   classifiedBy: "llm-haiku";
+  /** 분류기 버전 — DB의 classifier_version 컬럼에 저장. */
+  classifierVersion: string;
 }
