@@ -88,6 +88,21 @@ services:
       retries: 3
       start_period: 20s
 
+  cron:
+    build:
+      context: ./cron
+      dockerfile: Dockerfile
+    image: ghcr.io/krdn/gons-dashboard-cron:${APP_IMAGE_TAG:-latest}
+    container_name: gons-dashboard-cron
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Seoul
+      APP_URL: http://app:3020
+      CRON_BEARER_TOKEN: ${CRON_BEARER_TOKEN}
+
 volumes:
   gons_dashboard_pgdata:
   gons_dashboard_redisdata:

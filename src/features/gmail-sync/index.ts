@@ -1,3 +1,5 @@
 // Public API for features/gmail-sync
-// 외부에서는 이 index.ts를 통해서만 import
-export {};
+export { syncInbox } from "./api/syncInbox";
+export type { SyncResult } from "./api/syncInbox";
+export { fullRescan } from "./lib/full-rescan";
+export type { FullRescanResult } from "./lib/full-rescan";

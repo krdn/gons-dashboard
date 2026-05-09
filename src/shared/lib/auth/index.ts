@@ -38,11 +38,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
+          // gmail.readonly만 — gmail.metadata와 함께 부여하면 metadata가 우선 적용되어
+          // messages.list?q= search 쿼리가 차단됨 ("Metadata scope does not support 'q' parameter").
+          // readonly 단독 부여 시 메타데이터 + search 모두 가능.
           scope: [
             "openid",
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.metadata",
           ].join(" "),
           access_type: "offline",
           prompt: "consent", // refresh_token 발급 보장

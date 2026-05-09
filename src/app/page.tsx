@@ -8,7 +8,11 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth } from "@/shared/lib/auth";
-import { EmailDigestCard, EmailDigestSkeleton } from "@/widgets/email-digest";
+import {
+  EmailDigestCard,
+  EmailDigestSkeleton,
+  PushSubscribeButton,
+} from "@/widgets/email-digest";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +84,18 @@ export default async function DashboardPage() {
           </div>
         </aside>
       </div>
+
+      <footer className="mt-12 flex items-center justify-between border-t border-[var(--color-hairline)] pt-4 text-xs text-[var(--color-text-subtle)]">
+        <PushSubscribeButton />
+        <a
+          href="https://mail.google.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--color-text-muted)] hover:underline hover:underline-offset-2"
+        >
+          Gmail에서 보기 →
+        </a>
+      </footer>
     </main>
   );
 }

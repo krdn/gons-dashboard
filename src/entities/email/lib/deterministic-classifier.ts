@@ -55,7 +55,9 @@ export function classifyDeterministic(
 ): ClassificationResult | null {
   // 정책 1: 마지막 발송자가 본인 → 내가 마지막에 답한 상태.
   if (input.lastSenderIsOwner) return null;
-  if (input.lastSenderEmail === input.ownerEmail.toLowerCase()) return null;
+  if (input.lastSenderEmail.toLowerCase() === input.ownerEmail.toLowerCase()) {
+    return null;
+  }
 
   const haystack = `${input.subject}\n${input.snippet}`;
 

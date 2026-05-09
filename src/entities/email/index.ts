@@ -14,3 +14,8 @@ export {
 } from "./lib/deterministic-classifier";
 export { getReplyNeeded } from "./api/getReplyNeeded";
 export type { ReplyNeededItem } from "./api/getReplyNeeded";
+export { classifyThread } from "./api/classifyThread";
+export type {
+  ClassifyThreadParams,
+  ClassifyThreadOutcome,
+} from "./api/classifyThread";

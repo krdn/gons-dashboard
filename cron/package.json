@@ -1,0 +1,9 @@
+{
+  "name": "gons-dashboard-cron",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-cron": "^3.0.3"
+  }
+}
