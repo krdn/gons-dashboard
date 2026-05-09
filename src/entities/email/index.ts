@@ -1,3 +1,16 @@
 // Public API for entities/email
-// EmailMessage, EmailThread, ReplyNeededRecord, getReplyNeeded, ...
-export {};
+// FSD: 외부에서는 이 index를 통해서만 import.
+export type {
+  Severity,
+  ClassifiedBy,
+  UserAction,
+  OAuthState,
+  ThreadInput,
+  ClassificationResult,
+} from "./model/types";
+export {
+  classifyDeterministic,
+  DETERMINISTIC_VERSION,
+} from "./lib/deterministic-classifier";
+export { getReplyNeeded } from "./api/getReplyNeeded";
+export type { ReplyNeededItem } from "./api/getReplyNeeded";

@@ -1,19 +1,85 @@
-// 메인 대시보드. v0.1: Email Digest 위젯 1개.
+// 메인 대시보드 — Sprint 2.5에서 구현.
 // 와이어프레임 reference:
-// ~/.gstack/projects/krdn-gons-dashboard/designs/main-dashboard-20260509/wireframe-v1.html
+//   ~/.gstack/projects/krdn-gons-dashboard/designs/main-dashboard-20260509/wireframe-v1.html
 //
-// Sprint 2.5에서 widgets/email-digest 가 이 자리를 채운다.
-// 지금은 Sprint 1 골격 검증용 placeholder.
+// 좌(7) + 우(4) 비대칭 그리드. 좌에 EmailDigestCard, 우에 향후 위젯 placeholder.
+// 비로그인 상태면 /login으로 리다이렉트.
 
-export default function DashboardPage() {
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { auth } from "@/shared/lib/auth";
+import { EmailDigestCard, EmailDigestSkeleton } from "@/widgets/email-digest";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const greetingName = session.user.name ?? session.user.email ?? "";
+
+  // KST 시각 — Server에서 Asia/Seoul로 강제 (TZ env).
+  const nowKst = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
+
   return (
     <main className="mx-auto w-full max-w-[1240px] px-6 py-12">
-      <h1 className="text-[var(--text-display)] font-bold tracking-tight">
-        gons<span className="text-[var(--color-accent)]">.</span>dashboard
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-        v0.1 골격 — Sprint 2에서 Email Digest 위젯이 여기 채워집니다.
-      </p>
+      <header className="mb-12">
+        <h1 className="text-[32px] font-bold tracking-tight">
+          gons<span className="text-[var(--color-accent)]">.</span>dashboard
+        </h1>
+        <p className="mt-2 text-xs text-[var(--color-text-muted)] tabular-nums">
+          {nowKst} KST
+          {greetingName && (
+            <>
+              {" · "}
+              <span>{greetingName}</span>
+            </>
+          )}
+        </p>
+      </header>
+
+      <section className="mb-12">
+        <h2 className="text-[28px] font-bold tracking-tight md:text-[32px]">
+          좋은 아침입니다{" "}
+          <em className="not-italic font-semibold text-[var(--color-text-muted)]">
+            — 오늘도 조금 챙길 일이 있어요
+          </em>
+        </h2>
+      </section>
+
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
+        <Suspense fallback={<EmailDigestSkeleton />}>
+          <EmailDigestCard />
+        </Suspense>
+
+        <aside aria-label="향후 위젯 자리" className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold text-[var(--color-text-muted)]">
+            곧 추가될 영역
+          </h2>
+          <div className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-5 py-5 text-[var(--color-text-subtle)]">
+            <h3 className="mb-2 text-sm font-medium text-[var(--color-text-muted)]">
+              Calendar
+            </h3>
+            <p className="m-0 text-xs">
+              오늘의 미팅·내일까지 답해야 할 일정이 여기 표시됩니다.
+            </p>
+          </div>
+          <div className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-5 py-5 text-[var(--color-text-subtle)]">
+            <h3 className="mb-2 text-sm font-medium text-[var(--color-text-muted)]">
+              Tasks
+            </h3>
+            <p className="m-0 text-xs">마감이 임박한 할 일 TOP 3.</p>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

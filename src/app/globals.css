@@ -96,3 +96,13 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
 }
+
+/* 로딩 스켈레톤 shimmer — widgets/email-digest/ui/EmailDigestSkeleton */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
