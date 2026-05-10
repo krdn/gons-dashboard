@@ -16,6 +16,7 @@ import {
   primaryKey,
   index,
   uniqueIndex,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 /* =========================================================================
@@ -180,3 +181,62 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+/* =========================================================================
+ * 서버 인프라 모니터 v0.1 — entities/host · entities/project · audit_logs
+ * - hosts: 등록된 docker context (다호스트 확장 대비, v0.1엔 home-server 1대)
+ * - projects: compose project 메타데이터 (display name, 카테고리, pinned)
+ * - audit_logs: 컨테이너 액션 이력 (read+admin 기록)
+ * ========================================================================= */
+export const hosts = pgTable("hosts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(), // "home-server"
+  dockerContext: text("docker_context").notNull(), // docker CLI --context 인자
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => hosts.id, { onDelete: "cascade" }),
+    composeProject: text("compose_project").notNull(),
+    displayName: text("display_name").notNull(),
+    description: text("description"),
+    category: text("category"), // 'news' | 'ai' | 'infra' | 'experiment' | null
+    isPinned: boolean("is_pinned").notNull().default(false),
+    isHidden: boolean("is_hidden").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("projects_host_compose_idx").on(t.hostId, t.composeProject),
+    index("projects_visible_idx").on(t.hostId, t.isHidden, t.isPinned),
+  ],
+);
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => hosts.id),
+    containerId: text("container_id").notNull(),
+    containerName: text("container_name").notNull(),
+    action: text("action").notNull(), // 'restart' | 'start' | 'stop'
+    userEmail: text("user_email").notNull(), // NextAuth session.user.email
+    status: text("status").notNull(), // 'success' | 'failed'
+    errorMessage: text("error_message"),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("audit_logs_recent_idx").on(t.createdAt.desc()),
+    index("audit_logs_container_idx").on(t.containerId, t.createdAt.desc()),
+  ],
+);
