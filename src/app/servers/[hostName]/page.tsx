@@ -15,7 +15,7 @@
 //   (restartContainer/startContainer/stopContainer) 내부에서 다시 수행된다
 //   — client에서 prop을 위조해도 서버에서 거절된다.
 
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { getHostByName, HostBadge } from "@/entities/host";
 import { listContainers, type ContainerSummary } from "@/entities/container";
@@ -41,13 +41,18 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ hostName: string }> };
 
 export default async function HostDetailPage({ params }: Props) {
+  // Read 권한도 인증 사용자 only — audit_logs.userEmail (PII), Docker stderr,
+  // 컨테이너 인벤토리가 모두 노출되므로 unauthenticated 접근을 차단한다.
+  // 메인 페이지(`src/app/page.tsx:29`)와 동일 패턴.
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const { hostName } = await params;
   const host = await getHostByName(hostName);
   if (!host) notFound();
 
-  const session = await auth();
   const adminFlag = isAdmin(
-    session?.user?.email ?? null,
+    session.user.email ?? null,
     process.env.ADMIN_EMAILS ?? "",
   );
 

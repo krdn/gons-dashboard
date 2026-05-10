@@ -69,36 +69,52 @@ export async function runAction(
     .limit(1);
   if (!host) return { ok: false, code: "HOST_NOT_FOUND" };
 
-  // 5) Docker action + audit log
+  // 5) Docker action + audit log — 두 단계를 분리한다.
+  //    이전 구현은 둘을 같은 try 안에 두어, Docker 성공 + audit insert 실패 시
+  //    catch가 발동해 "failed" 행을 추가로 남기려는 (그마저도 또 실패하는) 잘못된
+  //    경로로 빠졌다. 이제 docker 결과는 외부 변수로 캡처하고, audit log 실패는
+  //    독립된 try/catch로 swallow하여 docker 결과를 가린다.
   const startMs = Date.now();
+  let dockerErr: unknown = null;
   try {
     await runDocker(host.dockerContext, [action, input.containerId]);
-    const durationMs = Date.now() - startMs;
+  } catch (err) {
+    dockerErr = err;
+  }
+  const durationMs = Date.now() - startMs;
+
+  const rawMessage =
+    dockerErr instanceof Error
+      ? dockerErr.message
+      : dockerErr != null
+        ? String(dockerErr)
+        : null;
+  const message = rawMessage?.slice(0, 500);
+
+  try {
     await insertAuditLog({
       hostId: host.id,
       containerId: input.containerId,
       containerName: input.containerName,
       action,
       userEmail: email,
-      status: "success",
+      status: dockerErr ? "failed" : "success",
+      errorMessage: message ?? null,
       durationMs,
     });
-    revalidatePath(`/servers/${host.name}`);
-    return { ok: true };
-  } catch (err: unknown) {
-    const durationMs = Date.now() - startMs;
-    const rawMessage = err instanceof Error ? err.message : String(err);
-    const message = rawMessage.slice(0, 500);
-    await insertAuditLog({
-      hostId: host.id,
-      containerId: input.containerId,
-      containerName: input.containerName,
+  } catch (auditErr) {
+    // audit insert 실패는 docker 결과를 가려선 안 됨 — 운영자에게는 stderr로 알림.
+    console.error("[container-actions] audit log insert failed", {
       action,
-      userEmail: email,
-      status: "failed",
-      errorMessage: message,
-      durationMs,
+      containerId: input.containerId,
+      dockerOk: dockerErr == null,
+      auditErr: auditErr instanceof Error ? auditErr.message : String(auditErr),
     });
+  }
+
+  if (dockerErr) {
     return { ok: false, code: "DOCKER_ERROR", message };
   }
+  revalidatePath(`/servers/${host.name}`);
+  return { ok: true };
 }
