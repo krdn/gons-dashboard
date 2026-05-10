@@ -87,7 +87,8 @@ export async function runAction(
     return { ok: true };
   } catch (err: unknown) {
     const durationMs = Date.now() - startMs;
-    const message = err instanceof Error ? err.message : String(err);
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    const message = rawMessage.slice(0, 500);
     await insertAuditLog({
       hostId: host.id,
       containerId: input.containerId,
@@ -95,7 +96,7 @@ export async function runAction(
       action,
       userEmail: email,
       status: "failed",
-      errorMessage: message.slice(0, 500),
+      errorMessage: message,
       durationMs,
     });
     return { ok: false, code: "DOCKER_ERROR", message };

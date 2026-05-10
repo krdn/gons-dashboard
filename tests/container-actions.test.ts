@@ -32,10 +32,19 @@ const HOST_PREFIX = `t14-${Date.now()}`; // test isolation prefix
 const HOST_NAME = `${HOST_PREFIX}-home-server`;
 
 beforeEach(async () => {
-  // 격리: audit_logs는 본 테스트가 v0.1 유일 사용처이므로 전체 wipe.
-  // hosts는 prefix-scoped delete (다른 테스트 fixture 보호).
-  await db.delete(auditLogs);
-  await db.delete(hosts).where(eq(hosts.name, HOST_NAME));
+  // 격리(cross-file race 방지):
+  //  - 모든 정리는 HOST_NAME 스코프로만 수행 (다른 테스트 host 보호).
+  //  - audit_logs.host_id FK는 ON DELETE no action → host 삭제 전에 child row 정리 필요.
+  //  - HOST_NAME은 module load 시점에 한 번 결정되어 within-file 6개 테스트가 공유 → prior host 정리 필수.
+  const [prior] = await db
+    .select({ id: hosts.id })
+    .from(hosts)
+    .where(eq(hosts.name, HOST_NAME))
+    .limit(1);
+  if (prior) {
+    await db.delete(auditLogs).where(eq(auditLogs.hostId, prior.id));
+    await db.delete(hosts).where(eq(hosts.id, prior.id));
+  }
 
   const [h] = await db
     .insert(hosts)
