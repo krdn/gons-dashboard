@@ -61,4 +61,58 @@ describe("parseContainer", () => {
     expect(parseContainer({ ...SAMPLE, Status: "Exited (0) 5d ago" }, HOST_ID).uptimeSeconds)
       .toBeNull();
   });
+
+  it("여러 포트를 모두 파싱한다", () => {
+    const c = parseContainer(
+      { ...SAMPLE, Ports: "0.0.0.0:8000->8000/tcp, 0.0.0.0:8001->8001/udp" },
+      HOST_ID,
+    );
+    expect(c.ports).toEqual([
+      { host: "0.0.0.0", hostPort: 8000, container: 8000, protocol: "tcp" },
+      { host: "0.0.0.0", hostPort: 8001, container: 8001, protocol: "udp" },
+    ]);
+  });
+
+  it("노출만(exposed-only) 포트 — host/hostPort는 null", () => {
+    const c = parseContainer(
+      { ...SAMPLE, Ports: "8000/tcp" },
+      HOST_ID,
+    );
+    expect(c.ports).toEqual([
+      { host: null, hostPort: null, container: 8000, protocol: "tcp" },
+    ]);
+  });
+
+  it("IPv6 dual-stack(:::) 포트는 silently drop된다 (v0.1 한계)", () => {
+    const c = parseContainer(
+      { ...SAMPLE, Ports: "0.0.0.0:8000->8000/tcp, :::8000->8000/tcp" },
+      HOST_ID,
+    );
+    // IPv4 한 줄만 파싱됨
+    expect(c.ports).toHaveLength(1);
+    expect(c.ports[0]).toEqual({
+      host: "0.0.0.0",
+      hostPort: 8000,
+      container: 8000,
+      protocol: "tcp",
+    });
+  });
+
+  it("uptimeSeconds — 분/시간/주 단위 변환", () => {
+    expect(
+      parseContainer({ ...SAMPLE, Status: "Up 30 minutes" }, HOST_ID).uptimeSeconds,
+    ).toBe(30 * 60);
+    expect(
+      parseContainer({ ...SAMPLE, Status: "Up 5 hours" }, HOST_ID).uptimeSeconds,
+    ).toBe(5 * 3600);
+    expect(
+      parseContainer({ ...SAMPLE, Status: "Up 2 weeks" }, HOST_ID).uptimeSeconds,
+    ).toBe(2 * 7 * 86_400);
+  });
+
+  it("uptimeSeconds — 'Up 12 days (healthy)' 같은 healthy 접미사도 인식", () => {
+    expect(
+      parseContainer({ ...SAMPLE, Status: "Up 12 days (healthy)" }, HOST_ID).uptimeSeconds,
+    ).toBe(12 * 86_400);
+  });
 });

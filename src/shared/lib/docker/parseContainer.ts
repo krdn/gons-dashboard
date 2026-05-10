@@ -42,6 +42,7 @@ const RawContainerSchema = z.object({
   CreatedAt: z.string(),
 });
 
+// 단순 CSV — value 내 comma는 지원 안 함 (compose 라벨에는 없음)
 function parseLabels(csv: string): Record<string, string> {
   if (!csv) return {};
   const out: Record<string, string> = {};
@@ -57,13 +58,14 @@ function parseLabels(csv: string): Record<string, string> {
 
 function parsePorts(s: string): PortMapping[] {
   if (!s) return [];
-  // 예: "0.0.0.0:8000->8000/tcp, :::8000->8000/tcp"
+  // 예: "0.0.0.0:8000->8000/tcp" 또는 노출만 "8000/tcp"
+  // 한계 (v0.1): IPv6 dual-stack(:::), 포트 범위(5000-5005)는 지원 안 함 — silently drop.
   const out: PortMapping[] = [];
   for (const raw of s.split(",")) {
     const part = raw.trim();
     if (!part) continue;
     const m = part.match(
-      /^(?:(?<host>[^:]+):)?(?<hostPort>\d+)?->?(?<container>\d+)\/(?<proto>tcp|udp)$/,
+      /^(?:(?<host>[^:]+):(?<hostPort>\d+)->)?(?<container>\d+)\/(?<proto>tcp|udp)$/,
     );
     if (m && m.groups) {
       out.push({
@@ -71,17 +73,6 @@ function parsePorts(s: string): PortMapping[] {
         hostPort: m.groups.hostPort ? Number(m.groups.hostPort) : null,
         container: Number(m.groups.container),
         protocol: m.groups.proto as "tcp" | "udp",
-      });
-      continue;
-    }
-    // exposed only: "8000/tcp"
-    const m2 = part.match(/^(?<container>\d+)\/(?<proto>tcp|udp)$/);
-    if (m2 && m2.groups) {
-      out.push({
-        host: null,
-        hostPort: null,
-        container: Number(m2.groups.container),
-        protocol: m2.groups.proto as "tcp" | "udp",
       });
     }
   }
