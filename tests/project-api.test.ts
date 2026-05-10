@@ -44,25 +44,29 @@ describe("project api", () => {
     expect(list.map((p) => p.composeProject)).toEqual(["pinned", "a-app", "z-app"]);
   });
 
-  it("upsertProjectFromContainer: 신규는 생성", async () => {
+  it("upsertProjectFromContainer: 화이트리스트에 있는 compose → 신규 생성", async () => {
     const p = await upsertProjectFromContainer({
       hostId,
-      composeProject: "news-prod",
+      hostName: "home-server",
+      composeProject: "gons-dashboard",
     });
-    expect(p.displayName).toBe("news-prod");
-    expect(p.hostId).toBe(hostId);
+    expect(p).not.toBeNull();
+    expect(p?.displayName).toBe("gons-dashboard");
+    expect(p?.hostId).toBe(hostId);
   });
 
-  it("upsertProjectFromContainer: 기존은 update_at만 갱신, displayName 보존", async () => {
+  it("upsertProjectFromContainer: 기존은 updatedAt만 갱신, displayName 보존", async () => {
     await db.insert(projects).values({
       hostId,
-      composeProject: "news-prod",
-      displayName: "뉴스 서비스 (운영)",
+      composeProject: "gons-dashboard",
+      displayName: "고스 대시보드 (운영)",
     });
     const p = await upsertProjectFromContainer({
       hostId,
-      composeProject: "news-prod",
+      hostName: "home-server",
+      composeProject: "gons-dashboard",
     });
-    expect(p.displayName).toBe("뉴스 서비스 (운영)");
+    expect(p).not.toBeNull();
+    expect(p?.displayName).toBe("고스 대시보드 (운영)");
   });
 });
