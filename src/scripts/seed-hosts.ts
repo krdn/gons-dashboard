@@ -1,6 +1,10 @@
 // home-server 호스트를 idempotent하게 upsert.
 // 운영 배포 시 한 번만 돌리면 됨. 재실행해도 안전.
 //
+// 실행: `pnpm db:seed:hosts`
+//   package.json의 `tsx --conditions=react-server`는 db/client.ts와 env.ts의
+//   `import "server-only"` 가드를 우회하기 위함 (Next.js 외부에서 호출).
+//
 // 주의: ESM에서는 import가 hoist되므로 `dotenv.config()`를 함수 안에서 호출하면
 // db/client → env.ts가 먼저 평가돼 환경 변수 검증이 실패한다.
 // `dotenv/config` 부수효과 import를 최상단에 두어 다른 import보다 먼저 실행시킨다.
