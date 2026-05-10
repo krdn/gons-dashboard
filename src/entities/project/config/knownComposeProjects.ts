@@ -5,9 +5,8 @@
 //   1) 이 파일 KNOWN_COMPOSE_PROJECTS_BY_HOST에 키 추가
 //   2) seed-projects.ts의 HOME_PROJECTS에 displayName/description/url/category 추가
 //   3) `pnpm db:seed:projects` 재실행
-export const KNOWN_COMPOSE_PROJECTS_BY_HOST: Record<
-  string,
-  ReadonlySet<string>
+export const KNOWN_COMPOSE_PROJECTS_BY_HOST: Readonly<
+  Record<string, ReadonlySet<string>>
 > = {
   "home-server": new Set([
     "ai-afterschool-ex",
