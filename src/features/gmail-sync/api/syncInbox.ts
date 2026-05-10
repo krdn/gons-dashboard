@@ -264,6 +264,10 @@ async function classifyAffectedThreads(
 
   let classified = 0;
   let skipped = 0;
+  // 진단용 — important 분류 outcome 분포. 본인 user의 0건 원인이 mailing-list 컷인지
+  // LLM none인지 구분하기 위해 1 사이클 한정으로 로깅.
+  const importantOutcomes: Record<string, number> = {};
+  let importantConsidered = 0;
 
   for (const t of threads) {
     if (!t.lastReceivedAt || t.lastReceivedAt < since) {
@@ -296,7 +300,7 @@ async function classifyAffectedThreads(
       fromHeader: null,
     };
     try {
-      await classifyImportantThread({
+      const impOutcome = await classifyImportantThread({
         userId,
         threadId: t.id,
         input: {
@@ -308,12 +312,17 @@ async function classifyAffectedThreads(
         },
         signals,
       });
+      importantOutcomes[impOutcome.kind] =
+        (importantOutcomes[impOutcome.kind] ?? 0) + 1;
+      importantConsidered += 1;
     } catch (err) {
       // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
       console.warn("[syncInbox] important-classify-failed", {
         threadId: t.id,
         message: err instanceof Error ? err.message : String(err),
       });
+      importantOutcomes["throw"] = (importantOutcomes["throw"] ?? 0) + 1;
+      importantConsidered += 1;
     }
 
     if (
@@ -325,6 +334,14 @@ async function classifyAffectedThreads(
     } else {
       skipped += 1;
     }
+  }
+
+  if (importantConsidered > 0) {
+    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
+    console.log(
+      "[syncInbox] important-outcomes",
+      JSON.stringify({ userId, ownerEmail, importantOutcomes }),
+    );
   }
 
   return { classified, skipped };
