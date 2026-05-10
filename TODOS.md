@@ -148,6 +148,22 @@
 - **What**: `🖥` 이모지 `aria-hidden`, `<section aria-labelledby>` 추가, 다른 위젯과 일관된 시맨틱 hierarchy.
 - **Where to start**: `widgets/server-overview/ui/ServerOverviewError.tsx:7`, `ServerOverviewCard.tsx`의 `<section>` 요소.
 
+### 19. 서버 인프라 모니터 — Cluster-aware grouping
+
+- **What**: `news-sentiment-prod` + `news-sentiment-analyzer2`처럼 같은 도메인이 여러 compose project로 쪼개진 경우 한 그룹("뉴스 서비스")으로 묶기.
+- **Why**: v0.1.1은 compose project 단위로만 그룹화 — 운영자 관점에서 "한 서비스"인데 두세 카드로 분리되어 인지 부담.
+- **Pros**: 도메인 단위로 시야 정리, displayName 중복 제거.
+- **Cons**: schema 변경 필요 (예: projects에 `cluster_key` 컬럼 추가), groupByProject 재설계.
+- **Where to start**: `projects` 테이블에 `cluster_key text` 추가 → seed-projects에서 같은 cluster_key 부여 → groupByProject가 cluster_key 우선 그룹화.
+
+### 20. 서버 인프라 모니터 — 좀비 자동 cleanup (cron)
+
+- **What**: 매시간 cron이 `db:cleanup-projects --apply`를 자동 실행 (선택적 grace period 포함).
+- **Why**: v0.1.1은 수동 cleanup. 좀비 발생 빈도가 높아지면 자동화 가치가 커짐.
+- **Pros**: 운영자 수동 작업 제거.
+- **Cons**: 잠시 stop된 컨테이너의 project row가 의도치 않게 삭제될 수 있어 grace period(예: 24h+ 비활성) 결정 필요. 사용자 명시 동의가 한 번 더 필요한 안건.
+- **Where to start**: `app/api/cron/cleanup-projects/route.ts` + grace period 로직.
+
 ## 백로그 (확정되지 않음)
 
 - 답장 자동 작성 (A 곁가지) — V0 검증 후 사용자 직접 결정
