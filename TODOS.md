@@ -88,6 +88,66 @@
 - **Where to start**: `src/shared/lib/log.ts` 신설 (pino 또는 가벼운 wrapper). 5곳의 `console.warn` 호출을 `log.warn(...)` 으로 교체.
 - **Cons**: pino 의존성 추가 (~30KB). 기존 동작과 호환되는 인터페이스 설계 필요.
 
+### 11. 서버 인프라 모니터 — L2 리소스 메트릭 (CPU/MEM)
+
+- **What**: `docker stats --no-stream --format json`을 주기적으로 호출해 컨테이너별 CPU/MEM 사용률 수집. UI에 임계치 초과 경고 + 경량 그래프.
+- **Why**: v0.1은 L1 상태 (running/exited/restarting)만 감지. OOM kill 직전이나 CPU 폭주 같은 "running이지만 비정상" 시나리오는 v0.2 영역.
+- **Where to start**: `shared/lib/docker/stats.ts` 신설. 수집은 RSC 안에서 매번 호출 또는 cron 컨테이너에 추가. 시계열 보관은 PostgreSQL → 향후 TimescaleDB.
+- **Depends on**: v0.1 dogfooding으로 임계치 결정 (예: CPU > 80% 5분 지속, MEM > 90%)
+
+### 12. 서버 인프라 모니터 — L3 로그 패턴 분석
+
+- **What**: 컨테이너 로그에서 ERROR/FATAL 자동 감지 + 일정 비율 초과 시 Web Push 알림.
+- **Why**: 사용자가 "이상 알림" 시나리오를 v0.1 요구사항에 포함했지만, history 없이 의미 있는 이상 정의가 어려워 시각 배지로만 가능 (D5).
+- **Where to start**: `docker logs --since` + 정규식 매칭 또는 Haiku LLM 분류. Web Push 인프라는 이메일 위젯에서 재사용.
+- **Depends on**: L2 메트릭 수집 (이상 신호 통합)
+
+### 13. 서버 인프라 모니터 — Web Push 알림
+
+- **What**: 이상 감지(L1 restart spike, L2 메트릭 임계치, L3 로그 패턴) 시 web-push로 푸시 알림.
+- **Why**: v0.1엔 시각 배지만. dogfooding 후 어떤 이상이 알림 가치 있는지 데이터 누적되면 우선순위 상승.
+- **Where to start**: `shared/lib/push/`이 이미 있음 (이메일 위젯). subscription 재사용 + 새 payload 타입.
+
+### 14. 서버 인프라 모니터 — Playwright E2E + docker mock shim
+
+- **What**: E2E 테스트 (메인 → 호스트 상세 → restart → 토스트 + audit_logs).
+- **Why**: v0.1은 110+ 단위/통합 테스트로 5단계 보안 boundary는 검증되지만, 메인 → 상세 → 액션의 사용자 흐름 회귀는 dogfooding에 의존. v0.2 또는 코드 변경 빈도가 높아질 때 우선순위 상승.
+- **Where to start** (plan 보존):
+  - `playwright.config.ts` 신설 (webServer + PATH 조작으로 mock shim 활성화)
+  - `tests/fixtures/docker-mock-shim.mjs` (실제 docker CLI 대체. `DOCKER_MOCK_SCENARIO=healthy` 등 시나리오 분기)
+  - `tests/fixtures/docker-ndjson/{healthy,daemon-down}.ndjson` 픽스처
+  - `tests/e2e/server-infra.spec.ts` 3개 시나리오 (메인 카드 / 상세 액션 버튼 노출 / restart 확인 다이얼로그 → 성공 메시지)
+- **Cons**: Playwright 설치 + browser 다운로드 (~200MB) + CI 플러밍.
+- **Depends on**: 이미 충분히 작동 중인 dogfooding이 회귀 잡지 못하는 사례 등장 시.
+
+### 15. 서버 인프라 모니터 — env 모듈 일관성 (process.env 직접 접근 정리)
+
+- **What**: `runDocker.ts`와 `_runAction.ts`에서 `process.env.DOCKER_CMD_TIMEOUT_MS`/`process.env.ADMIN_EMAILS`를 직접 읽는 부분을 검증된 `env` 모듈로 통일.
+- **Why**: 다른 모든 shared 모듈은 `@/shared/config/env`의 `env` 객체를 사용. 이 두 곳만 `process.env`를 직접 읽어 fallback (`?? 10_000`, `?? ""`) 갖고 있는데, env.ts의 Zod schema가 이미 default/required를 강제하므로 fallback은 dead code.
+- **Where to start**:
+  - `src/shared/lib/docker/runDocker.ts:19-20`: `Number(process.env.DOCKER_CMD_TIMEOUT_MS ?? 10_000)` → `env.DOCKER_CMD_TIMEOUT_MS`
+  - `src/features/container-actions/api/_runAction.ts:55`: `process.env.ADMIN_EMAILS ?? ""` → `env.ADMIN_EMAILS`
+  - `src/app/servers/[hostName]/page.tsx:51`: 같은 패턴 정리
+  - 단, `runDocker` 테스트는 `delete process.env.DOCKER_CMD_TIMEOUT_MS`로 default 확인 — env 모듈로 옮기면 mock 패턴도 함께 수정 필요.
+- **Cons**: 작은 리팩토링 + 테스트 mock 한 군데 수정.
+
+### 16. 서버 인프라 모니터 — ESLint boundaries 세부 정책
+
+- **What**: 현재 `eslint.config.mjs`에서 features→features import를 전체 허용 (groupByProject 공유 목적).
+- **Why**: 의도는 `lib/`만 공유하고 `ui/state`는 차단인데, `boundaries/element-types`로는 표현 불가. `no-restricted-imports`로 `@/features/*/ui/**` 패턴 차단 추가하면 의도대로 강제.
+- **Where to start**: `eslint.config.mjs`에 `no-restricted-imports` 패턴 추가.
+
+### 17. 서버 인프라 모니터 — UI 폴리싱
+
+- **What**: 다호스트 등록 UI, 컨테이너 상세 모달 (라이브 로그 tail), isHidden 토글 UI, project 메타 편집 (displayName/description/category/isPinned).
+- **Why**: v0.1엔 host 1대 seed + project 자동 생성으로 UI 없이 시작. dogfooding으로 "이 컨테이너는 안 보이게 하고 싶다" 같은 요구가 누적되면 추가.
+- **Where to start**: `widgets/server-overview` 또는 별도 `widgets/host-admin`.
+
+### 18. 서버 인프라 모니터 — Accessibility 폴리싱
+
+- **What**: `🖥` 이모지 `aria-hidden`, `<section aria-labelledby>` 추가, 다른 위젯과 일관된 시맨틱 hierarchy.
+- **Where to start**: `widgets/server-overview/ui/ServerOverviewError.tsx:7`, `ServerOverviewCard.tsx`의 `<section>` 요소.
+
 ## 백로그 (확정되지 않음)
 
 - 답장 자동 작성 (A 곁가지) — V0 검증 후 사용자 직접 결정
@@ -97,3 +157,5 @@
 - Tasks 위젯
 - Dark mode (DESIGN.md 작성 후)
 - 자동 watchtower 배포 (v0.1은 수동 + CI SSH로 충분)
+- 서버 인프라 — L4 의존성 진단 (project 내 service 그래프, restart 루프 자동 감지)
+- 서버 인프라 — TimescaleDB 연동 (장기 시계열, krdn-timescaledb 활용)

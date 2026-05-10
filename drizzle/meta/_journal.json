@@ -15,6 +15,20 @@
       "when": 1778329184736,
       "tag": "0001_amusing_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778387539058,
+      "tag": "0002_easy_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778387804905,
+      "tag": "0003_curvy_jubilee",
+      "breakpoints": true
     }
   ]
 }
