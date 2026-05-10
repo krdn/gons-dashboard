@@ -24,11 +24,7 @@ import {
   type MailingListSignals,
 } from "@/shared/api/gmail";
 import { fullRescan } from "../lib/full-rescan";
-import {
-  classifyThread,
-  classifyImportantThread,
-  type ThreadInput,
-} from "@/entities/email";
+import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
 
 export interface SyncResult {
   kind:
@@ -82,12 +78,7 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
     // fullRescan은 시그널 Map을 반환하지 않으므로 빈 Map 전달.
     // 첫 sync 메일들은 다음 cron 사이클에서 important 분류가 자연 채워짐
     // (last_received_at > classified_at 트리거).
-    const counts = await classifyAffectedThreads(
-      userId,
-      ownerEmail,
-      rescan.threadCount,
-      new Map(),
-    );
+    const counts = await classifyAffectedThreads(userId, ownerEmail, new Map());
     return {
       kind: "ok-first-sync",
       newHistoryId: rescan.newHistoryId,
@@ -109,12 +100,7 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
       // history_id 폐기 → full rescan fallback.
       const rescan = await fullRescan(accessToken, userId);
       await persistHistoryId(userId, rescan.newHistoryId);
-      const counts = await classifyAffectedThreads(
-        userId,
-        ownerEmail,
-        rescan.threadCount,
-        new Map(),
-      );
+      const counts = await classifyAffectedThreads(userId, ownerEmail, new Map());
       return {
         kind: "ok-full-rescan",
         newHistoryId: rescan.newHistoryId,
@@ -150,7 +136,6 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
   const counts = await classifyAffectedThreads(
     userId,
     ownerEmail,
-    affected,
     signalsByGmailThread,
   );
 
@@ -242,92 +227,30 @@ async function fetchAndUpsertThreads(
 async function classifyAffectedThreads(
   userId: string,
   ownerEmail: string,
-  expectedCount: number,
   signalsMap: Map<string, MailingListSignals> = new Map(),
 ): Promise<{ classified: number; skipped: number }> {
-  // 최근 sync로 영향받은 스레드들 — 단순화: 사용자의 모든 스레드 중 최근 24h.
-  // (대량일 때는 비효율이지만 본인 1명·일~수백통 규모에서 충분.)
+  // 24h 윈도우. 본인 1명·일~수백통 규모에서 충분.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const threads = await db
-    .select({
-      id: emailThreads.id,
-      gmailThreadId: emailThreads.gmailThreadId,
-      subject: emailThreads.subject,
-      lastSenderEmail: emailThreads.lastSenderEmail,
-      lastSenderName: emailThreads.lastSenderName,
-      snippet: emailThreads.snippet,
-      lastReceivedAt: emailThreads.lastReceivedAt,
-    })
-    .from(emailThreads)
-    .where(eq(emailThreads.userId, userId))
-    .limit(expectedCount + 10);
+  const result = await classifyThreadsLoop({
+    userId,
+    ownerEmail,
+    since,
+    signalsMap,
+  });
 
-  let classified = 0;
-  let skipped = 0;
-
-  for (const t of threads) {
-    if (!t.lastReceivedAt || t.lastReceivedAt < since) {
-      // 24시간 이전 스레드는 분류 재실행 안 함 (멱등성에 의존).
-      continue;
-    }
-    const input: ThreadInput = {
-      threadId: t.gmailThreadId,
-      lastSenderEmail: (t.lastSenderEmail ?? "").toLowerCase(),
-      lastSenderName: t.lastSenderName ?? undefined,
-      subject: t.subject ?? "",
-      snippet: t.snippet ?? "",
-      receivedAt: t.lastReceivedAt,
-      ownerEmail,
-      lastSenderIsOwner:
-        (t.lastSenderEmail ?? "").toLowerCase() === ownerEmail.toLowerCase(),
-    };
-
-    const outcome = await classifyThread({
-      userId,
-      threadId: t.id,
-      input,
-    });
-
-    // 중요 메일 분류 (reply_needed와 독립). 한쪽 실패가 다른 쪽을 막지 않도록 try/catch.
-    const signals = signalsMap.get(t.gmailThreadId) ?? {
-      hasListUnsubscribe: false,
-      hasListId: false,
-      precedence: null,
-      fromHeader: null,
-    };
-    try {
-      await classifyImportantThread({
+  if (result.importantConsidered > 0) {
+    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
+    console.log(
+      "[syncInbox] important-outcomes",
+      JSON.stringify({
         userId,
-        threadId: t.id,
-        input: {
-          subject: t.subject ?? "",
-          fromName: t.lastSenderName ?? null,
-          fromEmail: (t.lastSenderEmail ?? "").toLowerCase(),
-          snippet: t.snippet ?? "",
-          receivedAtKst: formatKst(t.lastReceivedAt ?? new Date()),
-        },
-        signals,
-      });
-    } catch (err) {
-      // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
-      console.warn("[syncInbox] important-classify-failed", {
-        threadId: t.id,
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-
-    if (
-      outcome.kind === "classified" ||
-      outcome.kind === "fallback" ||
-      outcome.kind === "user-replied"
-    ) {
-      classified += 1;
-    } else {
-      skipped += 1;
-    }
+        ownerEmail,
+        importantOutcomes: result.importantOutcomes,
+      }),
+    );
   }
 
-  return { classified, skipped };
+  return { classified: result.classified, skipped: result.skipped };
 }
 
 function parseFromHeader(raw?: string): { name?: string; email?: string } {
@@ -335,23 +258,4 @@ function parseFromHeader(raw?: string): { name?: string; email?: string } {
   const match = raw.match(/^\s*(?:"?([^"<]+?)"?\s+)?<?([^<>\s]+@[^<>\s]+)>?\s*$/);
   if (!match) return { email: undefined, name: undefined };
   return { name: match[1]?.trim(), email: match[2]?.toLowerCase() };
-}
-
-/**
- * KST(Asia/Seoul) 한국어 로케일 문자열로 포맷.
- * 예: "2026. 05. 09. 14:30 KST"
- *
- * important 분류 LLM 프롬프트의 `receivedAtKst` 필드에 사용.
- */
-function formatKst(date: Date): string {
-  const fmt = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  return `${fmt.format(date)} KST`;
 }

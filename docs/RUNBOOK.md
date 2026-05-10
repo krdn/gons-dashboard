@@ -196,6 +196,47 @@ FROM important_emails
 WHERE classified_at > NOW() - INTERVAL '7 days';
 ```
 
+### 수동 재분류 트리거 (`POST /api/admin/reclassify`)
+
+`syncInbox`는 Gmail history.list가 새 메시지 0건을 반환하면 분류 분기를 통째로 skip한다 (멱등 설계). 그래서 **모델 ID/프롬프트 수정 후 새 메일이 들어오기 전까지 LLM fix가 검증되지 않는 사각**이 생긴다. 이 엔드포인트는 그 사각을 메우기 위한 운영용 트리거.
+
+- **인증**: `CRON_BEARER_TOKEN`(cron이 쓰는 것과 동일).
+- **입력**:
+  - `email` (required): users.email 매칭.
+  - `hoursBack` (optional, 기본 24, 1~168): 윈도우.
+  - `force` (optional, 기본 false): true면 해당 user × 윈도우의 `important_emails` 행을 먼저 DELETE하고 재분류 (idempotent skip 우회). reply_needed는 force와 무관하게 항상 멱등 재실행됨.
+- **응답**: `{ kind, threadsInWindow, forcedDeleted, classified, skipped, importantOutcomes, importantConsidered }`.
+
+```bash
+# 예: 본인 24h 메일 강제 재분류 (배포 직후 LLM fix 검증)
+TOKEN=$(grep ^CRON_BEARER_TOKEN /home/gon/projects/gon/gons-dashboard/.env | cut -d= -f2)
+curl -sS -X POST https://gons.krdn.kr/api/admin/reclassify \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"krdn.net@gmail.com","hoursBack":24,"force":true}' | jq
+```
+
+LAN에서 직접:
+```bash
+dserver exec gons-dashboard-app sh -c '
+  curl -sS -X POST http://localhost:3020/api/admin/reclassify \
+    -H "Authorization: Bearer $CRON_BEARER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"krdn.net@gmail.com\",\"hoursBack\":24,\"force\":true}"
+' | jq
+```
+
+응답 해석:
+- `importantOutcomes.classified > 0` — LLM 정상 작동.
+- `importantOutcomes["skipped-none"]` 만 큼 → LLM이 "important 아님" 판정한 메일 수.
+- `importantOutcomes["skipped-mailing-list"]` → 메일링 시그널로 컷.
+- `importantOutcomes["skipped-llm-error"]` → LLM API 실패. 직후 `dserver logs gons-dashboard-app | grep classify-important` 확인.
+- `importantOutcomes["skipped-already"]` (force=false 시) → 이미 분류 완료. force=true 줘서 재실행.
+
+**주의**:
+- 운영자 본인용 운영 도구다. cron Bearer가 admin grade이므로 외부 노출 금지(현재 NEXTAUTH_URL 기반 reverse proxy 뒤에 있다).
+- LLM 비용을 발생시킨다. force=true는 윈도우 안의 모든 스레드에 LLM 호출 → 본인 1명·24h·~수십 통 기준 $0.01 미만이지만, 168h × force=true는 자제.
+
 ## v0.1 서버 인프라 모니터
 
 ### 초기 셋업 (one-time)
