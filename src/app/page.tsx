@@ -17,6 +17,10 @@ import {
   ImportantEmailsCard,
   ImportantEmailsSkeleton,
 } from "@/widgets/important-emails";
+import {
+  ServerOverviewCard,
+  ServerOverviewSkeleton,
+} from "@/widgets/server-overview";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +74,9 @@ export default async function DashboardPage() {
           </Suspense>
           <Suspense fallback={<ImportantEmailsSkeleton />}>
             <ImportantEmailsCard />
+          </Suspense>
+          <Suspense fallback={<ServerOverviewSkeleton />}>
+            <ServerOverviewCard />
           </Suspense>
         </div>
 
