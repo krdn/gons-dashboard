@@ -236,7 +236,7 @@ export const auditLogs = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
-    index("audit_logs_recent_idx").on(t.createdAt.desc()),
-    index("audit_logs_container_idx").on(t.containerId, t.createdAt.desc()),
+    // 호스트별 최근 액션 조회: WHERE host_id = ? ORDER BY created_at DESC LIMIT 5
+    index("audit_logs_host_recent_idx").on(t.hostId, t.createdAt.desc()),
   ],
 );
