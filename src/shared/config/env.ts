@@ -45,6 +45,15 @@ const schema = z.object({
   // 본인 1명 allowlist (콤마 구분)
   ALLOWLIST_EMAILS: z.string().min(1),
 
+  // ─── 서버 인프라 모니터 v0.1 ────────────────────────────
+  // Docker context 이름 (사용자 입력 신뢰 안 함 — DB hosts.dockerContext만 사용,
+  // 본 변수는 시작 시 health check 용도)
+  DOCKER_DEFAULT_CONTEXT: z.string().min(1).default("home-server"),
+  // Docker CLI 호출 타임아웃 (ms)
+  DOCKER_CMD_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  // restart/start/stop 액션 admin allowlist (콤마 구분 이메일)
+  ADMIN_EMAILS: z.string().min(1),
+
   // 타임존 (cron + DB 쿼리에 결정적)
   TZ: z.literal("Asia/Seoul").default("Asia/Seoul"),
 });
