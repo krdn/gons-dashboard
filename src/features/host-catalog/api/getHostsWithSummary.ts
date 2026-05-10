@@ -3,6 +3,7 @@ import { getHosts, type Host } from "@/entities/host";
 import { listContainers } from "@/entities/container";
 import {
   getProjects,
+  getProjectComposeKeys,
   upsertProjectFromContainer,
   type Project,
 } from "@/entities/project";
@@ -21,11 +22,14 @@ export async function getHostsWithSummary(): Promise<HostSummary[]> {
   const summaries = await Promise.all(
     hosts.map(async (host): Promise<HostSummary> => {
       try {
-        const [containers, projects] = await Promise.all([
+        const [containers, projects, allComposeKeys] = await Promise.all([
           listContainers({ hostId: host.id, dockerContext: host.dockerContext }),
           getProjects(host.id),
+          getProjectComposeKeys(host.id),
         ]);
-        const knownComposeKeys = new Set(projects.map((p) => p.composeProject));
+        // dedup은 hidden 포함 전체 key set으로 — hidden project가 매번 unknown으로
+        // 분류돼 upsert가 반복되는 것을 막는다.
+        const knownComposeKeys = new Set(allComposeKeys);
         const unknown = Array.from(
           new Set(
             containers
@@ -40,6 +44,7 @@ export async function getHostsWithSummary(): Promise<HostSummary[]> {
               upsertProjectFromContainer({ hostId: host.id, composeProject }),
             ),
           );
+          // 새로 생성된 project는 visible default (isHidden=false)이므로 표시 목록에 추가
           upsertedProjects = [...projects, ...created];
         }
         return {
