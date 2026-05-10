@@ -5,7 +5,12 @@ import boundaries from "eslint-plugin-boundaries";
 
 // FSD (Feature-Sliced Design) 의존성 방향 강제
 // 허용: app → widgets → features → entities → shared
-// 같은 레이어 내 슬라이스끼리는 직접 import 불가 (entities는 entities를, features는 features를)
+// 같은 레이어 내 슬라이스끼리는 원칙상 직접 import 금지지만,
+// features→features는 의도적으로 허용한다.
+//   이유: features/host-catalog가 features/container-list의 pure 헬퍼
+//   (groupByProject)를 재사용하기 위함. 사이드이펙트 없는 fn만 노출되므로
+//   "가장 작은 변경"으로 boundary를 한 단계만 풀어준다. UI/state 결합이
+//   생기면 그때 다시 좁힐 것.
 const fsdConfig = {
   files: ["src/**/*.{ts,tsx}"],
   plugins: { boundaries },
@@ -30,7 +35,7 @@ const fsdConfig = {
         rules: [
           { from: "app", allow: ["widgets", "features", "entities", "shared"] },
           { from: "widgets", allow: ["features", "entities", "shared"] },
-          { from: "features", allow: ["entities", "shared"] },
+          { from: "features", allow: ["features", "entities", "shared"] },
           { from: "entities", allow: ["shared"] },
           { from: "shared", allow: ["shared"] },
         ],
