@@ -208,6 +208,7 @@ export const projects = pgTable(
     displayName: text("display_name").notNull(),
     description: text("description"),
     category: text("category"), // 'news' | 'ai' | 'infra' | 'experiment' | null
+    url: text("url"),
     isPinned: boolean("is_pinned").notNull().default(false),
     isHidden: boolean("is_hidden").notNull().default(false),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
