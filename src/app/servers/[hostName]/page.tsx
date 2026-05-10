@@ -85,11 +85,17 @@ export default async function HostDetailPage({ params }: Props) {
   if (unknownKeys.length > 0) {
     const created = await Promise.all(
       unknownKeys.map((composeProject) =>
-        upsertProjectFromContainer({ hostId: host.id, composeProject }),
+        upsertProjectFromContainer({
+          hostId: host.id,
+          hostName: host.name,
+          composeProject,
+        }),
       ),
     );
-    // 새로 생성된 project는 visible default (isHidden=false)
-    allProjects = [...visibleProjects, ...created];
+    // 화이트리스트 외 compose는 upsert가 null 반환 → 새 project row 생성 안 함
+    // (Task 6에서 groupByProject가 standalone 그룹으로 합류 처리)
+    const createdNonNull = created.filter((p): p is Project => p !== null);
+    allProjects = [...visibleProjects, ...createdNonNull];
   }
 
   const groups = groupByProject(containers, allProjects);
