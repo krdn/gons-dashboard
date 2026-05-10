@@ -195,3 +195,90 @@ SELECT
 FROM important_emails
 WHERE classified_at > NOW() - INTERVAL '7 days';
 ```
+
+## v0.1 서버 인프라 모니터
+
+### 초기 셋업 (one-time)
+
+```bash
+# 1. .env에 서버 인프라용 환경변수 추가
+#    DOCKER_DEFAULT_CONTEXT=home-server
+#    DOCKER_CMD_TIMEOUT_MS=10000
+#    ADMIN_EMAILS=krdn.net@gmail.com (콤마 구분)
+
+# 2. Docker context 등록 확인 (이미 있어야 함)
+docker context ls | grep home-server
+
+# 3. 마이그레이션 적용
+pnpm db:migrate
+
+# 4. 호스트 seed (idempotent)
+pnpm db:seed:hosts
+# → "✅ seeded host: { id: '<uuid>', name: 'home-server' }"
+
+# 5. 앱 재시작 후 / 페이지에서 ServerOverviewCard가 보이는지 확인
+```
+
+### 운영 사용
+
+- **메인 페이지 `/`**: ServerOverviewCard에 호스트별 프로젝트 그룹 요약 표시.
+- **호스트 상세 `/servers/home-server`**: project별 컨테이너 리스트 + 액션 버튼 + 최근 audit log 5건.
+- **권한**: read는 인증된 사용자 누구나, restart/start/stop은 `ADMIN_EMAILS`에 포함된 이메일만.
+- 각 액션은 `audit_logs` 테이블에 status(`success`|`failed`) + `duration_ms` + 사용자 이메일 + 에러 메시지(500자 cap)로 기록됨.
+
+### Dogfooding 체크리스트 (배포 후 1주일)
+
+E2E 테스트가 v0.2로 deferred되어 수동 검증으로 대체.
+
+#### 메인 페이지 표시 (배포 후 1일 이내)
+- [ ] `/` 접속 시 ServerOverviewCard 노출
+- [ ] 호스트 카드에 home-server (192.168.0.5) + 마지막 갱신 시각 표시
+- [ ] compose project별 그룹화 동작 (news-prod, ais-prod, n8n 등 라벨대로)
+- [ ] 라벨 없는 컨테이너가 standalone 그룹에 모임
+- [ ] 모든 컨테이너 정상 시 ✓, 1개 이상 비정상 시 ⚠ 배지
+
+#### 호스트 상세 페이지
+- [ ] `/servers/home-server` 페이지 정상 로드
+- [ ] HostBadge가 daemon 정상이면 emerald, 끊기면 rose로 표시
+- [ ] Project 섹션 헤더에 displayName + 카운트 (예: "4/4 running") 표시
+- [ ] 컨테이너 행에 status badge + 이름 + statusText + 포트 표시
+- [ ] 페이지 하단 "최근 액션 5건" 패널이 audit_logs에서 로드됨
+
+#### 권한 / 액션
+- [ ] admin 이메일로 로그인했을 때만 restart/start/stop 버튼 노출
+- [ ] 비admin 이메일로 로그인했을 때 ActionButtons 숨김
+- [ ] restart 버튼 클릭 → `window.confirm` 다이얼로그 → 확인 시 컨테이너 재시작
+- [ ] 액션 진행 중 버튼 disabled + spinner
+- [ ] 성공 시 `✓ restart 성공` 메시지 + audit_logs에 status=success 행 추가
+- [ ] start 버튼은 exited/paused/dead/created 상태에서만 노출
+- [ ] stop 버튼은 running/restarting 상태에서만 노출
+
+#### 에러 경로
+- [ ] Docker daemon이 다운됐을 때 — 메인 페이지에 rose 배너 "Docker 연결 불가" + 마지막 시도 시각 표시
+- [ ] 잘못된 hostName으로 `/servers/...` 접속 → 404
+- [ ] 인증 안 된 상태에서 액션 호출 시 → Server Action이 UNAUTHORIZED 반환 (토스트로 노출)
+- [ ] 비admin이 직접 Server Action 호출 시도 시 → FORBIDDEN
+
+#### DB 검증
+```sql
+-- 등록된 호스트
+SELECT * FROM hosts;
+
+-- 자동 생성된 projects (compose label 발견 시 lazy upsert)
+SELECT compose_project, display_name, is_pinned, is_hidden, updated_at FROM projects ORDER BY compose_project;
+
+-- 최근 audit log
+SELECT created_at, action, container_name, status, duration_ms, user_email, error_message
+FROM audit_logs ORDER BY created_at DESC LIMIT 20;
+
+-- 액션별 성공률
+SELECT action, status, count(*) FROM audit_logs GROUP BY 1, 2 ORDER BY 1, 2;
+```
+
+### 자주 발생하는 이슈
+
+- **`등록된 호스트가 없습니다` 메시지**: `pnpm db:seed:hosts` 실행 안 됨. RUNBOOK 초기 셋업 #4 참조.
+- **`Docker 연결 불가` 배너**: docker context 미설정 또는 SSH 인증 실패. `docker --context home-server version`으로 직접 검증.
+- **액션 버튼 안 보임**: 비admin 이메일로 로그인했거나 ADMIN_EMAILS 미설정. `.env` 확인 + 앱 재시작.
+- **모든 컨테이너가 standalone 그룹**: compose 미사용 또는 `com.docker.compose.project` 라벨 누락. `docker inspect <id> --format '{{.Config.Labels}}'`로 라벨 확인. compose 사용 권장.
+- **projects 테이블의 displayName이 compose project 이름과 동일**: lazy upsert 시 default가 composeProject 그대로 들어감. UI 추가 전까진 `UPDATE projects SET display_name = '뉴스 서비스 (운영)' WHERE compose_project = 'news-prod';` 같은 수동 SQL로 갱신.
