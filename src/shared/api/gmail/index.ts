@@ -2,6 +2,8 @@
 // 외부 (features/gmail-sync, features/email-analysis 등)는 이 index만 import.
 export { getValidAccessToken } from "./auth";
 export type { GmailAccessToken } from "./auth";
+export { getGmailTokenOrResult } from "./tokenResult";
+export type { GmailTokenResult } from "./tokenResult";
 export {
   listHistorySince,
   getCurrentHistoryId,

@@ -9,8 +9,7 @@ import { db } from "@/shared/lib/db/client";
 import { auth } from "@/shared/lib/auth";
 import { emailThreads, importantEmails } from "@/shared/lib/db/schema";
 import { modifyThread } from "@/shared/api/gmail/modify";
-import { getValidAccessToken } from "@/shared/api/gmail/auth";
-import { GmailError, InvalidGrantError } from "@/shared/api/gmail";
+import { GmailError, getGmailTokenOrResult } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
 import { ROUTE_DASHBOARD } from "@/shared/config/routes";
 import type { ActionResult } from "./markAsRead";
@@ -38,15 +37,9 @@ export async function archiveThread(threadId: string): Promise<ActionResult> {
     return { ok: false, reason: "not-found" };
   }
 
-  let token: string;
-  try {
-    token = (await getValidAccessToken(userId)).accessToken;
-  } catch (err) {
-    if (err instanceof InvalidGrantError) {
-      return { ok: false, reason: "reauth-required" };
-    }
-    return { ok: false, reason: "auth-error" };
-  }
+  const tokenResult = await getGmailTokenOrResult(userId);
+  if (!tokenResult.ok) return { ok: false, reason: tokenResult.reason };
+  const token = tokenResult.token;
 
   try {
     await modifyThread(token, thread.gmailThreadId, {
