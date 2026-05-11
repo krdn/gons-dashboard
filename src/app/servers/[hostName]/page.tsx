@@ -16,6 +16,7 @@
 //   — client에서 prop을 위조해도 서버에서 거절된다.
 
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/shared/lib/auth";
 import { getHostByName, HostBadge } from "@/entities/host";
 import { listContainers, type ContainerSummary } from "@/entities/container";
@@ -101,15 +102,38 @@ export default async function HostDetailPage({ params }: Props) {
   const groups = groupByProject(containers, allProjects);
   const standalone = groups.find((g) => g.isStandalone);
   const named = groups.filter((g) => !g.isStandalone);
+  const runningCount = containers.filter((c) => c.state === "running").length;
+  const issueCount = groups.reduce((sum, g) => sum + g.warningCount, 0);
+  const staleCount = groups.filter((g) => g.isStale).length;
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-6">
-      <header className="flex items-baseline justify-between">
-        <HostBadge host={host} status={daemonError ? "down" : "ok"} />
-        <span className="text-xs text-zinc-500">
-          context: <code>{host.dockerContext}</code> ·{" "}
-          {new Date().toLocaleTimeString("ko-KR")}
-        </span>
+    <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 text-zinc-950 sm:px-6 dark:text-zinc-100">
+      <header className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <Link
+              href="/"
+              className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+            >
+              ← dashboard
+            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <HostBadge host={host} status={daemonError ? "down" : "ok"} />
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-mono text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                {host.dockerContext}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-right sm:min-w-80">
+            <SummaryStat label="containers" value={`${runningCount}/${containers.length}`} />
+            <SummaryStat label="issues" value={String(issueCount)} tone={issueCount > 0 ? "warn" : "ok"} />
+            <SummaryStat label="stale" value={String(staleCount)} tone={staleCount > 0 ? "warn" : "ok"} />
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+          Last refreshed {new Date().toLocaleTimeString("ko-KR")} · read-only
+          view for all signed-in users · actions require admin allowlist
+        </p>
       </header>
 
       {daemonError ? (
@@ -162,10 +186,37 @@ export default async function HostDetailPage({ params }: Props) {
         />
       ) : null}
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="mb-2 text-sm font-semibold">최근 액션 5건</h2>
+      <section className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
+        <h2 className="mb-3 text-sm font-semibold">최근 액션 5건</h2>
         <AuditLogPanel hostId={host.id} limit={5} />
       </section>
     </main>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "ok" | "warn";
+}) {
+  const toneClass =
+    tone === "ok"
+      ? "text-emerald-700 dark:text-emerald-300"
+      : tone === "warn"
+        ? "text-amber-700 dark:text-amber-300"
+        : "text-zinc-950 dark:text-zinc-100";
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className={`font-mono text-lg font-semibold tabular-nums ${toneClass}`}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        {label}
+      </div>
+    </div>
   );
 }

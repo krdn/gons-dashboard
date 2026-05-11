@@ -21,9 +21,9 @@ export function ProjectGroupSection({ group, renderActions }: Props) {
       warningCount={group.warningCount}
     >
       {group.isStale ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-sm text-zinc-600">
+        <div className="flex flex-col gap-2 bg-zinc-50 px-4 py-4 text-sm text-zinc-600 sm:flex-row sm:items-center dark:bg-zinc-900/60 dark:text-zinc-300">
           <span
-            className="inline-flex items-center rounded bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700"
+            className="inline-flex w-fit items-center rounded-full bg-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
             title="화이트리스트엔 등록되어 있으나 현재 실행 중인 컨테이너가 없습니다"
           >
             no live containers
