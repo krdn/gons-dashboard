@@ -12,7 +12,7 @@ export function ContainerRow({ container, actions }: Props) {
     .map((p) => `:${p.hostPort}`)
     .join(" ");
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 px-4 py-3 text-sm transition-colors hover:bg-zinc-50/60 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <ContainerStatusBadge state={container.state} />
         <div className="min-w-0">
