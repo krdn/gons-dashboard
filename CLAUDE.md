@@ -40,6 +40,17 @@ pnpm db:cleanup-projects               # dry-run: 좀비 project row 식별
 pnpm db:cleanup-projects --apply       # 실제 삭제
 ```
 
+운영 DB(`192.168.0.5` / `gons.krdn.kr`) 향한 `db:seed:*`, `db:cleanup-projects`, `fix-oauth-scope` 실행 시 가드가 ack 요구:
+
+```bash
+# CLI 플래그
+pnpm db:seed:hosts --i-know-this-is-prod
+# 또는 환경 변수
+I_KNOW_THIS_IS_PROD=1 pnpm db:seed:hosts
+```
+
+dev DB (`localhost` / `127.0.0.1`) 면 가드 통과로 평소처럼 실행.
+
 ## 기술 스택
 
 - **프레임워크**: Next.js 16 (App Router, RSC + Server Actions, Turbopack)

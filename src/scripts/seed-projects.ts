@@ -13,6 +13,7 @@ import { KNOWN_COMPOSE_PROJECTS_BY_HOST } from "@/entities/project";
 import { db } from "@/shared/lib/db/client";
 import { hosts, projects } from "@/shared/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { assertProdDbAck } from "./_lib/prodGuard";
 
 type SeedProject = {
   composeProject: string;
@@ -191,6 +192,7 @@ async function upsertOne(hostId: string, p: SeedProject): Promise<void> {
 }
 
 async function main() {
+  assertProdDbAck("seed-projects");
   warnSeedHintMismatch();
   let total = 0;
   for (const [hostName, seed] of Object.entries(SEED_PROJECTS_BY_HOST)) {
