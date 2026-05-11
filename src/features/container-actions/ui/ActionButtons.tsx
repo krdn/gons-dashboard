@@ -54,7 +54,7 @@ export function ActionButtons({
         <button
           onClick={() => run("start")}
           disabled={pending}
-          className="rounded-md border border-emerald-200 px-2.5 py-1 font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+          className="rounded-md border border-emerald-200 px-2.5 py-1 font-medium text-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 disabled:opacity-50"
         >
           ▶ start
         </button>
@@ -63,7 +63,7 @@ export function ActionButtons({
         <button
           onClick={() => run("restart")}
           disabled={pending}
-          className="rounded-md border border-zinc-200 px-2.5 py-1 font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          className="rounded-md border border-zinc-200 px-2.5 py-1 font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:opacity-50"
         >
           ⟳ restart
         </button>
@@ -72,7 +72,7 @@ export function ActionButtons({
         <button
           onClick={() => run("stop")}
           disabled={pending}
-          className="rounded-md border border-rose-200 px-2.5 py-1 font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+          className="rounded-md border border-rose-200 px-2.5 py-1 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
         >
           ⏸ stop
         </button>

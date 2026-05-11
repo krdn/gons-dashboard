@@ -68,7 +68,7 @@ export function ControlBar({
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder="컨테이너·프로젝트 검색 (단축키: /)"
             aria-label="컨테이너 또는 프로젝트 검색"
-            className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-8 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-8 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:border-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
           />
         </label>
         <HelpHint hint="컨테이너 이름, 포트, 프로젝트 이름·설명 모두에서 부분 매칭. 단축키 '/' 로 빠르게 포커스." />
@@ -106,7 +106,7 @@ export function ControlBar({
           type="button"
           onClick={onRefresh}
           title="지금 새로고침 (단축키: r). 30초마다 자동으로도 갱신됩니다."
-          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -135,7 +135,7 @@ export function ControlBar({
           onClick={onToggleHelp}
           title="키보드 단축키 도움말 (단축키: ?)"
           aria-label="도움말 열기"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-600 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           ?
         </button>

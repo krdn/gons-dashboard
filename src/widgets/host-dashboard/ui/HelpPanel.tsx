@@ -28,7 +28,7 @@ export function HelpPanel({ onClose }: HelpPanelProps) {
           type="button"
           onClick={onClose}
           aria-label="도움말 닫기"
-          className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50"
+          className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           닫기 (Esc)
         </button>
