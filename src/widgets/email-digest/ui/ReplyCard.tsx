@@ -6,7 +6,8 @@
 //   v0.1: 토스트와 undo는 Sprint 3에 web-push와 함께 구현 (지금은 간단한 form 액션).
 "use client";
 
-import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import {
   markAsReplied,
   dismissThread,
@@ -25,21 +26,36 @@ interface ReplyCardProps {
 }
 
 export function ReplyCard({ item }: ReplyCardProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isHidden, setIsHidden] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runAction = (action: () => Promise<void>) => {
+    startTransition(async () => {
+      setError(null);
+      setIsHidden(true);
+      try {
+        await action();
+        router.refresh();
+      } catch {
+        setIsHidden(false);
+        setError("처리에 실패했습니다. 잠시 후 다시 시도하세요.");
+      }
+    });
+  };
 
   const handleReplied = () => {
-    startTransition(async () => {
-      await markAsReplied(item.threadId);
-    });
+    runAction(() => markAsReplied(item.threadId));
   };
 
   const handleDismiss = () => {
-    startTransition(async () => {
-      await dismissThread(item.threadId);
-    });
+    runAction(() => dismissThread(item.threadId));
   };
 
   const ariaLabel = `${item.fromName ?? item.fromEmail ?? "발신자"}님의 메일: ${item.subject ?? "(제목 없음)"}, 우선순위: ${item.severity === "high" ? "지금 답해야" : item.severity === "med" ? "오늘 안" : "낮음"}`;
+
+  if (isHidden) return null;
 
   return (
     <article
@@ -81,6 +97,11 @@ export function ReplyCard({ item }: ReplyCardProps) {
           {item.subject ?? "(제목 없음)"}
         </p>
         <ReplyBadges severity={item.severity} reason={item.reason} />
+        {error ? (
+          <p className="mt-2 text-xs font-medium text-[var(--color-severity-high)]" role="status">
+            {error}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex gap-2 self-center max-md:col-span-2 max-md:mt-2 max-md:justify-end max-md:border-t max-md:border-[var(--color-hairline)] max-md:pt-2">
