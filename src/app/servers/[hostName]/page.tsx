@@ -84,7 +84,8 @@ export default async function HostDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 text-zinc-900 sm:px-6">
-      <header className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <header className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h1 className="sr-only">{host.name} · 서버 상세</h1>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <Link
