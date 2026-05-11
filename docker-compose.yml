@@ -78,6 +78,10 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       OPS_NOTIFY_EMAIL: ${OPS_NOTIFY_EMAIL:-}
       PG_ENCRYPTION_KEY: ${PG_ENCRYPTION_KEY:-}
+      # 서버 인프라 모니터 v0.1+
+      ADMIN_EMAILS: ${ADMIN_EMAILS}
+      DOCKER_DEFAULT_CONTEXT: ${DOCKER_DEFAULT_CONTEXT:-home-server}
+      DOCKER_CMD_TIMEOUT_MS: ${DOCKER_CMD_TIMEOUT_MS:-10000}
     ports:
       - "3020:3020"
     healthcheck:
