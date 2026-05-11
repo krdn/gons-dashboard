@@ -15,7 +15,7 @@ import {
   markAsReplied,
   dismissThread,
 } from "@/features/email-analysis";
-import type { ReplyNeededItem } from "@/entities/email";
+import type { ReplyNeededItem } from "@/entities/email/api/getReplyNeeded";
 import { SenderAvatar } from "./SenderAvatar";
 import { ReplyBadges } from "./ReplyBadges";
 import {

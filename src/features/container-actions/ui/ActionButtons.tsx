@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { restartContainer } from "../api/restartContainer";
 import { startContainer } from "../api/startContainer";
 import { stopContainer } from "../api/stopContainer";
-import type { ContainerState } from "@/entities/container";
+import type { ContainerState } from "@/entities/container/model/types";
 
 type Props = {
   hostId: string;
