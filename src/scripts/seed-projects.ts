@@ -23,6 +23,7 @@ type SeedProject = {
 };
 
 const HOME_IP = "192.168.0.5";
+const DEV_IP = "192.168.0.8";
 
 // 운영 서버의 실제 compose project 라벨에 맞춤.
 // `docker --context home-server ps --format '{{.Label "com.docker.compose.project"}}'` 결과 기준.
@@ -88,25 +89,64 @@ const HOME_PROJECTS: SeedProject[] = [
 // standalone (compose 라벨 없는) 컨테이너는 projects row가 만들어지지 않음.
 // 화면엔 "standalone" 그룹으로만 묶임. (open-webui, krdn-timescaledb 등)
 
-// 개발 서버는 컨테이너 운영이 적음 — 필요 시 추가
-const DEV_PROJECTS: SeedProject[] = [];
+// 개발 환경 (krdn-lenovo, 192.168.0.8) — Supabase dev stack + AI 모델/뉴스 분석 실험.
+// `DOCKER_HOST=unix:///var/run/docker.sock docker ps --format '{{.Label "com.docker.compose.project"}}'`
+// 결과 기준.
+const DEV_PROJECTS: SeedProject[] = [
+  {
+    composeProject: "ai-afterschool",
+    displayName: "AI 방과후 (개발)",
+    description: "Supabase 로컬 dev stack (studio 54323, kong 54321, db 54322) + ai-afterschool-postgres 5436",
+    category: "ai",
+    url: `http://${DEV_IP}:54323`,
+  },
+  {
+    composeProject: "ai-model-setup",
+    displayName: "AI 모델 setup DB",
+    description: "AI 모델 실험용 dev Postgres (포트 5432)",
+    category: "ai",
+    url: null,
+  },
+  {
+    composeProject: "ai-news-analyzer",
+    displayName: "AI 뉴스 분석기 (실험)",
+    description: "뉴스 분석 실험용 Postgres (5437) + Redis (6382)",
+    category: "experiment",
+    url: null,
+  },
+];
+
+const SEED_PROJECTS_BY_HOST: Readonly<Record<string, SeedProject[]>> = {
+  "home-server": HOME_PROJECTS,
+  "krdn-lenovo": DEV_PROJECTS,
+};
 
 function assertSeedMatchesWhitelist(): void {
-  const seedKeys = new Set(HOME_PROJECTS.map((p) => p.composeProject));
-  const whitelistKeys = KNOWN_COMPOSE_PROJECTS_BY_HOST["home-server"];
-  if (!whitelistKeys) {
-    throw new Error(
-      `seed-projects: KNOWN_COMPOSE_PROJECTS_BY_HOST["home-server"] 정의 없음`,
-    );
+  const errors: string[] = [];
+  for (const hostName of Object.keys(KNOWN_COMPOSE_PROJECTS_BY_HOST)) {
+    const whitelistKeys = KNOWN_COMPOSE_PROJECTS_BY_HOST[hostName]!;
+    const seed = SEED_PROJECTS_BY_HOST[hostName];
+    if (!seed) {
+      errors.push(
+        `seed-projects: SEED_PROJECTS_BY_HOST["${hostName}"] 정의 없음 (whitelist엔 있음)`,
+      );
+      continue;
+    }
+    const seedKeys = new Set(seed.map((p) => p.composeProject));
+    const missingInSeed = [...whitelistKeys].filter((k) => !seedKeys.has(k));
+    const missingInWhitelist = [...seedKeys].filter((k) => !whitelistKeys.has(k));
+    if (missingInSeed.length > 0 || missingInWhitelist.length > 0) {
+      errors.push(
+        `[${hostName}] seed ↔ whitelist 불일치\n` +
+          `  seed에 없음: ${missingInSeed.join(", ") || "(없음)"}\n` +
+          `  whitelist에 없음: ${missingInWhitelist.join(", ") || "(없음)"}`,
+      );
+    }
   }
-  const missingInSeed = [...whitelistKeys].filter((k) => !seedKeys.has(k));
-  const missingInWhitelist = [...seedKeys].filter((k) => !whitelistKeys.has(k));
-  if (missingInSeed.length > 0 || missingInWhitelist.length > 0) {
+  if (errors.length > 0) {
     throw new Error(
-      `seed-projects ↔ KNOWN_COMPOSE_PROJECTS_BY_HOST["home-server"] 불일치.\n` +
-        `  seed에 없음: ${missingInSeed.join(", ") || "(없음)"}\n` +
-        `  whitelist에 없음: ${missingInWhitelist.join(", ") || "(없음)"}\n` +
-        `둘 중 하나에만 추가됐을 가능성 — 양쪽 동시 갱신 필요.`,
+      `seed-projects ↔ KNOWN_COMPOSE_PROJECTS_BY_HOST 정합성 실패. 양쪽 동시 갱신 필요.\n` +
+        errors.join("\n"),
     );
   }
 }
@@ -152,17 +192,14 @@ async function upsertOne(hostId: string, p: SeedProject): Promise<void> {
 
 async function main() {
   assertSeedMatchesWhitelist();
-  const homeId = await getHostId("home-server");
-  for (const p of HOME_PROJECTS) await upsertOne(homeId, p);
-
-  if (DEV_PROJECTS.length > 0) {
-    const devId = await getHostId("krdn-lenovo");
-    for (const p of DEV_PROJECTS) await upsertOne(devId, p);
+  let total = 0;
+  for (const [hostName, seed] of Object.entries(SEED_PROJECTS_BY_HOST)) {
+    if (seed.length === 0) continue;
+    const hostId = await getHostId(hostName);
+    for (const p of seed) await upsertOne(hostId, p);
+    total += seed.length;
   }
-
-  console.log(
-    `\n${HOME_PROJECTS.length + DEV_PROJECTS.length}개 프로젝트 메타 동기화 완료`,
-  );
+  console.log(`\n${total}개 프로젝트 메타 동기화 완료`);
   process.exit(0);
 }
 
