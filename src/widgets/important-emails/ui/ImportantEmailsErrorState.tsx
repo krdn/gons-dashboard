@@ -4,7 +4,7 @@ export function ImportantEmailsErrorState() {
   return (
     <div
       role="alert"
-      className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
+      className="rounded-lg border border-[var(--color-severity-high)] bg-[oklch(96%_0.04_28)] p-4 text-sm text-rose-900"
     >
       중요 메일을 불러오지 못했습니다.{" "}
       <button

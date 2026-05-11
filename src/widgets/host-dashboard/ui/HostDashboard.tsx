@@ -117,13 +117,13 @@ export function HostDashboard({ hostId, adminFlag, groups, refreshedAtIso }: Pro
       {showHelp ? <HelpPanel onClose={() => setShowHelp(false)} /> : null}
 
       {!hasResults ? (
-        <section className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-8 text-center text-sm text-zinc-500">
+        <section className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-8 text-center text-sm text-[var(--color-text-subtle)]">
           조건에 맞는 컨테이너가 없습니다.
           {(query !== "" || stateFilter !== "all") && (
             <>
               {" "}
               <button
-                className="rounded text-blue-600 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+                className="rounded text-[var(--color-accent)] underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
                 onClick={() => {
                   setQuery("");
                   setStateFilter("all");

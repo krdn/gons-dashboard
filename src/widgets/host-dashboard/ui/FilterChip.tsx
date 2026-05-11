@@ -15,7 +15,7 @@ export function FilterChip({ label, active, onClick, title, tone }: FilterChipPr
     tone === "ok"
       ? "bg-emerald-600 text-white"
       : tone === "warn"
-        ? "bg-amber-500 text-white"
+        ? "bg-[oklch(96%_0.04_70)]0 text-white"
         : "bg-zinc-900 text-white";
   return (
     <button
@@ -25,7 +25,7 @@ export function FilterChip({ label, active, onClick, title, tone }: FilterChipPr
       aria-pressed={active}
       className={
         "rounded-md px-2.5 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 " +
-        (active ? activeColor : "text-zinc-600 hover:bg-white")
+        (active ? activeColor : "text-[var(--color-text-muted)] hover:bg-white")
       }
     >
       {label}

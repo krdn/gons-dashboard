@@ -11,8 +11,8 @@ const LABELS: Record<Category, string> = {
 };
 
 const CATEGORY_CLASSES: Record<Category, string> = {
-  money: "bg-amber-50 text-amber-900 border-amber-200",
-  security: "bg-rose-50 text-rose-900 border-rose-200",
+  money: "bg-[oklch(96%_0.04_70)] text-amber-900 border-[var(--color-warn)]",
+  security: "bg-[oklch(96%_0.04_28)] text-rose-900 border-[var(--color-severity-high)]",
   schedule: "bg-sky-50 text-sky-900 border-sky-200",
   notice: "bg-stone-50 text-stone-900 border-stone-200",
 };

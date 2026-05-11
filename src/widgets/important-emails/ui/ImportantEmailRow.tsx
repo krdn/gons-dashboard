@@ -87,7 +87,7 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
           보관
         </button>
         {error && (
-          <span role="status" className="ml-auto text-rose-700">
+          <span role="status" className="ml-auto text-[var(--color-severity-high)]">
             오류: {error}
           </span>
         )}

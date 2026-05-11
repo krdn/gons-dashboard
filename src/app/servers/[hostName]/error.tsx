@@ -8,11 +8,11 @@ type Props = {
 export default function Error({ error, reset }: Props) {
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-        <h2 className="font-semibold text-rose-800">
+      <section className="rounded-xl border border-[var(--color-severity-high)] bg-[oklch(96%_0.04_28)] p-4">
+        <h2 className="font-semibold text-[var(--color-severity-high)]">
           페이지 로드 실패
         </h2>
-        <p className="mt-1 break-all text-sm text-rose-700">
+        <p className="mt-1 break-all text-sm text-[var(--color-severity-high)]">
           {error.message}
         </p>
         <button

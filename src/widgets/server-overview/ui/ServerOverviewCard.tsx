@@ -8,8 +8,8 @@ export async function ServerOverviewCard() {
   const summaries = await getHostsWithSummary();
   if (summaries.length === 0) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-950">
-        <p className="text-sm text-zinc-500">
+      <section className="rounded-xl border border-[var(--color-hairline)] bg-white p-4 text-[var(--color-text)]">
+        <p className="text-sm text-[var(--color-text-subtle)]">
           등록된 호스트가 없습니다. <code>pnpm db:seed:hosts</code>를 실행하세요.
         </p>
       </section>
@@ -28,18 +28,18 @@ export async function ServerOverviewCard() {
         ) : (
           <section
             key={s.host.id}
-            className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-950"
+            className="rounded-xl border border-[var(--color-hairline)] bg-white p-4 text-[var(--color-text)]"
           >
             <header className="mb-3 flex items-center justify-between">
               <HostBadge host={s.host} status="ok" />
               <Link
                 href={`/servers/${s.host.name}`}
-                className="text-sm text-blue-600 hover:underline"
+                className="text-sm text-[var(--color-accent)] hover:underline"
               >
                 상세 보기 →
               </Link>
             </header>
-            <ul className="space-y-1 text-sm text-zinc-700">
+            <ul className="space-y-1 text-sm text-[var(--color-text-muted)]">
               {s.groups.map((g) => {
                 const ok = g.warningCount === 0;
                 return (
@@ -58,8 +58,8 @@ export async function ServerOverviewCard() {
                     <span
                       className={
                         ok
-                          ? "text-zinc-700"
-                          : "text-amber-700"
+                          ? "text-[var(--color-text-muted)]"
+                          : "text-[var(--color-warn)]"
                       }
                     >
                       {g.runningCount}/{g.totalCount}{" "}
@@ -69,7 +69,7 @@ export async function ServerOverviewCard() {
                 );
               })}
             </ul>
-            <p className="mt-3 text-xs text-zinc-500">
+            <p className="mt-3 text-xs text-[var(--color-text-subtle)]">
               Last updated: {new Date(s.fetchedAt).toLocaleTimeString("ko-KR")}
             </p>
           </section>

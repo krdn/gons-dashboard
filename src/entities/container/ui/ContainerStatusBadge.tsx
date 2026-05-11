@@ -6,15 +6,15 @@ const STYLE: Record<ContainerState, { bg: string; label: string }> = {
     label: "running",
   },
   exited: {
-    bg: "bg-rose-100 text-rose-800",
+    bg: "bg-rose-100 text-[var(--color-severity-high)]",
     label: "exited",
   },
   restarting: {
-    bg: "bg-amber-100 text-amber-800",
+    bg: "bg-amber-100 text-[var(--color-warn)]",
     label: "restarting",
   },
   paused: {
-    bg: "bg-zinc-100 text-zinc-700",
+    bg: "bg-[var(--color-surface-2)] text-[var(--color-text-muted)]",
     label: "paused",
   },
   dead: {
