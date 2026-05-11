@@ -7,7 +7,7 @@ export function EmailDigestEmpty() {
       role="status"
       className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-6 py-12"
     >
-      <h3 className="mb-3 text-[22px] font-bold tracking-tight text-[var(--color-text)]">
+      <h3 className="mb-3 text-h1 font-bold tracking-tight text-[var(--color-text)]">
         오늘 답장할 메일이 없습니다.
       </h3>
       <p className="mb-0 text-sm text-[var(--color-text-muted)]">

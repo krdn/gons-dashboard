@@ -28,7 +28,7 @@ export function HelpPanel({ onClose }: HelpPanelProps) {
           type="button"
           onClick={onClose}
           aria-label="도움말 닫기"
-          className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50"
+          className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           닫기 (Esc)
         </button>
@@ -61,7 +61,7 @@ export function HelpPanel({ onClose }: HelpPanelProps) {
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1.5 py-0.5 font-mono text-tiny text-zinc-700 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
       {children}
     </kbd>
   );
@@ -98,7 +98,7 @@ function Badge({
   return (
     <span
       className={
-        "inline-flex rounded px-1.5 py-0.5 font-mono text-[11px] font-medium " +
+        "inline-flex rounded px-1.5 py-0.5 font-mono text-tiny font-medium " +
         cls
       }
     >

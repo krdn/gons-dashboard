@@ -30,6 +30,7 @@ import { groupByProject } from "@/features/container-list";
 import { AuditLogPanel, isAdmin } from "@/features/container-actions";
 import { HostDashboard } from "@/widgets/host-dashboard";
 import { HelpHint } from "@/shared/ui/HelpHint";
+import { ArrowLeftIcon } from "@/shared/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -84,14 +85,16 @@ export default async function HostDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 text-zinc-900 sm:px-6">
-      <header className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <header className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h1 className="sr-only">{host.name} · 서버 상세</h1>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <Link
               href="/"
-              className="text-xs font-medium text-blue-600 hover:underline"
+              className="inline-flex items-center gap-1 rounded text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
             >
-              ← dashboard
+              <ArrowLeftIcon size={12} />
+              dashboard
             </Link>
             <div className="flex flex-wrap items-center gap-3">
               <HostBadge host={host} status={daemonError ? "down" : "ok"} />
@@ -180,7 +183,7 @@ function SummaryStat({
       <div className={`font-mono text-lg font-semibold tabular-nums ${toneClass}`}>
         {value}
       </div>
-      <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px] uppercase tracking-wide text-zinc-500">
+      <div className="mt-0.5 flex items-center justify-end gap-1 text-tiny uppercase tracking-wide text-zinc-500">
         {label}
         {hint ? <HelpHint hint={hint} size={12} /> : null}
       </div>

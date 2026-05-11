@@ -23,7 +23,7 @@ export function ReplyBadges({ severity, reason }: ReplyBadgesProps) {
       {severityLabel && (
         <span
           className={[
-            "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+            "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-tiny font-semibold",
             severity === "high"
               ? "border-[oklch(80%_0.10_28)] text-[oklch(40%_0.16_28)]"
               : "border-[oklch(80%_0.08_70)] text-[oklch(40%_0.13_70)]",
@@ -36,7 +36,7 @@ export function ReplyBadges({ severity, reason }: ReplyBadgesProps) {
           {severityLabel}
         </span>
       )}
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-text-muted)]">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-2 py-0.5 text-tiny font-medium text-[var(--color-text-muted)]">
         <span
           aria-hidden="true"
           className="h-1.5 w-1.5 rounded-full bg-current opacity-55"

@@ -67,7 +67,10 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Tailwind 4 theme 매핑 — utility 클래스로 토큰 사용 가능하게 */
+/* Tailwind 4 theme 매핑 — utility 클래스로 토큰 사용 가능하게.
+   --text-* / --radius-* 는 미러하면 Tailwind v4 가 text-display, rounded-1 같은
+   클래스를 자동 생성한다. --space-* 는 Tailwind v4 의 표준 prefix 가 아니므로
+   (v4 는 --spacing 기준), 미러하지 않고 globals 내부 var() 참조로만 쓴다. */
 @theme inline {
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -84,6 +87,15 @@
   --color-warn: var(--color-warn);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --text-display: var(--text-display);
+  --text-h1: var(--text-h1);
+  --text-h2: var(--text-h2);
+  --text-body: var(--text-body);
+  --text-small: var(--text-small);
+  --text-tiny: var(--text-tiny);
+  --radius-1: var(--radius-1);
+  --radius-2: var(--radius-2);
+  --radius-3: var(--radius-3);
 }
 
 /* 접근성: prefers-reduced-motion */

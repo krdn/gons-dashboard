@@ -44,7 +44,7 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto w-full max-w-[1240px] px-6 py-12">
       <header className="mb-12">
-        <h1 className="text-[32px] font-bold tracking-tight">
+        <h1 className="text-display font-bold tracking-tight">
           gons<span className="text-[var(--color-accent)]">.</span>dashboard
         </h1>
         <p className="mt-2 text-xs text-[var(--color-text-muted)] tabular-nums">
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
       </header>
 
       <section className="mb-12">
-        <h2 className="text-[28px] font-bold tracking-tight md:text-[32px]">
+        <h2 className="text-[28px] font-bold tracking-tight md:text-display">
           좋은 아침입니다{" "}
           <em className="not-italic font-semibold text-[var(--color-text-muted)]">
             — 오늘도 조금 챙길 일이 있어요
