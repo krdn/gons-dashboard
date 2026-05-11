@@ -12,6 +12,7 @@ import { modifyThread } from "@/shared/api/gmail/modify";
 import { getValidAccessToken } from "@/shared/api/gmail/auth";
 import { GmailError, InvalidGrantError } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
+import { ROUTE_DASHBOARD } from "@/shared/config/routes";
 import type { ActionResult } from "./markAsRead";
 
 export async function archiveThread(threadId: string): Promise<ActionResult> {
@@ -57,7 +58,7 @@ export async function archiveThread(threadId: string): Promise<ActionResult> {
         .update(importantEmails)
         .set({ archivedAt: new Date() })
         .where(eq(importantEmails.threadId, threadId));
-      revalidatePath("/dashboard");
+      revalidatePath(ROUTE_DASHBOARD);
       return { ok: true };
     }
     return { ok: false, reason: "gmail-error" };
@@ -68,6 +69,6 @@ export async function archiveThread(threadId: string): Promise<ActionResult> {
     .set({ archivedAt: new Date() })
     .where(eq(importantEmails.threadId, threadId));
 
-  revalidatePath("/dashboard");
+  revalidatePath(ROUTE_DASHBOARD);
   return { ok: true };
 }
