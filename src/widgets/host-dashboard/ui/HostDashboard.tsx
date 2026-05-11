@@ -123,7 +123,7 @@ export function HostDashboard({ hostId, adminFlag, groups, refreshedAtIso }: Pro
             <>
               {" "}
               <button
-                className="rounded text-[var(--color-accent)] underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+                className="rounded text-[var(--color-accent)] underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
                 onClick={() => {
                   setQuery("");
                   setStateFilter("all");

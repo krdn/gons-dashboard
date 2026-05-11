@@ -71,7 +71,7 @@ export function ActionButtons({
         <button
           onClick={() => run("restart")}
           disabled={pending}
-          className="inline-flex items-center gap-1 rounded-md border border-[var(--color-hairline)] px-2.5 py-1 font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border border-[var(--color-hairline)] px-2.5 py-1 font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:opacity-50"
         >
           <RestartIcon size={12} />
           restart

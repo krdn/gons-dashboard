@@ -2,7 +2,7 @@
 // 외부 의존성 없이 inline SVG 로 표현. HelpHint.tsx, ExternalLinkIcon 패턴 동일.
 //
 // 사용 가이드:
-//   <Icon size={14} className="text-emerald-700" />
+//   <Icon size={14} className="text-[var(--color-severity-ok)]" />
 //   - currentColor 로 stroke 가 그려지므로 부모 text-* 가 색을 결정한다.
 //   - 텍스트 라벨이 함께 있을 때는 aria-hidden 으로 노출 차단.
 //   - 아이콘만 있는 버튼은 호출부에서 aria-label 을 직접 지정.

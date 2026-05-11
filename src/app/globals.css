@@ -23,7 +23,12 @@
   --color-severity-high: oklch(58% 0.19 28);
   --color-severity-med: oklch(65% 0.13 70);
   --color-severity-low: oklch(60% 0.02 264);
+  --color-severity-ok: oklch(48% 0.13 155);
   --color-warn: oklch(56% 0.18 50);
+  /* focus ring — Tailwind blue-200 의 oklch 값 그대로.
+     focus 시그널은 accent 와 별개로 light surface 위에서 보여야 하므로
+     alpha 변종이 아니라 독립 토큰으로 정의한다. */
+  --color-focus-ring: oklch(88.2% 0.059 254.128);
 
   /* 공간 (4px 기반 스케일) */
   --space-1: 4px;
@@ -84,7 +89,9 @@
   --color-severity-high: var(--color-severity-high);
   --color-severity-med: var(--color-severity-med);
   --color-severity-low: var(--color-severity-low);
+  --color-severity-ok: var(--color-severity-ok);
   --color-warn: var(--color-warn);
+  --color-focus-ring: var(--color-focus-ring);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --text-display: var(--text-display);

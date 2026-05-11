@@ -38,7 +38,7 @@ export async function AuditLogPanel({ hostId, limit = 5 }: Props) {
           <span
             className={
               r.status === "success"
-                ? "text-emerald-700"
+                ? "text-[var(--color-severity-ok)]"
                 : "text-[var(--color-severity-high)]"
             }
           >
