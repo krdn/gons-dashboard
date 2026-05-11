@@ -16,7 +16,9 @@ export const tokens = {
     severityHigh: "oklch(58% 0.19 28)",
     severityMed: "oklch(65% 0.13 70)",
     severityLow: "oklch(60% 0.02 264)",
+    severityOk: "oklch(48% 0.13 155)",
     warn: "oklch(56% 0.18 50)",
+    focusRing: "oklch(88.2% 0.059 254.128)",
   },
   space: {
     1: "4px",

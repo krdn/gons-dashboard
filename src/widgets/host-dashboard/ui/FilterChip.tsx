@@ -24,7 +24,7 @@ export function FilterChip({ label, active, onClick, title, tone }: FilterChipPr
       title={title}
       aria-pressed={active}
       className={
-        "rounded-md px-2.5 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 " +
+        "rounded-md px-2.5 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] " +
         (active ? activeColor : "text-[var(--color-text-muted)] hover:bg-white")
       }
     >

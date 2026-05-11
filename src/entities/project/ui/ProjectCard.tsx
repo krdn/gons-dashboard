@@ -42,7 +42,7 @@ export function ProjectCard({
         <div
           className={
             allHealthy
-              ? "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700"
+              ? "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[oklch(96%_0.04_155)] px-3 py-1 text-sm font-medium text-[var(--color-severity-ok)]"
               : "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[oklch(96%_0.04_70)] px-3 py-1 text-sm font-medium text-[var(--color-warn)]"
           }
         >

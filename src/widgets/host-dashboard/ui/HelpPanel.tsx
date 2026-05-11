@@ -28,7 +28,7 @@ export function HelpPanel({ onClose }: HelpPanelProps) {
           type="button"
           onClick={onClose}
           aria-label="도움말 닫기"
-          className="rounded-md border border-[var(--color-hairline)] px-2 py-1 text-xs text-[var(--color-text-subtle)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+          className="rounded-md border border-[var(--color-hairline)] px-2 py-1 text-xs text-[var(--color-text-subtle)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
         >
           닫기 (Esc)
         </button>
@@ -89,7 +89,7 @@ function Badge({
 }) {
   const cls =
     tone === "ok"
-      ? "bg-emerald-50 text-emerald-700"
+      ? "bg-[oklch(96%_0.04_155)] text-[var(--color-severity-ok)]"
       : tone === "warn"
         ? "bg-[oklch(96%_0.04_70)] text-[var(--color-warn)]"
         : tone === "err"

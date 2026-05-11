@@ -2,7 +2,7 @@ import type { ContainerState } from "../model/types";
 
 const STYLE: Record<ContainerState, { bg: string; label: string }> = {
   running: {
-    bg: "bg-emerald-100 text-emerald-800",
+    bg: "bg-[oklch(96%_0.04_155)] text-[var(--color-severity-ok)]",
     label: "running",
   },
   exited: {

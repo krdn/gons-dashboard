@@ -91,7 +91,7 @@ export default async function HostDetailPage({ params }: Props) {
           <div className="space-y-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-1 rounded text-xs font-medium text-[var(--color-accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+              className="inline-flex items-center gap-1 rounded text-xs font-medium text-[var(--color-accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
             >
               <ArrowLeftIcon size={12} />
               dashboard
@@ -174,7 +174,7 @@ function SummaryStat({
 }) {
   const toneClass =
     tone === "ok"
-      ? "text-emerald-700"
+      ? "text-[var(--color-severity-ok)]"
       : tone === "warn"
         ? "text-[var(--color-warn)]"
         : "text-[var(--color-text)]";
