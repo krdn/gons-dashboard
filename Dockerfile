@@ -30,7 +30,8 @@ ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
     ANTHROPIC_BASE_URL=http://placeholder \
     ANTHROPIC_API_KEY=placeholder \
     CRON_BEARER_TOKEN=a-placeholder-cron-token-of-at-least-32-characters \
-    ALLOWLIST_EMAILS=build@placeholder.local
+    ALLOWLIST_EMAILS=build@placeholder.local \
+    ADMIN_EMAILS=build@placeholder.local
 
 RUN pnpm build
 
