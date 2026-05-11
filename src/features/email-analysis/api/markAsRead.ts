@@ -11,6 +11,7 @@ import { emailThreads, importantEmails } from "@/shared/lib/db/schema";
 import { modifyThread } from "@/shared/api/gmail/modify";
 import { getValidAccessToken } from "@/shared/api/gmail/auth";
 import { GmailError, InvalidGrantError } from "@/shared/api/gmail";
+import { logger } from "@/shared/lib/log";
 
 export type ActionResult =
   | { ok: true }
@@ -34,8 +35,7 @@ export async function markAsRead(threadId: string): Promise<ActionResult> {
     .limit(1);
 
   if (!thread) {
-    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
-    console.warn("[markAsRead] not-found-or-not-owned", {
+    logger.warn("markAsRead", "not-found-or-not-owned", {
       sessionUserId: userId,
       threadId,
     });

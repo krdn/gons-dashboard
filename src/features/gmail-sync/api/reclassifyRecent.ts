@@ -19,6 +19,7 @@ import {
   emailThreads,
   importantEmails,
 } from "@/shared/lib/db/schema";
+import { logger } from "@/shared/lib/log";
 import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
 
 export interface ReclassifyRecentParams {
@@ -89,19 +90,15 @@ export async function reclassifyRecent(
   });
 
   // 재분류는 본질적으로 진단/검증 — 항상 outcome 분포 로깅.
-  // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
-  console.log(
-    "[reclassifyRecent] outcomes",
-    JSON.stringify({
-      userId,
-      email: user.email,
-      hoursBack,
-      force,
-      forcedDeleted,
-      threadsInWindow: windowThreads.length,
-      importantOutcomes: result.importantOutcomes,
-    }),
-  );
+  logger.info("reclassifyRecent", "outcomes", {
+    userId,
+    email: user.email,
+    hoursBack,
+    force,
+    forcedDeleted,
+    threadsInWindow: windowThreads.length,
+    importantOutcomes: result.importantOutcomes,
+  });
 
   return {
     kind: "ok",
