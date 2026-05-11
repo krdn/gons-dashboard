@@ -14,6 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed:hosts": "tsx --conditions=react-server src/scripts/seed-hosts.ts",
+    "db:seed:projects": "tsx --conditions=react-server src/scripts/seed-projects.ts",
+    "db:cleanup-projects": "tsx --conditions=react-server src/scripts/cleanup-projects.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

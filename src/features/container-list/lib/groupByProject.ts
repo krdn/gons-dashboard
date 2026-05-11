@@ -5,8 +5,11 @@ export type ProjectGroup = {
   composeProject: string;
   displayName: string;
   description: string | null;
+  category: string | null;
+  url: string | null;
   isPinned: boolean;
   isStandalone: boolean;
+  isStale: boolean;
   containers: ContainerSummary[];
   runningCount: number;
   totalCount: number;
@@ -20,35 +23,31 @@ const WARNING_STATES: ReadonlySet<ContainerState> = new Set([
   "paused",
 ]);
 
-// 라벨 없는 컨테이너의 가상 그룹 키. 만약 사용자가 실제로 "standalone"이라는
-// compose project 이름을 쓰게 되면 라벨 있는 컨테이너와 라벨 없는 컨테이너가
-// 같은 버킷으로 병합된다 (현재 운영 중인 프로젝트 이름엔 충돌 없음). 충돌이
-// 발생하면 키를 고유 sentinel로 바꾸거나 Map<string|null,...> 형태로 변경.
 const STANDALONE = "standalone";
 
-function makeGroup(
-  composeProject: string,
-  displayName: string,
-  description: string | null,
-  isPinned: boolean,
-  isStandalone: boolean,
-  containers: ContainerSummary[],
-): ProjectGroup {
+type MakeGroupArgs = {
+  composeProject: string;
+  displayName: string;
+  description: string | null;
+  category: string | null;
+  url: string | null;
+  isPinned: boolean;
+  isStandalone: boolean;
+  containers: ContainerSummary[];
+};
+
+function makeGroup(args: MakeGroupArgs): ProjectGroup {
   let running = 0;
   let warning = 0;
-  for (const cont of containers) {
+  for (const cont of args.containers) {
     if (cont.state === "running") running++;
     if (WARNING_STATES.has(cont.state)) warning++;
   }
   return {
-    composeProject,
-    displayName,
-    description,
-    isPinned,
-    isStandalone,
-    containers,
+    ...args,
+    isStale: !args.isStandalone && args.containers.length === 0,
     runningCount: running,
-    totalCount: containers.length,
+    totalCount: args.containers.length,
     warningCount: warning,
   };
 }
@@ -57,41 +56,65 @@ export function groupByProject(
   containers: ContainerSummary[],
   projects: Project[],
 ): ProjectGroup[] {
-  const projectByCompose = new Map(projects.map((p) => [p.composeProject, p]));
+  const visibleProjects = projects.filter((p) => !p.isHidden);
+  const visibleByCompose = new Map(
+    visibleProjects.map((p) => [p.composeProject, p]),
+  );
   const hiddenSet = new Set(
     projects.filter((p) => p.isHidden).map((p) => p.composeProject),
   );
 
-  const buckets = new Map<string, ContainerSummary[]>();
+  // 1. 각 visible project를 슬롯으로 만든다 (live 0개여도 그룹 생성).
+  const projectBuckets = new Map<string, ContainerSummary[]>(
+    visibleProjects.map((p) => [p.composeProject, []]),
+  );
+  const standaloneBucket: ContainerSummary[] = [];
+
+  // 2. 컨테이너를 슬롯에 분배.
   for (const cont of containers) {
     if (cont.composeProject == null) {
-      const arr = buckets.get(STANDALONE) ?? [];
-      arr.push(cont);
-      buckets.set(STANDALONE, arr);
+      standaloneBucket.push(cont);
       continue;
     }
-    if (hiddenSet.has(cont.composeProject)) continue;
-    const arr = buckets.get(cont.composeProject) ?? [];
-    arr.push(cont);
-    buckets.set(cont.composeProject, arr);
+    if (hiddenSet.has(cont.composeProject)) continue; // hidden 그룹은 표시 안 함
+    const slot = projectBuckets.get(cont.composeProject);
+    if (slot != null) {
+      slot.push(cont);
+    } else {
+      // visible project에 매칭 안 되면 standalone fallback
+      standaloneBucket.push(cont);
+    }
   }
 
+  // 3. 그룹 생성.
   const groups: ProjectGroup[] = [];
-  for (const [key, list] of buckets) {
-    if (key === STANDALONE) {
-      groups.push(makeGroup(STANDALONE, "standalone", null, false, true, list));
-      continue;
-    }
-    const meta = projectByCompose.get(key);
+  for (const [key, list] of projectBuckets) {
+    const meta = visibleByCompose.get(key)!;
     groups.push(
-      makeGroup(
-        key,
-        meta?.displayName ?? key,
-        meta?.description ?? null,
-        meta?.isPinned ?? false,
-        false,
-        list,
-      ),
+      makeGroup({
+        composeProject: key,
+        displayName: meta.displayName,
+        description: meta.description ?? null,
+        category: meta.category ?? null,
+        url: meta.url ?? null,
+        isPinned: meta.isPinned,
+        isStandalone: false,
+        containers: list,
+      }),
+    );
+  }
+  if (standaloneBucket.length > 0) {
+    groups.push(
+      makeGroup({
+        composeProject: STANDALONE,
+        displayName: "standalone",
+        description: null,
+        category: null,
+        url: null,
+        isPinned: false,
+        isStandalone: true,
+        containers: standaloneBucket,
+      }),
     );
   }
 

@@ -5,6 +5,7 @@ export type Project = {
   displayName: string;
   description: string | null;
   category: string | null;
+  url: string | null;
   isPinned: boolean;
   isHidden: boolean;
   createdAt: Date;

@@ -316,10 +316,40 @@ FROM audit_logs ORDER BY created_at DESC LIMIT 20;
 SELECT action, status, count(*) FROM audit_logs GROUP BY 1, 2 ORDER BY 1, 2;
 ```
 
+### Project 좀비 row 정리 (v0.1.1+)
+
+운영 중 `projects` 테이블에 라이브 컨테이너에 매칭되지 않는 row가 누적될 수 있다 (stop된 compose, 이름 혼동 등). v0.1.1부터 화이트리스트(`KNOWN_COMPOSE_PROJECTS_BY_HOST`) 검증으로 lazy upsert는 차단되지만, 과거에 누적된 좀비는 cleanup 도구로 정리한다.
+
+```bash
+# dry-run — 좀비 후보만 출력
+pnpm db:cleanup-projects
+
+# 실제 삭제
+pnpm db:cleanup-projects --apply
+
+# seed 재실행으로 displayName/description 정렬
+pnpm db:seed:projects
+```
+
+기준:
+- live 컨테이너의 `com.docker.compose.project` 라벨 set
+- `KNOWN_COMPOSE_PROJECTS_BY_HOST[host.name]` 화이트리스트
+- 합집합 외의 row가 "좀비"
+
+새 compose project를 추가하려면:
+1. `src/entities/project/config/knownComposeProjects.ts`의 host set에 키 추가
+2. `src/scripts/seed-projects.ts`의 `HOME_PROJECTS`에 displayName/category/url 추가
+3. `pnpm db:seed:projects` 실행 (정합성 assert 통과 + upsert)
+
+UI 동작:
+- 화이트리스트에 등록되어 있으나 현재 라이브 컨테이너가 없는 그룹은 "no live containers" 배지로 표시 (Stale 그룹)
+- v0.1.1부터 `groupByProject`가 project 기준 그룹화로 전환됨 (이전: 컨테이너 기준)
+
 ### 자주 발생하는 이슈
 
 - **`등록된 호스트가 없습니다` 메시지**: `pnpm db:seed:hosts` 실행 안 됨. RUNBOOK 초기 셋업 #4 참조.
 - **`Docker 연결 불가` 배너**: docker context 미설정 또는 SSH 인증 실패. `docker --context home-server version`으로 직접 검증.
 - **액션 버튼 안 보임**: 비admin 이메일로 로그인했거나 ADMIN_EMAILS 미설정. `.env` 확인 + 앱 재시작.
 - **모든 컨테이너가 standalone 그룹**: compose 미사용 또는 `com.docker.compose.project` 라벨 누락. `docker inspect <id> --format '{{.Config.Labels}}'`로 라벨 확인. compose 사용 권장.
-- **projects 테이블의 displayName이 compose project 이름과 동일**: lazy upsert 시 default가 composeProject 그대로 들어감. UI 추가 전까진 `UPDATE projects SET display_name = '뉴스 서비스 (운영)' WHERE compose_project = 'news-prod';` 같은 수동 SQL로 갱신.
+- **projects 테이블의 displayName이 compose project 이름과 동일**: lazy upsert 시 default가 composeProject 그대로 들어감. seed-projects 재실행으로 정렬: `pnpm db:seed:projects`.
+- **새 compose가 모니터에 안 보임**: 화이트리스트 미등록. 위 "Project 좀비 row 정리 — 새 compose 추가" 절차 참조.

@@ -31,6 +31,7 @@ function p(overrides: Partial<Project>): Project {
     displayName: "x",
     description: null,
     category: null,
+    url: null,
     isPinned: false,
     isHidden: false,
     createdAt: NOW,
@@ -104,5 +105,45 @@ describe("groupByProject", () => {
       "z-proj",
       "standalone",
     ]);
+  });
+
+  it("project 메타가 있는데 live container 0개 → isStale=true 그룹", () => {
+    const projects = [
+      p({ composeProject: "always-running", displayName: "Live" }),
+      p({ composeProject: "stopped", displayName: "Stopped" }),
+    ];
+    const containers = [
+      c({ id: "1", composeProject: "always-running" }),
+    ];
+    const groups = groupByProject(containers, projects);
+    expect(groups).toHaveLength(2);
+    const live = groups.find((g) => g.composeProject === "always-running")!;
+    expect(live.isStale).toBe(false);
+    expect(live.containers).toHaveLength(1);
+    const stale = groups.find((g) => g.composeProject === "stopped")!;
+    expect(stale.isStale).toBe(true);
+    expect(stale.containers).toHaveLength(0);
+    expect(stale.runningCount).toBe(0);
+    expect(stale.totalCount).toBe(0);
+  });
+
+  it("standalone 그룹은 isStale=false (live container가 정의상 1+)", () => {
+    const groups = groupByProject(
+      [c({ id: "1", name: "open-webui", composeProject: null })],
+      [],
+    );
+    expect(groups[0].isStandalone).toBe(true);
+    expect(groups[0].isStale).toBe(false);
+  });
+
+  it("project 메타에 없는 compose 라벨은 standalone으로 합류", () => {
+    const containers = [
+      c({ id: "1", composeProject: "ghost-project" }),
+      c({ id: "2", composeProject: null }),
+    ];
+    const groups = groupByProject(containers, []);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].composeProject).toBe("standalone");
+    expect(groups[0].containers).toHaveLength(2);
   });
 });
