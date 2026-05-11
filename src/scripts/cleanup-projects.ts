@@ -28,8 +28,12 @@ async function main() {
         hostId: host.id,
         dockerContext: host.dockerContext,
       });
+      // running 상태만 "live"로 인정. stopped/exited 컨테이너의 라벨은 과거 잔재
+      // (사용자가 compose down 후 prune 안 한 경우)일 가능성이 높아 좀비 정리를 막아선 안 된다.
       for (const c of containers) {
-        if (c.composeProject != null) liveSet.add(c.composeProject);
+        if (c.composeProject != null && c.state === "running") {
+          liveSet.add(c.composeProject);
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
