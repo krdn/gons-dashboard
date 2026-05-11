@@ -8,8 +8,8 @@ export async function ServerOverviewCard() {
   const summaries = await getHostsWithSummary();
   if (summaries.length === 0) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-500">
+      <section className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           등록된 호스트가 없습니다. <code>pnpm db:seed:hosts</code>를 실행하세요.
         </p>
       </section>
@@ -28,7 +28,7 @@ export async function ServerOverviewCard() {
         ) : (
           <section
             key={s.host.id}
-            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+            className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
           >
             <header className="mb-3 flex items-center justify-between">
               <HostBadge host={s.host} status="ok" />
@@ -39,7 +39,7 @@ export async function ServerOverviewCard() {
                 상세 보기 →
               </Link>
             </header>
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-1 text-sm text-zinc-700 dark:text-zinc-200">
               {s.groups.map((g) => {
                 const ok = g.warningCount === 0;
                 return (
@@ -58,7 +58,7 @@ export async function ServerOverviewCard() {
                     <span
                       className={
                         ok
-                          ? "text-zinc-600 dark:text-zinc-400"
+                          ? "text-zinc-700 dark:text-zinc-200"
                           : "text-amber-700 dark:text-amber-400"
                       }
                     >
@@ -69,7 +69,7 @@ export async function ServerOverviewCard() {
                 );
               })}
             </ul>
-            <p className="mt-3 text-xs text-zinc-500">
+            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
               Last updated: {new Date(s.fetchedAt).toLocaleTimeString("ko-KR")}
             </p>
           </section>
