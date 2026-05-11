@@ -11,16 +11,16 @@ type Props = {
 export function StandaloneSection({ group, renderActions }: Props) {
   if (group.containers.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-white text-zinc-950 shadow-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
-      <header className="flex items-center justify-between border-b border-zinc-100 px-4 py-4 dark:border-zinc-800">
-        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+    <section className="overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-white text-zinc-950 shadow-sm">
+      <header className="flex items-center justify-between border-b border-zinc-100 px-4 py-4">
+        <h2 className="text-sm font-semibold text-zinc-700">
           standalone (compose 라벨 없음)
         </h2>
-        <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-mono text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+        <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-mono text-xs text-zinc-600">
           {group.runningCount}/{group.totalCount} running
         </span>
       </header>
-      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+      <ul className="divide-y divide-zinc-100">
         {group.containers.map((c) => (
           <li key={c.id}>
             <ContainerRow

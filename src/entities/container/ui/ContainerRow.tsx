@@ -16,13 +16,13 @@ export function ContainerRow({ container, actions }: Props) {
       <div className="flex min-w-0 items-start gap-3">
         <ContainerStatusBadge state={container.state} />
         <div className="min-w-0">
-          <div className="truncate font-mono font-medium text-zinc-900 dark:text-zinc-100">
+          <div className="truncate font-mono font-medium text-zinc-900">
             {container.name}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
             <span className="truncate">{container.statusText}</span>
             {portsText ? (
-              <span className="font-mono text-zinc-400 dark:text-zinc-500">
+              <span className="font-mono text-zinc-400">
                 {portsText}
               </span>
             ) : null}

@@ -24,9 +24,9 @@ export function ProjectGroupSection({ group, renderActions }: Props) {
       warningCount={group.warningCount}
     >
       {group.isStale ? (
-        <div className="flex flex-col gap-2 bg-zinc-50 px-4 py-4 text-sm text-zinc-600 sm:flex-row sm:items-center dark:bg-zinc-900/60 dark:text-zinc-300">
+        <div className="flex flex-col gap-2 bg-zinc-50 px-4 py-4 text-sm text-zinc-600 sm:flex-row sm:items-center">
           <span
-            className="inline-flex w-fit items-center rounded-full bg-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+            className="inline-flex w-fit items-center rounded-full bg-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700"
             title="화이트리스트엔 등록되어 있으나 현재 실행 중인 컨테이너가 없습니다"
           >
             no live containers
@@ -34,7 +34,7 @@ export function ProjectGroupSection({ group, renderActions }: Props) {
           <span>실행 중인 컨테이너가 없습니다</span>
         </div>
       ) : (
-        <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <ul className="divide-y divide-zinc-100">
           {group.containers.map((c) => (
             <li key={c.id}>
               <ContainerRow

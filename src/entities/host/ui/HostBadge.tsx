@@ -13,11 +13,11 @@ export function HostBadge({ host, status = "ok" }: Props) {
         ? "bg-amber-500"
         : "bg-rose-500";
   return (
-    <span className="inline-flex items-center gap-2 text-sm text-zinc-950 dark:text-zinc-100">
+    <span className="inline-flex items-center gap-2 text-sm text-zinc-950">
       <span className={`inline-block h-2 w-2 rounded-full ${dot}`} aria-hidden />
       <span className="font-medium">{host.name}</span>
       {host.description ? (
-        <span className="text-zinc-500 dark:text-zinc-400">
+        <span className="text-zinc-500">
           ({host.description})
         </span>
       ) : null}
