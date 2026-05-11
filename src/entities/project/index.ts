@@ -9,4 +9,3 @@ export {
   KNOWN_COMPOSE_PROJECTS_BY_HOST,
   KNOWN_HOSTS,
 } from "./config/knownComposeProjects";
-export { isKnownComposeProject } from "./api/isKnownComposeProject";

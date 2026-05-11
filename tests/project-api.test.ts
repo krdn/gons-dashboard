@@ -44,7 +44,7 @@ describe("project api", () => {
     expect(list.map((p) => p.composeProject)).toEqual(["pinned", "a-app", "z-app"]);
   });
 
-  it("upsertProjectFromContainer: 화이트리스트에 있는 compose → 신규 생성", async () => {
+  it("upsertProjectFromContainer: 처음 보는 compose → 신규 자동 등록", async () => {
     const p = await upsertProjectFromContainer({
       hostId,
       hostName: "home-server",
@@ -53,6 +53,17 @@ describe("project api", () => {
     expect(p).not.toBeNull();
     expect(p?.displayName).toBe("gons-dashboard");
     expect(p?.hostId).toBe(hostId);
+  });
+
+  it("upsertProjectFromContainer: hint 외 compose (옛 화이트리스트 밖) 도 자동 등록된다", async () => {
+    const p = await upsertProjectFromContainer({
+      hostId,
+      hostName: "home-server",
+      composeProject: "brand-new-stack",
+    });
+    expect(p).not.toBeNull();
+    expect(p?.composeProject).toBe("brand-new-stack");
+    expect(p?.displayName).toBe("brand-new-stack");
   });
 
   it("upsertProjectFromContainer: 기존은 updatedAt만 갱신, displayName 보존", async () => {

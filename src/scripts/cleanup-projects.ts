@@ -4,6 +4,12 @@
 // 기준: live container의 compose 라벨 set ∪ KNOWN_COMPOSE_PROJECTS_BY_HOST 의 합집합.
 // 합집합 외의 row가 좀비.
 //
+// 화이트리스트 폐지 이후 의미:
+//   - live set: 실제로 running 중인 compose project 들 (자동 등록 결과)
+//   - hint set (구 KNOWN_COMPOSE_PROJECTS_BY_HOST): 사용자가 "수동으로 핀(고정)
+//     해두었으니 잠시 down 이어도 row 를 지키고 싶다" 고 선언한 것들
+//   합집합 밖이면 = 더 이상 안 뜨고 핀도 안 박힌 row → 좀비.
+//
 // 실행: `pnpm db:cleanup-projects [--apply]`
 import "dotenv/config";
 
@@ -38,18 +44,19 @@ async function main() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(
-        `[${host.name}] docker 통신 실패 (${msg}) — whitelist만으로 비교 (보수적)`,
+        `[${host.name}] docker 통신 실패 (${msg}) — pinned hint set 만으로 비교 (보수적)`,
       );
     }
 
-    const whitelist =
+    // pinnedHint: 화이트리스트 폐지 이후엔 "수동 핀 (down 이어도 보호)" 의미.
+    const pinnedHint =
       KNOWN_COMPOSE_PROJECTS_BY_HOST[host.name] ?? new Set<string>();
     const dbRows = await db
       .select({ id: projects.id, composeProject: projects.composeProject })
       .from(projects)
       .where(eq(projects.hostId, host.id));
 
-    const zombieIds = computeZombieIds(dbRows, liveSet, whitelist);
+    const zombieIds = computeZombieIds(dbRows, liveSet, pinnedHint);
 
     if (zombieIds.length === 0) {
       console.log(`[${host.name}] 좀비 없음 (DB ${dbRows.length} rows)`);

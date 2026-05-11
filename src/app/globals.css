@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
+/* dark variant를 미디어쿼리(prefers-color-scheme) 기반이 아닌 클래스 기반으로 전환.
+   현재 앱은 라이트 톤 디자인 토큰만 정의되어 있어, 사용자의 OS가 다크 모드일 때
+   `dark:*` Tailwind 유틸리티가 의도치 않게 발화해 색이 깨지는 문제가 있었다.
+   `.dark` 클래스를 어디에도 붙이지 않으므로 dark variant는 사실상 비활성화된다. */
+@variant dark (&:where(.dark, .dark *));
+
 /* 디자인 토큰 — src/shared/config/tokens.ts 의 미러.
    변경 시 양쪽을 함께 수정한다. (v0.2에 빌드타임 동기화 도입 검토) */
 :root {
+  color-scheme: light;
   /* 색 */
   --color-bg: oklch(98.4% 0.003 264);
   --color-surface: oklch(100% 0 0);

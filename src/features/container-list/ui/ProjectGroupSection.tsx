@@ -1,5 +1,8 @@
-import { ContainerRow } from "@/entities/container";
-import { ProjectCard } from "@/entities/project";
+// barrel 우회 — entities/* 의 index.ts 는 server-only API 도 함께 export 하므로
+// 클라이언트 트리에서 사용될 가능성이 있는 UI 는 깊은 경로로 직접 import 한다.
+// (호스트 상세 페이지의 HostDashboard 클라이언트 컴포넌트에서 사용됨)
+import { ContainerRow } from "@/entities/container/ui/ContainerRow";
+import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { ProjectGroup } from "../lib/groupByProject";
 
 type Props = {
