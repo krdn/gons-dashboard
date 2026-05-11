@@ -20,8 +20,10 @@ import { getHosts } from "@/entities/host";
 import { listContainers } from "@/entities/container";
 import { KNOWN_COMPOSE_PROJECTS_BY_HOST } from "@/entities/project";
 import { computeZombieIds } from "./cleanup-projects.lib";
+import { assertProdDbAck } from "./_lib/prodGuard";
 
 async function main() {
+  assertProdDbAck("cleanup-projects");
   const apply = process.argv.includes("--apply");
   const hosts = await getHosts();
 

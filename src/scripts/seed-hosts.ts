@@ -13,8 +13,10 @@ import "dotenv/config";
 import { db } from "@/shared/lib/db/client";
 import { hosts } from "@/shared/lib/db/schema";
 import { sql } from "drizzle-orm";
+import { assertProdDbAck } from "./_lib/prodGuard";
 
 async function main() {
+  assertProdDbAck("seed-hosts");
   const result = await db
     .insert(hosts)
     .values({

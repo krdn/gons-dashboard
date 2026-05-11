@@ -17,8 +17,12 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, eq } from "drizzle-orm";
 import { users, accounts } from "@/shared/lib/db/schema";
+import { assertProdDbAck } from "./_lib/prodGuard";
 
 async function main() {
+  // 파괴적 (accounts DELETE + users.oauth_state 변경) — 운영 대상 시 명시적 ack 요구.
+  assertProdDbAck("fix-oauth-scope");
+
   const url = process.env.DATABASE_URL;
   if (!url) {
     console.error("❌ DATABASE_URL 미설정");
