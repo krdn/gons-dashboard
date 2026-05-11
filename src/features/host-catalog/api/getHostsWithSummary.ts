@@ -4,8 +4,7 @@ import { listContainers } from "@/entities/container";
 import {
   getProjects,
   getProjectComposeKeys,
-  upsertProjectFromContainer,
-  type Project,
+  syncMissingProjects,
 } from "@/entities/project";
 import { groupByProject, type ProjectGroup } from "@/features/container-list";
 
@@ -27,32 +26,15 @@ export async function getHostsWithSummary(): Promise<HostSummary[]> {
           getProjects(host.id),
           getProjectComposeKeys(host.id),
         ]);
-        // dedup은 hidden 포함 전체 key set으로 — hidden project가 매번 unknown으로
-        // 분류돼 upsert가 반복되는 것을 막는다.
-        const knownComposeKeys = new Set(allComposeKeys);
-        const unknown = Array.from(
-          new Set(
-            containers
-              .map((c) => c.composeProject)
-              .filter((k): k is string => k != null && !knownComposeKeys.has(k)),
-          ),
-        );
-        let upsertedProjects: Project[] = projects;
-        if (unknown.length > 0) {
-          const created = await Promise.all(
-            unknown.map((composeProject) =>
-              upsertProjectFromContainer({
-                hostId: host.id,
-                hostName: host.name,
-                composeProject,
-              }),
-            ),
-          );
-          // 화이트리스트 외 compose는 upsert가 null 반환 → 새 project row 생성 안 함
-          // (Task 6에서 groupByProject가 standalone 그룹으로 합류 처리)
-          const createdNonNull = created.filter((p): p is Project => p !== null);
-          upsertedProjects = [...projects, ...createdNonNull];
-        }
+        const created = await syncMissingProjects({
+          hostId: host.id,
+          hostName: host.name,
+          observed: containers
+            .map((c) => c.composeProject)
+            .filter((k): k is string => k != null),
+          knownComposeKeys: allComposeKeys,
+        });
+        const upsertedProjects = [...projects, ...created];
         return {
           host,
           groups: groupByProject(containers, upsertedProjects),
