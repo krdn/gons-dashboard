@@ -121,33 +121,33 @@ const SEED_PROJECTS_BY_HOST: Readonly<Record<string, SeedProject[]>> = {
   "krdn-lenovo": DEV_PROJECTS,
 };
 
-function assertSeedMatchesWhitelist(): void {
-  const errors: string[] = [];
+// hint 파일(KNOWN_COMPOSE_PROJECTS_BY_HOST)과 메타 시드의 정합성 점검.
+// 화이트리스트 폐지 이후로는 throw 가 아니라 경고만 출력한다 —
+// 자동 등록이 동작하므로 누락이 있어도 표시 자체에는 문제가 없고,
+// 단지 한글 displayName/카테고리/URL 같은 풍부한 메타가 빠질 뿐이다.
+function warnSeedHintMismatch(): void {
   for (const hostName of Object.keys(KNOWN_COMPOSE_PROJECTS_BY_HOST)) {
-    const whitelistKeys = KNOWN_COMPOSE_PROJECTS_BY_HOST[hostName]!;
+    const hintKeys = KNOWN_COMPOSE_PROJECTS_BY_HOST[hostName]!;
     const seed = SEED_PROJECTS_BY_HOST[hostName];
     if (!seed) {
-      errors.push(
-        `seed-projects: SEED_PROJECTS_BY_HOST["${hostName}"] 정의 없음 (whitelist엔 있음)`,
+      console.warn(
+        `⚠️  [${hostName}] SEED_PROJECTS_BY_HOST 정의 없음 — 메타 시드 건너뜀`,
       );
       continue;
     }
     const seedKeys = new Set(seed.map((p) => p.composeProject));
-    const missingInSeed = [...whitelistKeys].filter((k) => !seedKeys.has(k));
-    const missingInWhitelist = [...seedKeys].filter((k) => !whitelistKeys.has(k));
-    if (missingInSeed.length > 0 || missingInWhitelist.length > 0) {
-      errors.push(
-        `[${hostName}] seed ↔ whitelist 불일치\n` +
-          `  seed에 없음: ${missingInSeed.join(", ") || "(없음)"}\n` +
-          `  whitelist에 없음: ${missingInWhitelist.join(", ") || "(없음)"}`,
+    const missingInSeed = [...hintKeys].filter((k) => !seedKeys.has(k));
+    const missingInHint = [...seedKeys].filter((k) => !hintKeys.has(k));
+    if (missingInSeed.length > 0) {
+      console.warn(
+        `⚠️  [${hostName}] hint 에 있으나 seed 에 메타 없음: ${missingInSeed.join(", ")}`,
       );
     }
-  }
-  if (errors.length > 0) {
-    throw new Error(
-      `seed-projects ↔ KNOWN_COMPOSE_PROJECTS_BY_HOST 정합성 실패. 양쪽 동시 갱신 필요.\n` +
-        errors.join("\n"),
-    );
+    if (missingInHint.length > 0) {
+      console.warn(
+        `⚠️  [${hostName}] seed 에 있으나 hint 에 없음 (cleanup keep-set 누락 가능): ${missingInHint.join(", ")}`,
+      );
+    }
   }
 }
 
@@ -191,7 +191,7 @@ async function upsertOne(hostId: string, p: SeedProject): Promise<void> {
 }
 
 async function main() {
-  assertSeedMatchesWhitelist();
+  warnSeedHintMismatch();
   let total = 0;
   for (const [hostName, seed] of Object.entries(SEED_PROJECTS_BY_HOST)) {
     if (seed.length === 0) continue;
