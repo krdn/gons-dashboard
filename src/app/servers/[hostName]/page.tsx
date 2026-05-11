@@ -23,7 +23,7 @@ import { listContainers, type ContainerSummary } from "@/entities/container";
 import {
   getProjects,
   getProjectComposeKeys,
-  upsertProjectFromContainer,
+  syncMissingProjects,
   type Project,
 } from "@/entities/project";
 import { groupByProject } from "@/features/container-list";
@@ -66,28 +66,15 @@ export default async function HostDetailPage({ params }: Props) {
     getProjects(host.id),
     getProjectComposeKeys(host.id),
   ]);
-  const knownComposeKeys = new Set(allComposeKeys);
-  const unknownKeys = Array.from(
-    new Set(
-      containers
-        .map((c) => c.composeProject)
-        .filter((k): k is string => k != null && !knownComposeKeys.has(k)),
-    ),
-  );
-  let allProjects: Project[] = visibleProjects;
-  if (unknownKeys.length > 0) {
-    const created = await Promise.all(
-      unknownKeys.map((composeProject) =>
-        upsertProjectFromContainer({
-          hostId: host.id,
-          hostName: host.name,
-          composeProject,
-        }),
-      ),
-    );
-    const createdNonNull = created.filter((p): p is Project => p !== null);
-    allProjects = [...visibleProjects, ...createdNonNull];
-  }
+  const created = await syncMissingProjects({
+    hostId: host.id,
+    hostName: host.name,
+    observed: containers
+      .map((c) => c.composeProject)
+      .filter((k): k is string => k != null),
+    knownComposeKeys: allComposeKeys,
+  });
+  const allProjects: Project[] = [...visibleProjects, ...created];
 
   const groups = groupByProject(containers, allProjects);
   const runningCount = containers.filter((c) => c.state === "running").length;
