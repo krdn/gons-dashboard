@@ -1,9 +1,12 @@
 // 답장 필요 카드 — 메인 reply-needed 항목 1개.
 // 와이어프레임의 article.reply 시각 결정 그대로.
 //
+// 액션 3종:
+//   - "답장하기": Gmail 스레드를 새 탭으로 열기 (primary, 진짜 답장 작성용).
+//   - "답장 완료": markAsReplied Server Action → 위젯에서 제거 (이미 답장한 메일 표시).
+//   - "무시": dismissThread Server Action → 24시간 숨김.
+//
 // severity high/med 는 좌측 3px 보더 + WCAG 위반 회피용 텍스트 뱃지 (ReplyBadges).
-// "답장함" 클릭 → markAsReplied Server Action → 카드 collapse + 토스트 + undo.
-//   v0.1: 토스트와 undo는 Sprint 3에 web-push와 함께 구현 (지금은 간단한 form 액션).
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -104,19 +107,29 @@ export function ReplyCard({ item }: ReplyCardProps) {
         ) : null}
       </div>
 
-      <div className="flex gap-2 self-center max-md:col-span-2 max-md:mt-2 max-md:justify-end max-md:border-t max-md:border-[var(--color-hairline)] max-md:pt-2">
+      <div className="flex items-center gap-2 self-center max-md:col-span-2 max-md:mt-2 max-md:justify-end max-md:border-t max-md:border-[var(--color-hairline)] max-md:pt-2">
+        <a
+          href={`https://mail.google.com/mail/u/0/#inbox/${item.gmailThreadId}`}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-md bg-[var(--color-text)] px-3 py-1.5 text-xs font-medium text-[var(--color-surface)] transition-colors hover:bg-[oklch(15%_0.01_264)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+        >
+          답장하기 ↗
+        </a>
         <button
           type="button"
           onClick={handleReplied}
           disabled={isPending}
-          className="rounded-md bg-[var(--color-text)] px-3 py-1.5 text-xs font-medium text-[var(--color-surface)] transition-colors hover:bg-[oklch(15%_0.01_264)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          title="이미 답장을 보낸 메일을 위젯에서 숨깁니다"
+          className="rounded-md border border-[var(--color-hairline)] px-3 py-1.5 text-xs font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
-          답장함
+          답장 완료
         </button>
         <button
           type="button"
           onClick={handleDismiss}
           disabled={isPending}
+          title="24시간 동안 위젯에서 숨깁니다"
           className="rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           무시
