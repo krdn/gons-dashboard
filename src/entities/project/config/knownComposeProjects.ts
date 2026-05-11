@@ -3,7 +3,7 @@
 //
 // 새 compose project를 추가하려면:
 //   1) 이 파일 KNOWN_COMPOSE_PROJECTS_BY_HOST에 키 추가
-//   2) seed-projects.ts의 HOME_PROJECTS에 displayName/description/url/category 추가
+//   2) seed-projects.ts의 HOME_PROJECTS / DEV_PROJECTS에 displayName/description/url/category 추가
 //   3) `pnpm db:seed:projects` 재실행
 export const KNOWN_COMPOSE_PROJECTS_BY_HOST: Readonly<
   Record<string, ReadonlySet<string>>
@@ -17,6 +17,11 @@ export const KNOWN_COMPOSE_PROJECTS_BY_HOST: Readonly<
     "gons-dashboard",
     "news-sentiment-analyzer2",
     "news-sentiment-prod",
+  ]),
+  "krdn-lenovo": new Set([
+    "ai-afterschool",
+    "ai-model-setup",
+    "ai-news-analyzer",
   ]),
 };
 
