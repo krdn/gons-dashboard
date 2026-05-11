@@ -64,11 +64,16 @@ export class GmailClientError extends GmailError {
 export async function classifyGmailError(response: Response): Promise<GmailError> {
   const status = response.status;
 
-  let body: unknown = null;
+  // body 는 한 번만 consume. text 로 읽고 JSON 파싱 시도 → 실패 시 string 그대로.
+  // 이전 버전은 `response.json() → response.text()` 순으로 두 번 consume 했는데,
+  // Response body 는 한 번만 읽을 수 있어 두 번째 호출이 "Body is unusable" 로 throw.
+  // 결과: Google CDN 의 502 HTML 응답 시 cron 이 opaque 에러로 죽음.
+  const text = await response.text().catch(() => "");
+  let body: unknown = text;
   try {
-    body = await response.json();
+    body = JSON.parse(text);
   } catch {
-    body = await response.text();
+    // text 그대로 유지. typeof 검사가 string 을 거부해 fallthrough → GmailClientError.
   }
 
   const errorObj =
