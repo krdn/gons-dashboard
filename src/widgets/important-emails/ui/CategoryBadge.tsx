@@ -1,7 +1,7 @@
 // 카테고리 뱃지 — 4종 카테고리 + importance(high/med) 표시.
 // 색상은 카테고리별 의미적 매핑: money=amber, security=rose, schedule=sky, notice=stone.
 // importance=high면 "·high" 접미.
-import type { Category, ImportantImportance } from "@/entities/email";
+import type { Category, ImportantImportance } from "@/entities/email/model/types";
 
 const LABELS: Record<Category, string> = {
   money: "금전",

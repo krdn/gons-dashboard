@@ -11,7 +11,7 @@ import {
   formatRelativeKst,
 } from "@/shared/lib/email-format";
 import { CategoryBadge } from "./CategoryBadge";
-import type { ImportantEmailItem } from "@/entities/email";
+import type { ImportantEmailItem } from "@/entities/email/api/getImportantEmails";
 
 export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
   const [isPending, startTransition] = useTransition();
