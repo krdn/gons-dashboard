@@ -192,6 +192,9 @@ export const hosts = pgTable("hosts", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(), // "home-server"
   dockerContext: text("docker_context").notNull(), // docker CLI --context 인자
+  // 호스트 IPv4 (선택). 0004 마이그레이션으로 추가. 현재 src/ 에서는 미사용이지만
+  // 운영 DB·snapshot 정합을 위해 schema에 유지. 향후 디스플레이/연결 진단용.
+  ip: text("ip"),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
