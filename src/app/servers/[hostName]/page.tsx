@@ -30,6 +30,7 @@ import { groupByProject } from "@/features/container-list";
 import { AuditLogPanel, isAdmin } from "@/features/container-actions";
 import { HostDashboard } from "@/widgets/host-dashboard";
 import { HelpHint } from "@/shared/ui/HelpHint";
+import { ArrowLeftIcon } from "@/shared/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -90,9 +91,10 @@ export default async function HostDetailPage({ params }: Props) {
           <div className="space-y-2">
             <Link
               href="/"
-              className="rounded text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+              className="inline-flex items-center gap-1 rounded text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
             >
-              ← dashboard
+              <ArrowLeftIcon size={12} />
+              dashboard
             </Link>
             <div className="flex flex-wrap items-center gap-3">
               <HostBadge host={host} status={daemonError ? "down" : "ok"} />
