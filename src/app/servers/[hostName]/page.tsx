@@ -183,7 +183,7 @@ function SummaryStat({
       <div className={`font-mono text-lg font-semibold tabular-nums ${toneClass}`}>
         {value}
       </div>
-      <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px] uppercase tracking-wide text-zinc-500">
+      <div className="mt-0.5 flex items-center justify-end gap-1 text-tiny uppercase tracking-wide text-zinc-500">
         {label}
         {hint ? <HelpHint hint={hint} size={12} /> : null}
       </div>

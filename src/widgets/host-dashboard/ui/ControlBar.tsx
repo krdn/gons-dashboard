@@ -127,7 +127,7 @@ export function ControlBar({
           </svg>
           새로고침
         </button>
-        <span className="hidden text-[11px] text-zinc-500 sm:inline">
+        <span className="hidden text-tiny text-zinc-500 sm:inline">
           마지막 갱신 {lastRefreshLabel}
         </span>
         <button

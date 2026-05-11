@@ -4,7 +4,7 @@ import { signIn } from "@/shared/lib/auth";
 export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-start justify-center px-6">
-      <h1 className="text-[var(--text-h1)] font-bold tracking-tight">
+      <h1 className="text-h1 font-bold tracking-tight">
         gons<span className="text-[var(--color-accent)]">.</span>dashboard
       </h1>
       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
