@@ -1,4 +1,4 @@
-// history_id stale 시 fallback — eng review CRITICAL #2.
+// history_id stale 시 fallback.
 //
 // Gmail의 history_id는 7일+ 멈춤 후 폐기됨 → 404 historyId not found.
 // 이 함수는 messages.list?q=newer_than:7d 로 최근 7일 메일을 모두 가져와서

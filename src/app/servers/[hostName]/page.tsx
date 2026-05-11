@@ -1,4 +1,4 @@
-// 호스트 상세 페이지 — Sprint 2.5 / Task 19.
+// 호스트 상세 페이지.
 // 모든 layer 통합: shared(auth) + entities(host/container/project)
 //   + features(container-list/container-actions) + widgets(host-dashboard).
 //

@@ -1,7 +1,8 @@
 // LLM 정밀 분류기 — deterministic이 후보로 분류한 스레드만 검증.
 //
-// eng review CRITICAL #5: Zod 검증 실패 시 fallback (deterministic only)
-// eng review CRITICAL #6: 프록시 다운 시 graceful degrade
+// 안전장치:
+//  - Zod 검증 실패 시 fallback (deterministic only)
+//  - 프록시 다운 시 graceful degrade
 //
 // 출력 계약: { needsReply: bool, severity, reason }
 //   - reason은 1줄 한국어 (UI 뱃지에 그대로 표시)
