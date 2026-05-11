@@ -99,6 +99,15 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test
 
 DB 미연결 통합 테스트는 `ECONNREFUSED` 로 fail — pure unit 테스트만 통과해도 OK.
 
+로컬 테스트 DB가 필요하면:
+
+```bash
+docker run -d --rm --name gons-test-db -p 5999:5432 \
+  -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test_dummy \
+  postgres:16-alpine
+TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test
+```
+
 ### 3. Locale 의존 포맷팅은 hydration mismatch
 
 서버 Node 는 ICU minimal 로 ko 로케일이 없어 `"오후 04:33"`, 브라우저는 `"PM 04:33"` 으로 렌더 → hydration 실패. **클라이언트에서 시각을 표시할 때는 locale-free `HH:MM:SS` 포맷** 사용. (서버 RSC 안에서만 쓰는 `toLocaleString("ko-KR")` 은 안전.)
@@ -169,9 +178,9 @@ export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_K
 - **Domain docs**: 도메인 결정·용어 — `docs/agents/domain.md`
 - **운영 절차**: 시크릿 회전, OAuth 갱신 등 — `docs/RUNBOOK.md`
 - **설계/계획 산출물**: `docs/superpowers/{specs,plans}/<date>-<topic>.md`
+- **v0.1 후속 작업 backlog**: `TODOS.md` (의도적으로 v0.1 범위 외인 항목)
 
 ## 응답 규칙
 
-- 한국어 응답 + 코드 영어 (글로벌 `~/.claude/rules/korean-response.md`)
-- 기술 용어는 원문 병기 (예: "FSD (Feature-Sliced Design)")
-- 시크릿은 메모리/메시지에 평문으로 남기지 않는다 — 항상 `.env` 와 변수명으로만 지칭
+- 한국어 응답 + 코드 영어는 글로벌 `~/.claude/rules/korean-response.md` 가 강제 (별도 명시 불필요).
+- **시크릿은 메모리/메시지에 평문으로 남기지 않는다** — 항상 `.env` 와 변수명으로만 지칭.
