@@ -14,6 +14,22 @@ jobs:
   lint-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_dummy
+        ports:
+          - 5999:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +50,29 @@ jobs:
 
       - name: Type check
         run: pnpm typecheck
+
+      - name: DB migrate (test schema)
+        env:
+          DATABASE_URL: postgres://test:test@127.0.0.1:5999/test_dummy
+        run: pnpm db:migrate
+
+      - name: Test
+        env:
+          # tests/setup.ts allow-list 가드 통과를 위해 127.0.0.1 사용.
+          TEST_DATABASE_URL: postgres://test:test@127.0.0.1:5999/test_dummy
+          # env.ts 부팅 검증 통과용 placeholder.
+          DATABASE_URL: postgres://test:test@127.0.0.1:5999/test_dummy
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_SECRET: a-placeholder-secret-of-at-least-32-characters
+          NEXTAUTH_URL: http://localhost:3020
+          GOOGLE_CLIENT_ID: placeholder
+          GOOGLE_CLIENT_SECRET: placeholder
+          ANTHROPIC_BASE_URL: http://placeholder
+          ANTHROPIC_API_KEY: placeholder
+          CRON_BEARER_TOKEN: a-placeholder-cron-token-of-at-least-32-characters
+          ALLOWLIST_EMAILS: build@placeholder.local
+          ADMIN_EMAILS: build@placeholder.local
+        run: pnpm test
 
       - name: Build (sanity check)
         env:
