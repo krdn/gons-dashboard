@@ -23,6 +23,7 @@ import {
   type MessageDetail,
   type MailingListSignals,
 } from "@/shared/api/gmail";
+import { logger } from "@/shared/lib/log";
 import { fullRescan } from "../lib/full-rescan";
 import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
 
@@ -239,15 +240,11 @@ async function classifyAffectedThreads(
   });
 
   if (result.importantConsidered > 0) {
-    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
-    console.log(
-      "[syncInbox] important-outcomes",
-      JSON.stringify({
-        userId,
-        ownerEmail,
-        importantOutcomes: result.importantOutcomes,
-      }),
-    );
+    logger.info("syncInbox", "important-outcomes", {
+      userId,
+      ownerEmail,
+      importantOutcomes: result.importantOutcomes,
+    });
   }
 
   return { classified: result.classified, skipped: result.skipped };

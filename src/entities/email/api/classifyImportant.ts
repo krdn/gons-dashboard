@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { importantEmails, emailThreads } from "@/shared/lib/db/schema";
 import { classifyImportantWithLlm } from "@/shared/lib/llm/classify-important";
+import { logger } from "@/shared/lib/log";
 import { isMailingList } from "../lib/unsubscribe-filter";
 import type {
   ImportantInput,
@@ -70,8 +71,7 @@ export async function classifyImportantThread(
   try {
     result = await classifyImportantWithLlm(input);
   } catch (err) {
-    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
-    console.warn("[classify-important] llm-error", {
+    logger.warn("classify-important", "llm-error", {
       threadId,
       message: err instanceof Error ? err.message : String(err),
     });

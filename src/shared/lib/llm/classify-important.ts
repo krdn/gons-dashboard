@@ -8,6 +8,7 @@ import "server-only";
 import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, HAIKU_MODEL } from "./anthropic";
+import { logger } from "../log";
 
 export const IMPORTANT_CLASSIFIER_VERSION = "v1.0-haiku-important-2026-05";
 
@@ -108,8 +109,7 @@ export async function classifyImportantWithLlm(
 
   const parsed = ResponseSchema.safeParse(json);
   if (!parsed.success) {
-    // TODO(logger): replace with structured logger when shared/lib/log.ts is ready
-    console.warn("[classify-important] zod-fail", {
+    logger.warn("classify-important", "zod-fail", {
       issues: parsed.error.issues.slice(0, 3),
     });
     return null;
