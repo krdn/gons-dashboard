@@ -15,7 +15,7 @@ export async function AuditLogPanel({ hostId, limit = 5 }: Props) {
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="text-sm text-zinc-500">
         아직 액션 기록이 없습니다.
       </p>
     );
@@ -25,9 +25,9 @@ export async function AuditLogPanel({ hostId, limit = 5 }: Props) {
       {rows.map((r) => (
         <li
           key={r.id}
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-zinc-50 px-3 py-2 font-mono dark:bg-zinc-900/70"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-zinc-50 px-3 py-2 font-mono"
         >
-          <time className="text-zinc-500 dark:text-zinc-400">
+          <time className="text-zinc-500">
             {new Date(r.createdAt).toLocaleString("ko-KR", {
               hour: "2-digit",
               minute: "2-digit",
@@ -38,16 +38,16 @@ export async function AuditLogPanel({ hostId, limit = 5 }: Props) {
           <span
             className={
               r.status === "success"
-                ? "text-emerald-700 dark:text-emerald-400"
-                : "text-rose-700 dark:text-rose-400"
+                ? "text-emerald-700"
+                : "text-rose-700"
             }
           >
             {r.action}
           </span>
-          <span className="truncate text-zinc-900 dark:text-zinc-100">
+          <span className="truncate text-zinc-900">
             {r.containerName}
           </span>
-          <span className="text-zinc-500 dark:text-zinc-400">({r.userEmail})</span>
+          <span className="text-zinc-500">({r.userEmail})</span>
           {r.errorMessage ? (
             <span className="truncate text-rose-500">{r.errorMessage}</span>
           ) : null}
