@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { replyNeeded } from "@/shared/lib/db/schema";
+import { ROUTE_DASHBOARD } from "@/shared/config/routes";
 
 export async function dismissThread(threadId: string): Promise<void> {
   const session = await auth();
@@ -26,5 +27,5 @@ export async function dismissThread(threadId: string): Promise<void> {
       ),
     );
 
-  revalidatePath("/");
+  revalidatePath(ROUTE_DASHBOARD);
 }

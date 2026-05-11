@@ -19,6 +19,7 @@ import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { hosts } from "@/shared/lib/db/schema";
 import { runDocker } from "@/shared/lib/docker";
+import { routeServerDetail } from "@/shared/config/routes";
 import { isAdmin } from "../lib/isAdmin";
 import { insertAuditLog } from "./insertAuditLog";
 
@@ -115,6 +116,6 @@ export async function runAction(
   if (dockerErr) {
     return { ok: false, code: "DOCKER_ERROR", message };
   }
-  revalidatePath(`/servers/${host.name}`);
+  revalidatePath(routeServerDetail(host.name));
   return { ok: true };
 }
