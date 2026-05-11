@@ -1,5 +1,4 @@
 // 로그인 페이지 — Google OAuth 진입점.
-// 디자인은 Sprint 2 UI 패스에서 정교화. 지금은 기능만.
 import { signIn } from "@/shared/lib/auth";
 
 export default function LoginPage() {

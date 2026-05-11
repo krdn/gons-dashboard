@@ -30,7 +30,7 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
 
-  // Sprint 2 — Gmail polling 상태
+  // Gmail polling 상태
   lastHistoryId: text("last_history_id"),
   oauthState: text("oauth_state").notNull().default("active"), // 'active' | 'reauth_required'
   tokenExpiredAt: timestamp("token_expired_at", { mode: "date" }),

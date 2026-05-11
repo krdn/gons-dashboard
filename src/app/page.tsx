@@ -1,4 +1,4 @@
-// 메인 대시보드 — Sprint 2.5에서 구현.
+// 메인 대시보드.
 // 와이어프레임 reference:
 //   ~/.gstack/projects/krdn-gons-dashboard/designs/main-dashboard-20260509/wireframe-v1.html
 //

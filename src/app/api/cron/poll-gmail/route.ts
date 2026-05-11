@@ -1,9 +1,10 @@
 // Cron 매시간 트리거 — 모든 활성 사용자의 inbox sync.
 //
-// CRITICAL §3 #8: syncInbox 분기 3개 (정상 / 404 / invalid_grant) 처리.
-// CRITICAL §3 #9: Bearer 인증 — 누락·잘못 → 401.
+// 분기 정책:
+//  - syncInbox 분기 3개 (정상 / 404 / invalid_grant) 처리
+//  - Bearer 인증 — 누락·잘못 → 401
 //
-// 호출자: 별도 cron 컨테이너 (Sprint 3.5에서 추가). curl로 이 엔드포인트 호출.
+// 호출자: 별도 cron 컨테이너. curl로 이 엔드포인트 호출.
 import { NextResponse } from "next/server";
 import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";

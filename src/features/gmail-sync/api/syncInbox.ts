@@ -1,4 +1,4 @@
-// 받은편지함 동기화 — eng review CRITICAL #8.
+// 받은편지함 동기화.
 //
 // 분기 3개:
 //  1. 정상: history.list incremental → 새 메시지만 fetch
