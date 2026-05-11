@@ -71,7 +71,7 @@ export function ActionButtons({
         <button
           onClick={() => run("restart")}
           disabled={pending}
-          className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border border-[var(--color-hairline)] px-2.5 py-1 font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:opacity-50"
         >
           <RestartIcon size={12} />
           restart
@@ -81,18 +81,18 @@ export function ActionButtons({
         <button
           onClick={() => run("stop")}
           disabled={pending}
-          className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2.5 py-1 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border border-[var(--color-severity-high)] px-2.5 py-1 font-medium text-[var(--color-severity-high)] hover:bg-[oklch(96%_0.04_28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
         >
           <StopIcon size={10} />
           stop
         </button>
       ) : null}
       {message ? (
-        <span className="ml-1 inline-flex items-center gap-1 text-zinc-500">
+        <span className="ml-1 inline-flex items-center gap-1 text-[var(--color-text-subtle)]">
           {message.includes("성공") ? (
             <CheckIcon size={11} className="text-emerald-600" />
           ) : (
-            <WarningIcon size={11} className="text-rose-600" />
+            <WarningIcon size={11} className="text-[var(--color-severity-high)]" />
           )}
           {message}
         </span>

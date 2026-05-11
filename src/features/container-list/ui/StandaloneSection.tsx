@@ -11,12 +11,12 @@ type Props = {
 export function StandaloneSection({ group, renderActions }: Props) {
   if (group.containers.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-white text-zinc-950 shadow-sm">
-      <header className="flex items-center justify-between border-b border-zinc-100 px-4 py-4">
-        <h2 className="text-sm font-semibold text-zinc-700">
+    <section className="overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-white text-[var(--color-text)] shadow-sm">
+      <header className="flex items-center justify-between border-b border-[var(--color-hairline)] px-4 py-4">
+        <h2 className="text-sm font-semibold text-[var(--color-text-muted)]">
           standalone (compose 라벨 없음)
         </h2>
-        <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-mono text-xs text-zinc-600">
+        <span className="rounded-full bg-[var(--color-surface-2)] px-2.5 py-1 font-mono text-xs text-[var(--color-text-muted)]">
           {group.runningCount}/{group.totalCount} running
         </span>
       </header>

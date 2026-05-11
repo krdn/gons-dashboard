@@ -84,14 +84,14 @@ export default async function HostDetailPage({ params }: Props) {
   const refreshedAtIso = new Date().toISOString();
 
   return (
-    <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 text-zinc-900 sm:px-6">
-      <header className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+    <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 text-[var(--color-text)] sm:px-6">
+      <header className="rounded-xl border border-[var(--color-hairline)] bg-white p-5 shadow-sm">
         <h1 className="sr-only">{host.name} · 서버 상세</h1>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-1 rounded text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+              className="inline-flex items-center gap-1 rounded text-xs font-medium text-[var(--color-accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
             >
               <ArrowLeftIcon size={12} />
               dashboard
@@ -99,7 +99,7 @@ export default async function HostDetailPage({ params }: Props) {
             <div className="flex flex-wrap items-center gap-3">
               <HostBadge host={host} status={daemonError ? "down" : "ok"} />
               <span
-                className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-mono text-xs text-zinc-600"
+                className="rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-2.5 py-1 font-mono text-xs text-[var(--color-text-muted)]"
                 title="이 호스트의 Docker context. dlocal/dserver alias 와 매칭됩니다."
               >
                 {host.dockerContext}
@@ -126,10 +126,10 @@ export default async function HostDetailPage({ params }: Props) {
             />
           </div>
         </div>
-        <p className="mt-4 text-xs text-zinc-500">
+        <p className="mt-4 text-xs text-[var(--color-text-subtle)]">
           read-only view for all signed-in users · actions require admin
           allowlist · 30초마다 자동 새로고침 ·{" "}
-          <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1 py-0.5 font-mono text-[10px] text-zinc-700">
+          <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-zinc-300 bg-[var(--color-surface-2)] px-1 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
             ?
           </kbd>
           {" "}로 단축키 보기
@@ -137,9 +137,9 @@ export default async function HostDetailPage({ params }: Props) {
       </header>
 
       {daemonError ? (
-        <section className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm">
-          <p className="font-semibold text-rose-800">Docker 연결 실패</p>
-          <p className="mt-1 break-all text-rose-700">{daemonError}</p>
+        <section className="rounded-xl border border-[var(--color-severity-high)] bg-[oklch(96%_0.04_28)] p-4 text-sm">
+          <p className="font-semibold text-[var(--color-severity-high)]">Docker 연결 실패</p>
+          <p className="mt-1 break-all text-[var(--color-severity-high)]">{daemonError}</p>
         </section>
       ) : null}
 
@@ -150,7 +150,7 @@ export default async function HostDetailPage({ params }: Props) {
         refreshedAtIso={refreshedAtIso}
       />
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-900 shadow-sm">
+      <section className="rounded-xl border border-[var(--color-hairline)] bg-white p-4 text-[var(--color-text)] shadow-sm">
         <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
           최근 액션 5건
           <HelpHint hint="이 호스트에서 발생한 start/stop/restart 액션 이력. 클라이언트가 아닌 서버 audit_logs 테이블 기준입니다." />
@@ -176,14 +176,14 @@ function SummaryStat({
     tone === "ok"
       ? "text-emerald-700"
       : tone === "warn"
-        ? "text-amber-700"
-        : "text-zinc-900";
+        ? "text-[var(--color-warn)]"
+        : "text-[var(--color-text)]";
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+    <div className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-3 py-2">
       <div className={`font-mono text-lg font-semibold tabular-nums ${toneClass}`}>
         {value}
       </div>
-      <div className="mt-0.5 flex items-center justify-end gap-1 text-tiny uppercase tracking-wide text-zinc-500">
+      <div className="mt-0.5 flex items-center justify-end gap-1 text-tiny uppercase tracking-wide text-[var(--color-text-subtle)]">
         {label}
         {hint ? <HelpHint hint={hint} size={12} /> : null}
       </div>

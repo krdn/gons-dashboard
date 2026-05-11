@@ -41,10 +41,10 @@ export function ControlBar({
   searchInputRef,
 }: ControlBarProps) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:gap-2">
+    <section className="flex flex-col gap-3 rounded-xl border border-[var(--color-hairline)] bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:gap-2">
       <div className="flex flex-1 items-center gap-2">
         <label className="relative flex flex-1 items-center">
-          <span className="pointer-events-none absolute left-3 text-zinc-400">
+          <span className="pointer-events-none absolute left-3 text-[var(--color-text-subtle)]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width={14}
@@ -68,14 +68,14 @@ export function ControlBar({
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder="컨테이너·프로젝트 검색 (단축키: /)"
             aria-label="컨테이너 또는 프로젝트 검색"
-            className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-8 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:border-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+            className="w-full rounded-lg border border-[var(--color-hairline)] bg-white py-2 pl-8 pr-3 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
           />
         </label>
         <HelpHint hint="컨테이너 이름, 포트, 프로젝트 이름·설명 모두에서 부분 매칭. 단축키 '/' 로 빠르게 포커스." />
       </div>
 
       <div
-        className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-xs"
+        className="flex items-center gap-1 rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-2)] p-1 text-xs"
         role="group"
         aria-label="상태 필터"
       >
@@ -106,7 +106,7 @@ export function ControlBar({
           type="button"
           onClick={onRefresh}
           title="지금 새로고침 (단축키: r). 30초마다 자동으로도 갱신됩니다."
-          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-hairline)] bg-white px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -127,7 +127,7 @@ export function ControlBar({
           </svg>
           새로고침
         </button>
-        <span className="hidden text-tiny text-zinc-500 sm:inline">
+        <span className="hidden text-tiny text-[var(--color-text-subtle)] sm:inline">
           마지막 갱신 {lastRefreshLabel}
         </span>
         <button
@@ -135,7 +135,7 @@ export function ControlBar({
           onClick={onToggleHelp}
           title="키보드 단축키 도움말 (단축키: ?)"
           aria-label="도움말 열기"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-600 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-hairline)] bg-white text-sm font-semibold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           ?
         </button>

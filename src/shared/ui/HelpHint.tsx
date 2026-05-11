@@ -14,7 +14,7 @@ export function HelpHint({ hint, size = 14, className }: Props) {
       aria-label={hint}
       title={hint}
       className={
-        "inline-flex shrink-0 cursor-help items-center text-zinc-400 hover:text-zinc-600 focus-visible:text-zinc-600 focus-visible:outline-none " +
+        "inline-flex shrink-0 cursor-help items-center text-[var(--color-text-subtle)] hover:text-[var(--color-text-muted)] focus-visible:text-[var(--color-text-muted)] focus-visible:outline-none " +
         (className ?? "")
       }
     >

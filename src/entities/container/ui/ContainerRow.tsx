@@ -12,17 +12,17 @@ export function ContainerRow({ container, actions }: Props) {
     .map((p) => `:${p.hostPort}`)
     .join(" ");
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 text-sm transition-colors hover:bg-zinc-50/60 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--color-surface-2)]/60 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <ContainerStatusBadge state={container.state} />
         <div className="min-w-0">
-          <div className="truncate font-mono font-medium text-zinc-900">
+          <div className="truncate font-mono font-medium text-[var(--color-text)]">
             {container.name}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-subtle)]">
             <span className="truncate">{container.statusText}</span>
             {portsText ? (
-              <span className="font-mono text-zinc-400">
+              <span className="font-mono text-[var(--color-text-subtle)]">
                 {portsText}
               </span>
             ) : null}
