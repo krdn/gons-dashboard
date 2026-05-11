@@ -184,3 +184,11 @@ export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_K
 
 - 한국어 응답 + 코드 영어는 글로벌 `~/.claude/rules/korean-response.md` 가 강제 (별도 명시 불필요).
 - **시크릿은 메모리/메시지에 평문으로 남기지 않는다** — 항상 `.env` 와 변수명으로만 지칭.
+
+## Health Stack
+
+`/health` 스킬이 사용하는 도구 목록.
+
+- typecheck: `pnpm typecheck`
+- lint: `pnpm lint`
+- test: `TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test` (로컬 DB 미기동 시 통합 13개 ECONNREFUSED — Gotcha #2 참조)
