@@ -24,7 +24,11 @@ import { auth } from "@/shared/lib/auth";
 import { modifyThread } from "@/shared/api/gmail/modify";
 import { markAsRead } from "@/features/email-analysis/api/markAsRead";
 import { archiveThread } from "@/features/email-analysis/api/archiveThread";
-import { GmailError } from "@/shared/api/gmail";
+import {
+  GmailError,
+  GmailRateLimitError,
+  InvalidGrantError,
+} from "@/shared/api/gmail";
 
 let userId: string;
 let otherUserId: string;
@@ -131,6 +135,38 @@ describe("markAsRead", () => {
     const result = await markAsRead(threadId);
     expect(result).toEqual({ ok: false, reason: "unauthorized" });
   });
+
+  it("InvalidGrantError → reason='reauth-required'", async () => {
+    (modifyThread as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new InvalidGrantError("refresh token revoked"),
+    );
+    const result = await markAsRead(threadId);
+    expect(result).toEqual({ ok: false, reason: "reauth-required" });
+  });
+
+  it("GmailRateLimitError → reason='rate-limited'", async () => {
+    (modifyThread as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new GmailRateLimitError("quota exceeded"),
+    );
+    const result = await markAsRead(threadId);
+    expect(result).toEqual({ ok: false, reason: "rate-limited" });
+  });
+
+  it("Gmail 401 → reason='unauthorized'", async () => {
+    (modifyThread as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new GmailError("token expired", 401),
+    );
+    const result = await markAsRead(threadId);
+    expect(result).toEqual({ ok: false, reason: "unauthorized" });
+  });
+
+  it("Gmail 403 → reason='forbidden'", async () => {
+    (modifyThread as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new GmailError("insufficient scope", 403, "forbidden"),
+    );
+    const result = await markAsRead(threadId);
+    expect(result).toEqual({ ok: false, reason: "forbidden" });
+  });
 });
 
 describe("archiveThread", () => {
@@ -160,5 +196,21 @@ describe("archiveThread", () => {
       .from(importantEmails)
       .where(eq(importantEmails.threadId, threadId));
     expect(row.archivedAt).toBeInstanceOf(Date);
+  });
+
+  it("InvalidGrantError → reason='reauth-required'", async () => {
+    (modifyThread as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new InvalidGrantError("refresh token revoked"),
+    );
+    const result = await archiveThread(threadId);
+    expect(result).toEqual({ ok: false, reason: "reauth-required" });
+  });
+
+  it("GmailRateLimitError → reason='rate-limited'", async () => {
+    (modifyThread as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new GmailRateLimitError("quota exceeded"),
+    );
+    const result = await archiveThread(threadId);
+    expect(result).toEqual({ ok: false, reason: "rate-limited" });
   });
 });

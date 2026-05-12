@@ -20,6 +20,17 @@ import {
 import { CategoryBadge } from "./CategoryBadge";
 import type { ImportantEmailItem } from "@/entities/email/api/getImportantEmails";
 
+// 서버 액션의 reason 코드 → 사용자 메시지. 미매핑 reason 은 코드 그대로 노출.
+const REASON_LABELS: Record<string, string> = {
+  unauthorized: "로그인이 만료되었습니다",
+  "not-found": "메일을 찾을 수 없습니다",
+  "reauth-required": "Gmail 재로그인이 필요합니다",
+  "auth-error": "인증 오류 — 잠시 후 다시 시도해주세요",
+  "rate-limited": "Gmail API 호출 한도 초과 — 잠시 후 다시 시도해주세요",
+  forbidden: "Gmail 권한이 부족합니다",
+  "gmail-error": "Gmail 처리 중 오류 — 잠시 후 다시 시도해주세요",
+};
+
 export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -107,7 +118,7 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
         </button>
         {error && (
           <span role="status" className="ml-auto text-[var(--color-severity-high)]">
-            오류: {error}
+            {REASON_LABELS[error] ?? `오류: ${error}`}
           </span>
         )}
       </footer>

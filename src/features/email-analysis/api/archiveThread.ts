@@ -9,7 +9,12 @@ import { db } from "@/shared/lib/db/client";
 import { auth } from "@/shared/lib/auth";
 import { emailThreads, importantEmails } from "@/shared/lib/db/schema";
 import { modifyThread } from "@/shared/api/gmail/modify";
-import { GmailError, getGmailTokenOrResult } from "@/shared/api/gmail";
+import {
+  GmailError,
+  GmailRateLimitError,
+  InvalidGrantError,
+  getGmailTokenOrResult,
+} from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
 import { ROUTE_DASHBOARD } from "@/shared/config/routes";
 import type { ActionResult } from "./markAsRead";
@@ -53,6 +58,28 @@ export async function archiveThread(threadId: string): Promise<ActionResult> {
         .where(eq(importantEmails.threadId, threadId));
       revalidatePath(ROUTE_DASHBOARD);
       return { ok: true };
+    }
+    // 진단 가시성: markAsRead 와 동일 패턴.
+    logger.error("archiveThread", "gmail-modify-failed", {
+      sessionUserId: userId,
+      threadId,
+      gmailThreadId: thread.gmailThreadId,
+      errorName: err instanceof Error ? err.name : "unknown",
+      status: err instanceof GmailError ? err.status : undefined,
+      googleReason: err instanceof GmailError ? err.googleReason : undefined,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    if (err instanceof InvalidGrantError) {
+      return { ok: false, reason: "reauth-required" };
+    }
+    if (err instanceof GmailRateLimitError) {
+      return { ok: false, reason: "rate-limited" };
+    }
+    if (err instanceof GmailError && err.status === 401) {
+      return { ok: false, reason: "unauthorized" };
+    }
+    if (err instanceof GmailError && err.status === 403) {
+      return { ok: false, reason: "forbidden" };
     }
     return { ok: false, reason: "gmail-error" };
   }
