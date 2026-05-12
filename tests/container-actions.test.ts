@@ -23,6 +23,16 @@ vi.mock("@/shared/lib/docker", async () => {
   return { ...actual, runDocker: (...a: unknown[]) => mockRunDocker(...a) };
 });
 
+// CI/.env에 placeholder ADMIN_EMAILS가 들어있어도 테스트는 krdn.net@gmail.com을
+// admin으로 기대한다. env 모듈은 부팅 시 freeze이므로 직접 mock.
+vi.mock("@/shared/config/env", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/shared/config/env")>(
+      "@/shared/config/env",
+    );
+  return { ...actual, env: { ...actual.env, ADMIN_EMAILS: "krdn.net@gmail.com" } };
+});
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const VALID_ID = "a".repeat(64);
