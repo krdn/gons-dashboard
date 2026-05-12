@@ -17,12 +17,14 @@ import { assertProdDbAck } from "./_lib/prodGuard";
 
 async function main() {
   assertProdDbAck("seed-hosts");
+  // app 컨테이너는 호스트 /var/run/docker.sock을 마운트하므로 `default` context = 호스트 docker daemon.
+  // 별도 `home-server` SSH context는 운영 호스트에 정의되어 있지 않고 불필요.
   const result = await db
     .insert(hosts)
     .values({
       name: "home-server",
-      dockerContext: "home-server",
-      description: "192.168.0.5 운영 서버 (Ubuntu 24.04, Docker Engine v27.5.1)",
+      dockerContext: "default",
+      description: "192.168.0.5 운영 서버 (Ubuntu 24.04) — mounted /var/run/docker.sock",
       isActive: true,
     })
     .onConflictDoUpdate({
@@ -35,7 +37,18 @@ async function main() {
     })
     .returning({ id: hosts.id, name: hosts.name });
 
+  // krdn-lenovo는 원격(192.168.0.8) 머신으로 컨테이너 안에서 SSH context 없이는 접근 불가.
+  // 현재는 비활성화 — SSH 자격증명 마운트 설계가 끝나면 재활성화.
+  const deactivated = await db
+    .update(hosts)
+    .set({ isActive: false })
+    .where(sql`${hosts.name} = 'krdn-lenovo'`)
+    .returning({ id: hosts.id, name: hosts.name, isActive: hosts.isActive });
+
   console.log("✅ seeded host:", result[0]);
+  if (deactivated.length > 0) {
+    console.log("⏸️  deactivated host:", deactivated[0]);
+  }
   process.exit(0);
 }
 

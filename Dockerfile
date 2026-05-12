@@ -40,8 +40,9 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 
 # Asia/Seoul 타임존 강제 — node-cron의 KST 8AM 정확성에 결정적
+# docker-cli — server-monitor가 호스트 /var/run/docker.sock을 통해 호스트 docker daemon 호출
 ENV TZ=Asia/Seoul
-RUN apk add --no-cache tzdata && \
+RUN apk add --no-cache tzdata docker-cli && \
     cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone
 
@@ -52,8 +53,12 @@ ENV PORT=3020
 ENV HOSTNAME=0.0.0.0
 
 # Non-root user
+# docker group GID 988 — 운영 호스트(192.168.0.5)의 docker group과 매칭.
+# 마운트된 /var/run/docker.sock(소유: root:docker, 0660)에 nextjs 사용자가 접근 가능하도록.
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001 -G nodejs
+    addgroup -g 988 docker && \
+    adduser -S nextjs -u 1001 -G nodejs && \
+    addgroup nextjs docker
 
 # Next.js standalone output (next.config.ts에서 output: 'standalone' 필요)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
