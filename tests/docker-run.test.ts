@@ -45,13 +45,13 @@ describe("runDocker", () => {
     );
   });
 
-  it("기본 timeout은 10초 (env 미설정 시)", async () => {
-    delete process.env.DOCKER_CMD_TIMEOUT_MS;
+  it("opts.timeoutMs 미지정 시 env.DOCKER_CMD_TIMEOUT_MS 값을 사용한다", async () => {
+    const { env } = await import("../src/shared/config/env");
     await runDocker("home-server", ["version"]);
     expect(mockExecFile).toHaveBeenCalledWith(
       "docker",
       expect.any(Array),
-      expect.objectContaining({ timeout: 10_000 }),
+      expect.objectContaining({ timeout: env.DOCKER_CMD_TIMEOUT_MS }),
     );
   });
 

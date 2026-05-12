@@ -28,6 +28,7 @@ import {
 } from "@/entities/project";
 import { groupByProject } from "@/features/container-list";
 import { AuditLogPanel, isAdmin } from "@/features/container-actions";
+import { env } from "@/shared/config/env";
 import { HostDashboard } from "@/widgets/host-dashboard";
 import { HelpHint } from "@/shared/ui/HelpHint";
 import { ArrowLeftIcon } from "@/shared/ui/icons";
@@ -47,10 +48,7 @@ export default async function HostDetailPage({ params }: Props) {
   const host = await getHostByName(hostName);
   if (!host) notFound();
 
-  const adminFlag = isAdmin(
-    session.user.email ?? null,
-    process.env.ADMIN_EMAILS ?? "",
-  );
+  const adminFlag = isAdmin(session.user.email ?? null, env.ADMIN_EMAILS);
 
   let containers: ContainerSummary[] = [];
   let daemonError: string | null = null;

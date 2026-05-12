@@ -20,6 +20,7 @@ import { db } from "@/shared/lib/db/client";
 import { hosts } from "@/shared/lib/db/schema";
 import { runDocker } from "@/shared/lib/docker";
 import { routeServerDetail } from "@/shared/config/routes";
+import { env } from "@/shared/config/env";
 import { isAdmin } from "../lib/isAdmin";
 import { insertAuditLog } from "./insertAuditLog";
 
@@ -53,7 +54,7 @@ export async function runAction(
   if (!email) return { ok: false, code: "UNAUTHORIZED" };
 
   // 2) Authorization
-  if (!isAdmin(email, process.env.ADMIN_EMAILS ?? "")) {
+  if (!isAdmin(email, env.ADMIN_EMAILS)) {
     return { ok: false, code: "FORBIDDEN" };
   }
 

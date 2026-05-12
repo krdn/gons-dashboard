@@ -53,7 +53,8 @@ beforeEach(async () => {
   hostId = h.id;
   mockAuth.mockReset();
   mockRunDocker.mockReset();
-  process.env.ADMIN_EMAILS = "krdn.net@gmail.com";
+  // ADMIN_EMAILS는 .env에서 부팅 시점에 env 모듈로 freeze (process.env 직접 변경은 무의미).
+  // .env에 krdn.net@gmail.com이 admin으로 설정되어 있는 가정 위에서 테스트.
 });
 
 async function loadAction(name: "restart" | "start" | "stop") {
