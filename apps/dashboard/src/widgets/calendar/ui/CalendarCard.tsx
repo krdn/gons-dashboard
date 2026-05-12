@@ -183,7 +183,7 @@ function ReauthState() {
         Google 캘린더 접근 권한이 만료되었어요.
       </p>
       <Link
-        href="/api/auth/signin/google"
+        href="/login"
         className="mt-3 inline-block text-xs text-[var(--color-accent)] hover:underline"
       >
         다시 로그인 →
