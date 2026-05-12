@@ -22,6 +22,15 @@ importers:
       '@auth/drizzle-adapter':
         specifier: ^1.7.4
         version: 1.11.2
+      '@gons/mcp-calendar':
+        specifier: workspace:*
+        version: link:../../packages/mcp-calendar
+      '@gons/shared-google':
+        specifier: workspace:*
+        version: link:../../packages/shared-google
+      '@gons/shared-mcp-runtime':
+        specifier: workspace:*
+        version: link:../../packages/shared-mcp-runtime
       '@tanstack/react-query':
         specifier: ^5.62.7
         version: 5.100.9(react@19.2.4)
