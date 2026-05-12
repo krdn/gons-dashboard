@@ -7,7 +7,7 @@
 
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { auth } from "@/shared/lib/auth";
+import { auth, signOut } from "@/shared/lib/auth";
 import {
   EmailDigestCard,
   EmailDigestSkeleton,
@@ -47,12 +47,26 @@ export default async function DashboardPage() {
         <h1 className="text-display font-bold tracking-tight">
           gons<span className="text-[var(--color-accent)]">.</span>dashboard
         </h1>
-        <p className="mt-2 text-xs text-[var(--color-text-muted)] tabular-nums">
-          {nowKst} KST
+        <p className="mt-2 flex items-baseline gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
+          <span>{nowKst} KST</span>
           {greetingName && (
             <>
-              {" · "}
+              <span aria-hidden>·</span>
               <span>{greetingName}</span>
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/login" });
+                }}
+              >
+                <button
+                  type="submit"
+                  className="rounded border border-[var(--color-hairline)] px-2 py-0.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
+                  aria-label="로그아웃"
+                >
+                  로그아웃
+                </button>
+              </form>
             </>
           )}
         </p>
