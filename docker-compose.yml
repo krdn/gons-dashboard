@@ -82,6 +82,8 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS}
       DOCKER_DEFAULT_CONTEXT: ${DOCKER_DEFAULT_CONTEXT:-default}
       DOCKER_CMD_TIMEOUT_MS: ${DOCKER_CMD_TIMEOUT_MS:-10000}
+      # MCP mediator (Calendar MCP 파일럿)
+      MCP_DASHBOARD_TOKEN: ${MCP_DASHBOARD_TOKEN}
     ports:
       - "3020:3020"
     volumes:
