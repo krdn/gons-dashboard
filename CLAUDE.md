@@ -199,6 +199,17 @@ import Anthropic from "@anthropic-ai/sdk";
 export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY 자동 인식
 ```
 
+## MCP 도구 호출 정책
+
+`packages/mcp-*` 의 도구 함수는 두 경로로 호출된다:
+
+1. **In-process (대시보드 RSC)**: 위젯이 `import { makeXxxTool } from "@gons/mcp-xxx"` → 토큰은 같은 프로세스의 mediator 라우트(`/api/mcp/credentials/*`)에서 받아옴 (절대 URL — `NEXTAUTH_URL` 베이스).
+2. **Stdio (Claude Code)**: `packages/mcp-*/dist/cli.js`가 자식 프로세스로 spawn → `MCP_DASHBOARD_URL` 환경변수로 mediator HTTPS 호출.
+
+OAuth refresh token은 `apps/dashboard`의 `accounts` 테이블에만 존재 (pgcrypto). MCP 패키지는 절대 refresh token을 보지 못한다 — mediator가 발급하는 5분 access token만 사용.
+
+신규 도메인 MCP 추가 시: `packages/mcp-<domain>` + `packages/shared-<provider>` (이미 있으면 재사용) + dashboard에 `/api/mcp/credentials/<provider>` mediator. spec 패턴 — `docs/superpowers/specs/2026-05-12-hybrid-mcp-api-domains-design.md`.
+
 ## Agent 보조 자료
 
 - **Issue tracker**: GitHub Issues (`krdn/gons-dashboard`), `gh` CLI — 상세는 `docs/agents/issue-tracker.md`

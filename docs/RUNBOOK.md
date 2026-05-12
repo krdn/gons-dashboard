@@ -353,3 +353,43 @@ UI 동작:
 - **모든 컨테이너가 standalone 그룹**: compose 미사용 또는 `com.docker.compose.project` 라벨 누락. `docker inspect <id> --format '{{.Config.Labels}}'`로 라벨 확인. compose 사용 권장.
 - **projects 테이블의 displayName이 compose project 이름과 동일**: lazy upsert 시 default가 composeProject 그대로 들어감. seed-projects 재실행으로 정렬: `pnpm db:seed:projects`.
 - **새 compose가 모니터에 안 보임**: 화이트리스트 미등록. 위 "Project 좀비 row 정리 — 새 compose 추가" 절차 참조.
+
+## MCP — Calendar 파일럿
+
+### 토큰 회전 (MCP_DASHBOARD_TOKEN)
+
+```bash
+NEW_TOKEN=$(openssl rand -hex 32)
+# 1. 운영 .env 갱신 (192.168.0.5의 compose .env)
+ssh gon@192.168.0.5 "cd /home/gon/projects/gon/gons-dashboard && \
+  sed -i 's/^MCP_DASHBOARD_TOKEN=.*/MCP_DASHBOARD_TOKEN='\"$NEW_TOKEN\"'/' .env && \
+  docker --context home-server compose up -d app"
+
+# 2. 사용자 머신의 Claude Code MCP 설정 갱신
+#    ~/.config/claude/mcp.json 또는 사용자 설정 UI
+```
+
+### Calendar 위젯이 안 보일 때
+
+- 401 (mediator bearer 불일치): app 컨테이너 .env의 MCP_DASHBOARD_TOKEN 확인
+- 410 (refresh 만료): 사용자 https://gons.krdn.kr 로그아웃 → 재로그인 (calendar.readonly scope 동의)
+- 503 (Google API 일시 오류): 페이지 새로고침 — 자연 복구
+
+### 사용자 머신의 Claude Code 등록
+
+```json
+{
+  "mcpServers": {
+    "gons-calendar": {
+      "command": "node",
+      "args": ["/home/gon/projects/gon/gons-dashboard/packages/mcp-calendar/dist/cli.js"],
+      "env": {
+        "MCP_DASHBOARD_URL": "https://gons.krdn.kr",
+        "MCP_DASHBOARD_TOKEN": "<위 .env와 동일한 값>"
+      }
+    }
+  }
+}
+```
+
+빌드는 `pnpm --filter @gons/mcp-calendar build` — Claude Code 재시작 후 `gons-calendar` 도구 사용 가능.
