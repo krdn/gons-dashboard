@@ -8,7 +8,7 @@ import { CalendarEventSchema } from "../domain/event";
 import { normalizeEvent } from "../domain/normalize-event";
 
 const InputSchema = z.object({
-  withinHours: z.number().int().min(1).max(168).default(24),
+  withinHours: z.number().int().min(1).max(336).default(24),
   limit: z.number().int().min(1).max(50).default(10),
   calendarId: z.string().default("primary"),
 });
@@ -32,7 +32,7 @@ export function makeGetUpcomingEventsTool(deps: MakeGetUpcomingEventsToolDeps) {
   return defineTool({
     name: "calendar.getUpcomingEvents",
     description:
-      "다음 N시간(기본 24h)의 Google Calendar 일정을 시작 시각 오름차순으로 반환합니다. 반복 일정은 인스턴스로 펼쳐집니다.",
+      "다음 N시간(기본 24h, 최대 336h=2주)의 Google Calendar 일정을 시작 시각 오름차순으로 반환합니다. 반복 일정은 인스턴스로 펼쳐집니다.",
     input: InputSchema,
     output: OutputSchema,
     handler: async (input) => {

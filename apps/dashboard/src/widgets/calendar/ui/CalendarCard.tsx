@@ -10,11 +10,12 @@ import {
   listUpcomingEvents,
   OAuthExpiredError,
 } from "@gons/shared-google";
-import { groupByDay } from "../lib/groupByDay";
-import { formatHHMM } from "./format";
+import { formatDayLabel, formatHHMM } from "./format";
 
-// in-process로 mcp-calendar tool을 호출. 토큰은 같은 프로세스의 mediator
-// 라우트를 fetch (https://localhost 자체호출은 피하고 절대 URL 사용).
+const WITHIN_HOURS_2W = 336; // 14일
+const FETCH_LIMIT = 50; // mcp-calendar 스키마 상한
+const PREVIEW_COUNT = 7; // 위젯에 펼쳐 보일 가까운 일정 개수
+
 async function fetchEventsForWidget(): Promise<
   { ok: true; events: CalendarEvent[] } | { ok: false; reason: "reauth" | "transient" }
 > {
@@ -31,8 +32,8 @@ async function fetchEventsForWidget(): Promise<
   });
   try {
     const result = await tool.handler({
-      withinHours: 48, // today + tomorrow 범위를 안전하게 커버
-      limit: 20,
+      withinHours: WITHIN_HOURS_2W,
+      limit: FETCH_LIMIT,
       calendarId: "primary",
     });
     return { ok: true, events: result.events };
@@ -52,8 +53,10 @@ export async function CalendarCard() {
     return <TransientState />;
   }
 
-  const groups = groupByDay(result.ok ? result.events : [], new Date());
-  const hasAny = groups.today.length + groups.tomorrow.length > 0;
+  const now = new Date();
+  const events = result.ok ? result.events : [];
+  const preview = events.slice(0, PREVIEW_COUNT);
+  const remaining = Math.max(0, events.length - preview.length);
 
   return (
     <section
@@ -62,23 +65,34 @@ export async function CalendarCard() {
     >
       <h2
         id="calendar-heading"
-        className="mb-4 text-base font-semibold text-[var(--color-text-muted)]"
+        className={`text-base font-semibold text-[var(--color-text-muted)] ${
+          events.length > 0 ? "mb-1" : "mb-4"
+        }`}
       >
         Calendar
       </h2>
-      {hasAny ? (
-        <div className="flex flex-col gap-5">
-          {groups.today.length > 0 && (
-            <DayGroup label="오늘" events={groups.today} now={new Date()} />
-          )}
-          {groups.tomorrow.length > 0 && (
-            <DayGroup label="내일" events={groups.tomorrow} now={null} />
-          )}
-        </div>
+      {events.length > 0 ? (
+        <>
+          <p className="mb-4 text-xs text-[var(--color-text-subtle)]">
+            다음 2주: 일정 {events.length}건
+          </p>
+          <ul className="flex flex-col gap-2">
+            {preview.map((ev) => (
+              <EventRow key={ev.id} event={ev} now={now} />
+            ))}
+          </ul>
+        </>
       ) : (
         <EmptyState />
       )}
-      <p className="mt-5 text-xs">
+      <div className="mt-5 flex items-center justify-between text-xs">
+        {remaining > 0 ? (
+          <span className="text-[var(--color-text-subtle)]">
+            + {remaining}건 더
+          </span>
+        ) : (
+          <span />
+        )}
         <a
           href="https://calendar.google.com"
           target="_blank"
@@ -87,53 +101,38 @@ export async function CalendarCard() {
         >
           Google 캘린더에서 열기 →
         </a>
-      </p>
+      </div>
     </section>
   );
 }
 
-function DayGroup({
-  label,
-  events,
-  now,
-}: {
-  label: string;
-  events: CalendarEvent[];
-  now: Date | null;
-}) {
-  return (
-    <div>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-text-subtle)]">
-        {label}
-      </h3>
-      <ul className="flex flex-col gap-3">
-        {events.map((ev) => (
-          <EventRow key={ev.id} event={ev} now={now} />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function EventRow({ event, now }: { event: CalendarEvent; now: Date | null }) {
-  const start = formatHHMM(event.startAt);
-  const end = formatHHMM(event.endAt);
+function EventRow({ event, now }: { event: CalendarEvent; now: Date }) {
+  const dayLabel = formatDayLabel(event.startAt, now);
+  const startMs = new Date(event.startAt).getTime();
+  const endMs = new Date(event.endAt).getTime();
   const inProgress =
-    now !== null &&
-    new Date(event.startAt).getTime() <= now.getTime() &&
-    now.getTime() <= new Date(event.endAt).getTime();
+    !event.allDay && startMs <= now.getTime() && now.getTime() <= endMs;
   return (
     <li>
       <a
         href={event.htmlLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="block rounded-lg border border-transparent px-2 py-1 hover:border-[var(--color-hairline)] hover:bg-[var(--color-surface-2)]"
+        className="block rounded-lg border border-transparent px-2 py-1.5 hover:border-[var(--color-hairline)] hover:bg-[var(--color-surface-2)]"
       >
         <div className="flex items-baseline gap-2 text-xs tabular-nums text-[var(--color-text-muted)]">
-          <time dateTime={event.startAt}>{start}</time>
-          <span aria-hidden>—</span>
-          <time dateTime={event.endAt}>{end}</time>
+          <span className="min-w-[3.5rem] text-[var(--color-text-subtle)]">
+            {dayLabel}
+          </span>
+          {event.allDay ? (
+            <span className="text-[var(--color-text-subtle)]">종일</span>
+          ) : (
+            <>
+              <time dateTime={event.startAt}>{formatHHMM(event.startAt)}</time>
+              <span aria-hidden>—</span>
+              <time dateTime={event.endAt}>{formatHHMM(event.endAt)}</time>
+            </>
+          )}
           {inProgress && (
             <span
               aria-label="진행 중"
@@ -158,7 +157,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-[var(--color-text-muted)]">
-        다음 24시간 동안 일정이 없습니다.
+        다음 2주 동안 일정이 없습니다.
       </p>
       <blockquote className="text-xs italic text-[var(--color-text-subtle)]">
         ⌬ &quot;쉼 없는 일상은 일상이 아니라 중단이다.&quot; — 한병철
