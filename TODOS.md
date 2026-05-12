@@ -164,6 +164,32 @@
 - **Cons**: 잠시 stop된 컨테이너의 project row가 의도치 않게 삭제될 수 있어 grace period(예: 24h+ 비활성) 결정 필요. 사용자 명시 동의가 한 번 더 필요한 안건.
 - **Where to start**: `app/api/cron/cleanup-projects/route.ts` + grace period 로직.
 
+## MCP — Calendar 파일럿 후속
+
+### 1. getEventDetail tool
+
+- **What**: 단일 이벤트 상세 (description, 전체 attendees) 를 받는 tool
+- **Why**: 위젯에서 이벤트 클릭 시 대시보드 내 모달, Claude의 깊은 질의
+- **Where to start**: `packages/mcp-calendar/src/tools/get-event-detail.ts`
+
+### 2. HMAC short-lived mediator token (v2)
+
+- **What**: `/api/mcp/credentials/*` 의 정적 bearer를 60초 TTL HMAC로 전환
+- **Why**: 정적 bearer 노출 시 Google access token 무한 발급 가능 — 이를 60초로 제한
+- **Depends on**: 외부 webhook 도입 시점에 함께 (TODOS #1)
+- **Where to start**: `packages/shared-mcp-runtime/src/auth-hmac.ts`
+
+### 3. Tasks placeholder 채우기 (Todoist or Notion MCP)
+
+- **What**: 우측 사이드바의 Tasks 자리를 동일 Hybrid 패턴으로 채움
+- **Where to start**: `packages/mcp-tasks` 패키지
+
+### 4. 기존 도메인 → MCP 패키지 추출 마이그레이션
+
+- **What**: email-digest, important-emails, server-overview, host-dashboard를 동일 패턴으로 추출
+- **Why**: LLM이 답장 우선순위 추천, 서버 액션 트리거 등 활용 가능
+- **Cons**: 위젯 도메인 import → tool import 리팩토링. 단계적 진행.
+
 ## 백로그 (확정되지 않음)
 
 - 답장 자동 작성 (A 곁가지) — V0 검증 후 사용자 직접 결정

@@ -72,7 +72,11 @@ jobs:
           CRON_BEARER_TOKEN: a-placeholder-cron-token-of-at-least-32-characters
           ALLOWLIST_EMAILS: build@placeholder.local
           ADMIN_EMAILS: build@placeholder.local
+          MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
         run: pnpm test
+
+      - name: Build MCP packages
+        run: pnpm --filter @gons/mcp-calendar build
 
       - name: Build (sanity check)
         env:
@@ -89,6 +93,7 @@ jobs:
           CRON_BEARER_TOKEN: a-placeholder-cron-token-of-at-least-32-characters
           ALLOWLIST_EMAILS: build@placeholder.local
           ADMIN_EMAILS: build@placeholder.local
+          MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
         run: pnpm build
 
   docker:

@@ -21,6 +21,7 @@ import {
   ServerOverviewCard,
   ServerOverviewSkeleton,
 } from "@/widgets/server-overview";
+import { CalendarCard, CalendarSkeleton } from "@/widgets/calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -94,18 +95,10 @@ export default async function DashboardPage() {
           </Suspense>
         </div>
 
-        <aside aria-label="향후 위젯 자리" className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-[var(--color-text-muted)]">
-            곧 추가될 영역
-          </h2>
-          <div className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-5 py-5 text-[var(--color-text-subtle)]">
-            <h3 className="mb-2 text-sm font-medium text-[var(--color-text-muted)]">
-              Calendar
-            </h3>
-            <p className="m-0 text-xs">
-              오늘의 미팅·내일까지 답해야 할 일정이 여기 표시됩니다.
-            </p>
-          </div>
+        <aside aria-label="우측 위젯" className="flex flex-col gap-4">
+          <Suspense fallback={<CalendarSkeleton />}>
+            <CalendarCard />
+          </Suspense>
           <div className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-5 py-5 text-[var(--color-text-subtle)]">
             <h3 className="mb-2 text-sm font-medium text-[var(--color-text-muted)]">
               Tasks

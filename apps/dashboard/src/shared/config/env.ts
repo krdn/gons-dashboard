@@ -55,6 +55,10 @@ const schema = z.object({
   // restart/start/stop 액션 admin allowlist (콤마 구분 이메일)
   ADMIN_EMAILS: z.string().min(1),
 
+  // MCP mediator bearer — packages/mcp-* → /api/mcp/credentials/* 호출 인증.
+  // v1은 정적 bearer. v2에서 HMAC short-lived로 전환 (TODOS #1 / spec §8).
+  MCP_DASHBOARD_TOKEN: z.string().min(32, "openssl rand -hex 32 로 생성"),
+
   // 타임존 (cron + DB 쿼리에 결정적)
   TZ: z.literal("Asia/Seoul").default("Asia/Seoul"),
 });
