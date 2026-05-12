@@ -112,7 +112,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./apps/dashboard/Dockerfile
           push: true
           tags: |
             ghcr.io/krdn/gons-dashboard:latest
@@ -123,8 +123,8 @@ jobs:
       - name: Build & push cron image
         uses: docker/build-push-action@v5
         with:
-          context: ./cron
-          file: ./cron/Dockerfile
+          context: ./apps/cron
+          file: ./apps/cron/Dockerfile
           push: true
           tags: |
             ghcr.io/krdn/gons-dashboard-cron:latest
