@@ -40,13 +40,18 @@ async function main() {
 
       console.log(`   📜 OAuth 계정 (${acct.length}개):`);
       acct.forEach((a) => {
+        const hasModify = a.scope?.includes("gmail.modify");
         const hasReadonly = a.scope?.includes("gmail.readonly");
         const hasMetadata = a.scope?.includes("gmail.metadata");
-        const verdict = hasReadonly
-          ? "✅ readonly OK"
-          : hasMetadata
-            ? "⚠️ metadata만 있음 → 마이그 필요"
-            : "❓ 알 수 없음";
+        // 합격선: gmail.modify (messages.modify 호출에 필수).
+        // readonly 만 있으면 "읽음"/"보관" 액션이 403 으로 실패 — 재로그인 필요.
+        const verdict = hasModify
+          ? "✅ modify OK"
+          : hasReadonly
+            ? "⚠️ readonly만 있음 → 재로그인 필요 (modify 누락)"
+            : hasMetadata
+              ? "⚠️ metadata만 있음 → 재로그인 필요"
+              : "❓ 알 수 없음";
         console.log(`     - ${a.provider}: ${verdict}`);
         console.log(`       scope: ${a.scope || "(없음)"}`);
       });

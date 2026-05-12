@@ -3,7 +3,9 @@
 // 정책:
 //  - External Test 모드 (refresh token 7일 만료) — D3 결정대로 만료 감지 → 메일 알림 + 배너
 //  - allowlist에 있는 이메일만 로그인 허용
-//  - Gmail scope: gmail.readonly + gmail.metadata + openid + userinfo.email
+//  - Gmail scope: gmail.modify + gmail.readonly + openid + userinfo.email
+//    (modify 가 readonly 의 superset 이라 modify 단독으로도 list/get 가능하지만,
+//     독자가 "왜 readonly 가 없지?" 자문하지 않도록 둘 다 명시)
 import "server-only";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
@@ -39,16 +41,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
-          // gmail.readonly만 — gmail.metadata와 함께 부여하면 metadata가 우선 적용되어
-          // messages.list?q= search 쿼리가 차단됨 ("Metadata scope does not support 'q' parameter").
-          // readonly 단독 부여 시 메타데이터 + search 모두 가능.
+          // gmail.modify 는 messages.modify (라벨 추가/제거) 호출에 필수.
+          //   - readonly 만 부여 시 modify API 호출이 403 ("Gmail 권한이 부족합니다").
+          //   - "읽음"/"보관" 액션이 동작하려면 modify 가 grant 되어야 함.
+          // gmail.metadata 는 의도적으로 제외 — readonly 와 함께 부여하면 metadata 가
+          // 우선 적용되어 messages.list?q= search 쿼리가 차단됨 ("Metadata scope does
+          // not support 'q' parameter").
+          // include_granted_scopes: 사용자가 부분 scope 만 거친 후 추가 scope 요청 시
+          // 이전 grant 를 보존 (Google OAuth incremental authorization).
           scope: [
             "openid",
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.modify",
           ].join(" "),
           access_type: "offline",
           prompt: "consent", // refresh_token 발급 보장
+          include_granted_scopes: "true",
         },
       },
     }),
