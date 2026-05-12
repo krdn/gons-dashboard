@@ -80,10 +80,14 @@ services:
       PG_ENCRYPTION_KEY: ${PG_ENCRYPTION_KEY:-}
       # 서버 인프라 모니터 v0.1+
       ADMIN_EMAILS: ${ADMIN_EMAILS}
-      DOCKER_DEFAULT_CONTEXT: ${DOCKER_DEFAULT_CONTEXT:-home-server}
+      DOCKER_DEFAULT_CONTEXT: ${DOCKER_DEFAULT_CONTEXT:-default}
       DOCKER_CMD_TIMEOUT_MS: ${DOCKER_CMD_TIMEOUT_MS:-10000}
     ports:
       - "3020:3020"
+    volumes:
+      # server-monitor: 호스트 docker daemon에 접근.
+      # runDocker()가 `docker --context default ...` → /var/run/docker.sock 경유로 호스트 컨테이너 조회/액션.
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test:
         ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3020/api/health"]
