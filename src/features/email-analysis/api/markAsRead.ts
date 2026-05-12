@@ -9,7 +9,12 @@ import { db } from "@/shared/lib/db/client";
 import { auth } from "@/shared/lib/auth";
 import { emailThreads, importantEmails } from "@/shared/lib/db/schema";
 import { modifyThread } from "@/shared/api/gmail/modify";
-import { GmailError, getGmailTokenOrResult } from "@/shared/api/gmail";
+import {
+  GmailError,
+  GmailRateLimitError,
+  InvalidGrantError,
+  getGmailTokenOrResult,
+} from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
 import { ROUTE_DASHBOARD } from "@/shared/config/routes";
 
@@ -58,6 +63,29 @@ export async function markAsRead(threadId: string): Promise<ActionResult> {
         .where(eq(importantEmails.threadId, threadId));
       revalidatePath(ROUTE_DASHBOARD);
       return { ok: true };
+    }
+    // 진단 가시성: catch 가 reason 코드만 던지면 "gmail-error" 표면 라벨로 끝나 근본 원인 파악 불가.
+    // status / googleReason / message 를 stdout JSON 으로 남겨 docker logs 에서 추적 가능하게.
+    logger.error("markAsRead", "gmail-modify-failed", {
+      sessionUserId: userId,
+      threadId,
+      gmailThreadId: thread.gmailThreadId,
+      errorName: err instanceof Error ? err.name : "unknown",
+      status: err instanceof GmailError ? err.status : undefined,
+      googleReason: err instanceof GmailError ? err.googleReason : undefined,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    if (err instanceof InvalidGrantError) {
+      return { ok: false, reason: "reauth-required" };
+    }
+    if (err instanceof GmailRateLimitError) {
+      return { ok: false, reason: "rate-limited" };
+    }
+    if (err instanceof GmailError && err.status === 401) {
+      return { ok: false, reason: "unauthorized" };
+    }
+    if (err instanceof GmailError && err.status === 403) {
+      return { ok: false, reason: "forbidden" };
     }
     return { ok: false, reason: "gmail-error" };
   }
