@@ -68,14 +68,17 @@ describe("getUpcomingEvents tool", () => {
     expect(result.fetchedAt).toBe("2026-05-12T07:30:00.000Z");
   });
 
-  it("rejects withinHours > 168 (Zod)", async () => {
+  it("accepts withinHours up to 336 (2 weeks) and rejects beyond", async () => {
     const tool = makeGetUpcomingEventsTool({
       getAccessToken: async () => "ya29",
       listFn: async () => ({ items: [] }),
       now: () => new Date(),
     });
     await expect(
-      tool.handler({ withinHours: 200, limit: 10, calendarId: "primary" }),
+      tool.handler({ withinHours: 336, limit: 10, calendarId: "primary" }),
+    ).resolves.toBeDefined();
+    await expect(
+      tool.handler({ withinHours: 337, limit: 10, calendarId: "primary" }),
     ).rejects.toThrow();
   });
 });
