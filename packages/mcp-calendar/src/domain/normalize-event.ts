@@ -8,13 +8,23 @@ const ATTENDEE_STATUSES = new Set([
   "needsAction",
 ] as const);
 
-export function normalizeEvent(raw: RawGoogleEvent): CalendarEvent {
+export interface CalendarMeta {
+  calendarId: string;
+  calendarSummary: string;
+}
+
+export function normalizeEvent(
+  raw: RawGoogleEvent,
+  meta: CalendarMeta,
+): CalendarEvent {
   const allDay = Boolean(raw.start?.date && !raw.start?.dateTime);
   const startAt = toIsoUtc(raw.start?.dateTime ?? raw.start?.date);
   const endAt = toIsoUtc(raw.end?.dateTime ?? raw.end?.date);
 
   return {
     id: raw.id,
+    calendarId: meta.calendarId,
+    calendarSummary: meta.calendarSummary,
     title: raw.summary?.trim() || "(제목 없음)",
     startAt,
     endAt,

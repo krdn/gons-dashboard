@@ -9,6 +9,10 @@ import { z } from "zod";
 // - meetingUrl은 hangoutLink 우선, 없으면 description에서 Zoom/Meet URL 추출.
 export const CalendarEventSchema = z.object({
   id: z.string(),
+  // 출처 캘린더. 같은 raw id 가 여러 캘린더에 떨어질 수 있으므로
+  // 위젯의 React key 는 `${calendarId}:${id}` 로 합성해야 한다.
+  calendarId: z.string(),
+  calendarSummary: z.string(),
   title: z.string(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
