@@ -38,7 +38,7 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
   return (
     <article
       role="listitem"
-      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm"
+      className="rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface)] p-4 shadow-sm"
     >
       <header className="flex items-baseline justify-between gap-3 text-xs text-[var(--color-text-muted)]">
         <CategoryBadge category={item.category} importance={item.importance} />
@@ -66,7 +66,7 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
           href={gmailUrl}
           target="_blank"
           rel="noreferrer"
-          className="rounded border border-[var(--color-border)] px-2 py-1 hover:bg-[var(--color-surface-muted)]"
+          className="rounded border border-[var(--color-hairline)] px-2 py-1 hover:bg-[var(--color-surface-2)]"
         >
           Gmail
         </a>
@@ -74,7 +74,7 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
           type="button"
           onClick={onRead}
           disabled={isPending}
-          className="rounded border border-[var(--color-border)] px-2 py-1 hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
+          className="rounded border border-[var(--color-hairline)] px-2 py-1 hover:bg-[var(--color-surface-2)] disabled:opacity-50"
         >
           읽음
         </button>
@@ -82,7 +82,7 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
           type="button"
           onClick={onArchive}
           disabled={isPending}
-          className="rounded border border-[var(--color-border)] px-2 py-1 hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
+          className="rounded border border-[var(--color-hairline)] px-2 py-1 hover:bg-[var(--color-surface-2)] disabled:opacity-50"
         >
           보관
         </button>
