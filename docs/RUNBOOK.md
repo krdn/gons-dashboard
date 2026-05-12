@@ -92,16 +92,20 @@ dcserver up -d app --force-recreate
 
 ## OAuth 강제 재인증
 
-scope 변경, refresh token 손상 시:
+**일반 케이스 (scope 추가)**: 사용자가 한 번 로그아웃 → 다시 로그인하면 자동 회복.
+`events.signIn` 의 `refreshAccountTokens` 가 새 scope/token 을 명시 UPDATE 한다
+(Gotcha #6 참조). 별도 스크립트 실행 불필요.
+
+**예외 케이스 (refresh token 손상, oauth_state 꼬임, adapter 회복 안 됨)**:
 
 ```bash
-# 1. dry-run으로 현재 상태 확인
+# 1. dry-run 으로 현재 상태 확인
 pnpm exec tsx src/scripts/_dryrun-oauth-scope.ts
 
-# 2. 실제 reset
+# 2. 실제 reset — accounts row DELETE + oauth_state='reauth_required'
 pnpm exec tsx src/scripts/fix-oauth-scope.ts
 
-# 3. https://gons.krdn.kr 에서 재로그인
+# 3. https://gons.krdn.kr 에서 재로그인 (fresh INSERT)
 ```
 
 ## DB 마이그

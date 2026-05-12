@@ -148,6 +148,12 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test
 
 `src/app/servers/[hostName]/page.tsx` 는 display 용 (`getProjects`, hidden=false) 과 dedup 용 (`getProjectComposeKeys`, hidden 포함) project 키 set 을 분리해야 한다. 하나만 쓰면 hidden project 가 매 요청마다 unknown 으로 분류돼 `onConflictDoUpdate` 가 트리거되는 thrash 가 재현된다.
 
+### 6. OAuth scope 변경은 자동 회복 — events.signIn refreshAccountTokens
+
+`@auth/drizzle-adapter` 의 `linkAccount` 는 PK 충돌 시 silent fail (INSERT-only). 새 scope 또는 rotated refresh token 으로 재로그인해도 기존 `accounts` row 의 토큰 필드가 **자동으로 갱신되지 않는다**. `events.signIn` 에서 `refreshAccountTokens(db, account)` 를 호출해 명시 UPDATE 하도록 핫픽스 완료 (2026-05-12 Calendar MCP scope 사고 이후). NextAuth scope 배열에 새 항목을 추가할 때 사용자별 `DELETE FROM accounts; 재로그인` 절차는 더 이상 필요 없음 — 사용자가 한 번 재로그인하면 새 scope 가 자동으로 반영된다.
+
+회복 안 될 때만 폴백: `scripts/fix-oauth-scope.ts` (accounts row DELETE → fresh INSERT).
+
 ## 환경 변수
 
 `.env.example` 에 전체 목록. 부팅 시 `shared/config/env.ts` 가 Zod 로 검증해 빈 값/잘못된 형식이면 즉시 throw.
