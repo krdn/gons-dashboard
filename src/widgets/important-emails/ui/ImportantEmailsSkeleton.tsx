@@ -5,7 +5,7 @@ export function ImportantEmailsSkeleton() {
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
-          className="h-24 animate-pulse rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)]"
+          className="h-24 animate-pulse rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-2)]"
         />
       ))}
     </div>
