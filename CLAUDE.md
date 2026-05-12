@@ -51,6 +51,23 @@ I_KNOW_THIS_IS_PROD=1 pnpm db:seed:hosts
 
 dev DB (`localhost` / `127.0.0.1`) 면 가드 통과로 평소처럼 실행.
 
+## 레포 레이아웃 (monorepo)
+
+pnpm workspaces 모노레포. dashboard와 cron 컨테이너가 각각 `apps/` 하위 패키지.
+
+```
+gons-dashboard/
+├── apps/
+│   ├── dashboard/   # Next.js 앱 (@gons/dashboard)
+│   └── cron/        # node-cron 컨테이너 (@gons/cron) — 매시간 /api/cron/* 호출
+└── packages/        # MCP 서버 패키지가 추가될 자리 (plan-B 이후)
+```
+
+root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.md
+하위 명령(`pnpm dev`, `pnpm typecheck` 등)은 그대로 동작. 직접 `apps/dashboard/`에
+들어가 실행해도 동일하다. cron은 Docker로만 빌드(GHA가 `apps/cron`을 컨텍스트로
+`ghcr.io/krdn/gons-dashboard-cron:latest` 푸시).
+
 ## 기술 스택
 
 - **프레임워크**: Next.js 16 (App Router, RSC + Server Actions, Turbopack)
