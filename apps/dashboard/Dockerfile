@@ -1,12 +1,13 @@
-# gons-dashboard — multi-stage build
+# gons-dashboard — monorepo multi-stage build
 # Next.js 16 standalone output → 작은 production 이미지
+# build context: monorepo root (docker-compose의 context: .)
 
 # ---- Stage 1: deps (의존성 캐시 레이어) ----
 FROM node:24-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-COPY pnpm-workspace.yaml* ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/dashboard/package.json ./apps/dashboard/
 RUN pnpm install --frozen-lockfile --prod=false
 
 # ---- Stage 2: build ----
@@ -14,7 +15,9 @@ FROM node:24-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/apps/dashboard/node_modules ./apps/dashboard/node_modules
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+COPY apps/dashboard ./apps/dashboard
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # 빌드 타임 환경 변수 placeholder.
@@ -33,7 +36,7 @@ ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
     ALLOWLIST_EMAILS=build@placeholder.local \
     ADMIN_EMAILS=build@placeholder.local
 
-RUN pnpm build
+RUN pnpm --filter @gons/dashboard build
 
 # ---- Stage 3: runner (production) ----
 FROM node:24-alpine AS runner
@@ -60,11 +63,12 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 -G nodejs && \
     addgroup nextjs docker
 
-# Next.js standalone output (next.config.ts에서 output: 'standalone' 필요)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+# Next.js standalone output은 apps/dashboard/.next/standalone/ 에 생성됨.
+# 이미지에는 standalone 결과만 복사해 크기 최소화.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/public ./apps/dashboard/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/drizzle ./apps/dashboard/drizzle
 
 USER nextjs
 EXPOSE 3020
@@ -72,4 +76,4 @@ EXPOSE 3020
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD wget --quiet --spider http://127.0.0.1:3020/api/health || exit 1
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/dashboard/server.js"]
