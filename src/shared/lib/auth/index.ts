@@ -47,8 +47,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // gmail.metadata 는 의도적으로 제외 — readonly 와 함께 부여하면 metadata 가
           // 우선 적용되어 messages.list?q= search 쿼리가 차단됨 ("Metadata scope does
           // not support 'q' parameter").
-          // include_granted_scopes: 사용자가 부분 scope 만 거친 후 추가 scope 요청 시
-          // 이전 grant 를 보존 (Google OAuth incremental authorization).
+          //
+          // include_granted_scopes 를 의도적으로 *설정하지 않음*: 켜면 같은 OAuth client
+          // 로 과거에 grant 된 admin-controlled scope (예: cloud-identity.devices) 가
+          // 자동 포함되어 invalid_scope 400 으로 consent 거부됨. prompt=consent +
+          // 명시적 scope 목록만으로 충분.
           scope: [
             "openid",
             "https://www.googleapis.com/auth/userinfo.email",
@@ -57,7 +60,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ].join(" "),
           access_type: "offline",
           prompt: "consent", // refresh_token 발급 보장
-          include_granted_scopes: "true",
         },
       },
     }),
