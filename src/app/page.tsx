@@ -47,7 +47,7 @@ export default async function DashboardPage() {
         <h1 className="text-display font-bold tracking-tight">
           gons<span className="text-[var(--color-accent)]">.</span>dashboard
         </h1>
-        <p className="mt-2 flex items-baseline gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
+        <div className="mt-2 flex items-baseline gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
           <span>{nowKst} KST</span>
           {greetingName && (
             <>
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
               </form>
             </>
           )}
-        </p>
+        </div>
       </header>
 
       <section className="mb-12">
