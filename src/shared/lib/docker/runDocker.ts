@@ -3,6 +3,7 @@
 import "server-only";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
+import { env } from "@/shared/config/env";
 
 const runExecFile = promisify(execFileCb);
 
@@ -15,8 +16,7 @@ export async function runDocker(
   args: string[],
   opts: RunDockerOpts = {},
 ): Promise<string> {
-  const timeout =
-    opts.timeoutMs ?? Number(process.env.DOCKER_CMD_TIMEOUT_MS ?? 10_000);
+  const timeout = opts.timeoutMs ?? env.DOCKER_CMD_TIMEOUT_MS;
   const { stdout } = await runExecFile(
     "docker",
     ["--context", context, ...args],
