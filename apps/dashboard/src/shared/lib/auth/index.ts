@@ -19,6 +19,7 @@ import {
   sessions,
   verificationTokens,
 } from "@/shared/lib/db/schema";
+import { refreshAccountTokens } from "./refreshAccountTokens";
 
 const allowlist = new Set(
   env.ALLOWLIST_EMAILS.split(",")
@@ -82,15 +83,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
-    // 재인증 성공 시 oauth_state를 active로 복구. adapter가 accounts row를
-    // upsert한 다음에 실행되므로 토큰은 이미 저장된 상태. last_history_id는
-    // 건드리지 않음 — null이면 다음 폴링이 full sync로 떨어지는 게 의도된 동작.
+    // 재인증 성공 시 oauth_state를 active로 복구하고, adapter 의 INSERT-only
+    // 한계 (PK 충돌 시 silent fail) 를 보완해 token/scope 를 명시 UPDATE.
+    //
+    // 핵심: adapter 가 처음 row 를 INSERT 할 때는 새 토큰이 저장되지만, 같은
+    // 사용자가 새 scope (또는 refresh token rotation) 으로 재로그인할 때는
+    // 기존 row 가 그대로 남는다. 이 사고가 Calendar MCP 파일럿 머지 후 실제
+    // 발생 — calendar.readonly 가 grant 되었음에도 DB scope 는 gmail-only 로
+    // 남아 Calendar API 가 403. refreshAccountTokens 가 이를 자동 회복.
+    //
+    // last_history_id 는 건드리지 않음 — null 이면 다음 폴링이 full sync 로
+    // 떨어지는 게 의도된 동작.
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.id) {
         await db
           .update(users)
           .set({ oauthState: "active", tokenExpiredAt: null })
           .where(eq(users.id, user.id));
+        await refreshAccountTokens(db, account);
       }
     },
   },
