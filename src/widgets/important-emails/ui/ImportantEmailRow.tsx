@@ -2,11 +2,18 @@
 //
 // summary는 React 기본 children으로 렌더 (XSS 방지, raw HTML 주입 미사용).
 // Gmail 링크는 새 탭에서 열림.
+//
+// Sender 폴백: fromName ?? fromEmail ?? "발신자" 순. ReplyCard 와 동일 패턴 —
+// fromName 만 null check 하면 fromEmail 정보까지 잃고 senderInitials (두 글자) 만 노출돼
+// 발신자 식별이 약해진다.
+//
+// Optimistic UI: 읽음/보관 액션 시 즉시 isHidden 으로 카드 제거. 실패 시 복원 + 에러 표시.
+// ReplyCard 의 동일 패턴 — 액션 결과를 기다리지 않고 즉각 피드백.
 "use client";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { markAsRead, archiveThread } from "@/features/email-analysis";
 import {
-  senderInitials,
   senderDomain,
   formatRelativeKst,
 } from "@/shared/lib/email-format";
@@ -14,26 +21,34 @@ import { CategoryBadge } from "./CategoryBadge";
 import type { ImportantEmailItem } from "@/entities/email/api/getImportantEmails";
 
 export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isHidden, setIsHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onRead = () => {
-    setError(null);
+  const runAction = (
+    action: () => Promise<{ ok: true } | { ok: false; reason: string }>,
+  ) => {
     startTransition(async () => {
-      const result = await markAsRead(item.threadId);
-      if (!result.ok) setError(result.reason);
+      setError(null);
+      setIsHidden(true);
+      const result = await action();
+      if (!result.ok) {
+        setIsHidden(false);
+        setError(result.reason);
+      } else {
+        router.refresh();
+      }
     });
   };
 
-  const onArchive = () => {
-    setError(null);
-    startTransition(async () => {
-      const result = await archiveThread(item.threadId);
-      if (!result.ok) setError(result.reason);
-    });
-  };
+  const onRead = () => runAction(() => markAsRead(item.threadId));
+  const onArchive = () => runAction(() => archiveThread(item.threadId));
 
   const gmailUrl = `https://mail.google.com/mail/u/0/#inbox/${item.gmailThreadId}`;
+  const senderLabel = item.fromName ?? item.fromEmail ?? "발신자";
+
+  if (isHidden) return null;
 
   return (
     <article
@@ -49,9 +64,13 @@ export function ImportantEmailRow({ item }: { item: ImportantEmailItem }) {
 
       <p className="mt-2 text-sm font-medium text-[var(--color-text)]">
         <span className="text-[var(--color-text-muted)]">
-          {item.fromName ?? senderInitials(item.fromName, item.fromEmail)}
-          {" · "}
-          {senderDomain(item.fromEmail)}
+          {senderLabel}
+          {item.fromEmail && (
+            <>
+              {" · "}
+              {senderDomain(item.fromEmail)}
+            </>
+          )}
         </span>
       </p>
       <h3 className="text-sm font-semibold text-[var(--color-text)]">
