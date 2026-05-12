@@ -39,6 +39,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      // users 는 보존하지만 accounts 만 비어 있는 복구 시나리오에서, NextAuth 기본 동작은
+      // OAuthAccountNotLinked 로 차단함 (계정 탈취 안전장치). 본 앱은 allowlist 1인
+      // 단일 사용자라 동일 이메일 == 동일 user 이고, 별도 provider 와 충돌 없음 → 안전.
+      // 또한 @auth/drizzle-adapter 의 linkAccount 가 INSERT-only (PK 충돌 시 silent
+      // fail) 이라 빈 accounts row 를 OAuth flow 가 채울 수 있는 유일한 경로가 이 옵션.
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           // gmail.modify 는 messages.modify (라벨 추가/제거) 호출에 필수.
