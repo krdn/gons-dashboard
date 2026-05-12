@@ -3,11 +3,16 @@
 # build context: monorepo root (docker-compose의 context: .)
 
 # ---- Stage 1: deps (의존성 캐시 레이어) ----
+# workspace packages의 package.json을 함께 복사해야 pnpm이 workspace symlink를
+# 생성한다. 누락 시 next build가 @gons/* import를 "module not found"로 실패.
 FROM node:24-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/dashboard/package.json ./apps/dashboard/
+COPY packages/shared-google/package.json ./packages/shared-google/
+COPY packages/shared-mcp-runtime/package.json ./packages/shared-mcp-runtime/
+COPY packages/mcp-calendar/package.json ./packages/mcp-calendar/
 RUN pnpm install --frozen-lockfile --prod=false
 
 # ---- Stage 2: build ----
@@ -16,8 +21,12 @@ RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/dashboard/node_modules ./apps/dashboard/node_modules
+COPY --from=deps /app/packages/shared-google/node_modules ./packages/shared-google/node_modules
+COPY --from=deps /app/packages/shared-mcp-runtime/node_modules ./packages/shared-mcp-runtime/node_modules
+COPY --from=deps /app/packages/mcp-calendar/node_modules ./packages/mcp-calendar/node_modules
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY apps/dashboard ./apps/dashboard
+COPY packages ./packages
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # 빌드 타임 환경 변수 placeholder.
@@ -33,6 +42,7 @@ ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
     ANTHROPIC_BASE_URL=http://placeholder \
     ANTHROPIC_API_KEY=placeholder \
     CRON_BEARER_TOKEN=a-placeholder-cron-token-of-at-least-32-characters \
+    MCP_DASHBOARD_TOKEN=a-placeholder-mcp-token-of-at-least-32-characters \
     ALLOWLIST_EMAILS=build@placeholder.local \
     ADMIN_EMAILS=build@placeholder.local
 
