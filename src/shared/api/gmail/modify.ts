@@ -11,10 +11,14 @@ const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 500;
 
+// threads.modify 응답: { id, historyId, messages: [...] }
+// (messages.modify 와 혼동 금지 — messages.modify 는 { id, threadId, labelIds }
+//  단일 message 객체를 반환. 우리는 threads.modify 호출하므로 thread 객체.)
+// 호출자(markAsRead/archiveThread)가 반환값을 사용하지 않아 스키마는 "응답이 JSON
+// object 인지" 만 확인. 필드 strict 검증은 과거 ZodError 회귀의 원인이라 의도적으로
+// 느슨하게 둠.
 const ModifyResponseSchema = z.object({
   id: z.string(),
-  threadId: z.string(),
-  labelIds: z.array(z.string()).optional(),
 });
 
 export type ModifyResponse = z.infer<typeof ModifyResponseSchema>;
