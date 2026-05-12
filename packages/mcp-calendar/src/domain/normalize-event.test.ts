@@ -16,8 +16,10 @@ describe("normalizeEvent", () => {
       ],
       hangoutLink: "https://meet.google.com/abc-defg-hij",
     };
-    const ev = normalizeEvent(raw);
+    const ev = normalizeEvent(raw, { calendarId: "primary", calendarSummary: "개발업무" });
     expect(ev.id).toBe("evt-1");
+    expect(ev.calendarId).toBe("primary");
+    expect(ev.calendarSummary).toBe("개발업무");
     expect(ev.title).toBe("디자인 리뷰");
     expect(ev.startAt).toBe("2026-05-12T05:00:00.000Z");
     expect(ev.endAt).toBe("2026-05-12T06:00:00.000Z");
@@ -39,7 +41,7 @@ describe("normalizeEvent", () => {
       end: { date: "2026-05-14" },
       htmlLink: "https://calendar.google.com/calendar/event?eid=xyz",
     };
-    const ev = normalizeEvent(raw);
+    const ev = normalizeEvent(raw, { calendarId: "primary", calendarSummary: "개발업무" });
     expect(ev.allDay).toBe(true);
     expect(ev.startAt).toBe("2026-05-13T00:00:00.000Z");
     expect(ev.endAt).toBe("2026-05-14T00:00:00.000Z");
@@ -52,7 +54,7 @@ describe("normalizeEvent", () => {
       end: { dateTime: "2026-05-12T06:00:00Z" },
       htmlLink: "https://calendar.google.com/?x",
     };
-    const ev = normalizeEvent(raw);
+    const ev = normalizeEvent(raw, { calendarId: "primary", calendarSummary: "개발업무" });
     expect(ev.title).toBe("(제목 없음)");
   });
 
@@ -64,7 +66,7 @@ describe("normalizeEvent", () => {
       end: { dateTime: "2026-05-12T06:00:00Z" },
       htmlLink: "https://calendar.google.com/?y",
     };
-    const ev = normalizeEvent(raw);
+    const ev = normalizeEvent(raw, { calendarId: "primary", calendarSummary: "개발업무" });
     expect(ev.location).toBeNull();
     expect(ev.meetingUrl).toBeNull();
     expect(ev.attendees).toEqual([]);

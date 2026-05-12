@@ -15,6 +15,16 @@ export interface RawGoogleEvent {
   attendees?: Array<{ email: string; responseStatus?: string }>;
 }
 
+// calendarList 항목 — 사용자가 접근 가능한 캘린더 메타.
+// selected: Google UI에서 켜둔 캘린더만 위젯이 합쳐 보여주기 위한 필터.
+export interface CalendarListEntry {
+  id: string;
+  summary: string;
+  primary: boolean;
+  selected: boolean;
+  accessRole: string;
+}
+
 export interface ListUpcomingEventsOptions {
   accessToken: string;
   calendarId: string;
@@ -75,4 +85,73 @@ export async function listUpcomingEvents(
 
   const body = (await response.json()) as { items?: RawGoogleEvent[] };
   return { items: body.items ?? [] };
+}
+
+export interface ListCalendarListOptions {
+  accessToken: string;
+  /** Google API minAccessRole — reader 이면 읽기 가능한 캘린더만. */
+  minAccessRole?: "reader" | "writer" | "owner";
+  fetcher?: typeof fetch;
+}
+
+export interface ListCalendarListResult {
+  items: CalendarListEntry[];
+}
+
+export async function listCalendarList(
+  opts: ListCalendarListOptions,
+): Promise<ListCalendarListResult> {
+  const { accessToken, minAccessRole = "reader", fetcher = fetch } = opts;
+  const params = new URLSearchParams({ minAccessRole });
+  const url = `https://www.googleapis.com/calendar/v3/users/me/calendarList?${params.toString()}`;
+
+  let response: Response;
+  try {
+    response = await fetcher(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
+  } catch (err) {
+    throw new TransientError(
+      `CalendarList API unreachable: ${err instanceof Error ? err.message : String(err)}`,
+      0,
+    );
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new OAuthExpiredError(`CalendarList API auth failed (${response.status})`);
+  }
+  if (response.status === 429 || response.status >= 500) {
+    throw new TransientError(
+      `CalendarList API transient (${response.status})`,
+      response.status,
+    );
+  }
+  if (!response.ok) {
+    throw new GoogleApiError(
+      `CalendarList API unexpected ${response.status}`,
+      response.status,
+    );
+  }
+
+  const body = (await response.json()) as {
+    items?: Array<{
+      id: string;
+      summary?: string;
+      primary?: boolean;
+      selected?: boolean;
+      accessRole?: string;
+    }>;
+  };
+  const items: CalendarListEntry[] = (body.items ?? []).map((c) => ({
+    id: c.id,
+    summary: c.summary ?? c.id,
+    primary: Boolean(c.primary),
+    selected: Boolean(c.selected),
+    accessRole: c.accessRole ?? "reader",
+  }));
+  return { items };
 }

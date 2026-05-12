@@ -7,6 +7,7 @@ import {
 } from "@gons/mcp-calendar";
 import {
   fetchAccessToken,
+  listCalendarList,
   listUpcomingEvents,
   OAuthExpiredError,
 } from "@gons/shared-google";
@@ -20,21 +21,40 @@ async function fetchEventsForWidget(): Promise<
   { ok: true; events: CalendarEvent[] } | { ok: false; reason: "reauth" | "transient" }
 > {
   const mediatorUrl = `${env.NEXTAUTH_URL.replace(/\/$/, "")}/api/mcp/credentials/google`;
-  const tool = makeGetUpcomingEventsTool({
-    getAccessToken: async () => {
-      const r = await fetchAccessToken({
-        mediatorUrl,
-        bearer: env.MCP_DASHBOARD_TOKEN,
-      });
-      return r.accessToken;
-    },
-    listFn: listUpcomingEvents,
-  });
+  // calendarList 와 tool 둘 다 같은 access token 을 쓰지만, mediator 가
+  // 매 호출마다 fresh token 을 발급하므로 (5분 TTL) 두 번 호출해도 안전.
+  const getAccessToken = async () => {
+    const r = await fetchAccessToken({
+      mediatorUrl,
+      bearer: env.MCP_DASHBOARD_TOKEN,
+    });
+    return r.accessToken;
+  };
+
   try {
+    // 1) Google 에서 selected=true 인 캘린더 목록 조회.
+    const cl = await listCalendarList({ accessToken: await getAccessToken() });
+    const selected = cl.items.filter((c) => c.selected);
+    // 2) selected 가 0개면 primary 로 fallback — Google UI 에서 전부 끈 극단 케이스.
+    const calendars =
+      selected.length > 0
+        ? selected.map((c) => ({ id: c.id, summary: c.summary }))
+        : [
+            {
+              id: cl.items.find((c) => c.primary)?.id ?? "primary",
+              summary: cl.items.find((c) => c.primary)?.summary ?? "기본",
+            },
+          ];
+
+    // 3) tool 로 다중 캘린더 일정 머지.
+    const tool = makeGetUpcomingEventsTool({
+      getAccessToken,
+      listFn: listUpcomingEvents,
+    });
     const result = await tool.handler({
       withinHours: WITHIN_HOURS_2W,
       limit: FETCH_LIMIT,
-      calendarId: "primary",
+      calendars,
     });
     return { ok: true, events: result.events };
   } catch (err) {
@@ -78,7 +98,11 @@ export async function CalendarCard() {
           </p>
           <ul className="flex flex-col gap-2">
             {preview.map((ev) => (
-              <EventRow key={ev.id} event={ev} now={now} />
+              <EventRow
+                key={`${ev.calendarId}:${ev.id}`}
+                event={ev}
+                now={now}
+              />
             ))}
           </ul>
         </>
@@ -141,13 +165,11 @@ function EventRow({ event, now }: { event: CalendarEvent; now: Date }) {
           )}
         </div>
         <div className="text-sm font-medium">{event.title}</div>
-        {(event.meetingUrl || event.attendees.length > 0) && (
-          <div className="text-xs text-[var(--color-text-subtle)]">
-            {event.meetingUrl && <>Google Meet</>}
-            {event.meetingUrl && event.attendees.length > 0 && <> · </>}
-            {event.attendees.length > 0 && <>{event.attendees.length}명</>}
-          </div>
-        )}
+        <div className="text-xs text-[var(--color-text-subtle)]">
+          <span>{event.calendarSummary}</span>
+          {event.meetingUrl && <> · Google Meet</>}
+          {event.attendees.length > 0 && <> · {event.attendees.length}명</>}
+        </div>
       </a>
     </li>
   );
