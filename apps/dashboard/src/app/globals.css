@@ -60,6 +60,19 @@
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* 사주 상세 — 한자 명조 폰트. Noto Serif KR 은 layout.tsx 의
+     next/font/google 가 --font-hanja-family 변수로 주입한다. */
+  --font-hanja:
+    var(--font-hanja-family),
+    "Noto Serif KR", "Noto Serif TC", "Noto Serif SC", serif;
+
+  /* 사주 상세 — 5색 오행 (식별 가능한 채도 분리) */
+  --color-wood: oklch(70% 0.13 145);
+  --color-fire: oklch(65% 0.2 30);
+  --color-earth: oklch(70% 0.1 80);
+  --color-metal: oklch(78% 0.02 250);
+  --color-water: oklch(50% 0.12 250);
+
   /* 그림자 */
   --shadow-card:
     0 1px 0 rgba(20, 30, 50, 0.04), 0 0 0 1px var(--color-hairline);
