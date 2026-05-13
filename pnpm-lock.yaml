@@ -25,6 +25,9 @@ importers:
       '@gons/mcp-calendar':
         specifier: workspace:*
         version: link:../../packages/mcp-calendar
+      '@gons/saju':
+        specifier: workspace:*
+        version: link:../../packages/saju
       '@gons/shared-google':
         specifier: workspace:*
         version: link:../../packages/shared-google

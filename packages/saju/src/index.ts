@@ -1,3 +1,4 @@
+/// <reference path="./lunar-javascript.d.ts" />
 export { computeSajuChart } from "./computeSajuChart";
 export { hashProfile } from "./hashProfile";
 export type {
