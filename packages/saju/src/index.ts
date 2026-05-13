@@ -18,6 +18,8 @@ export {
   BRANCH_KO,
   ELEMENT_KO,
   ELEMENT_HANJA,
+  STEM_ELEMENT,
+  BRANCH_ELEMENT,
   TEN_GOD_KO,
 } from "./hanja";
 export type { Stem, Branch, Element, TenGod } from "./hanja";
