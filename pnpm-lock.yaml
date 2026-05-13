@@ -25,6 +25,9 @@ importers:
       '@gons/mcp-calendar':
         specifier: workspace:*
         version: link:../../packages/mcp-calendar
+      '@gons/saju':
+        specifier: workspace:*
+        version: link:../../packages/saju
       '@gons/shared-google':
         specifier: workspace:*
         version: link:../../packages/shared-google
@@ -141,6 +144,25 @@ importers:
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@20.19.40)(@vitest/ui@4.1.5)(jsdom@29.1.1)(vite@8.0.11(@types/node@20.19.40)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0))
+
+  packages/saju:
+    dependencies:
+      lunar-javascript:
+        specifier: 1.7.7
+        version: 1.7.7
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.40
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -3001,6 +3023,9 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lunar-javascript@1.7.7:
+    resolution: {integrity: sha512-u/KYiwPIBo/0bT+WWfU7qO1d+aqeB90Tuy4ErXenr2Gam0QcWeezUvtiOIyXR7HbVnW2I1DKfU0NBvzMZhbVQw==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -6696,6 +6721,8 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lunar-javascript@1.7.7: {}
 
   lz-string@1.5.0: {}
 

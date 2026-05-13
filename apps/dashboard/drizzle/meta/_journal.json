@@ -43,6 +43,13 @@
       "when": 1778420180606,
       "tag": "0005_silent_la_nuit",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778634829352,
+      "tag": "0006_striped_night_nurse",
+      "breakpoints": true
     }
   ]
 }

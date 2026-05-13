@@ -22,6 +22,7 @@ import {
   ServerOverviewSkeleton,
 } from "@/widgets/server-overview";
 import { CalendarCard, CalendarSkeleton } from "@/widgets/calendar";
+import { FortuneCard, FortuneSkeleton } from "@/widgets/fortune";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,9 @@ export default async function DashboardPage() {
         </div>
 
         <aside aria-label="우측 위젯" className="flex flex-col gap-4">
+          <Suspense fallback={<FortuneSkeleton />}>
+            <FortuneCard />
+          </Suspense>
           <Suspense fallback={<CalendarSkeleton />}>
             <CalendarCard />
           </Suspense>

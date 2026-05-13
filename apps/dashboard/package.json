@@ -23,6 +23,7 @@
     "@anthropic-ai/sdk": "^0.36.3",
     "@auth/drizzle-adapter": "^1.7.4",
     "@gons/mcp-calendar": "workspace:*",
+    "@gons/saju": "workspace:*",
     "@gons/shared-google": "workspace:*",
     "@gons/shared-mcp-runtime": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
