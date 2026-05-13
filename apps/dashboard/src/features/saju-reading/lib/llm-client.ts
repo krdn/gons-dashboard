@@ -25,12 +25,18 @@ export interface LlmCallInput {
   maxTokens: number;
 }
 
+// Opus 4.x 계열은 temperature 매개변수가 deprecated — 보내면 400.
+// 모델 이름이 'claude-opus-4' 로 시작하면 temperature 생략.
+function supportsTemperature(model: string): boolean {
+  return !model.startsWith("claude-opus-4");
+}
+
 export async function callSajuLlm(input: LlmCallInput): Promise<LlmCallResult> {
   const model = env.SAJU_LLM_MODEL;
   const response = await anthropic.messages.create({
     model,
     max_tokens: input.maxTokens,
-    temperature: env.SAJU_LLM_TEMPERATURE,
+    ...(supportsTemperature(model) ? { temperature: env.SAJU_LLM_TEMPERATURE } : {}),
     system: input.system,
     messages: [{ role: "user", content: input.user }],
   });
