@@ -29,7 +29,7 @@ export async function FortuneCard() {
   > = {};
   for (const [pid, row] of fortunes) {
     fortunesByProfile[pid] = {
-      forDate: row.forDate as unknown as string,
+      forDate: row.forDate,
       dayStem: row.dayStem,
       dayBranch: row.dayBranch,
       payload: row.payload,

@@ -114,11 +114,15 @@ export async function generateDailyFortune(
   // 2. 예산 가드
   await assertSajuBudgetOk(env.SAJU_LLM_DAILY_BUDGET_KRW);
 
-  // 3. LLM + Zod, 실패 시 1회 재시도
+  // 3. LLM + Zod, 실패 시 1회 재시도. 첫 실패는 production 운영에서 진단을
+  //    위해 stderr 로 한 줄 — 재시도가 성공해도 패턴 파악에 유용.
   let result;
   try {
     result = await callAndValidate(input, false);
-  } catch {
+  } catch (firstError) {
+    console.warn(
+      `[saju.daily] first attempt failed for ${input.chartRow.id} ${input.forDate}: ${(firstError as Error).message?.slice(0, 200)}`,
+    );
     result = await callAndValidate(input, true);
   }
 
