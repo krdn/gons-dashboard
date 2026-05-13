@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test mocks need permissive typing for fluent Drizzle chains */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { generateReading } from "./generateReading";
 
