@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   RELATION_LABEL,
@@ -73,6 +74,15 @@ export function FortuneProfileCard({ profile }: { profile: FortuneProfile }) {
           </>
         )}
       </dl>
+
+      <footer className="mt-4 flex justify-end border-t border-[var(--color-hairline)] pt-3">
+        <Link
+          href={`/fortune/${profile.id}`}
+          className="text-xs text-[var(--color-accent)] hover:underline"
+        >
+          상세보기 →
+        </Link>
+      </footer>
     </article>
   );
 }

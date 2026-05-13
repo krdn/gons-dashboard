@@ -113,13 +113,24 @@ export function FortuneCardClient({
         >
           오늘의 운세
         </h2>
-        <Link
-          href="/fortune"
-          className="text-xs text-[var(--color-text-subtle)] hover:underline"
-          aria-label="사주 프로필 관리"
-        >
-          관리
-        </Link>
+        <div className="flex items-center gap-3 text-xs">
+          {selectedId && (
+            <Link
+              href={`/fortune/${selectedId}`}
+              className="text-[var(--color-accent)] hover:underline"
+              aria-label="사주 상세보기"
+            >
+              상세
+            </Link>
+          )}
+          <Link
+            href="/fortune"
+            className="text-[var(--color-text-subtle)] hover:underline"
+            aria-label="사주 프로필 관리"
+          >
+            관리
+          </Link>
+        </div>
       </div>
 
       <label className="mb-3 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
