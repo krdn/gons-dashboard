@@ -96,19 +96,22 @@ export const dailyFortunePayloadSchema: ZodType<DailyFortunePayload>;
 - 월주는 절기 시작일 기준이라 `EightChar.getMonthGan/Zhi`를 12개월 시작일별로 호출
 - 일진은 단일 날짜의 dayGan/dayZhi
 
-**골든 케이스** (라이브러리 실행 후 검증)
+**골든 케이스** (라이브러리 직접 실행으로 검증된 값)
 
 | ID | 입력 | 기대 |
 |----|------|------|
-| Y1 | computeYearPillar(2026) | 丙午 |
-| Y2 | computeYearPillar(1967) | 丁未 (G1) |
-| Y3 | computeYearPillar(2024) — 입춘 직후 | 甲辰 |
-| M1 | computeMonthPillars(2026)[4] (5월) | 甲午 |
-| D1 | computeDayPillar("2026-05-14") | 라이브러리 실행 후 박음 |
-| D2 | computeDayPillar("2026-05-13") | 戊申 (현행 fortune-data.ts와 일치) |
+| Y1 | computeYearPillar(2026) | 丙午 ✓ |
+| Y2 | computeYearPillar(1967) | 丁未 (G1) ✓ |
+| Y3 | computeYearPillar(2024-06-01) — 입춘 후 | 甲辰 ✓ |
+| Y4 | computeYearPillar(2024-01-15) — 입춘 전 | 癸卯 (전년) ✓ — 입춘 경계 검증 |
+| M1 | computeMonthPillars(2026) 12개 | 1월=己丑 / 2월=庚寅 / 3월=辛卯 / 4월=壬辰 / 5월=癸巳 / 6월=甲午 / 7월=乙未 / 8월=丙申 / 9월=丁酉 / 10월=戊戌 / 11월=己亥 / 12월=庚子 ✓ |
+| D1 | computeDayPillar("2026-05-14") | 戊子 ✓ |
+| D2 | computeDayPillar("2026-05-13") | 丁亥 ✓ (현행 fortune-data.ts의 戊申은 PlayMCP 분석 잘못 — G1 壬辰일주와 동일 패턴) |
 | TG1 | tenGodsForPillar("壬", {stem:"丙",branch:"午"}) | 천간=偏財, 지지=正財 |
 
-기대값은 Phase 0 패턴대로 Task 1에서 라이브러리 결과로 정정.
+⚠️ **현행 fortune-data.ts 정정**: 2026-05-13 일진을 `戊申`으로 박았으나 라이브러리 결과는 `丁亥`. Phase 3 머지 시 fortune-data.ts를 완전 삭제하면 이 잘못된 스냅샷도 함께 사라짐. G1 일주 정정과 동일한 후속 학습.
+
+월주가 5월=甲午 가정에서 5월=癸巳로 정정된 이유: lunar-javascript는 절기 기준 월주를 반환 (寅월=2/4 04:02~3/5 21:59, 卯월=3/5~4/5, ...). 12개월 인덱스의 0~11은 양력 1~12월에 매핑.
 
 ## 4. DB 스키마 — Drizzle 마이그레이션 0008
 
