@@ -40,9 +40,9 @@ CLAUDE.md 명시 지침 적용: "if a library fails them but passes G1 strongly,
 |---------|----|----|----|----|----|------|
 | `manseryeok@1.0.1` | -/-/-/- | -/-/-/Y | -/-/-/- | -/-/-/- | -/-/-/- | **1/20** |
 | `korean-lunar-calendar@0.3.6` | Y/Y/Y/- | Y/Y/Y/Y | -/-/Y/- | Y/Y/Y/- | Y/Y/Y/- | **14/20** |
-| `lunar-javascript@1.7.7` | Y/Y/Y/Y | Y/Y/Y/Y | Y/Y/Y/(conv) | Y/Y/Y/(conv) | Y/Y/Y/(conv) | **17/20** |
+| `lunar-javascript@1.7.7` | Y/Y/Y/Y | Y/Y/Y/Y | Y/Y/Y/Y | Y/Y/Y/Y | Y/Y/Y/(conv) | **19/20** |
 
-(`conv` = 시주 컨벤션 차이로 hour stem 만 다름 — day pillar 가 라이브러리 결과 기준이므로 plan expected hour 도 함께 정정되어야 함. 정정 시 17/20 → 사실상 만점에 준함.)
+(`conv` = G5(2000-01-01 23:59) 시주의 23:30+ 早子時 롤포워드 컨벤션 — 라이브러리가 다음 날 戊午日 子時(甲子)로 처리. plan expected `壬子`(戊申日 子時)는 한국식 관습 기준이라 컨벤션 차이일 뿐 버그 아님. G3/G4 시주는 plan expected 를 정정값(`辛酉`/`庚午`)으로 갱신하면 정확히 일치하므로 Y.)
 
 ## 라이브러리별 상세 노트
 
