@@ -11,6 +11,10 @@ import boundaries from "eslint-plugin-boundaries";
 //   (groupByProject)를 재사용하기 위함. 사이드이펙트 없는 fn만 노출되므로
 //   "가장 작은 변경"으로 boundary를 한 단계만 풀어준다. UI/state 결합이
 //   생기면 그때 다시 좁힐 것.
+// widgets→widgets도 같은 원리로 허용한다.
+//   이유: widgets/fortune (홈 위젯) 이 widgets/saju-detail 의 표현 컴포넌트
+//   (SajuDailyFortune) 를 재사용하기 위함. 사주 일진 표시는 홈·상세 두
+//   페이지에서 동일하게 쓰이는 presentational UI 라 widgets 안에서 공유한다.
 const fsdConfig = {
   files: ["src/**/*.{ts,tsx}"],
   plugins: { boundaries },
@@ -34,7 +38,7 @@ const fsdConfig = {
         default: "disallow",
         rules: [
           { from: "app", allow: ["widgets", "features", "entities", "shared"] },
-          { from: "widgets", allow: ["features", "entities", "shared"] },
+          { from: "widgets", allow: ["widgets", "features", "entities", "shared"] },
           { from: "features", allow: ["features", "entities", "shared"] },
           { from: "entities", allow: ["shared"] },
           { from: "shared", allow: ["shared"] },
