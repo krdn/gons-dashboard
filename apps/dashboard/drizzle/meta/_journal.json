@@ -50,6 +50,13 @@
       "when": 1778634829352,
       "tag": "0006_striped_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778656429117,
+      "tag": "0007_right_raider",
+      "breakpoints": true
     }
   ]
 }
