@@ -57,6 +57,13 @@
       "when": 1778656429117,
       "tag": "0007_right_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778687447290,
+      "tag": "0008_icy_caretaker",
+      "breakpoints": true
     }
   ]
 }

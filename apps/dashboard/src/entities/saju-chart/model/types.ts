@@ -1,8 +1,15 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { sajuCharts, sajuReadings } from "@/shared/lib/db/schema";
+import type {
+  sajuCharts,
+  sajuReadings,
+  sajuYearlyReadings,
+  sajuDailyFortunes,
+} from "@/shared/lib/db/schema";
 
 export type SajuChartRow = InferSelectModel<typeof sajuCharts>;
 export type SajuReadingRow = InferSelectModel<typeof sajuReadings>;
+export type SajuYearlyReadingRow = InferSelectModel<typeof sajuYearlyReadings>;
+export type SajuDailyFortuneRow = InferSelectModel<typeof sajuDailyFortunes>;
 
 export const READING_SECTIONS = [
   "overview",
