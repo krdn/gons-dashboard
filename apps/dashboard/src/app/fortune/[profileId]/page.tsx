@@ -8,12 +8,13 @@ import {
   SajuElementsChart,
   SajuTenGodsTable,
   SajuPatternCard,
-  SajuMajorFortuneStrip,
+  SajuMajorFortuneTimeline,
   SajuReadingSections,
 } from "@/widgets/saju-detail";
 import type {
   Element,
   MajorFortune,
+  Stem,
   Strength,
   TenGodAssignment,
 } from "@gons/saju";
@@ -131,9 +132,11 @@ export default async function SajuDetailPage({ params }: Props) {
         >
           대운 흐름
         </h2>
-        <SajuMajorFortuneStrip
+        <SajuMajorFortuneTimeline
           majorFortunes={majorFortunes}
           currentAge={currentAge}
+          dayStem={chart.dayStem as Stem}
+          majorFortuneBody={readings.major_fortune}
         />
       </section>
 

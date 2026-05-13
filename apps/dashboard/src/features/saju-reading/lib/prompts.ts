@@ -13,7 +13,22 @@ const SECTION_INSTRUCTIONS: Record<ReadingSection, { instruction: string; target
   personality:   { instruction: "성격·기질을 사주 구조에서 도출. 강점과 그림자 양면을 모두 다룰 것. 약 200자.",                                                    targetChars: 200 },
   career:        { instruction: "직업·적성을 십신·격국 기반으로 도출. 구체적 직군 2~3개 제시. 약 200자.",                                                          targetChars: 200 },
   health:        { instruction: "오행 결함·과다를 기준으로 건강 주의 영역. 추상적 표현 금지. 약 150자.",                                                            targetChars: 150 },
-  major_fortune: { instruction: "대운 10개를 시작 나이 + 간지 + 한 줄 요약으로 정리한 뒤, 현재 진행 중인 대운을 별도 단락으로 풀이. 약 400자.", targetChars: 400 },
+  major_fortune: {
+    instruction: [
+      "대운 10개를 다음 형식으로 정확히 출력 (각 항목 독립 단락):",
+      "",
+      "**N세 XY (YYYY~)** — N세 시작 대운 풀이 2~3문장",
+      "",
+      "예시:",
+      "**8세 壬寅 (1974~)** — 편관 대운으로 청소년기 학업·진로 압박. 寅木이 일간을 생하지 못해...",
+      "",
+      "10개 단락 끝에 빈 줄 + 종합 단락 1개 추가:",
+      "**올해 흐름** — 현재 대운과 세운의 관계 (2~3문장).",
+      "",
+      "전체 약 800자.",
+    ].join("\n"),
+    targetChars: 800,
+  },
 };
 
 export interface BuildReadingPromptInput {
