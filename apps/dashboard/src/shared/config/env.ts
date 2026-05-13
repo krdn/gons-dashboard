@@ -28,6 +28,11 @@ const schema = z.object({
   ANTHROPIC_BASE_URL: z.string().url(),
   ANTHROPIC_API_KEY: z.string().min(1),
 
+  // 사주 상세 읽기 — features/saju-reading (spec §7)
+  SAJU_LLM_MODEL: z.string().default("claude-opus-4-7"),
+  SAJU_LLM_DAILY_BUDGET_KRW: z.coerce.number().int().positive().default(1000),
+  SAJU_LLM_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
+
   // Cron
   CRON_BEARER_TOKEN: z.string().min(32, "openssl rand -hex 32 로 생성"),
 
