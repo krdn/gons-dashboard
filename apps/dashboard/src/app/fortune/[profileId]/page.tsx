@@ -73,7 +73,7 @@ export default async function SajuDetailPage({ params }: Props) {
         >
           사주팔자
         </h2>
-        <SajuPillarsBoard chart={chart} />
+        <SajuPillarsBoard chart={chart} tenGods={tenGods} />
       </section>
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">

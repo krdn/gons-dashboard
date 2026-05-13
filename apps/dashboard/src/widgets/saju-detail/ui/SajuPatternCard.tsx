@@ -37,7 +37,7 @@ export function SajuPatternCard({ pattern, strength, yongSin, giSin }: SajuPatte
           <span
             key={el}
             className="rounded px-2 py-0.5 text-xs"
-            style={{ backgroundColor: `var(--color-${el})`, color: "white" }}
+            style={{ backgroundColor: `var(--color-${el})`, color: "var(--color-surface)" }}
           >
             {ELEMENT_KO[el]}
           </span>

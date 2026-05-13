@@ -44,12 +44,11 @@ export interface SajuPillarsBoardProps {
     | "monthStem" | "monthBranch"
     | "dayStem" | "dayBranch"
     | "hourStem" | "hourBranch"
-    | "tenGods"
   >;
+  tenGods: TenGodAssignment;
 }
 
-export function SajuPillarsBoard({ chart }: SajuPillarsBoardProps) {
-  const tg = chart.tenGods as TenGodAssignment;
+export function SajuPillarsBoard({ chart, tenGods: tg }: SajuPillarsBoardProps) {
 
   return (
     <table className="w-full table-fixed border-collapse text-sm">
