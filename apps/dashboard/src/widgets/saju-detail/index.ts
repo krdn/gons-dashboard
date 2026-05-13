@@ -5,3 +5,5 @@ export { SajuTenGodsTable } from "./ui/SajuTenGodsTable";
 export { SajuPatternCard } from "./ui/SajuPatternCard";
 export { SajuMajorFortuneTimeline } from "./ui/SajuMajorFortuneTimeline";
 export { SajuReadingSections } from "./ui/SajuReadingSection";
+export { SajuYearlyReading } from "./ui/SajuYearlyReading";
+export { SajuDailyFortune } from "./ui/SajuDailyFortune";
