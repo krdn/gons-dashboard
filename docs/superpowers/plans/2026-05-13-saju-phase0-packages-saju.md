@@ -483,7 +483,9 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 **전제:** Task 1에서 1위 라이브러리 선정 완료. 아래 코드는 `lunar-javascript`가 1위라 가정한 예시 — Task 1 결과에 따라 import만 교체.
 
-- [ ] **Step 1: pillars.test.ts에 골든 케이스 G1 + G2 작성 (실패하는 테스트 먼저)**
+- [ ] **Step 1: pillars.test.ts에 골든 케이스 G1 + G2 + G3 작성 (실패하는 테스트 먼저)**
+
+⚠️ **expected 값은 Task 1의 라이브러리 평가 결과 기준**. `packages/saju/library-eval/README.md` 참조 — plan 작성 당시의 day pillar 가정(丁卯)은 시주(癸卯)에서 day stem이 丁/壬 둘 다 가능한 모호성을 못 본 잘못이었음.
 
 `packages/saju/src/pillars.test.ts`:
 ```ts
@@ -491,7 +493,7 @@ import { describe, expect, it } from "vitest";
 import { computePillars } from "./pillars";
 
 describe("computePillars", () => {
-  it("G1: 1967-03-29 05:30 양력 → 丁未/癸卯/丁卯/癸卯", () => {
+  it("G1: 1967-03-29 05:30 양력 → 丁未/癸卯/壬辰/癸卯", () => {
     const result = computePillars({
       birthDate: "1967-03-29",
       birthTime: "05:30",
@@ -499,7 +501,7 @@ describe("computePillars", () => {
     });
     expect(result.year).toEqual({ stem: "丁", branch: "未" });
     expect(result.month).toEqual({ stem: "癸", branch: "卯" });
-    expect(result.day).toEqual({ stem: "丁", branch: "卯" });
+    expect(result.day).toEqual({ stem: "壬", branch: "辰" });
     expect(result.hour).toEqual({ stem: "癸", branch: "卯" });
   });
 
@@ -514,13 +516,15 @@ describe("computePillars", () => {
     expect(result.year.branch).toBeDefined();
   });
 
-  it("G3: 절기 경계 — 2024-02-04 17:00 입춘 후 → 甲辰년", () => {
+  it("G3: 절기 경계 — 2024-02-04 17:00 입춘 후 → 甲辰년/丙寅월/戊戌일", () => {
     const result = computePillars({
       birthDate: "2024-02-04",
       birthTime: "17:00",
       calendar: "solar",
     });
     expect(result.year).toEqual({ stem: "甲", branch: "辰" });
+    expect(result.month).toEqual({ stem: "丙", branch: "寅" });
+    expect(result.day).toEqual({ stem: "戊", branch: "戌" });
   });
 });
 ```
@@ -646,31 +650,34 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 오행 상생: 木→火→土→金→水→木. 상극: 木→土, 土→水, 水→火, 火→金, 金→木.
 
-- [ ] **Step 1: tenGods.test.ts에 G1 사주(丁火 일간) 케이스 작성**
+- [ ] **Step 1: tenGods.test.ts에 G1 사주(壬水 일간) 케이스 작성**
+
+⚠️ G1 일간이 `壬`로 정정됨 (라이브러리 평가 결과). 아래 expected는 library-eval/README.md §"Tasks 3~8 인계 사항" 5번의 재계산값.
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { computeTenGods } from "./tenGods";
 
 describe("computeTenGods", () => {
-  it("G1: 일간 丁火 기준 — 연주 丁未, 월주 癸卯, 일주 丁卯, 시주 癸卯", () => {
+  it("G1: 일간 壬水 기준 — 연주 丁未, 월주 癸卯, 일주 壬辰, 시주 癸卯", () => {
     const result = computeTenGods({
       year:  { stem: "丁", branch: "未" },
       month: { stem: "癸", branch: "卯" },
-      day:   { stem: "丁", branch: "卯" },
+      day:   { stem: "壬", branch: "辰" },
       hour:  { stem: "癸", branch: "卯" },
     });
-    // 丁 vs 丁(연간) = 比肩
-    expect(result.yearStem).toBe("比肩");
-    // 丁 vs 未(본기 己土) = 火生土, 음음 → 食神
-    expect(result.yearBranch).toBe("食神");
-    // 丁 vs 癸(월간) = 水克火 → 일간을 극, 음음 → 偏官
-    expect(result.monthStem).toBe("偏官");
-    // 丁 vs 卯(본기 乙木) = 木生火 → 일간을 생, 음음 → 偏印
-    expect(result.monthBranch).toBe("偏印");
-    expect(result.dayBranch).toBe("偏印");
-    expect(result.hourStem).toBe("偏官");
-    expect(result.hourBranch).toBe("偏印");
+    // 壬(陽水) vs 丁(陰火) — 水克火, 일간이 극, 음양 다름 → 正財
+    expect(result.yearStem).toBe("正財");
+    // 壬 vs 未(본기 己, 陰土) — 土克水, 일간을 극, 음양 다름 → 正官
+    expect(result.yearBranch).toBe("正官");
+    // 壬 vs 癸(陰水) — 같은 오행, 음양 다름 → 劫財
+    expect(result.monthStem).toBe("劫財");
+    // 壬 vs 卯(본기 乙, 陰木) — 水生木, 일간이 생, 음양 다름 → 傷官
+    expect(result.monthBranch).toBe("傷官");
+    // 壬 vs 辰(본기 戊, 陽土) — 土克水, 일간을 극, 음양 같음 → 偏官
+    expect(result.dayBranch).toBe("偏官");
+    expect(result.hourStem).toBe("劫財");
+    expect(result.hourBranch).toBe("傷官");
   });
 
   it("일간이 자기 자신은 십신 없음 (dayStem 필드 부재)", () => {
@@ -782,14 +789,21 @@ import { describe, expect, it } from "vitest";
 import { computeElements, computeStrength } from "./elements";
 
 describe("computeElements", () => {
-  it("G1: 丁未/癸卯/丁卯/癸卯 → 木3 火2 土1 金0 水2", () => {
+  it("G1: 丁未/癸卯/壬辰/癸卯 → 木3 火1 土2 金0 水3", () => {
+    // 천간: 丁(火) 癸(水) 壬(水) 癸(水) → 火1 水3
+    // 지지: 未(土) 卯(木) 辰(土) 卯(木) → 土2 木2
+    // 잠깐 — 卯×2가 아니라 G1은 月支·時支만 卯(2개). 日支는 辰. → 木2 土2.
+    // 총합: 火1 水3 + 木2 土2 = wood:2 fire:1 earth:2 metal:0 water:3? 재계산:
+    // 천간 4: 丁火, 癸水, 壬水, 癸水 → fire:1, water:3
+    // 지지 4: 未土, 卯木, 辰土, 卯木 → earth:2, wood:2
+    // 합: wood:2 fire:1 earth:2 metal:0 water:3 (총 8개) ✓
     const result = computeElements({
       year:  { stem: "丁", branch: "未" },
       month: { stem: "癸", branch: "卯" },
-      day:   { stem: "丁", branch: "卯" },
+      day:   { stem: "壬", branch: "辰" },
       hour:  { stem: "癸", branch: "卯" },
     });
-    expect(result).toEqual({ wood: 3, fire: 2, earth: 1, metal: 0, water: 2 });
+    expect(result).toEqual({ wood: 2, fire: 1, earth: 2, metal: 0, water: 3 });
   });
 
   it("hour null이면 6자만 카운트 합 = 6", () => {
@@ -805,8 +819,8 @@ describe("computeElements", () => {
 });
 
 describe("computeStrength", () => {
-  it("G1: 일간 丁(火), 火 카운트 2 → balanced", () => {
-    expect(computeStrength({ wood:3, fire:2, earth:1, metal:0, water:2 }, "丁")).toBe("balanced");
+  it("G1: 일간 壬(水), 水 카운트 3 → strong", () => {
+    expect(computeStrength({ wood:2, fire:1, earth:2, metal:0, water:3 }, "壬")).toBe("strong");
   });
   it("일간 오행 4개 → very-strong", () => {
     expect(computeStrength({ wood:0, fire:4, earth:2, metal:1, water:1 }, "丁")).toBe("very-strong");
@@ -900,18 +914,19 @@ import { describe, expect, it } from "vitest";
 import { computePattern } from "./pattern";
 
 describe("computePattern", () => {
-  it("G1: 일간 丁, 월지 卯(乙木→偏印), 강약 balanced → 偏印格 + 용신 [金,土]", () => {
+  it("G1: 일간 壬, 월지 卯(乙木→傷官), 강약 strong → 傷官格 + 용신 [fire, earth] (재·관)", () => {
     const result = computePattern({
       pillars: {
         year:  { stem: "丁", branch: "未" },
         month: { stem: "癸", branch: "卯" },
-        day:   { stem: "丁", branch: "卯" },
+        day:   { stem: "壬", branch: "辰" },
         hour:  { stem: "癸", branch: "卯" },
       },
-      strength: "balanced",
+      strength: "strong",
     });
-    expect(result.pattern).toBe("偏印格");
-    expect(result.yongSin).toContain("metal");
+    expect(result.pattern).toBe("傷官格");
+    // 신강이면 일간을 제·설하는 오행: 재(壬水→克火) + 관(壬水→被土克)
+    expect(result.yongSin).toContain("fire");
     expect(result.yongSin).toContain("earth");
   });
 });
@@ -1028,8 +1043,8 @@ git add packages/saju/src/pattern.ts packages/saju/src/pattern.test.ts \
 git commit -m "feat(saju): pattern — 격국 + 용신/기신 (MVP 간이 룰)
 
 월지 본기 천간 십신 → 격국명. 신강이면 재·관, 신약이면 인·비겁을
-용신으로. G1 偏印格 + 용신 [金,土] 통과. 통근·합충·조후 보정은
-후속(spec §11 escape hatch).
+용신으로. G1(일간 壬水, 월지 卯木) → 傷官格 + 용신 [火,土] 통과.
+통근·합충·조후 보정은 후속(spec §11 escape hatch).
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 ```
@@ -1049,14 +1064,16 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 `lunar-javascript`는 `eightChar.getYun(gender)`로 대운 계산 — Task 1에서 검증 필요.
 
-- [ ] **Step 1: majorFortune.test.ts (G1 — 남자 정미년/음년 → 역행, 입대운 9세)**
+- [ ] **Step 1: majorFortune.test.ts (G1 — 남자 정미년/음년 → 역행, 입대운 8세)**
+
+⚠️ 라이브러리 확인 결과: lunar-javascript `getYun(1).getDaYun(11)`의 인덱스 0은 "대운 전 구간"(`getGanZhi()===""`), 인덱스 1부터가 실제 첫 대운. 입대운 나이 = **8세** (1974-10-19 기준 만 7세인데 lunar-javascript는 만+1 표기). 첫 대운 간지는 壬寅로 plan 추정과 동일.
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { computeMajorFortunes } from "./majorFortune";
 
 describe("computeMajorFortunes", () => {
-  it("G1: 1967-03-29 05:30 남자 양력 → 역행, 입대운 9세, 첫 대운 壬寅", () => {
+  it("G1: 1967-03-29 05:30 남자 양력 → 역행, 입대운 8세, 첫 대운 壬寅", () => {
     const result = computeMajorFortunes({
       birthDate: "1967-03-29",
       birthTime: "05:30",
@@ -1064,9 +1081,9 @@ describe("computeMajorFortunes", () => {
       gender: "male",
     });
     expect(result).toHaveLength(10);
-    expect(result[0].startAge).toBe(9);
+    expect(result[0].startAge).toBe(8);
     expect(result[0]).toMatchObject({ stem: "壬", branch: "寅" });
-    expect(result[0].startYear).toBe(1976); // 1967 + 9
+    expect(result[0].startYear).toBe(1974);
     // 역행이므로 다음은 辛丑
     expect(result[1]).toMatchObject({ stem: "辛", branch: "丑" });
   });
@@ -1110,9 +1127,9 @@ export function computeMajorFortunes(input: ComputeMajorFortunesInput): MajorFor
   // lunar-javascript: Yun.gender 1=男, 0=女
   const yun = eightChar.getYun(input.gender === "male" ? 1 : 0);
 
-  const startAge = yun.getStartYear() ? yun.getStartYear() : 0;
-  // getDaYun()은 10개 대운 객체 배열을 반환
-  const daYunList = yun.getDaYun(10);
+  // getDaYun(N)의 인덱스 0은 "대운 전 출생~입대운 직전" 구간(getGanZhi()이 빈 문자열).
+  // 실제 대운 10개를 원하면 11개 받고 인덱스 1부터.
+  const daYunList = yun.getDaYun(11).slice(1);
 
   return daYunList.map((dy: any) => ({
     startAge: dy.getStartAge(),
@@ -1136,8 +1153,9 @@ Expected: PASS (2/2).
 git add packages/saju/src/majorFortune.ts packages/saju/src/majorFortune.test.ts
 git commit -m "feat(saju): majorFortune — 대운 10개 + 입대운 나이
 
-남자 양년·여자 음년 순행, 그 외 역행. 라이브러리 getYun(gender).getDaYun(10)
-위임. G1 입대운 9세, 첫 대운 壬寅 통과.
+남자 양년·여자 음년 순행, 그 외 역행. 라이브러리 getYun(gender).getDaYun(11)
+의 인덱스 0(대운 전 구간) 제외, [1..10] 10개 매핑. G1 입대운 8세,
+첫 대운 壬寅 통과.
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 ```
@@ -1233,29 +1251,29 @@ describe("computeSajuChart — G1 end-to-end", () => {
     birthCity: null,
   };
 
-  it("4주 = 丁未 癸卯 丁卯 癸卯", () => {
+  it("4주 = 丁未 癸卯 壬辰 癸卯", () => {
     const chart = computeSajuChart(G1);
     expect(chart.pillars.year).toEqual({ stem: "丁", branch: "未" });
     expect(chart.pillars.month).toEqual({ stem: "癸", branch: "卯" });
-    expect(chart.pillars.day).toEqual({ stem: "丁", branch: "卯" });
+    expect(chart.pillars.day).toEqual({ stem: "壬", branch: "辰" });
     expect(chart.pillars.hour).toEqual({ stem: "癸", branch: "卯" });
   });
 
-  it("오행 = wood:3 fire:2 earth:1 metal:0 water:2", () => {
+  it("오행 = wood:2 fire:1 earth:2 metal:0 water:3", () => {
     const chart = computeSajuChart(G1);
-    expect(chart.elements).toEqual({ wood: 3, fire: 2, earth: 1, metal: 0, water: 2 });
+    expect(chart.elements).toEqual({ wood: 2, fire: 1, earth: 2, metal: 0, water: 3 });
   });
 
-  it("격국 = 偏印格, 용신에 metal+earth 포함", () => {
+  it("격국 = 傷官格, 용신에 fire+earth 포함", () => {
     const chart = computeSajuChart(G1);
-    expect(chart.pattern).toBe("偏印格");
-    expect(chart.yongSin).toEqual(expect.arrayContaining(["metal", "earth"]));
+    expect(chart.pattern).toBe("傷官格");
+    expect(chart.yongSin).toEqual(expect.arrayContaining(["fire", "earth"]));
   });
 
-  it("대운 10개, 첫 대운 = 9세 壬寅", () => {
+  it("대운 10개, 첫 대운 = 8세 壬寅", () => {
     const chart = computeSajuChart(G1);
     expect(chart.majorFortunes).toHaveLength(10);
-    expect(chart.majorFortunes[0].startAge).toBe(9);
+    expect(chart.majorFortunes[0].startAge).toBe(8);
     expect(chart.majorFortunes[0]).toMatchObject({ stem: "壬", branch: "寅" });
   });
 
@@ -1328,7 +1346,7 @@ describe("@gons/saju 워크스페이스 import smoke", () => {
       gender: "male",
       birthCity: null,
     });
-    expect(chart.pillars.day.stem).toBe("丁");
+    expect(chart.pillars.day.stem).toBe("壬");
   });
 });
 ```
