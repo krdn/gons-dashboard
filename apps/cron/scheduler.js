@@ -62,7 +62,18 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
-console.log("[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST");
+// 매일 00:01 KST — 일진 자동 생성 (자정 정각의 다른 작업과 분리).
+cron.schedule(
+  "1 0 * * *",
+  () => {
+    void callCron("/api/cron/generate-daily-fortunes", "generate-daily-fortunes");
+  },
+  { timezone: TIMEZONE },
+);
+
+console.log(
+  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST",
+);
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.
 setTimeout(() => {
