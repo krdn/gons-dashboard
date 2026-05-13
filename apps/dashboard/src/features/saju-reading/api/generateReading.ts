@@ -14,7 +14,7 @@ const SECTION_MAX_TOKENS: Record<ReadingSection, number> = {
   personality: 400,
   career: 400,
   health: 300,
-  major_fortune: 800,
+  major_fortune: 1500,
 };
 
 export interface GenerateReadingInput {

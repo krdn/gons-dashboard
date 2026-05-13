@@ -3,5 +3,7 @@ export { SajuPillarsBoard } from "./ui/SajuPillarsBoard";
 export { SajuElementsChart } from "./ui/SajuElementsChart";
 export { SajuTenGodsTable } from "./ui/SajuTenGodsTable";
 export { SajuPatternCard } from "./ui/SajuPatternCard";
-export { SajuMajorFortuneStrip } from "./ui/SajuMajorFortuneStrip";
+export { SajuMajorFortuneTimeline } from "./ui/SajuMajorFortuneTimeline";
 export { SajuReadingSections } from "./ui/SajuReadingSection";
+export { SajuYearlyReading } from "./ui/SajuYearlyReading";
+export { SajuDailyFortune } from "./ui/SajuDailyFortune";

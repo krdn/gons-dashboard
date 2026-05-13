@@ -159,6 +159,9 @@ importers:
       lunar-javascript:
         specifier: 1.7.7
         version: 1.7.7
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^20

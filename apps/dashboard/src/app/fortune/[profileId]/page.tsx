@@ -1,14 +1,20 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { getFortuneProfile } from "@/entities/fortune-profile";
-import { ensureChartAndReadings } from "@/features/saju-reading";
+import {
+  ensureChartAndReadings,
+  generateYearlyReading,
+} from "@/features/saju-reading";
+import { getTodayDailyFortune } from "@/entities/saju-chart";
 import {
   SajuDetailHeader,
   SajuPillarsBoard,
   SajuElementsChart,
   SajuTenGodsTable,
   SajuPatternCard,
-  SajuMajorFortuneStrip,
+  SajuMajorFortuneTimeline,
+  SajuYearlyReading,
+  SajuDailyFortune,
   SajuReadingSections,
 } from "@/widgets/saju-detail";
 import type {
@@ -16,6 +22,10 @@ import type {
   MajorFortune,
   Strength,
   TenGodAssignment,
+  Stem,
+  Branch,
+  DailyFortunePayload,
+  SajuChart,
 } from "@gons/saju";
 
 export const dynamic = "force-dynamic";
@@ -26,11 +36,17 @@ function ageFromBirthDate(birthDate: string): number {
   const [y, m, d] = birthDate.split("-").map(Number);
   const now = new Date();
   let age = now.getFullYear() - y;
-  const hasHadBirthday =
+  const hadBirthday =
     now.getMonth() + 1 > m ||
     (now.getMonth() + 1 === m && now.getDate() >= d);
-  if (!hasHadBirthday) age -= 1;
+  if (!hadBirthday) age -= 1;
   return age;
+}
+
+function kstTodayDate(): string {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
 }
 
 export default async function SajuDetailPage({ params }: Props) {
@@ -42,22 +58,60 @@ export default async function SajuDetailPage({ params }: Props) {
   if (!profile) notFound();
 
   const currentAge = ageFromBirthDate(profile.birthDate);
+  const currentYear = new Date().getFullYear();
 
+  // 1. 차트 + 5섹션 해설 (Phase 1)
   const result = await ensureChartAndReadings({
     profileId,
     userId: session.user.id,
     currentAge,
   });
   if (!result) notFound();
-
   const { chart, readings, errors } = result;
 
-  // jsonb 필드를 위젯 props 타입으로 narrow
+  // 2. jsonb 필드 narrow + SajuChart 형태로 변환 (yearly에 넘기기 위해)
   const tenGods = chart.tenGods as TenGodAssignment;
   const strength = chart.strength as Strength;
   const yongSin = chart.yongSin as Element[];
   const giSin = chart.giSin as Element[];
   const majorFortunes = chart.majorFortunes as MajorFortune[];
+  const elements = chart.elements as SajuChart["elements"];
+
+  const sajuChart: SajuChart = {
+    pillars: {
+      year: { stem: chart.yearStem as Stem, branch: chart.yearBranch as Branch },
+      month: { stem: chart.monthStem as Stem, branch: chart.monthBranch as Branch },
+      day: { stem: chart.dayStem as Stem, branch: chart.dayBranch as Branch },
+      hour:
+        chart.hourStem && chart.hourBranch
+          ? { stem: chart.hourStem as Stem, branch: chart.hourBranch as Branch }
+          : null,
+    },
+    elements,
+    strength,
+    tenGods,
+    pattern: chart.pattern,
+    yongSin,
+    giSin,
+    majorFortunes,
+    inputHash: chart.inputHash,
+  };
+
+  // 3. 세운 (lazy) + 일진 (cron이 채운 row) 병렬 + 부분 실패 허용
+  const [yearlyResult, dailyRow] = await Promise.all([
+    generateYearlyReading({
+      chart: sajuChart,
+      chartId: chart.id,
+      year: currentYear,
+    }).then(
+      (r) => ({ ok: true as const, body: r.body }),
+      (e: unknown) => ({
+        ok: false as const,
+        error: String(e instanceof Error ? e.message : e).slice(0, 200),
+      }),
+    ),
+    getTodayDailyFortune(chart.id, kstTodayDate()).catch(() => null),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[900px] px-6 py-12">
@@ -87,7 +141,7 @@ export default async function SajuDetailPage({ params }: Props) {
           >
             오행 분포
           </h2>
-          <SajuElementsChart elements={chart.elements} />
+          <SajuElementsChart elements={elements} />
         </section>
         <section
           aria-labelledby="pattern-heading"
@@ -131,11 +185,48 @@ export default async function SajuDetailPage({ params }: Props) {
         >
           대운 흐름
         </h2>
-        <SajuMajorFortuneStrip
+        <SajuMajorFortuneTimeline
           majorFortunes={majorFortunes}
           currentAge={currentAge}
+          dayStem={chart.dayStem as Stem}
+          majorFortuneBody={readings.major_fortune}
         />
       </section>
+
+      <section
+        aria-labelledby="yearly-heading"
+        className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+      >
+        <h2
+          id="yearly-heading"
+          className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+        >
+          {currentYear}년 세운 · 월운
+        </h2>
+        <SajuYearlyReading
+          body={yearlyResult.ok ? yearlyResult.body : null}
+          error={yearlyResult.ok ? null : yearlyResult.error}
+          year={currentYear}
+        />
+      </section>
+
+      {dailyRow && (
+        <section
+          aria-labelledby="daily-heading"
+          className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+        >
+          <h2
+            id="daily-heading"
+            className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+          >
+            오늘 일진
+          </h2>
+          <SajuDailyFortune
+            payload={dailyRow.payload as DailyFortunePayload}
+            dayPillar={`${dailyRow.dayStem}${dailyRow.dayBranch}`}
+          />
+        </section>
+      )}
 
       <section aria-labelledby="readings-heading" className="mb-8">
         <h2 id="readings-heading" className="mb-4 text-base font-semibold">

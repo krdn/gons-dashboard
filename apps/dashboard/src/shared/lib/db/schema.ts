@@ -19,6 +19,7 @@ import {
   boolean,
   jsonb,
   numeric,
+  date,
 } from "drizzle-orm/pg-core";
 
 /* =========================================================================
@@ -342,4 +343,48 @@ export const llmSpendLog = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [index("llm_spend_log_feature_day_idx").on(t.feature, t.createdAt)],
+);
+
+/* =========================================================================
+ * 사주 Phase 3 — spec §4
+ * - saju_yearly_readings: 세운+월운 lazy 캐시 ((chart_id, year) UNIQUE)
+ * - saju_daily_fortunes: 매일 자정 cron 일괄 + 영구 보관 ((chart_id, for_date) UNIQUE)
+ * ========================================================================= */
+export const sajuYearlyReadings = pgTable(
+  "saju_yearly_readings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chartId: uuid("chart_id")
+      .notNull()
+      .references(() => sajuCharts.id, { onDelete: "cascade" }),
+    year: integer("year").notNull(),
+    yearStem: text("year_stem").notNull(),
+    yearBranch: text("year_branch").notNull(),
+    body: text("body").notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("saju_yearly_readings_chart_year_idx").on(t.chartId, t.year),
+  ],
+);
+
+export const sajuDailyFortunes = pgTable(
+  "saju_daily_fortunes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chartId: uuid("chart_id")
+      .notNull()
+      .references(() => sajuCharts.id, { onDelete: "cascade" }),
+    forDate: date("for_date").notNull(),
+    dayStem: text("day_stem").notNull(),
+    dayBranch: text("day_branch").notNull(),
+    payload: jsonb("payload").notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("saju_daily_fortunes_chart_date_idx").on(t.chartId, t.forDate),
+    index("saju_daily_fortunes_date_idx").on(t.forDate),
+  ],
 );

@@ -1,5 +1,7 @@
 import type { Stem, Branch, Element, TenGod } from "./hanja";
 
+export type { Stem, Branch, Element, TenGod };
+
 export interface Pillar {
   stem: Stem;
   branch: Branch;

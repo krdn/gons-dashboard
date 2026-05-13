@@ -23,3 +23,22 @@ export {
   TEN_GOD_KO,
 } from "./hanja";
 export type { Stem, Branch, Element, TenGod } from "./hanja";
+
+// Phase 3 — 세운/월운/일진 계산 + 일진 payload 스키마
+export { computeYearPillar, computeYearPillarFromDate } from "./yearPillar";
+export { computeMonthPillars } from "./monthPillars";
+export type { MonthPillar } from "./monthPillars";
+export { computeDayPillar } from "./dayPillar";
+export { tenGodsForPillar } from "./tenGodsFor";
+export {
+  dailyFortunePayloadSchema,
+  dailyFortuneScoreSchema,
+  dailyFortuneHourSlotSchema,
+  dailyFortuneRemedySchema,
+} from "./dailyFortune";
+export type {
+  DailyFortunePayload,
+  DailyFortuneScore,
+  DailyFortuneHourSlot,
+  DailyFortuneRemedy,
+} from "./dailyFortune";
