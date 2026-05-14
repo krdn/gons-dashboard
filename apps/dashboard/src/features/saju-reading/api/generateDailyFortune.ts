@@ -9,12 +9,10 @@ import {
   type Stem,
   type Branch,
 } from "@gons/saju";
-import { db } from "@/shared/lib/db/client";
 import { sajuDailyFortunes } from "@/shared/lib/db/schema";
 import type { SajuChartRow, SajuDailyFortuneRow } from "@/entities/saju-chart";
-import { env } from "@/shared/config/env";
-import { callSajuLlm } from "../lib/llm-client";
-import { assertSajuBudgetOk, logSajuSpend } from "../lib/budget";
+import { cachedReading } from "../lib/cachedReading";
+import { BudgetExceededError } from "../lib/budget";
 import { buildDailyPrompt } from "../lib/dailyPrompt";
 
 export interface GenerateDailyFortuneInput {
@@ -50,111 +48,67 @@ function chartRowToChart(row: SajuChartRow): SajuChart {
   };
 }
 
-async function callAndValidate(
-  input: GenerateDailyFortuneInput,
-  retryWithEmphasis: boolean,
-): Promise<{
-  payload: DailyFortunePayload;
-  krw: number;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-}> {
-  const chart = chartRowToChart(input.chartRow);
-  const dayPillar = computeDayPillar(input.forDate);
-  const tenGods = tenGodsForPillar(input.chartRow.dayStem as Stem, dayPillar);
-  const { system, user } = buildDailyPrompt({
-    chart,
-    dayPillar,
-    tenGods,
-    forDate: input.forDate,
-    retryWithEmphasis,
-  });
-  const llm = await callSajuLlm({ system, user, maxTokens: 1500 });
-
-  // markdown 코드블록 제거 (LLM이 ```json 으로 감쌀 수 있음)
-  const trimmed = llm.body
-    .trim()
-    .replace(/^```(?:json)?\n?/, "")
-    .replace(/\n?```$/, "");
-  const parsed = JSON.parse(trimmed);
-  const validated = dailyFortunePayloadSchema.parse({
-    ...parsed,
-    dayPillar: `${dayPillar.stem}${dayPillar.branch}`,
-    forDate: input.forDate,
-  });
-  return {
-    payload: validated,
-    krw: llm.krw,
-    model: llm.model,
-    inputTokens: llm.inputTokens,
-    outputTokens: llm.outputTokens,
-  };
-}
-
 export async function generateDailyFortune(
   input: GenerateDailyFortuneInput,
 ): Promise<GenerateDailyFortuneResult> {
-  // 1. cache 조회
-  const [cached] = await db
-    .select()
-    .from(sajuDailyFortunes)
-    .where(
-      and(
+  const chart = chartRowToChart(input.chartRow);
+  const dayPillar = computeDayPillar(input.forDate);
+  const tenGods = tenGodsForPillar(input.chartRow.dayStem as Stem, dayPillar);
+
+  // retry 정책은 caller 책임. retryWithEmphasis 토글로 prompt 강화한 두 번째 호출을 시도.
+  // 캐시-리딩 모듈은 retry 모름 — validate throw 그대로 propagate.
+  const runOnce = (retryWithEmphasis: boolean) => {
+    const prompt = buildDailyPrompt({
+      chart,
+      dayPillar,
+      tenGods,
+      forDate: input.forDate,
+      retryWithEmphasis,
+    });
+    return cachedReading<typeof sajuDailyFortunes, DailyFortunePayload>({
+      table: sajuDailyFortunes,
+      where: and(
         eq(sajuDailyFortunes.chartId, input.chartRow.id),
         eq(sajuDailyFortunes.forDate, input.forDate),
-      ),
-    )
-    .limit(1);
+      )!,
+      conflictTarget: [sajuDailyFortunes.chartId, sajuDailyFortunes.forDate],
+      prompt: { system: prompt.system, user: prompt.user, maxTokens: 1500 },
+      promptVersion: prompt.version,
+      validator: (raw) => {
+        // markdown 코드블록 제거 (LLM 이 ```json 으로 감쌀 수 있음)
+        const trimmed = raw
+          .trim()
+          .replace(/^```(?:json)?\n?/, "")
+          .replace(/\n?```$/, "");
+        return dailyFortunePayloadSchema.parse({
+          ...JSON.parse(trimmed),
+          dayPillar: `${dayPillar.stem}${dayPillar.branch}`,
+          forDate: input.forDate,
+        });
+      },
+      fromRow: (r) => r.payload as DailyFortunePayload,
+      toRow: (payload, meta) => ({
+        chartId: input.chartRow.id,
+        forDate: input.forDate,
+        dayStem: dayPillar.stem,
+        dayBranch: dayPillar.branch,
+        payload,
+        model: meta.model,
+        promptVersion: meta.promptVersion,
+      }),
+    });
+  };
 
-  if (cached && cached.model === env.SAJU_LLM_MODEL) {
-    return { row: cached, cached: true };
-  }
-
-  // 2. 예산 가드
-  await assertSajuBudgetOk(env.SAJU_LLM_DAILY_BUDGET_KRW);
-
-  // 3. LLM + Zod, 실패 시 1회 재시도. 첫 실패는 production 운영에서 진단을
-  //    위해 stderr 로 한 줄 — 재시도가 성공해도 패턴 파악에 유용.
-  let result;
   try {
-    result = await callAndValidate(input, false);
+    const { cached } = await runOnce(false);
+    return { row: null, cached };
   } catch (firstError) {
+    // 예산 초과는 재시도해도 무의미 — 그대로 위로.
+    if (firstError instanceof BudgetExceededError) throw firstError;
     console.warn(
       `[saju.daily] first attempt failed for ${input.chartRow.id} ${input.forDate}: ${(firstError as Error).message?.slice(0, 200)}`,
     );
-    result = await callAndValidate(input, true);
+    const { cached } = await runOnce(true);
+    return { row: null, cached };
   }
-
-  // 4. spend log + UPSERT
-  await logSajuSpend({
-    model: result.model,
-    inputTokens: result.inputTokens,
-    outputTokens: result.outputTokens,
-    krw: result.krw,
-  });
-
-  const dayPillar = computeDayPillar(input.forDate);
-  await db
-    .insert(sajuDailyFortunes)
-    .values({
-      chartId: input.chartRow.id,
-      forDate: input.forDate,
-      dayStem: dayPillar.stem,
-      dayBranch: dayPillar.branch,
-      payload: result.payload,
-      model: result.model,
-    })
-    .onConflictDoUpdate({
-      target: [sajuDailyFortunes.chartId, sajuDailyFortunes.forDate],
-      set: {
-        dayStem: dayPillar.stem,
-        dayBranch: dayPillar.branch,
-        payload: result.payload,
-        model: result.model,
-        createdAt: new Date(),
-      },
-    });
-
-  return { row: null, cached: false };
 }

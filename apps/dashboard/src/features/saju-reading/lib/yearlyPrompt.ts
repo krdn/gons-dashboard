@@ -1,5 +1,9 @@
 import type { SajuChart, Pillar, TenGod, MonthPillar } from "@gons/saju";
 
+// 프롬프트 내용이 의미 있게 바뀔 때마다 -v2, -v3 으로 올린다.
+// 캐시-리딩 모듈이 (model, promptVersion) 키로 옛 응답을 stale 처리.
+export const YEARLY_PROMPT_VERSION = "yearly-v1";
+
 const SYSTEM_PROMPT = [
   "당신은 명리학자입니다.",
   "한자 + 한글 음을 병기하고, 추측·점성술 톤은 피하고,",
@@ -19,6 +23,7 @@ export interface BuildYearlyPromptInput {
 export function buildYearlyPrompt(input: BuildYearlyPromptInput): {
   system: string;
   user: string;
+  version: typeof YEARLY_PROMPT_VERSION;
 } {
   const monthLines = input.monthPillars.map((mp, i) => {
     const tg = input.monthTenGods[i];
@@ -69,5 +74,5 @@ export function buildYearlyPrompt(input: BuildYearlyPromptInput): {
     "전체 길이: 약 1200~1500자.",
   ].join("\n");
 
-  return { system: SYSTEM_PROMPT, user };
+  return { system: SYSTEM_PROMPT, user, version: YEARLY_PROMPT_VERSION };
 }

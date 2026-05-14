@@ -43,7 +43,7 @@ describe("generateReading", () => {
     (db.select as any).mockReturnValue({
       from: () => ({
         where: () => ({
-          limit: () => Promise.resolve([{ body: "cached body", model: "claude-opus-4-7" }]),
+          limit: () => Promise.resolve([{ body: "cached body", model: "claude-opus-4-7", promptVersion: "section-v1" }]),
         }),
       }),
     });
@@ -93,7 +93,7 @@ describe("generateReading", () => {
     (db.select as any).mockReturnValue({
       from: () => ({
         where: () => ({
-          limit: () => Promise.resolve([{ body: "old body", model: "claude-sonnet-4-6" }]),
+          limit: () => Promise.resolve([{ body: "old body", model: "claude-sonnet-4-6", promptVersion: "section-v1" }]),
         }),
       }),
     });

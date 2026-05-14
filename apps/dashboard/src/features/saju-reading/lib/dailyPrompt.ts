@@ -1,5 +1,9 @@
 import type { SajuChart, Pillar, TenGod } from "@gons/saju";
 
+// 프롬프트 내용이 의미 있게 바뀔 때마다 -v2, -v3 으로 올린다.
+// 캐시-리딩 모듈이 (model, promptVersion) 키로 옛 응답을 stale 처리.
+export const DAILY_PROMPT_VERSION = "daily-v1";
+
 const SYSTEM_PROMPT = [
   "당신은 명리학자입니다.",
   "한자 + 한글 음을 병기하고, 추측·점성술 톤은 피하고,",
@@ -49,6 +53,7 @@ export interface BuildDailyPromptInput {
 export function buildDailyPrompt(input: BuildDailyPromptInput): {
   system: string;
   user: string;
+  version: typeof DAILY_PROMPT_VERSION;
 } {
   const system = input.retryWithEmphasis
     ? `${SYSTEM_PROMPT}\n\n반드시 JSON만, 다른 텍스트(설명/마크다운 코드블록 포함) 절대 금지.`
@@ -79,5 +84,5 @@ export function buildDailyPrompt(input: BuildDailyPromptInput): {
     "위 스키마로만 JSON 응답.",
   ].join("\n");
 
-  return { system, user };
+  return { system, user, version: DAILY_PROMPT_VERSION };
 }

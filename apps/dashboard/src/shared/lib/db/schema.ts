@@ -324,6 +324,8 @@ export const sajuReadings = pgTable(
     section: text("section").notNull(),
     body: text("body").notNull(),
     model: text("model").notNull(),
+    // 캐시-리딩 모듈이 (model, promptVersion) 으로 cache 무효화. 모든 INSERT 는 명시 값 필수.
+    promptVersion: text("prompt_version").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
@@ -362,6 +364,8 @@ export const sajuYearlyReadings = pgTable(
     yearBranch: text("year_branch").notNull(),
     body: text("body").notNull(),
     model: text("model").notNull(),
+    // 캐시-리딩 모듈이 (model, promptVersion) 으로 cache 무효화. 모든 INSERT 는 명시 값 필수.
+    promptVersion: text("prompt_version").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
@@ -381,6 +385,8 @@ export const sajuDailyFortunes = pgTable(
     dayBranch: text("day_branch").notNull(),
     payload: jsonb("payload").notNull(),
     model: text("model").notNull(),
+    // 캐시-리딩 모듈이 (model, promptVersion) 으로 cache 무효화. 모든 INSERT 는 명시 값 필수.
+    promptVersion: text("prompt_version").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [

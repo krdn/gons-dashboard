@@ -46,7 +46,7 @@ describe("generateYearlyReading", () => {
         where: () => ({
           limit: () =>
             Promise.resolve([
-              { body: "cached body", model: "claude-opus-4-7" },
+              { body: "cached body", model: "claude-opus-4-7", promptVersion: "yearly-v1" },
             ]),
         }),
       }),
@@ -96,7 +96,7 @@ describe("generateYearlyReading", () => {
       from: () => ({
         where: () => ({
           limit: () =>
-            Promise.resolve([{ body: "old", model: "claude-sonnet-4-6" }]),
+            Promise.resolve([{ body: "old", model: "claude-sonnet-4-6", promptVersion: "yearly-v1" }]),
         }),
       }),
     });
