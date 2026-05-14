@@ -19,13 +19,13 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/shared/lib/auth";
 import { getHostByName, HostBadge } from "@/entities/host";
-import { listContainers, type ContainerSummary } from "@/entities/container";
+import { listContainers, type ContainerSummary } from "@/entities/container/server";
 import {
   getProjects,
   getProjectComposeKeys,
   syncMissingProjects,
   type Project,
-} from "@/entities/project";
+} from "@/entities/project/server";
 import { groupByProject } from "@/features/container-list";
 import { AuditLogPanel, isAdmin } from "@/features/container-actions";
 import { env } from "@/shared/config/env";

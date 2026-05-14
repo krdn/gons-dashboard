@@ -1,6 +1,4 @@
-// barrel 우회 — entities/container/index.ts 는 server-only API(listContainers)도 함께
-// export 하므로, 클라이언트 트리에서 사용될 가능성이 있는 UI 는 깊은 경로로 직접 import 한다.
-import { ContainerRow } from "@/entities/container/ui/ContainerRow";
+import { ContainerRow } from "@/entities/container/client";
 import type { ProjectGroup } from "../lib/groupByProject";
 
 type Props = {

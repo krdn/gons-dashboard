@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { restartContainer } from "../api/restartContainer";
 import { startContainer } from "../api/startContainer";
 import { stopContainer } from "../api/stopContainer";
-import type { ContainerState } from "@/entities/container/model/types";
+import type { ContainerState } from "@/entities/container/client";
 import {
   PlayIcon,
   RestartIcon,

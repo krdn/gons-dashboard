@@ -9,7 +9,7 @@
 // 전제: `pnpm db:seed:hosts`로 home-server, krdn-lenovo 호스트가 먼저 등록돼 있어야 함.
 import "dotenv/config";
 
-import { KNOWN_COMPOSE_PROJECTS_BY_HOST } from "@/entities/project";
+import { KNOWN_COMPOSE_PROJECTS_BY_HOST } from "@/entities/project/server";
 import { db } from "@/shared/lib/db/client";
 import { hosts, projects } from "@/shared/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
