@@ -2,16 +2,14 @@
 //
 // CRITICAL §3 #10: KST 자정 정확 트리거 — 호출자(node-cron 컨테이너)가
 //   timezone: 'Asia/Seoul', cron expression: '1 0 * * *'.
-//   본 라우트 내부에서도 kstTodayDate()로 KST 기준 오늘 날짜를 계산한다.
-// 활성 프로필(fortune_profiles.is_active=true) × 차트 INNER JOIN — 차트 없는
-//   프로필은 일진 생성 대상이 아님 (skip).
-// Promise.allSettled로 병렬 실행 — 한 프로필 실패가 다른 프로필을 막지 않음.
-import "server-only";
-import { NextResponse } from "next/server";
+//
+// 셰이프: createCronHandler factory 위임. caller 책임: 차트 INNER JOIN select + per-차트 일진 생성.
+//   concurrency: 2 (LLM rate limit / 비용 burst 회피 — 옛 무제한 allSettled 대비 안정성 개선).
+//   activeProfile × 차트 INNER JOIN — 차트 없는 프로필은 일진 생성 대상이 아님 (skip).
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles, sajuCharts } from "@/shared/lib/db/schema";
-import { verifyCronBearer } from "@/shared/lib/auth/cron";
+import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
 import { generateDailyFortune } from "@/features/saju-reading/api/generateDailyFortune";
 
 export const dynamic = "force-dynamic";
@@ -23,35 +21,20 @@ function kstTodayDate(): string {
   return kst.toISOString().slice(0, 10);
 }
 
-export async function POST(request: Request) {
-  if (!verifyCronBearer(request)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  const today = kstTodayDate();
-
-  // 활성 프로필 × 차트 INNER JOIN (차트 없는 프로필은 skip).
-  const rows = await db
-    .select({ chart: sajuCharts })
-    .from(fortuneProfiles)
-    .innerJoin(sajuCharts, eq(sajuCharts.profileId, fortuneProfiles.id))
-    .where(eq(fortuneProfiles.isActive, true));
-
-  const results = await Promise.allSettled(
-    rows.map((r) => generateDailyFortune({ chartRow: r.chart, forDate: today })),
-  );
-
-  const succeeded = results.filter((r) => r.status === "fulfilled").length;
-  const failed = results.filter((r) => r.status === "rejected").length;
-  const errors = results
-    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .map((r) => String(r.reason).slice(0, 200));
-
-  return NextResponse.json({
-    forDate: today,
-    total: rows.length,
-    succeeded,
-    failed,
-    errors,
-  });
-}
+export const POST = createCronHandler({
+  name: "generate-daily-fortunes",
+  targetSelect: async () =>
+    db
+      .select({ chart: sajuCharts })
+      .from(fortuneProfiles)
+      .innerJoin(sajuCharts, eq(sajuCharts.profileId, fortuneProfiles.id))
+      .where(eq(fortuneProfiles.isActive, true)),
+  getId: (r) => r.chart.id,
+  getLabel: (r) => r.chart.profileId,
+  perTarget: async (r) => {
+    const result = await generateDailyFortune({ chartRow: r.chart, forDate: kstTodayDate() });
+    return { cached: result.cached };
+  },
+  concurrency: 2,
+  extra: async () => ({ forDate: kstTodayDate() }),
+});
