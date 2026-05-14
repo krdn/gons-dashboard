@@ -89,6 +89,7 @@ describe("saju-reading hash 무효화 통합", () => {
         section: "overview",
         body: "테스트 해설",
         model: "claude-opus-4-7",
+        promptVersion: "test-v0",
       })
       .onConflictDoNothing();
 

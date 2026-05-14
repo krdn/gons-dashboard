@@ -64,6 +64,13 @@
       "when": 1778687447290,
       "tag": "0008_icy_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778767066168,
+      "tag": "0009_serious_starfox",
+      "breakpoints": true
     }
   ]
 }

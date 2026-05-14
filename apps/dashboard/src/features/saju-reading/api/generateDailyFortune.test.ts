@@ -83,6 +83,7 @@ describe("generateDailyFortune", () => {
             Promise.resolve([
               {
                 model: "claude-opus-4-7",
+                promptVersion: "daily-v1",
                 payload: VALID_PAYLOAD,
                 dayStem: "戊",
                 dayBranch: "子",

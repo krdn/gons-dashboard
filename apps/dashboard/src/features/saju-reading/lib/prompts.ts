@@ -8,6 +8,10 @@ export const SAJU_SYSTEM_PROMPT = [
   "출력은 한국어 markdown text. 헤더(#)는 쓰지 말고 단락 문장만.",
 ].join(" ");
 
+// 프롬프트 내용이 의미 있게 바뀔 때마다 -v2, -v3 으로 올린다.
+// 캐시-리딩 모듈이 (model, promptVersion) 키로 옛 응답을 stale 처리.
+export const SECTION_PROMPT_VERSION = "section-v1";
+
 const SECTION_INSTRUCTIONS: Record<ReadingSection, { instruction: string; targetChars: number }> = {
   overview:      { instruction: "이 사주의 구조적 특징(관인상생, 신강·신약, 격국 등)을 한 문단으로 종합 풀이. 약 300자.",                                       targetChars: 300 },
   personality:   { instruction: "성격·기질을 사주 구조에서 도출. 강점과 그림자 양면을 모두 다룰 것. 약 200자.",                                                    targetChars: 200 },
@@ -40,6 +44,7 @@ export interface BuildReadingPromptInput {
 export function buildReadingPrompt(input: BuildReadingPromptInput): {
   system: string;
   user: string;
+  version: typeof SECTION_PROMPT_VERSION;
 } {
   const { chart, section, currentAge } = input;
   const sectionMeta = SECTION_INSTRUCTIONS[section];
@@ -70,5 +75,5 @@ export function buildReadingPrompt(input: BuildReadingPromptInput): {
     `목표 길이: 약 ${sectionMeta.targetChars}자.`,
   ].join("\n");
 
-  return { system: SAJU_SYSTEM_PROMPT, user };
+  return { system: SAJU_SYSTEM_PROMPT, user, version: SECTION_PROMPT_VERSION };
 }
