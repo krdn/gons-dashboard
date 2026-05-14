@@ -1,50 +1,31 @@
 // 아침 8시 KST 디지스트 알림 발송.
 //
-// CRITICAL §3 #10: KST 8시 정확 트리거 — TZ 회귀 테스트 필수.
-//   호출자(node-cron 컨테이너)가 timezone: 'Asia/Seoul', cron expression: '0 8 * * *'.
+// CRITICAL §3 #10: KST 8시 정확 트리거 — 호출자(node-cron 컨테이너) timezone 'Asia/Seoul', expr '0 8 * * *'.
 // CRITICAL §3 #11: TOP 5 reply_needed SQL — getReplyNeeded(userId, 5) 재사용.
-import { NextResponse } from "next/server";
+// 셰이프: createCronHandler factory 위임. caller 책임: 활성 대상 select + per-user push work.
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { users, pushSubscriptions } from "@/shared/lib/db/schema";
-import { verifyCronBearer } from "@/shared/lib/auth/cron";
+import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
 import { getReplyNeeded } from "@/entities/email";
 import { sendPush } from "@/shared/lib/push";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
-  if (!verifyCronBearer(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const activeUsers = await db
-    .select({ id: users.id, email: users.email })
-    .from(users)
-    .where(eq(users.oauthState, "active"));
-
-  const results: Array<{
-    userId: string;
-    email: string;
-    itemCount: number;
-    sent: number;
-    expired: number;
-    errors: number;
-  }> = [];
-
-  for (const user of activeUsers) {
-    const items = await getReplyNeeded(user.id, 5);
+export const POST = createCronHandler({
+  name: "morning-digest",
+  targetSelect: async () =>
+    db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.oauthState, "active")),
+  getId: (u) => u.id,
+  getLabel: (u) => u.email,
+  perTarget: async (u) => {
+    const items = await getReplyNeeded(u.id, 5);
     if (items.length === 0) {
       // 빈 디지스트는 알림 보내지 않음 — 매일 빈 알림은 노이즈.
-      results.push({
-        userId: user.id,
-        email: user.email,
-        itemCount: 0,
-        sent: 0,
-        expired: 0,
-        errors: 0,
-      });
-      continue;
+      return { itemCount: 0, sent: 0, expired: 0, errors: 0 };
     }
 
     const subs = await db
@@ -54,7 +35,7 @@ export async function POST(request: Request) {
         auth: pushSubscriptions.auth,
       })
       .from(pushSubscriptions)
-      .where(eq(pushSubscriptions.userId, user.id));
+      .where(eq(pushSubscriptions.userId, u.id));
 
     const title = `오늘 답장 필요 ${items.length}건`;
     const top = items[0];
@@ -69,12 +50,7 @@ export async function POST(request: Request) {
     const expiredEndpoints: string[] = [];
 
     for (const sub of subs) {
-      const result = await sendPush(sub, {
-        title,
-        body,
-        url: "/",
-        tag: "morning-digest",
-      });
+      const result = await sendPush(sub, { title, body, url: "/", tag: "morning-digest" });
       if (result.kind === "sent") sent += 1;
       else if (result.kind === "expired") {
         expired += 1;
@@ -85,26 +61,11 @@ export async function POST(request: Request) {
     // 만료된 endpoint 제거 — 다음 발송 시 재시도 안 함.
     if (expiredEndpoints.length > 0) {
       for (const endpoint of expiredEndpoints) {
-        await db
-          .delete(pushSubscriptions)
-          .where(eq(pushSubscriptions.endpoint, endpoint));
+        await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
       }
     }
 
-    results.push({
-      userId: user.id,
-      email: user.email,
-      itemCount: items.length,
-      sent,
-      expired,
-      errors,
-    });
-  }
-
-  return NextResponse.json({
-    runAt: new Date().toISOString(),
-    timezone: process.env.TZ ?? "(unset)",
-    activeUsers: activeUsers.length,
-    results,
-  });
-}
+    return { itemCount: items.length, sent, expired, errors };
+  },
+  concurrency: 10,
+});

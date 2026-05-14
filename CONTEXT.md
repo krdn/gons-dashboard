@@ -75,7 +75,10 @@ container action(restart/start/stop)의 success/failed 양 경로 기록. 운영
 cron 핸들러가 fan-out 하는 대상 집합. poll-gmail/morning-digest 는 `users.oauthState='active'`, generate-daily-fortunes 는 `fortuneProfiles.isActive=true × 차트 INNER JOIN`.
 
 **부분 실패 격리** (per-target failure isolation):
-한 대상의 실패가 다른 대상을 막지 않게 하는 정책. 현재 cron 마다 `try/catch`(poll-gmail) 또는 `Promise.allSettled`(generate-daily-fortunes) 로 살짝 다른 모양 — Phase 4 deepening 후보(친구션 #2).
+한 대상의 실패가 다른 대상을 막지 않게 하는 정책. **캐시-cron 셰이프 모듈** (`createCronHandler`) 이 통일된 격리 + 에러 메시지 200자 절단 + concurrency 제어를 모두 묻는다. caller 는 `concurrency` 정책만 결정 (LLM cron 은 2, push 는 10, sync 는 5). Design spec: `docs/superpowers/specs/2026-05-15-cron-handler-deepening.md`.
+
+**캐시-cron 셰이프 모듈** (`createCronHandler` factory):
+"bearer 검사 → 활성 대상 select → per-target 작업 + 부분 실패 격리 → 결과 envelope" 시퀀스를 묻는 도메인-무관 깊은 모듈. 각 cron route 는 `export const POST = createCronHandler({...})` 한 줄. 응답 envelope `{name, runAt, timezone, total, succeeded, failed, results[], extra?}` 완전 강제 — 운영 모니터링 일관성이 모듈의 존재 이유. cron-specific 글로벌 카운트 (예: `reauthRequired`) 는 `extra` 슬롯에 흡수.
 
 ## Relationships
 
