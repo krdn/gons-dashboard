@@ -415,11 +415,11 @@ export const playmcpProfiles = pgTable(
     nickname: text("nickname").notNull(),
     relation: text("relation").notNull(),
     birthDate: text("birth_date").notNull(),
-    calendar: text("calendar").notNull().default("solar"),
-    gender: text("gender").notNull(),
+    calendar: text("calendar").notNull().default("solar"), // 'solar' | 'lunar'
+    gender: text("gender").notNull(), // 'male' | 'female'
     birthTime: text("birth_time"),
     birthCity: text("birth_city"),
-    inputHash: text("input_hash").notNull(),
+    inputHash: text("input_hash").notNull(), // sha256(birthDate|calendar|gender|birthTime|birthCity) — 캐시 무효화 키
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
