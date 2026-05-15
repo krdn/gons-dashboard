@@ -7,7 +7,13 @@
 // (50개+ 변경 시뮬레이션 테스트 필수, eng review §3 CRITICAL #2)
 import "server-only";
 import { z } from "zod";
-import { classifyGmailError, isRetryable, GmailError } from "./errors";
+import {
+  classifyGmailError,
+  isRetryable,
+  GmailError,
+  GmailClientError,
+  HistoryStaleError,
+} from "./errors";
 
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_RETRIES = 3;
@@ -64,10 +70,21 @@ export async function listHistorySince(
     });
     if (pageToken) params.set("pageToken", pageToken);
 
-    const response = await fetchWithRetry(
-      `${API}/history?${params.toString()}`,
-      accessToken,
-    );
+    let response: Response;
+    try {
+      response = await fetchWithRetry(
+        `${API}/history?${params.toString()}`,
+        accessToken,
+      );
+    } catch (err) {
+      // history endpoint의 404는 실무상 stale historyId 외 의미 없음.
+      // Google이 메시지 문구를 "Requested entity was not found." 같이 바꿔도
+      // endpoint+status로 분류하면 message 의존이 사라짐.
+      if (err instanceof GmailClientError && err.status === 404) {
+        throw new HistoryStaleError(err.message);
+      }
+      throw err;
+    }
     const body = (await response.json()) as unknown;
     const parsed = HistoryResponseSchema.parse(body);
 
