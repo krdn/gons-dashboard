@@ -16,6 +16,7 @@
     "db:seed:hosts": "tsx --conditions=react-server src/scripts/seed-hosts.ts",
     "db:seed:projects": "tsx --conditions=react-server src/scripts/seed-projects.ts",
     "db:cleanup-projects": "tsx --conditions=react-server src/scripts/cleanup-projects.ts",
+    "tiger:bootstrap": "tsx --conditions=react-server src/scripts/tiger-bootstrap.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
