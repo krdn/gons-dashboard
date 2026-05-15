@@ -50,7 +50,7 @@ const schema = z.object({
     .min(32, "openssl rand -hex 32 로 생성. PlayMCP 토큰 + (가능 시) Google refresh 토큰 암호화."),
 
   // ─── PlayMCP 1FATE (호 상담 영역) ────────────────────────
-  // PlayMCP 게이트웨이 OAuth 흐름 — spec §X / plan 2026-05-15.
+  // PlayMCP 게이트웨이 OAuth 흐름 — spec §11 / plan 2026-05-15.
   PLAYMCP_GATEWAY_URL: z
     .string()
     .url()
