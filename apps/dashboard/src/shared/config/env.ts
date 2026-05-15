@@ -45,7 +45,22 @@ const schema = z.object({
   OPS_NOTIFY_EMAIL: z.string().email().optional(),
 
   // Postgres at-rest 암호화 키 (refresh token)
-  PG_ENCRYPTION_KEY: z.string().min(32, "openssl rand -hex 32 로 생성").optional(),
+  PG_ENCRYPTION_KEY: z
+    .string()
+    .min(32, "openssl rand -hex 32 로 생성. PlayMCP 토큰 + (가능 시) Google refresh 토큰 암호화."),
+
+  // ─── PlayMCP 1FATE (호 상담 영역) ────────────────────────
+  // PlayMCP 게이트웨이 OAuth 흐름 — spec §X / plan 2026-05-15.
+  PLAYMCP_GATEWAY_URL: z
+    .string()
+    .url()
+    .default("https://playmcp.kakao.com/mcp"),
+  PLAYMCP_CLIENT_ID: z
+    .string()
+    .min(1, "PlayMCP gateway client_id 필수 — 가이드 고정값"),
+  PLAYMCP_BOOTSTRAP_OTT: z
+    .string()
+    .optional(),
 
   // 본인 1명 allowlist (콤마 구분)
   ALLOWLIST_EMAILS: z.string().min(1),
