@@ -73,6 +73,8 @@ jobs:
           ALLOWLIST_EMAILS: build@placeholder.local
           ADMIN_EMAILS: build@placeholder.local
           MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
+          PG_ENCRYPTION_KEY: a-placeholder-pg-encryption-key-of-at-least-32-chars
+          PLAYMCP_CLIENT_ID: placeholder-playmcp-client-id
         run: pnpm test
 
       - name: Build MCP packages
@@ -94,6 +96,8 @@ jobs:
           ALLOWLIST_EMAILS: build@placeholder.local
           ADMIN_EMAILS: build@placeholder.local
           MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
+          PG_ENCRYPTION_KEY: a-placeholder-pg-encryption-key-of-at-least-32-chars
+          PLAYMCP_CLIENT_ID: placeholder-playmcp-client-id
         run: pnpm build
 
   docker:
