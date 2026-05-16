@@ -16,6 +16,7 @@
     "db:seed:hosts": "tsx --conditions=react-server src/scripts/seed-hosts.ts",
     "db:seed:projects": "tsx --conditions=react-server src/scripts/seed-projects.ts",
     "db:cleanup-projects": "tsx --conditions=react-server src/scripts/cleanup-projects.ts",
+    "tiger:bootstrap": "tsx --conditions=react-server src/scripts/tiger-bootstrap.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -31,6 +32,7 @@
     "drizzle-orm": "^0.38.3",
     "next": "16.2.6",
     "next-auth": "^5.0.0-beta.25",
+    "p-limit": "^7.3.0",
     "postgres": "^3.4.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",

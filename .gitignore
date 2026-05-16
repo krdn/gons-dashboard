@@ -75,3 +75,6 @@ docker-compose.override.yml
 
 # Playwright MCP local artifacts
 .playwright-mcp/
+
+# Git worktrees (superpowers using-git-worktrees skill)
+.worktrees/
