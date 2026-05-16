@@ -116,13 +116,13 @@ git commit -m "feat(saju-tri): DB 마이그레이션 — longitude_deg + lifetim
 
 ---
 
-## Task 0.2: Canonical Fixture — 본인 사주 (壬辰 일주 골든)
+## Task 0.2: Canonical Fixture — 본인 사주 (壬辰 일주 골든) ✅ (commit 44ccf4a)
 
 **Files:**
 - Create: `packages/saju/tests/fixtures/canonical-1967.json`
 - Create: `packages/saju/tests/canonical.test.ts`
 
-- [ ] **Step 1: fixture 파일 작성**
+- [x] **Step 1: fixture 파일 작성**
 
 `packages/saju/tests/fixtures/canonical-1967.json`:
 
@@ -150,7 +150,7 @@ git commit -m "feat(saju-tri): DB 마이그레이션 — longitude_deg + lifetim
 }
 ```
 
-- [ ] **Step 2: failing test 작성**
+- [x] **Step 2: failing test 작성**
 
 `packages/saju/tests/canonical.test.ts`:
 
@@ -177,12 +177,12 @@ describe("canonical 1967 사주 (壬辰 일주 골든)", () => {
 
 (필드명이 다르면 실제 `computeSajuChart` 반환값에 맞춰 `stemKo`/`branchKo` 를 `stem.hanja`/`branch.hanja` 등으로 보정.)
 
-- [ ] **Step 3: 테스트 실행 — 기존 computeSajuChart 와 fixture 합의 확인**
+- [x] **Step 3: 테스트 실행 — 기존 computeSajuChart 와 fixture 합의 확인**
 
 Run: `pnpm --filter @gons/saju test canonical`
 Expected: PASS.
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add packages/saju/tests/fixtures/canonical-1967.json packages/saju/tests/canonical.test.ts
