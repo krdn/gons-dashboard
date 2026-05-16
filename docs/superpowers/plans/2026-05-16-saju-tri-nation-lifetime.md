@@ -644,13 +644,13 @@ git commit -m "feat(saju-tri): 만세력 합의 검증 — lunar-javascript + ko
 
 ---
 
-## Task 2.2: 신살 계산 — core/shensha.ts
+## Task 2.2: 신살 계산 — core/shensha.ts ✅ (commit 701e6d0)
 
 **Files:**
 - Create: `packages/saju/src/core/shensha.ts`
 - Create: `packages/saju/src/core/shensha.test.ts`
 
-- [ ] **Step 1: failing test**
+- [x] **Step 1: failing test**
 
 `packages/saju/src/core/shensha.test.ts`:
 
@@ -690,9 +690,10 @@ describe("computeShensha", () => {
 });
 ```
 
-- [ ] **Step 2: 구현**
+- [x] **Step 2: 구현**
 
 `packages/saju/src/core/shensha.ts`:
+(실제: SajuPillars 타입 + ShenshaEntry 인터페이스로 enhanced. plan draft 의 PillarInput / Shensha 대신 패키지 type 시스템 통합. GAEGANG_PAIRS 4 orthodox entry (壬戌 제외). Code review fix 2건 amend — Record<Branch, Branch> + name literal union.)
 
 ```ts
 export interface PillarInput { stem: string; branch: string }
@@ -759,12 +760,13 @@ export function computeShensha(pillars: FourPillarsInput): Shensha[] {
 }
 ```
 
-- [ ] **Step 3: 테스트 PASS**
+- [x] **Step 3: 테스트 PASS**
 
 Run: `pnpm --filter @gons/saju test shensha`
 Expected: 3개 PASS.
+(주의: plan test #2 의 도화 fixture 는 1967 명조와 모순 — 未 년지의 도화는 子 인데 명조에 子 없음. 옵션 (d) 적용: 정통 규칙 유지 + test #2 fixture 를 子년 + 酉 일/시지로 교체.)
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add packages/saju/src/core/shensha.ts packages/saju/src/core/shensha.test.ts
