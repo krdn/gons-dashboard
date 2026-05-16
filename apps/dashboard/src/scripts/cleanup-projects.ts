@@ -17,8 +17,8 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { projects } from "@/shared/lib/db/schema";
 import { getHosts } from "@/entities/host";
-import { listContainers } from "@/entities/container";
-import { KNOWN_COMPOSE_PROJECTS_BY_HOST } from "@/entities/project";
+import { listContainers } from "@/entities/container/server";
+import { KNOWN_COMPOSE_PROJECTS_BY_HOST } from "@/entities/project/server";
 import { computeZombieIds } from "./cleanup-projects.lib";
 import { assertProdDbAck } from "./_lib/prodGuard";
 

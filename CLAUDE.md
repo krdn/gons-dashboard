@@ -104,18 +104,22 @@ src/
 
 ## Gotcha (필수 — 같은 실수 반복 방지)
 
-### 1. Client 컴포넌트에서 `entities/*` barrel 사용 금지
+### 1. ~~Client 컴포넌트에서 `entities/*` barrel 사용 금지~~ (해소됨)
 
-`entities/container/index.ts`, `entities/project/index.ts` 등 barrel은 server-only API (`listContainers` → `node:child_process`) 를 함께 export. `import type` 만 해도 Turbopack 이 barrel 전체를 client 번들로 끌어와 빌드 실패한다. **클라이언트 트리에서 쓰일 UI/타입은 깊은 경로로 직접 import**:
+**친구션 #3 으로 해소** — `entities/container/index.ts` 와 `entities/project/index.ts` 가 폐지되고 `server.ts` + `client.ts` 두 진입점으로 분리됨. Module interface 가 *환경 (server vs client)* 을 import path 에 명시 표현. 옛 *깊은 경로 우회* 가이드라인 불필요.
 
+**현재 권장**:
 ```ts
-// ✗ "use client" 트리에서 깨짐
-import { ContainerRow, type ContainerSummary } from "@/entities/container";
+// server tree (RSC, API route, Server Action, scripts)
+import { listContainers, type ContainerSummary } from "@/entities/container/server";
+import { getProjects, type Project } from "@/entities/project/server";
 
-// ✓
-import { ContainerRow } from "@/entities/container/ui/ContainerRow";
-import type { ContainerSummary } from "@/entities/container/model/types";
+// client tree ("use client")
+import { ContainerRow, type ContainerSummary } from "@/entities/container/client";
+import { ProjectCard } from "@/entities/project/client";
 ```
+
+다른 entity (email, host, digest, saju-chart, fortune-profile) 는 *server/client 혼재 통증이 드러나지 않은 상태* — 현재 `index.ts` 단일 barrel 유지. 새 entity 추가 시 혼재가 발생하면 같은 패턴 (`server.ts` + `client.ts`) 권장. Design spec: `docs/superpowers/specs/2026-05-15-entity-barrel-seam-deepening.md`.
 
 ### 2. 통합 테스트는 `TEST_DATABASE_URL` 필수
 

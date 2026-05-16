@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { groupByProject } from "@/features/container-list/lib/groupByProject";
-import type { ContainerSummary } from "@/entities/container";
-import type { Project } from "@/entities/project";
+import type { ContainerSummary } from "@/entities/container/client";
+import type { Project } from "@/entities/project/client";
 
 const HOST_ID = "h1";
 const NOW = new Date("2026-05-10T00:00:00Z");
