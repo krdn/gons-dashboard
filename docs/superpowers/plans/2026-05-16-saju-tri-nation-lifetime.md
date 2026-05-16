@@ -775,13 +775,13 @@ git commit -m "feat(saju-tri): 신살 — 괴강·천을귀인·도화 (v0.1)"
 
 ---
 
-## Task 2.3: 합·충·형 계산 — core/interactions.ts
+## Task 2.3: 합·충·형 계산 — core/interactions.ts ✅ (commit 684fa30)
 
 **Files:**
 - Create: `packages/saju/src/core/interactions.ts`
 - Create: `packages/saju/src/core/interactions.test.ts`
 
-- [ ] **Step 1: failing test**
+- [x] **Step 1: failing test**
 
 `packages/saju/src/core/interactions.test.ts`:
 
@@ -822,9 +822,10 @@ describe("computeInteractions — 합충형", () => {
 });
 ```
 
-- [ ] **Step 2: 구현**
+- [x] **Step 2: 구현**
 
 `packages/saju/src/core/interactions.ts`:
+(실제: plan draft 의 `import FourPillarsInput from "./shensha"` 가 broken — Task 2.2 가 SajuPillars 사용. SajuPillars 로 보정. 테이블 타입을 `Branch` literal 로 강화. chong entries 에 `type: "충"` discriminant 추가하여 hap/hyung 와 shape 일관성.)
 
 ```ts
 import type { FourPillarsInput } from "./shensha";
@@ -873,12 +874,12 @@ export function computeInteractions(pillars: FourPillarsInput): Interactions {
 }
 ```
 
-- [ ] **Step 3: 테스트 PASS**
+- [x] **Step 3: 테스트 PASS**
 
 Run: `pnpm --filter @gons/saju test interactions`
 Expected: 3개 PASS.
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add packages/saju/src/core/interactions.ts packages/saju/src/core/interactions.test.ts
