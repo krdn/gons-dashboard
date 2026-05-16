@@ -354,7 +354,7 @@ git commit -m "feat(saju-tri): 진태양시 보정 — Asia/Seoul·Tokyo·Shangh
 
 ---
 
-## Task 1.2: 도시 자동완성 데이터셋 + CitySelector
+## Task 1.2: 도시 자동완성 데이터셋 + CitySelector ✅ (commit 6cdfa9d)
 
 **Files:**
 - Create: `packages/saju/src/time/cities.json`
@@ -362,7 +362,7 @@ git commit -m "feat(saju-tri): 진태양시 보정 — Asia/Seoul·Tokyo·Shangh
 - Create: `packages/saju/src/time/cityLookup.test.ts`
 - Create: `apps/dashboard/src/features/saju-lifetime-tri/ui/CitySelector.tsx`
 
-- [ ] **Step 1: cities.json 작성 (한국 시군구 ~250 + 일본 도쿄·오사카·교토·후쿠오카·삿포로·요코하마·나고야 + 중국 베이징·상하이·광저우·청두·시안)**
+- [x] **Step 1: cities.json 작성 (한국 시군구 ~250 + 일본 도쿄·오사카·교토·후쿠오카·삿포로·요코하마·나고야 + 중국 베이징·상하이·광저우·청두·시안)**
 
 `packages/saju/src/time/cities.json` 구조:
 
@@ -377,9 +377,9 @@ git commit -m "feat(saju-tri): 진태양시 보정 — Asia/Seoul·Tokyo·Shangh
 ]
 ```
 
-전체 한국 시군구 데이터는 위키피디아 또는 행정자치부 공개 데이터에서 추출 (Phase 0 작업 단위 안에서 합칠 것).
+전체 한국 시군구 데이터는 위키피디아 또는 행정자치부 공개 데이터에서 추출 (Phase 0 작업 단위 안에서 합칠 것). (실제: KR 152 + JP 7 + CN 5 = 164 entries)
 
-- [ ] **Step 2: failing test 작성**
+- [x] **Step 2: failing test 작성**
 
 `packages/saju/src/time/cityLookup.test.ts`:
 
@@ -410,7 +410,7 @@ describe("cityLookup", () => {
 });
 ```
 
-- [ ] **Step 3: fail 확인 후 구현**
+- [x] **Step 3: fail 확인 후 구현**
 
 `packages/saju/src/time/cityLookup.ts`:
 
@@ -447,12 +447,12 @@ export function searchCities(prefix: string, limit = 20): CityInfo[] {
 }
 ```
 
-- [ ] **Step 4: 테스트 PASS**
+- [x] **Step 4: 테스트 PASS**
 
 Run: `pnpm --filter @gons/saju test cityLookup`
 Expected: 4개 PASS.
 
-- [ ] **Step 5: CitySelector 컴포넌트**
+- [x] **Step 5: CitySelector 컴포넌트**
 
 `apps/dashboard/src/features/saju-lifetime-tri/ui/CitySelector.tsx`:
 
@@ -539,17 +539,19 @@ export function CitySelector({ value, onChange }: Props) {
 }
 ```
 
-- [ ] **Step 6: 빌드 + lint**
+- [x] **Step 6: 빌드 + lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: PASS.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add packages/saju/src/time/cities.json packages/saju/src/time/cityLookup.ts packages/saju/src/time/cityLookup.test.ts apps/dashboard/src/features/saju-lifetime-tri/ui/CitySelector.tsx
 git commit -m "feat(saju-tri): 도시 자동완성 데이터셋 + CitySelector 컴포넌트"
 ```
+
+(추가 변경: `packages/saju/src/index.ts` barrel export + `apps/dashboard/src/features/saju-lifetime-tri/index.ts` slice barrel — 둘 다 plan Step 5 의 `from "@gons/saju"` 임포트가 동작하도록 필요한 plumbing.)
 
 ---
 
