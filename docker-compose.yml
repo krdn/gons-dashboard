@@ -78,6 +78,10 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       OPS_NOTIFY_EMAIL: ${OPS_NOTIFY_EMAIL:-}
       PG_ENCRYPTION_KEY: ${PG_ENCRYPTION_KEY:-}
+      # PlayMCP 1FATE (호 상담 영역) — env.ts required at boot.
+      PLAYMCP_GATEWAY_URL: ${PLAYMCP_GATEWAY_URL:-https://playmcp.kakao.com/mcp}
+      PLAYMCP_CLIENT_ID: ${PLAYMCP_CLIENT_ID}
+      PLAYMCP_BOOTSTRAP_OTT: ${PLAYMCP_BOOTSTRAP_OTT:-}
       # 서버 인프라 모니터 v0.1+
       ADMIN_EMAILS: ${ADMIN_EMAILS}
       DOCKER_DEFAULT_CONTEXT: ${DOCKER_DEFAULT_CONTEXT:-default}
