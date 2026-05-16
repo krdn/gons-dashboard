@@ -42,3 +42,7 @@ export type {
   DailyFortuneHourSlot,
   DailyFortuneRemedy,
 } from "./dailyFortune";
+
+// Task 1.2 — 출생 도시 자동완성 데이터셋
+export { findCity, searchCities } from "./time/cityLookup";
+export type { CityInfo } from "./time/cityLookup";
