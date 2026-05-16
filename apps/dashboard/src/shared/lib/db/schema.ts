@@ -271,6 +271,7 @@ export const fortuneProfiles = pgTable(
     calendar: text("calendar").notNull().default("solar"), // 'solar' | 'lunar'
     gender: text("gender").notNull(), // 'male' | 'female'
     birthTime: text("birth_time"), // 'HH:MM'
+    longitudeDeg: numeric("longitude_deg", { precision: 7, scale: 4 }),
     birthCity: text("birth_city"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
@@ -519,3 +520,72 @@ export const playmcpCredentials = pgTable("playmcp_credentials", {
   clientId: text("client_id").notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+/* =========================================================================
+ * 삼국 분석 v0.1 평생 운세 캐시 (호(虎) PlayMCP 상담 영역과 독립)
+ * - saju_lifetime_tri       : 결정형 LifetimeFrame ((profile_id, school, input_hash, schema_version) UNIQUE)
+ * - saju_lifetime_narrative : LLM narrative ((profile_id, school, frame_hash, model_id) UNIQUE)
+ * - school CHECK / cache UNIQUE / 조회 INDEX 는 생성된 SQL 후처리(ALTER TABLE) 로 적용한다.
+ * ========================================================================= */
+export const sajuLifetimeTri = pgTable(
+  "saju_lifetime_tri",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    inputHash: text("input_hash").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    frameJsonb: jsonb("frame_jsonb").notNull(),
+    computedAt: timestamp("computed_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_lifetime_tri_profile_idx").on(t.profileId),
+    uniqueIndex("saju_lifetime_tri_cache_key").on(
+      t.profileId,
+      t.school,
+      t.inputHash,
+      t.schemaVersion,
+    ),
+  ],
+);
+
+export const sajuLifetimeNarrative = pgTable(
+  "saju_lifetime_narrative",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    frameHash: text("frame_hash").notNull(),
+    modelId: text("model_id").notNull(),
+    narrativeText: text("narrative_text").notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").notNull(),
+    citations: text("citations")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    generatedAt: timestamp("generated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_lifetime_narrative_profile_idx").on(t.profileId),
+    uniqueIndex("saju_lifetime_narrative_cache_key").on(
+      t.profileId,
+      t.school,
+      t.frameHash,
+      t.modelId,
+    ),
+  ],
+);
