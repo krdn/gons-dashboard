@@ -191,13 +191,13 @@ git commit -m "test(saju-tri): canonical 1967 fixture — 壬辰 일주 회귀 �
 
 ---
 
-## Task 1.1: 진태양시 보정 — time/trueSolar.ts
+## Task 1.1: 진태양시 보정 — time/trueSolar.ts ✅ (commit 97a8aab)
 
 **Files:**
 - Create: `packages/saju/src/time/trueSolar.ts`
 - Create: `packages/saju/src/time/trueSolar.test.ts`
 
-- [ ] **Step 1: failing test 작성**
+- [x] **Step 1: failing test 작성**
 
 `packages/saju/src/time/trueSolar.test.ts`:
 
@@ -247,12 +247,12 @@ describe("resolveTrueSolar", () => {
 });
 ```
 
-- [ ] **Step 2: 테스트 실행해 fail 확인**
+- [x] **Step 2: 테스트 실행해 fail 확인**
 
 Run: `pnpm --filter @gons/saju test trueSolar`
 Expected: FAIL.
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/saju/src/time/trueSolar.ts`:
 
@@ -340,12 +340,12 @@ function tzHourMinutes(timezone: string): number {
 }
 ```
 
-- [ ] **Step 4: 테스트 PASS 확인**
+- [x] **Step 4: 테스트 PASS 확인**
 
 Run: `pnpm --filter @gons/saju test trueSolar`
-Expected: 3개 PASS.
+Expected: 3개 PASS. (실제: 4개 — code review fix #3 회귀 테스트 추가)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add packages/saju/src/time/trueSolar.ts packages/saju/src/time/trueSolar.test.ts
