@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { validateAnalysisResponse, validateCompatibilityResponse, _resetRecentNicknames } from "./validate";
+import type { PlayMCPCompatibilityResult } from "@/entities/tiger-reading";
 
 const fix1967 = JSON.parse(
   readFileSync(resolve(__dirname, "../../../../tests/playmcp-fixtures/analyze-1967-03-29-male.json"), "utf8"),
@@ -84,7 +85,7 @@ describe("validateCompatibilityResponse", () => {
         suggested_narrative_en: "",
         suggested_narrative_ja: "",
       },
-    };
+    } as unknown as PlayMCPCompatibilityResult;
     expect(validateCompatibilityResponse(compatResp, profile1967, profile1976)).toEqual({
       ok: false,
       reason: "compatibility_one_side_missing",
@@ -92,6 +93,8 @@ describe("validateCompatibilityResponse", () => {
   });
 
   it("통과: 두 birth_date 모두 narrative 에 포함", () => {
+    // validate 는 narrative + 두 birth_date 만 검증 — 다른 필드는 무관.
+    // 새 PlayMCPCompatibilityResult type 이 19+ 필드 요구 → as 캐스트로 minimal fixture 유지.
     const compatResp = {
       result: {
         profile1: fix1967.result.profile,
@@ -100,7 +103,7 @@ describe("validateCompatibilityResponse", () => {
         suggested_narrative_en: "",
         suggested_narrative_ja: "",
       },
-    };
+    } as unknown as PlayMCPCompatibilityResult;
     expect(validateCompatibilityResponse(compatResp, profile1967, profile1976)).toEqual({ ok: true });
   });
 });

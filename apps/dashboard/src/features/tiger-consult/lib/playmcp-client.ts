@@ -83,7 +83,9 @@ export async function callTool<T>(toolName: ToolName, params: Record<string, unk
       throw new PlayMCPSchemaError(`tools/call 응답에 result 필드 없음 (tool=${toolName})`);
     }
     // MCP 표준: result.content[0].text 안에 실제 PlayMCP 도구 응답 JSON string.
-    const content = (result as { content?: unknown[] }).content;
+    // isError=true 면 text 는 plain 에러 메시지 (JSON 아님) — InputError 로 노출.
+    const resultObj = result as { content?: unknown[]; isError?: boolean };
+    const content = resultObj.content;
     if (!Array.isArray(content) || content.length === 0) {
       throw new PlayMCPSchemaError(`tools/call result.content 없음 (tool=${toolName})`);
     }
@@ -91,12 +93,30 @@ export async function callTool<T>(toolName: ToolName, params: Record<string, unk
     if (first.type !== "text" || typeof first.text !== "string") {
       throw new PlayMCPSchemaError(`tools/call content[0] 형식 예상 외 (tool=${toolName}, type=${first.type})`);
     }
+    if (resultObj.isError === true) {
+      throw new PlayMCPInputError(
+        `PlayMCP tool error (${toolName}): ${first.text.slice(0, 300)}`,
+      );
+    }
     let toolPayload: unknown;
     try {
       toolPayload = JSON.parse(first.text);
     } catch (err) {
       throw new PlayMCPSchemaError(
         `tools/call content[0].text JSON parse 실패 (tool=${toolName}): ${(err as Error).message}`,
+      );
+    }
+    // PlayMCP 도구 응답 자체가 {error: "..."} 형태일 때 (예: daily 의 NameError):
+    // isError 플래그 없이 plain JSON 으로 도구 측 실패 신호. InputError 로 정규화.
+    if (
+      toolPayload &&
+      typeof toolPayload === "object" &&
+      !("result" in toolPayload) &&
+      "error" in toolPayload
+    ) {
+      const errMsg = (toolPayload as { error: unknown }).error;
+      throw new PlayMCPInputError(
+        `PlayMCP tool error (${toolName}): ${typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg)}`,
       );
     }
     return toolPayload as T;
