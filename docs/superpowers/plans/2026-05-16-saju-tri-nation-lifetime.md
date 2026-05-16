@@ -555,7 +555,7 @@ git commit -m "feat(saju-tri): 도시 자동완성 데이터셋 + CitySelector �
 
 ---
 
-## Task 2.1: 만세력 합의 검증 — consensus/
+## Task 2.1: 만세력 합의 검증 — consensus/ ✅ (commit c1b9dec)
 
 **Files:**
 - Create: `packages/saju/src/consensus/index.ts`
@@ -564,7 +564,7 @@ git commit -m "feat(saju-tri): 도시 자동완성 데이터셋 + CitySelector �
 `korean-lunar-calendar` 의존성 추가:
 - Run: `pnpm --filter @gons/saju add korean-lunar-calendar`
 
-- [ ] **Step 1: failing test 작성**
+- [x] **Step 1: failing test 작성**
 
 `packages/saju/src/consensus/index.test.ts`:
 
@@ -585,7 +585,7 @@ describe("verifyConsensus — lunar-javascript vs korean-lunar-calendar", () => 
 });
 ```
 
-- [ ] **Step 2: fail 확인 후 구현**
+- [x] **Step 2: fail 확인 후 구현**
 
 Run: `pnpm --filter @gons/saju test consensus`
 Expected: FAIL.
@@ -629,12 +629,13 @@ export function verifyConsensus(input: ConsensusInput): ConsensusResult {
 }
 ```
 
-- [ ] **Step 3: 테스트 PASS**
+- [x] **Step 3: 테스트 PASS**
 
 Run: `pnpm --filter @gons/saju test consensus`
 Expected: PASS. (lib B API 가 다르면 라이브러리 README 확인 후 보정.)
+(실제: 3/3 PASS — code review fix #2 로 lunar-throw 테스트 추가. libB API 는 `getChineseGapja().day` 로 보정.)
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add packages/saju/src/consensus/ packages/saju/package.json pnpm-lock.yaml
