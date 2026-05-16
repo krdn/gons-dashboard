@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "./src" },
-  "include": ["src/**/*"],
+  "compilerOptions": {},
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["library-eval/**/*", "node_modules", "**/*.tsbuildinfo"]
 }

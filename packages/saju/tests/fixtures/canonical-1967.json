@@ -1,0 +1,21 @@
+{
+  "input": {
+    "birthDateLocal": "1967-03-29",
+    "birthTimeLocal": "05:30",
+    "timezone": "Asia/Seoul",
+    "longitudeDeg": 126.78,
+    "calendar": "solar",
+    "gender": "male"
+  },
+  "expected": {
+    "pillars": {
+      "year":  { "stem": "丁", "branch": "未" },
+      "month": { "stem": "癸", "branch": "卯" },
+      "day":   { "stem": "壬", "branch": "辰" },
+      "hour":  { "stem": "癸", "branch": "卯" }
+    },
+    "elementBalance": { "wood": 2, "fire": 1, "earth": 2, "metal": 0, "water": 3 },
+    "daeun": { "startAge": 8, "direction": "backward" },
+    "ko": { "gyeokguk": "傷官格" }
+  }
+}
