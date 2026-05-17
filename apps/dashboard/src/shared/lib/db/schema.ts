@@ -557,6 +557,21 @@ export const sajuLifetimeTri = pgTable(
   ],
 );
 
+/**
+ * sajuLifetimeNarrative.sectionsJsonb 의 $type.
+ *
+ * features/saju-lifetime-tri/api/narrative-server.ts 에서 LLM 출력의 sections 를
+ * 그대로 컬럼에 직렬화한다. shared 가 features 를 import 하면 FSD 의존성 방향
+ * (features → shared) 을 깨므로 type 정의를 schema 쪽에 둔다.
+ */
+export interface NarrativeSections {
+  personality: string;
+  career: string;
+  relationship: string;
+  health: string;
+  daeunSummary: string;
+}
+
 export const sajuLifetimeNarrative = pgTable(
   "saju_lifetime_narrative",
   {
@@ -568,7 +583,7 @@ export const sajuLifetimeNarrative = pgTable(
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
     narrativeText: text("narrative_text").notNull(),
-    sectionsJsonb: jsonb("sections_jsonb").notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").$type<NarrativeSections>().notNull(),
     citations: text("citations")
       .array()
       .notNull()
