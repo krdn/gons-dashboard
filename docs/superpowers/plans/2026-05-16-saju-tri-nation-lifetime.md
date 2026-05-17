@@ -1291,7 +1291,7 @@ git commit -m "feat(saju-tri): adapters/cn-mangpai — 맹파 응기 (단건업 
 
 ---
 
-## Task 4.4: 일본 어댑터 — adapters/jp/lifetime.ts
+## Task 4.4: 일본 어댑터 — adapters/jp/lifetime.ts ✅ (commit 11a623d, Phase 4 완료)
 
 **Files:**
 - Create: `packages/saju/src/adapters/jp/lifetime.ts`
