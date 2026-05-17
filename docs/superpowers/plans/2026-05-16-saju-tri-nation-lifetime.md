@@ -2180,7 +2180,16 @@ git commit -m "feat(saju-tri): /fortune/[profileId]/lifetime/[school] 상세 라
 **Files:**
 - Create: `apps/dashboard/tests/integration/saju-tri.test.ts`
 
-- [ ] **Step 1: 통합 테스트 (DB 미기동 시 skip)**
+- [x] **Step 1: 통합 테스트 (DB 미기동 시 skip)**
+
+> **구현 보강** (D1~D5 deviation):
+> - D1 (JUSTIFIED): `@/shared/lib/db` → `@/shared/lib/db/client` (기존 integration test 패턴 + barrel 회피).
+> - D2 (JUSTIFIED): `schemaVersion: 1` → `2` (Task 6.1 carry-over commit `1c09984` 의 `SCHEMA_VERSION = 2` 일관성).
+> - D3 (NEW_LEGITIMATE): `fortuneProfiles.userId` 는 `users.id` 로의 uuid FK 였음 → `users` fixture 선행 INSERT + UUID 사용.
+> - D4 (NEW_LEGITIMATE): plan 의 `label` 컬럼은 schema 에 없음 → `name` + `relation` (둘 다 notNull) 으로 교정.
+> - D5 (NEW_LEGITIMATE): `beforeAll` 선제 cleanup + `afterAll` 안전망 cleanup (기존 saju-cron-daily.integration.test.ts 패턴 일관).
+>
+> **skip 동작 한계 메모**: `tests/setup.ts` 의 allow-list 가드가 `TEST_DATABASE_URL` 미명시 + prod DATABASE_URL 조합을 import 단계에서 throw — `RUN = describe.skip` 분기 자체에 도달하지 못한다 (dashboard 패키지 기존 53 test 공통 동작). `TEST_DATABASE_URL` 이 명시되어야 비로소 `RUN = describe` 로 실제 DB 검증이 동작한다.
 
 ```ts
 import { describe, expect, it, beforeAll } from "vitest";
@@ -2229,7 +2238,9 @@ RUN("Saju Tri Lifetime — DB CASCADE", () => {
 Run: `TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test saju-tri`
 Expected: PASS (DB 미기동 시 skip).
 
-- [ ] **Step 3: 커밋**
+> **보류 사유**: 마이그레이션이 적용된 로컬 test DB 가 있을 때만 PASS 가 검증 가능. 구현 시점에는 컨테이너 미기동 — `1 skipped` 까지 확인했으나 hook 실행 단에서 `relation "saju_lifetime_tri" does not exist` 로 fail 했다. Task 8.2 전체 검증 또는 사용자 수동 환경에서 통과 확인 필요.
+
+- [x] **Step 3: 커밋**
 
 ```bash
 git add apps/dashboard/tests/integration/saju-tri.test.ts
