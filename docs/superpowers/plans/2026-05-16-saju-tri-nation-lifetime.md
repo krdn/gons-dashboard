@@ -2122,7 +2122,7 @@ git commit -m "feat(saju-tri): /fortune/[profileId] 에 SajuTriLifetime 위젯 �
 **Files:**
 - Create: `apps/dashboard/src/app/fortune/[profileId]/lifetime/[school]/page.tsx`
 
-- [ ] **Step 1: page**
+- [x] **Step 1: page**
 
 ```tsx
 import { auth } from "@/features/auth/lib/auth";
@@ -2161,12 +2161,12 @@ export default async function LifetimeSchoolPage({
 }
 ```
 
-- [ ] **Step 2: typecheck + build**
+- [x] **Step 2: typecheck + build**
 
 Run: `pnpm typecheck && pnpm build`
 Expected: PASS.
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add apps/dashboard/src/app/fortune/[profileId]/lifetime/
