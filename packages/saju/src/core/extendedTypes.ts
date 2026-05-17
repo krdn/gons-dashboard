@@ -1,6 +1,6 @@
 import type { ShenshaEntry } from "./shensha";
 import type { Interactions } from "./interactions";
-import type { Stem, Branch, TenGod, Element } from "../types";
+import type { Stem, Branch, TenGod, Element, SajuChart } from "../types";
 
 export type School = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
 export type SchoolWithCompose = School | "compose";
@@ -71,6 +71,8 @@ export interface Conflict {
 
 export interface TriNationLifetime {
   chart: ExtendedChart;
+  /** 원본 SajuChart (pillars/elements/pattern/tenGods/strength/majorFortunes). ExtendedChart는 학파 통합 확장. */
+  rawChart: SajuChart;
   daeun: {
     startAge: number;
     direction: "forward" | "backward";

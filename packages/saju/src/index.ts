@@ -54,7 +54,7 @@ export { computeShensha } from "./core/shensha";
 export type { ShenshaEntry } from "./core/shensha";
 export { computeInteractions } from "./core/interactions";
 export type { Interactions } from "./core/interactions";
-export { buildTriNationLifetime } from "./compose/lifetime";
+export { buildTriNationLifetime, deriveDaeunDirection } from "./compose/lifetime";
 export type { BirthInputResolved } from "./compose/lifetime";
 export type {
   School,

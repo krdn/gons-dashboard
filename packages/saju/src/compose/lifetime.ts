@@ -18,28 +18,10 @@ import type {
   Result,
   School,
   TriNationLifetime,
+  TrueSolarMeta,
 } from "../core/extendedTypes";
 
-/**
- * Phase 5 compose — 4 학파 어댑터 통합 + 만세력 합의 검증 + crossCheck.
- *
- * 입력은 `BirthInputResolved`(생일/생시/타임존/경도/달력/성별). 출력은 `Result<TriNationLifetime>`
- * — 만세력 라이브러리 불일치 시 `error.code = "LIBRARY_MISMATCH"`. 그 외 어댑터별 예외는
- * `safe()` 폴백으로 흡수해 4 frame 항상 노출 (single-school failure 가 전체 응답을 막지 않음).
- *
- * 설계 결정:
- * - **sync 함수**: 하부 모듈(resolveTrueSolar/verifyConsensus/computeSajuChart/어댑터 4종) 모두
- *   sync. async 래핑은 불필요 — KISS.
- * - **`TriNationLifetime.chart` = `ExtendedChart` 4 필드만**: plan 의 chart spread 패턴은
- *   typed contract 위배. shensha/interactions/trueSolarMinutesOffset/hourAmbiguity 만 구성.
- *   Phase 6 API serialization 단계에서 raw chart(pillars/elements/...) 노출 필요 시 별도 필드 추가.
- * - **daeun.direction**: `computeMajorFortunes` 가 direction 을 반환하지 않으므로 연간 stem 양음
- *   + 성별로 derive (`daeun/extended.test.ts` 의 "음년(丁未) 男 → 역행" 규칙 일치).
- * - **yongshinConflicts**: v0.1 의 4 어댑터 모두 `yongshin: undefined` (3개 학파는 미구현,
- *   jp 학파는 본래 미사용) → trivial 빈 배열. Phase 6+ 어댑터 본격 구현 시 실 비교 필요.
- * - **pillarsAgree**: v0.1 의 4 어댑터 모두 `pillarsAnnotated: []` (미구현) → trivial true.
- *   Phase 6+ 어댑터 본격 구현 시 실 비교 필요.
- */
+/** buildTriNationLifetime 입력 — 출생 정보 + 성별. */
 export interface BirthInputResolved {
   birthDateLocal: string;
   birthTimeLocal: string;
@@ -58,7 +40,7 @@ export interface BirthInputResolved {
  * - 음간 + 男 → 역행(backward)
  * - 음간 + 女 → 순행(forward)
  */
-function deriveDaeunDirection(yearStem: Stem, gender: "male" | "female"): "forward" | "backward" {
+export function deriveDaeunDirection(yearStem: Stem, gender: "male" | "female"): "forward" | "backward" {
   const stemIndex = STEMS.indexOf(yearStem);
   const isYang = stemIndex % 2 === 0;
   const forwardConditions = (isYang && gender === "male") || (!isYang && gender === "female");
@@ -93,6 +75,28 @@ function safeFrame(fn: () => LifetimeFrame, school: School): LifetimeFrame {
   }
 }
 
+/**
+ * Phase 5 compose — 4 학파 어댑터 통합 + 만세력 합의 검증 + crossCheck.
+ *
+ * 입력은 `BirthInputResolved`(생일/생시/타임존/경도/달력/성별). 출력은 `Result<TriNationLifetime>`
+ * — 만세력 라이브러리 불일치 시 `error.code = "LIBRARY_MISMATCH"`. 그 외 어댑터별 예외는
+ * `safe()` 폴백으로 흡수해 4 frame 항상 노출 (single-school failure 가 전체 응답을 막지 않음).
+ *
+ * 설계 결정:
+ * - **sync 함수**: 하부 모듈(resolveTrueSolar/verifyConsensus/computeSajuChart/어댑터 4종) 모두
+ *   sync. async 래핑은 불필요 — KISS.
+ * - **`TriNationLifetime.chart` = `ExtendedChart` 4 필드만**: plan 의 chart spread 패턴은
+ *   typed contract 위배. shensha/interactions/trueSolarMinutesOffset/hourAmbiguity 만 구성.
+ *   Phase 6 API serialization 단계에서 raw chart(pillars/elements/...) 노출 필요 시 별도 필드 추가.
+ * - **daeun.direction**: `computeMajorFortunes` 가 direction 을 반환하지 않으므로 연간 stem 양음
+ *   + 성별로 derive (`daeun/extended.test.ts` 의 "음년(丁未) 男 → 역행" 규칙 일치).
+ * - **yongshinConflicts**: v0.1 의 4 어댑터 모두 `yongshin: undefined` (3개 학파는 미구현,
+ *   jp 학파는 본래 미사용) → trivial 빈 배열. Phase 6+ 어댑터 본격 구현 시 실 비교 필요.
+ * - **pillarsAgree**: v0.1 의 4 어댑터 모두 `pillarsAnnotated: []` (미구현) → trivial true.
+ *   Phase 6+ 어댑터 본격 구현 시 실 비교 필요.
+ *
+ * @throws verifyConsensus 내부에서 throw 발생 가능 (예: lunar calendar 입력 처리 중). LIBRARY_MISMATCH는 throw 가 아닌 Result.error로 반환된다.
+ */
 export function buildTriNationLifetime(input: BirthInputResolved): Result<TriNationLifetime> {
   // 1) 진태양시 보정 + 시주 ambiguity 감지
   const trueSolar = resolveTrueSolar(input);
@@ -151,7 +155,8 @@ export function buildTriNationLifetime(input: BirthInputResolved): Result<TriNat
   };
 
   // 7) 4 학파 어댑터 호출 (safe 폴백 — 단일 어댑터 실패가 전체를 막지 않음)
-  const ctxShared = {
+  // Readonly: 어댑터가 ctx 객체를 mutate 하지 못하도록 컴파일 타임 보호.
+  const ctxShared: Readonly<{ daeun: MajorFortune[]; trueSolar: TrueSolarMeta }> = {
     daeun: daeunRaw,
     trueSolar: { trueSolarMinutesOffset: trueSolar.trueSolarMinutesOffset, hourKnown: trueSolar.hourKnown },
   };
@@ -171,14 +176,15 @@ export function buildTriNationLifetime(input: BirthInputResolved): Result<TriNat
   };
   const gyeokgukConsensus = new Set(Object.values(gyeokgukSchools)).size === 1;
 
+  // TODO(phase-6): 학파별 yongshin 추론 도입 후 4 학파 간 conflict 실측 산출
   // v0.1: 4 어댑터 모두 yongshin: undefined → 비교 대상 없음 → 빈 배열.
-  // Phase 6+ 어댑터 본격 구현 시 실제 충돌 검출 필요.
   const yongshinConflicts: Conflict[] = [];
 
   return {
     ok: true,
     value: {
       chart: extendedChart,
+      rawChart: chart,
       daeun,
       trueSolar: {
         trueSolarMinutesOffset: trueSolar.trueSolarMinutesOffset,
@@ -186,10 +192,10 @@ export function buildTriNationLifetime(input: BirthInputResolved): Result<TriNat
       },
       frames,
       crossCheck: {
-        // v0.1: 4 어댑터 모두 pillarsAnnotated: [] → trivially true.
-        // Phase 6+ 어댑터 본격 구현 시 실 비교 필요.
+        // TODO(phase-6): 4 학파 pillars 등가성 검증 함수 도입 (현재는 어댑터 pillarsAnnotated 미구현 — trivially true)
         pillarsAgree: true,
         gyeokgukConsensus: { consensus: gyeokgukConsensus, schools: gyeokgukSchools },
+        // TODO(phase-6): 학파별 yongshin 추론 도입 후 실 충돌 검출 (v0.1 어댑터 모두 yongshin undefined)
         yongshinConflicts,
       },
     },

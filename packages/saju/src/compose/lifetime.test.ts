@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildTriNationLifetime } from "./lifetime";
+import { buildTriNationLifetime, deriveDaeunDirection } from "./lifetime";
 
 /**
  * `{ spy: true }` 옵션은 모든 named export 를 spy 로 감싸되 default 는 real impl 을
@@ -94,6 +94,58 @@ describe("buildTriNationLifetime", () => {
   it("crossCheck.yongshinConflicts = [] (v0.1: yongshin 계산 미구현 — 4 어댑터 모두 undefined)", () => {
     if (!result.ok) throw new Error("expected ok");
     expect(result.value.crossCheck.yongshinConflicts).toEqual([]);
+  });
+
+  // DESIGN-GAP (a): TriNationLifetime.rawChart — 단일 호출로 원본 SajuChart 동반 노출
+  it("rawChart: 원본 SajuChart 노출 (pillars/elements/pattern/tenGods/strength/majorFortunes)", () => {
+    if (!result.ok) throw new Error("expected ok");
+    const { rawChart } = result.value;
+    expect(rawChart.pillars.year.stem).toBe("丁");
+    expect(rawChart.pillars.year.branch).toBe("未");
+    // 일주 = 壬辰 (MEMORY: G1 일주 정정)
+    expect(rawChart.pillars.day.stem).toBe("壬");
+    expect(rawChart.pillars.day.branch).toBe("辰");
+    expect(rawChart.elements).toBeDefined();
+    expect(rawChart.tenGods).toBeDefined();
+    expect(rawChart.strength).toBeDefined();
+    expect(Array.isArray(rawChart.majorFortunes)).toBe(true);
+  });
+});
+
+// IMP-3: deriveDaeunDirection 4 quadrant 단위 검증
+describe("deriveDaeunDirection", () => {
+  it("양간(甲) + 男 → forward", () => {
+    expect(deriveDaeunDirection("甲", "male")).toBe("forward");
+  });
+  it("양간(庚) + 女 → backward", () => {
+    expect(deriveDaeunDirection("庚", "female")).toBe("backward");
+  });
+  it("음간(乙) + 男 → backward", () => {
+    expect(deriveDaeunDirection("乙", "male")).toBe("backward");
+  });
+  it("음간(辛) + 女 → forward", () => {
+    expect(deriveDaeunDirection("辛", "female")).toBe("forward");
+  });
+});
+
+// IMP-4: hourAmbiguity 분기 — 01:30 KST + Seoul 진태양시 보정(-33분) → 진태양시 00:57 → 子/丑 경계 ambiguity
+describe("buildTriNationLifetime — hourAmbiguity (IMP-4)", () => {
+  it("진태양시 子→丑 경계 시각 → chart.hourAmbiguity 채워짐", () => {
+    const result = buildTriNationLifetime({
+      birthDateLocal: "1967-03-29",
+      birthTimeLocal: "01:30",
+      timezone: "Asia/Seoul",
+      longitudeDeg: 126.78,
+      calendar: "solar",
+      gender: "male",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok=true");
+    expect(result.value.chart.hourAmbiguity).toBeDefined();
+    const ambig = result.value.chart.hourAmbiguity!;
+    expect(ambig.candidateBranches).toHaveLength(2);
+    expect(ambig.candidateBranches).toEqual(["子", "丑"]);
+    expect(ambig.boundaryHour).toBe(1);
   });
 });
 
