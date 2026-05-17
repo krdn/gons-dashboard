@@ -1850,7 +1850,7 @@ git commit -m "feat(saju-tri): /api/.../narrative — Claude opus 학파별 + ra
 - Create: `apps/dashboard/src/features/saju-lifetime-tri/ui/LifetimeFrameCard.tsx`
 - Create: `apps/dashboard/src/features/saju-lifetime-tri/ui/TriNationTabs.tsx`
 
-- [ ] **Step 1: CrossCheckBadge (server-safe)**
+- [x] **Step 1: CrossCheckBadge (server-safe)**
 
 ```tsx
 import type { TriNationLifetime } from "@gons/saju";
@@ -1875,7 +1875,7 @@ export function CrossCheckBadge({ triNation }: { triNation: TriNationLifetime })
 }
 ```
 
-- [ ] **Step 2: LifetimeFrameCard (client)**
+- [x] **Step 2: LifetimeFrameCard (client)**
 
 ```tsx
 "use client";
@@ -1934,7 +1934,7 @@ export function LifetimeFrameCard({ profileId, schoolKey, frame }: Props) {
 }
 ```
 
-- [ ] **Step 3: TriNationTabs (client)**
+- [x] **Step 3: TriNationTabs (client)**
 
 ```tsx
 "use client";
@@ -2032,12 +2032,12 @@ function ComposeView({ triNation }: { triNation: TriNationLifetime }) {
 }
 ```
 
-- [ ] **Step 4: typecheck + lint**
+- [x] **Step 4: typecheck + lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: PASS.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add apps/dashboard/src/features/saju-lifetime-tri/ui/CrossCheckBadge.tsx apps/dashboard/src/features/saju-lifetime-tri/ui/LifetimeFrameCard.tsx apps/dashboard/src/features/saju-lifetime-tri/ui/TriNationTabs.tsx
