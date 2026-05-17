@@ -22,6 +22,7 @@ import {
   date,
   customType,
 } from "drizzle-orm/pg-core";
+import type { TriNationLifetime } from "@gons/saju";
 
 /* =========================================================================
  * Auth.js v5 표준 테이블 (DrizzleAdapter 사양)
@@ -537,7 +538,7 @@ export const sajuLifetimeTri = pgTable(
     school: text("school").notNull(),
     inputHash: text("input_hash").notNull(),
     schemaVersion: integer("schema_version").notNull(),
-    frameJsonb: jsonb("frame_jsonb").notNull(),
+    frameJsonb: jsonb("frame_jsonb").$type<TriNationLifetime>().notNull(),
     computedAt: timestamp("computed_at", {
       withTimezone: true,
       mode: "date",

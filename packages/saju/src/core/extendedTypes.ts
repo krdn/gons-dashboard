@@ -73,10 +73,13 @@ export interface TriNationLifetime {
   chart: ExtendedChart;
   /** 원본 SajuChart (pillars/elements/pattern/tenGods/strength/majorFortunes). ExtendedChart는 학파 통합 확장. */
   rawChart: SajuChart;
+  /**
+   * 대운 시작 정보. 10개 대운 pillar 자체는 rawChart.majorFortunes 를 참조한다
+   * (stem/branch/startAge + startYear). 여기서는 학파 공통 메타데이터만 보관.
+   */
   daeun: {
     startAge: number;
     direction: "forward" | "backward";
-    pillars: Array<{ stem: Stem; branch: Branch; startAge: number }>;
   };
   trueSolar: TrueSolarMeta;
   frames: {

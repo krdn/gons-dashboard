@@ -13,8 +13,16 @@ import { buildTriNationLifetime, type TriNationLifetime } from "@gons/saju";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles, sajuLifetimeTri } from "@/shared/lib/db/schema";
 
-const SCHEMA_VERSION = 1;
+// SCHEMA_VERSION 정책: TriNationLifetime 구조 변경 시 +1.
+// 캐시 키 (profile_id, school, input_hash, schema_version) 가 달라져 기존 row 자동 무효화.
+// v1 → v2 (2026-05-17): daeun.pillars 제거 (rawChart.majorFortunes 단일 소스).
+//                       hash 입력 정규화 join("|") 으로 교체.
+const SCHEMA_VERSION = 2;
 const SCHOOL = "compose";
+
+// 한국 표준 경도 (서울 근사 ~126.978°E 의 정수 반올림).
+// profile.longitudeDeg 가 null 일 때 fallback. 향후 birthCity 지오코딩 도입 시 제거 가능.
+const DEFAULT_LONGITUDE_KR = 127;
 
 /** 프로필 미존재 또는 소유권 불일치. route 에서 404 매핑. */
 export class ProfileNotFoundError extends Error {
@@ -72,14 +80,26 @@ export async function getOrBuildLifetime(
     birthDateLocal: profile.birthDate,
     birthTimeLocal,
     timezone: "Asia/Seoul" as const,
-    longitudeDeg: Number(profile.longitudeDeg ?? 127),
+    longitudeDeg: Number(profile.longitudeDeg ?? DEFAULT_LONGITUDE_KR),
     calendar: calendarParsed.data,
     gender: genderParsed.data,
   };
 
-  // 5) inputHash (정렬은 JSON.stringify 의 key 순서 — input object 리터럴 고정 순서라 안정)
+  // 5) inputHash — 명시적 join 정규화.
+  //    JSON.stringify(input) 는 object literal 순서에 의존 → 향후 spread/build 패턴 도입 시
+  //    같은 의미의 input 이 서로 다른 hash 가 되어 무음 cache miss 발생 위험.
+  //    필드 순서를 코드에 고정해 결정성 보장.
   const inputHash = createHash("sha256")
-    .update(JSON.stringify(input))
+    .update(
+      [
+        input.birthDateLocal,
+        input.birthTimeLocal,
+        input.timezone,
+        String(input.longitudeDeg),
+        input.calendar,
+        input.gender,
+      ].join("|"),
+    )
     .digest("hex");
 
   // 6) 캐시 조회
@@ -93,7 +113,7 @@ export async function getOrBuildLifetime(
   });
   if (cached) {
     return {
-      triNation: cached.frameJsonb as TriNationLifetime,
+      triNation: cached.frameJsonb,
       cachedAt: cached.computedAt.toISOString(),
       fromCache: true,
     };
@@ -110,7 +130,7 @@ export async function getOrBuildLifetime(
     school: SCHOOL,
     inputHash,
     schemaVersion: SCHEMA_VERSION,
-    frameJsonb: result.value as never,
+    frameJsonb: result.value,
   }).onConflictDoNothing();
 
   return {

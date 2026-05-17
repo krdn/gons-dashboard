@@ -53,10 +53,11 @@ describe("buildTriNationLifetime", () => {
     if (!result.ok) throw new Error("expected ok");
     expect(result.value.daeun.direction).toBe("backward");
     expect(result.value.daeun.startAge).toBe(8);
-    expect(result.value.daeun.pillars).toHaveLength(10);
+    // 10 대운 pillar 자체는 rawChart.majorFortunes 가 단일 소스 (직렬화 중복 제거).
+    expect(result.value.rawChart.majorFortunes).toHaveLength(10);
     // 첫 대운 = 壬寅 (月柱 癸卯 의 한 칸 retrograde)
-    expect(result.value.daeun.pillars[0]?.stem).toBe("壬");
-    expect(result.value.daeun.pillars[0]?.branch).toBe("寅");
+    expect(result.value.rawChart.majorFortunes[0]?.stem).toBe("壬");
+    expect(result.value.rawChart.majorFortunes[0]?.branch).toBe("寅");
   });
 
   it("trueSolar 메타: Seoul 126.78°E 보정 (135°E 대비 약 -33분)", () => {

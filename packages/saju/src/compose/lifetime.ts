@@ -146,12 +146,12 @@ export function buildTriNationLifetime(input: BirthInputResolved): Result<TriNat
       : {}),
   };
 
-  // 6) daeun shape 변환: MajorFortune[] → { startAge, direction, pillars }
+  // 6) daeun shape 변환: MajorFortune[] 메타만 추출 ({ startAge, direction }).
+  //    pillar 배열은 rawChart.majorFortunes 가 단일 소스 — 직렬화 중복 제거.
   const direction = deriveDaeunDirection(chart.pillars.year.stem, input.gender);
   const daeun: TriNationLifetime["daeun"] = {
     startAge: daeunRaw[0]?.startAge ?? 0,
     direction,
-    pillars: daeunRaw.map((d) => ({ stem: d.stem, branch: d.branch, startAge: d.startAge })),
   };
 
   // 7) 4 학파 어댑터 호출 (safe 폴백 — 단일 어댑터 실패가 전체를 막지 않음)
