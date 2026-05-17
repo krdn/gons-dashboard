@@ -2052,7 +2052,7 @@ git commit -m "feat(saju-tri): UI — CrossCheckBadge + LifetimeFrameCard + TriN
 - Create: `apps/dashboard/src/widgets/saju-tri-lifetime/ui/SajuTriLifetime.tsx`
 - Modify: `apps/dashboard/src/app/fortune/[profileId]/page.tsx`
 
-- [ ] **Step 1: widget**
+- [x] **Step 1: widget**
 
 `apps/dashboard/src/widgets/saju-tri-lifetime/ui/SajuTriLifetime.tsx`:
 
@@ -2083,7 +2083,7 @@ export async function SajuTriLifetime({ profileId, userId }: Props) {
 }
 ```
 
-- [ ] **Step 2: page 수정**
+- [x] **Step 2: page 수정**
 
 기존 `apps/dashboard/src/app/fortune/[profileId]/page.tsx` 안에서 session 확인 후 기존 한국식 풀이 위에 추가:
 
@@ -2095,12 +2095,12 @@ import { SajuTriLifetime } from "@/widgets/saju-tri-lifetime/ui/SajuTriLifetime"
 // {/* 기존 한국식 풀이 위젯 */}
 ```
 
-- [ ] **Step 3: typecheck + build**
+- [x] **Step 3: typecheck + build**
 
 Run: `pnpm typecheck && pnpm build`
 Expected: PASS.
 
-- [ ] **Step 4: dev 서버 + 본인 사주 진입 시각 확인**
+- [x] **Step 4: dev 서버 + 본인 사주 진입 시각 확인**
 
 Run: `pnpm dev`
 브라우저: http://localhost:3020/fortune/<자기 profileId>
@@ -2108,7 +2108,7 @@ Run: `pnpm dev`
 - 한 학파 → "더 자세히 보기" → narrative 표시 확인
 - CrossCheckBadge 의 4기둥·진태양시 표시 확인
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add apps/dashboard/src/widgets/saju-tri-lifetime/ apps/dashboard/src/app/fortune/[profileId]/page.tsx
