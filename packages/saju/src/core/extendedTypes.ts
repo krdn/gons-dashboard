@@ -5,6 +5,20 @@ import type { Stem, Branch, TenGod, Element } from "../types";
 export type School = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
 export type SchoolWithCompose = School | "compose";
 
+/**
+ * 진태양시(真太陽時) 메타데이터.
+ *
+ * - `trueSolarMinutesOffset`: 시계시 대비 진태양시 보정 분 (음수=시계시가 빠름).
+ * - `hourKnown`: 출생 시각이 알려져 있는지 — false 면 시주 미상, 추명학 등은 정확도 ⚠.
+ *
+ * Phase 4 어댑터 공통 `ctx.trueSolar` 입력 + `TriNationLifetime.trueSolar` 출력에서
+ * 공유 사용.
+ */
+export interface TrueSolarMeta {
+  trueSolarMinutesOffset: number;
+  hourKnown: boolean;
+}
+
 export interface ExtendedChart {
   shensha: ShenshaEntry[];
   interactions: Interactions;
@@ -62,7 +76,7 @@ export interface TriNationLifetime {
     direction: "forward" | "backward";
     pillars: Array<{ stem: Stem; branch: Branch; startAge: number }>;
   };
-  trueSolar: { trueSolarMinutesOffset: number; hourKnown: boolean };
+  trueSolar: TrueSolarMeta;
   frames: {
     ko: LifetimeFrame;
     cnZiping: LifetimeFrame;
