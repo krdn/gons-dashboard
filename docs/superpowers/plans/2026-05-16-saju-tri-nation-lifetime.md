@@ -888,13 +888,14 @@ git commit -m "feat(saju-tri): 합충형 — 육합·6충·삼형·자형"
 
 ---
 
-## Task 3.1: 대운 검증 — 1967 fixture (입대운 8세 역행)
+## Task 3.1: 대운 검증 — 1967 fixture (입대운 8세 역행) ✅ (commit f1cb055)
 
 **Files:**
 - Create: `packages/saju/src/daeun/extended.test.ts`
-- Modify (필요 시): `packages/saju/src/majorFortune.ts`
+- Modify (필요 시): `packages/saju/src/majorFortune.ts` (Path A: 무수정 — 기존 모듈이 이미 정확)
 
-- [ ] **Step 1: 기존 majorFortune 의 출력 검증 테스트**
+- [x] **Step 1: 기존 majorFortune 의 출력 검증 테스트**
+(adapted to actual API — plan 의 computeMajorFortune 단수 + result.{startAge, direction, pillars} 는 미존재. computeMajorFortunes 복수 + MajorFortune[] 반환으로 보정. 5 tests: length=10, startAge=8/startYear=1974, stem retrograde 壬→...→癸, branch retrograde 寅→...→巳, retrograde invariant.)
 
 `packages/saju/src/daeun/extended.test.ts`:
 
@@ -917,19 +918,21 @@ describe("majorFortune — 1967 fixture", () => {
 });
 ```
 
-- [ ] **Step 2: 테스트 실행**
+- [x] **Step 2: 테스트 실행**
 
 Run: `pnpm --filter @gons/saju test daeun/extended`
 
 - PASS 면: 기존 모듈 그대로 사용. 다음 task 로.
 - FAIL 면: `majorFortune.ts` 수정해 입대운 = 8, direction = "backward" 가 나오도록 보정.
+(결과: 5/5 PASS — majorFortune.ts 무수정.)
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add packages/saju/src/daeun/extended.test.ts packages/saju/src/majorFortune.ts
 git commit -m "test(saju-tri): 대운 회귀 검증 — 1967 입대운 8세 역행 fixture"
 ```
+(실제: extended.test.ts 만 add — majorFortune.ts 수정 없음.)
 
 ---
 
