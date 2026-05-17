@@ -1661,7 +1661,7 @@ git commit -m "feat(saju-tri): /api/saju/lifetime/[profileId] — getOrBuildLife
 - Create: `apps/dashboard/src/features/saju-lifetime-tri/api/narrative-server.ts`
 - Create: `apps/dashboard/src/app/api/saju/lifetime/[profileId]/narrative/route.ts`
 
-- [ ] **Step 1: rate limit**
+- [x] **Step 1: rate limit**
 
 `apps/dashboard/src/shared/lib/llm/rateLimit.ts`:
 
@@ -1684,7 +1684,7 @@ export function checkRateLimit(userId: string, limitPerMinute = 5): { allowed: b
 }
 ```
 
-- [ ] **Step 2: narrative server**
+- [x] **Step 2: narrative server**
 
 `apps/dashboard/src/features/saju-lifetime-tri/api/narrative-server.ts`:
 
@@ -1785,7 +1785,7 @@ export async function getOrBuildNarrative(
 }
 ```
 
-- [ ] **Step 3: route**
+- [x] **Step 3: route**
 
 `apps/dashboard/src/app/api/saju/lifetime/[profileId]/narrative/route.ts`:
 
@@ -1829,12 +1829,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ profileId: stri
 }
 ```
 
-- [ ] **Step 4: typecheck**
+- [x] **Step 4: typecheck**
 
 Run: `pnpm typecheck`
 Expected: PASS.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add apps/dashboard/src/app/api/saju/lifetime/[profileId]/narrative/ apps/dashboard/src/features/saju-lifetime-tri/api/narrative-server.ts apps/dashboard/src/shared/lib/llm/rateLimit.ts
