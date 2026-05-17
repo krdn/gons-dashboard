@@ -1541,7 +1541,7 @@ git commit -m "feat(saju-tri): compose/lifetime — 4 어댑터 통합 + safe fa
 
 ---
 
-## Task 6.1: API — /api/saju/lifetime/[profileId]
+## Task 6.1: API — /api/saju/lifetime/[profileId] ✅ (commit c7b86d8, Phase 6 시작)
 
 **Files:**
 - Create: `apps/dashboard/src/features/saju-lifetime-tri/api/lifetime-server.ts`
