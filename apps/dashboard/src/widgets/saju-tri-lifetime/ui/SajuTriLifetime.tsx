@@ -12,6 +12,7 @@
 import { getOrBuildLifetime } from "@/features/saju-lifetime-tri/api/lifetime-server";
 import { TriNationTabs } from "@/features/saju-lifetime-tri/ui/TriNationTabs";
 import { CrossCheckBadge } from "@/features/saju-lifetime-tri/ui/CrossCheckBadge";
+import { toUserMessage } from "@/features/saju-lifetime-tri/lib/errorMessage";
 
 interface Props {
   profileId: string;
@@ -23,7 +24,8 @@ export async function SajuTriLifetime({ profileId, userId }: Props) {
     ({ triNation }) => ({ ok: true as const, triNation }),
     (e: unknown) => ({
       ok: false as const,
-      error: e instanceof Error ? e.message : "분석 실패",
+      // stable raw code 유지 — JSX 분기에서 toUserMessage 로 한국어 변환.
+      error: e instanceof Error ? e.message : "INTERNAL_ERROR",
     }),
   );
 
@@ -58,7 +60,7 @@ export async function SajuTriLifetime({ profileId, userId }: Props) {
       >
         삼국 관점 평생 운세
       </h2>
-      <p className="text-sm text-red-600">삼국 관점 분석 실패: {result.error}</p>
+      <p className="text-sm text-red-600">{toUserMessage(result.error)}</p>
     </section>
   );
 }

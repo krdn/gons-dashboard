@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import type { LifetimeFrame } from "@gons/saju";
+import { toUserMessage } from "../lib/errorMessage";
 
 type SchoolKey = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
 
@@ -34,12 +35,14 @@ export function LifetimeFrameCard({ profileId, schoolKey, frame }: Props) {
       );
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        throw new Error(data.error ?? "fetch failed");
+        // raw stable code 를 그대로 throw — catch 에서 한국어 매핑.
+        throw new Error(data.error ?? "INTERNAL_ERROR");
       }
       const data = (await res.json()) as { narrativeText: string };
       setNarrative(data.narrativeText);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "fetch failed");
+      const rawCode = err instanceof Error ? err.message : null;
+      setError(toUserMessage(rawCode));
     } finally {
       setLoading(false);
     }
