@@ -1,5 +1,5 @@
-import type { ContainerSummary, ContainerState } from "@/entities/container";
-import type { Project } from "@/entities/project";
+import type { ContainerSummary, ContainerState } from "@/entities/container/client";
+import type { Project } from "@/entities/project/client";
 
 export type ProjectGroup = {
   composeProject: string;

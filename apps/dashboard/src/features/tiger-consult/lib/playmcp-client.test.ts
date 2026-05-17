@@ -11,35 +11,185 @@ beforeEach(() => {
   vi.resetModules();
 });
 
+// MCP 표준 3-call 흐름: initialize → notifications/initialized → tools/call
+// initialize 응답은 Mcp-Session-Id 헤더 + plain JSON 본문.
+// tools/call 응답은 SSE (data: {...}) 형식, result.content[0].text 안에 PlayMCP raw JSON.
+function makeMockFetch(toolPayloadJson: string) {
+  const sessionId = "test-session-abc";
+  return vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(init.body as string);
+    if (body.method === "initialize") {
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ "mcp-session-id": sessionId }),
+        text: async () => JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }),
+      } as unknown as Response;
+    }
+    if (body.method === "notifications/initialized") {
+      return {
+        ok: true,
+        status: 202,
+        headers: new Headers(),
+        text: async () => "",
+      } as unknown as Response;
+    }
+    if (body.method === "tools/call") {
+      const envelope = {
+        jsonrpc: "2.0",
+        id: body.id,
+        result: { content: [{ type: "text", text: toolPayloadJson }] },
+      };
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "text/event-stream" }),
+        text: async () => `event: message\ndata: ${JSON.stringify(envelope)}\n\n`,
+      } as unknown as Response;
+    }
+    throw new Error(`unexpected method: ${body.method}`);
+  });
+}
+
 describe("callTool", () => {
-  it("Authorization Bearer 헤더 + JSON body 포함", async () => {
+  it("3-call MCP 흐름 (initialize + notifications/initialized + tools/call) + Bearer 헤더", async () => {
     const { callTool } = await import("./playmcp-client");
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ result: { profile: { nickname_full: "x" } } }),
+    const fetchMock = makeMockFetch(
+      JSON.stringify({ result: { profile: { nickname_full: "x" } } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const payload = await callTool<{ result: { profile: { nickname_full: string } } }>(
+      "1fate-analyze_saju",
+      { birth_date: "1990-01-01", gender: "male", calendar: "solar" },
+    );
+    expect(payload.result.profile.nickname_full).toBe("x");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    for (const call of fetchMock.mock.calls) {
+      const [, init] = call;
+      expect(init.headers.Authorization).toBe("Bearer test-access-token");
+    }
+    const tcCall = fetchMock.mock.calls[2];
+    const tcBody = JSON.parse(tcCall[1].body);
+    expect(tcBody.method).toBe("tools/call");
+    expect(tcBody.params.name).toBe("1fate-analyze_saju");
+    expect(tcBody.params.arguments.birth_date).toBe("1990-01-01");
+    expect(tcCall[1].headers["Mcp-Session-Id"]).toBe("test-session-abc");
+  }, 10_000);
+
+  it("tools/call result.isError=true 이면 InputError + 메시지에 text 포함", async () => {
+    const { callTool } = await import("./playmcp-client");
+    const { PlayMCPInputError } = await import("./errors");
+    const sessionId = "test-session-err";
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.method === "initialize") {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "mcp-session-id": sessionId }),
+          text: async () => JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }),
+        } as unknown as Response;
+      }
+      if (body.method === "notifications/initialized") {
+        return { ok: true, status: 202, headers: new Headers(), text: async () => "" } as unknown as Response;
+      }
+      // tools/call — isError 시뮬레이션 (plain text error message)
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () =>
+          `event: message\ndata: ${JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [{ type: "text", text: "name 'longitude' is not defined" }],
+              isError: true,
+            },
+          })}\n\n`,
+      } as unknown as Response;
     });
     vi.stubGlobal("fetch", fetchMock);
-    await callTool("1fate-analyze_saju", {
-      birth_date: "1990-01-01", gender: "male", calendar: "solar",
+    await expect(
+      callTool("1fate-get_daily_fortune", { birth_date: "1990-01-01", gender: "male", calendar: "solar" }),
+    ).rejects.toMatchObject({
+      constructor: PlayMCPInputError,
+      message: expect.stringContaining("name 'longitude' is not defined"),
     });
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [, init] = fetchMock.mock.calls[0];
-    expect(init.headers.Authorization).toBe("Bearer test-access-token");
-    const body = JSON.parse(init.body);
-    expect(body.tool).toBe("1fate-analyze_saju");
-    expect(body.params.birth_date).toBe("1990-01-01");
-  });
+  }, 10_000);
 
-  it("응답에 result 필드 없으면 SchemaError", async () => {
+  it("도구 응답이 {error: '...'} JSON 이면 InputError (PlayMCP daily NameError 등)", async () => {
+    const { callTool } = await import("./playmcp-client");
+    const { PlayMCPInputError } = await import("./errors");
+    const sessionId = "test-session-toolerr";
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.method === "initialize") {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "mcp-session-id": sessionId }),
+          text: async () => JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }),
+        } as unknown as Response;
+      }
+      if (body.method === "notifications/initialized") {
+        return { ok: true, status: 202, headers: new Headers(), text: async () => "" } as unknown as Response;
+      }
+      // tools/call — JSON 파싱은 성공하지만 {error: "..."} 구조
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () =>
+          `event: message\ndata: ${JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                { type: "text", text: JSON.stringify({ error: "일일 운세 분석 실패: name 'longitude' is not defined" }) },
+              ],
+            },
+          })}\n\n`,
+      } as unknown as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      callTool("1fate-get_daily_fortune", { birth_date: "1990-01-01", gender: "male", calendar: "solar" }),
+    ).rejects.toMatchObject({
+      constructor: PlayMCPInputError,
+      message: expect.stringContaining("name 'longitude'"),
+    });
+  }, 10_000);
+
+  it("tools/call result.content 없으면 SchemaError", async () => {
     const { callTool } = await import("./playmcp-client");
     const { PlayMCPSchemaError } = await import("./errors");
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ unexpected: "structure" }),
+    const sessionId = "test-session-bad";
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.method === "initialize") {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "mcp-session-id": sessionId }),
+          text: async () => JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }),
+        } as unknown as Response;
+      }
+      if (body.method === "notifications/initialized") {
+        return { ok: true, status: 202, headers: new Headers(), text: async () => "" } as unknown as Response;
+      }
+      // tools/call — content 누락
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () =>
+          `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: 2, result: { unexpected: "shape" } })}\n\n`,
+      } as unknown as Response;
     });
     vi.stubGlobal("fetch", fetchMock);
     await expect(
       callTool("1fate-analyze_saju", { birth_date: "1990-01-01", gender: "male", calendar: "solar" }),
     ).rejects.toBeInstanceOf(PlayMCPSchemaError);
-  });
+  }, 10_000);
 });

@@ -1,11 +1,11 @@
 import "server-only";
 import { getHosts, type Host } from "@/entities/host";
-import { listContainers } from "@/entities/container";
+import { listContainers } from "@/entities/container/server";
 import {
   getProjects,
   getProjectComposeKeys,
   syncMissingProjects,
-} from "@/entities/project";
+} from "@/entities/project/server";
 import { groupByProject, type ProjectGroup } from "@/features/container-list";
 
 export type HostSummary = {
