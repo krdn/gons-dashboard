@@ -46,3 +46,27 @@ export type {
 // Task 1.2 — 출생 도시 자동완성 데이터셋
 export { findCity, searchCities } from "./time/cityLookup";
 export type { CityInfo } from "./time/cityLookup";
+
+// Phase 5 — Tri-nation lifetime compose
+export { resolveTrueSolar } from "./time/trueSolar";
+export { verifyConsensus } from "./consensus";
+export { computeShensha } from "./core/shensha";
+export type { ShenshaEntry } from "./core/shensha";
+export { computeInteractions } from "./core/interactions";
+export type { Interactions } from "./core/interactions";
+export { buildTriNationLifetime } from "./compose/lifetime";
+export type { BirthInputResolved } from "./compose/lifetime";
+export type {
+  School,
+  SchoolWithCompose,
+  LifetimeFrame,
+  TriNationLifetime,
+  Result,
+  SajuError,
+  PillarAnnotation,
+  DaeunHighlight,
+  ConsensusReport,
+  Conflict,
+  TrueSolarMeta,
+  ExtendedChart,
+} from "./core/extendedTypes";
