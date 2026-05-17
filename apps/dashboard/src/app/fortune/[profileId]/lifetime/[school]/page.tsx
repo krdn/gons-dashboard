@@ -14,6 +14,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { getOrBuildLifetime } from "@/features/saju-lifetime-tri/api/lifetime-server";
 import { LifetimeFrameCard } from "@/features/saju-lifetime-tri";
+import { toUserMessage } from "@/features/saju-lifetime-tri/lib/errorMessage";
 
 const SCHOOL_MAP = {
   ko: "ko",
@@ -80,7 +81,7 @@ export default async function LifetimeSchoolPage({ params }: Props) {
             frame={result.frame}
           />
         ) : (
-          <p className="text-sm text-red-600">분석 실패: {result.error}</p>
+          <p className="text-sm text-red-600">{toUserMessage(result.error)}</p>
         )}
       </section>
     </main>
