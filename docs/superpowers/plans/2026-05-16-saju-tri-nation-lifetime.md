@@ -1045,13 +1045,14 @@ git commit -m "feat(saju-tri): 확장 공용 타입 — LifetimeFrame·TriNation
 
 ---
 
-## Task 4.1: 한국식 어댑터 — adapters/ko/lifetime.ts
+## Task 4.1: 한국식 어댑터 — adapters/ko/lifetime.ts ✅ (commit 2a81e32)
 
 **Files:**
 - Create: `packages/saju/src/adapters/ko/lifetime.ts`
 - Create: `packages/saju/src/adapters/ko/lifetime.test.ts`
 
-- [ ] **Step 1: failing test**
+- [x] **Step 1: failing test**
+(test 에 birthCity: null 추가 — ComputeSajuInput 요구사항. plan 의 `(chart as unknown as ...).pattern?.name` 캐스트는 불필요 — SajuChart.pattern 이 이미 string. 직접 접근으로 단순화.)
 
 `packages/saju/src/adapters/ko/lifetime.test.ts`:
 
@@ -1076,7 +1077,7 @@ describe("buildLifetimeKo", () => {
 });
 ```
 
-- [ ] **Step 2: 구현**
+- [x] **Step 2: 구현**
 
 `packages/saju/src/adapters/ko/lifetime.ts`:
 
@@ -1107,17 +1108,18 @@ export function buildLifetimeKo(chart: SajuChart): LifetimeFrame {
 }
 ```
 
-- [ ] **Step 3: 테스트 PASS**
+- [x] **Step 3: 테스트 PASS**
 
 Run: `pnpm --filter @gons/saju test adapters/ko`
 Expected: PASS.
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add packages/saju/src/adapters/ko/
 git commit -m "feat(saju-tri): adapters/ko — 자평+조후+신살 frame"
 ```
+(실제 commit msg: `feat(saju-tri): 한국식 어댑터 — buildLifetimeKo (v0.1 시드)` — 한국어 convention 통일.)
 
 ---
 
