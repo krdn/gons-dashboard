@@ -1361,7 +1361,7 @@ git commit -m "feat(saju-tri): adapters/jp — 추명학 통변성 + 진태양�
 
 ---
 
-## Task 5.1: compose/lifetime.ts + index 재export
+## Task 5.1: compose/lifetime.ts + index 재export ✅ (commit 43329bd, Phase 5 완료)
 
 **Files:**
 - Create: `packages/saju/src/compose/lifetime.ts`
