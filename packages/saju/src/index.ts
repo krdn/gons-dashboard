@@ -91,4 +91,4 @@ export { buildYongshinCnMangpai } from "./adapters/cn-mangpai/yongshin";
 export { buildYearlyCnMangpai } from "./adapters/cn-mangpai/yearly";
 export { buildYongshinJp } from "./adapters/jp/yongshin";
 export { buildYearlyJp } from "./adapters/jp/yearly";
-export { buildTriNationYearly } from "./compose/yearly";
+export { buildTriNationYearly, buildTriNationYearlyFromBirth } from "./compose/yearly";
