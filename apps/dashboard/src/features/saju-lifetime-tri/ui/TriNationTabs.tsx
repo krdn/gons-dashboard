@@ -1,18 +1,24 @@
 "use client";
 
-// 5탭 (한국·中자평·中맹파·日추명·통합 비교) — 학파별 LifetimeFrameCard 또는 ComposeView 렌더.
+// 5탭 (한국·中자평·中맹파·日추명·통합 비교) — 학파별 LifetimeFrameView 또는 ComposeView 렌더.
 //
 // frames key 매핑: ko / cnZiping / cnMangpai / jp (camelCase).
-// schoolKey (LifetimeFrameCard prop): kebab-case ko / cn-ziping / cn-mangpai / jp — narrative
+// schoolKey (LifetimeFrameView prop): kebab-case ko / cn-ziping / cn-mangpai / jp — narrative
 // fetch 쿼리 파라미터와 직결.
 //
 // a11y: WAI-ARIA Tabs Pattern (manual activation).
 // - role tablist/tab/tabpanel + aria-selected/aria-controls/aria-labelledby
 // - 방향키(←/→/Home/End) + roving tabindex (활성 탭만 tabIndex=0)
+//
+// state lift-up (Polish G):
+// - 학파별 narrative 캐시 (NarrativeCache) — 탭 전환해도 fetch 한 결과 보존
+// - 진행 중 fetch 의 AbortController ref — 새 fetch 또는 unmount 시 abort
+// - 429 retryAt 카운트다운 — 학파별 retryAt + nowMs state, useEffect 안의 setInterval 로 갱신
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TriNationLifetime } from "@gons/saju";
-import { LifetimeFrameCard } from "./LifetimeFrameCard";
+import { LifetimeFrameView } from "./LifetimeFrameView";
+import { toUserMessage } from "../lib/errorMessage";
 
 const TABS = [
   { key: "ko", label: "한국" },
@@ -35,6 +41,29 @@ const FRAME_KEY: Record<SchoolKey, keyof TriNationLifetime["frames"]> = {
 const tabId = (key: TabKey) => `tri-tab-${key}`;
 const panelId = (key: TabKey) => `tri-panel-${key}`;
 
+interface NarrativeState {
+  text: string | null;
+  loading: boolean;
+  error: string | null;
+  retryAt: number | null;
+}
+
+type NarrativeCache = Record<SchoolKey, NarrativeState>;
+
+const INITIAL_NARRATIVE_STATE: NarrativeState = {
+  text: null,
+  loading: false,
+  error: null,
+  retryAt: null,
+};
+
+const INITIAL_CACHE: NarrativeCache = {
+  ko: INITIAL_NARRATIVE_STATE,
+  "cn-ziping": INITIAL_NARRATIVE_STATE,
+  "cn-mangpai": INITIAL_NARRATIVE_STATE,
+  jp: INITIAL_NARRATIVE_STATE,
+};
+
 interface Props {
   profileId: string;
   triNation: TriNationLifetime;
@@ -42,6 +71,14 @@ interface Props {
 
 export function TriNationTabs({ profileId, triNation }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
+  const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
+  // 카운트다운 표시용 현재 시각 (epoch ms). render 중 Date.now() 호출 금지(react-hooks/purity)
+  // + effect body 동기 setState 금지(set-state-in-effect) → fetchNarrative 핸들러에서
+  // 초기화하고 useEffect 안의 setInterval 콜백에서만 갱신.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const tabRefs = useRef<Record<TabKey, HTMLButtonElement | null>>({
     ko: null,
     "cn-ziping": null,
@@ -49,6 +86,119 @@ export function TriNationTabs({ profileId, triNation }: Props) {
     jp: null,
     compose: null,
   });
+
+  // 학파 중 하나라도 retryAt 가 살아 있으면 카운트다운 setInterval 운영.
+  // 모두 null 이면 nowMs 도 자연 정리.
+  const anyRetryAt = (Object.values(narratives) as NarrativeState[]).reduce<
+    number | null
+  >((earliest, s) => {
+    if (s.retryAt === null) return earliest;
+    if (earliest === null) return s.retryAt;
+    return Math.min(earliest, s.retryAt);
+  }, null);
+
+  useEffect(() => {
+    if (anyRetryAt === null) return;
+    tickRef.current = setInterval(() => {
+      const now = Date.now();
+      setNowMs(now);
+      // 만료된 학파의 retryAt 정리 (다른 학파는 그대로).
+      setNarratives((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const k of Object.keys(prev) as SchoolKey[]) {
+          if (prev[k].retryAt !== null && now >= prev[k].retryAt!) {
+            next[k] = { ...prev[k], retryAt: null };
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+    };
+  }, [anyRetryAt]);
+
+  // unmount 시 진행 중 fetch abort.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const fetchNarrative = (school: SchoolKey) => {
+    // 기존 진행 중 fetch 취소 (탭 전환 race condition 방지).
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setNarratives((prev) => ({
+      ...prev,
+      [school]: { ...prev[school], loading: true, error: null, retryAt: null },
+    }));
+
+    void (async () => {
+      // 카운트다운 시각 기준점 (Date.now 호출)은 핸들러 실행 컨텍스트(IIFE 안)에서.
+      const startNow = Date.now();
+      setNowMs(startNow);
+      try {
+        const res = await fetch(
+          `/api/saju/lifetime/${profileId}/narrative?school=${school}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) {
+          const data = (await res.json()) as {
+            error?: string;
+            retryAfterMs?: number;
+          };
+          if (res.status === 429 && typeof data.retryAfterMs === "number") {
+            const tNow = Date.now();
+            setNowMs(tNow);
+            setNarratives((prev) => ({
+              ...prev,
+              [school]: {
+                ...prev[school],
+                loading: false,
+                error: null,
+                retryAt: tNow + data.retryAfterMs!,
+              },
+            }));
+            return;
+          }
+          throw new Error(data.error ?? "INTERNAL_ERROR");
+        }
+        const data = (await res.json()) as { narrativeText: string };
+        setNarratives((prev) => ({
+          ...prev,
+          [school]: {
+            text: data.narrativeText,
+            loading: false,
+            error: null,
+            retryAt: null,
+          },
+        }));
+      } catch (err) {
+        // AbortError 는 의도된 취소 — 에러 표시하지 않음.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        const rawCode = err instanceof Error ? err.message : null;
+        setNarratives((prev) => ({
+          ...prev,
+          [school]: {
+            ...prev[school],
+            loading: false,
+            error: toUserMessage(rawCode),
+          },
+        }));
+      }
+    })();
+  };
+
+  const remainingMs = (state: NarrativeState): number =>
+    state.retryAt !== null && nowMs !== null
+      ? Math.max(0, state.retryAt - nowMs)
+      : 0;
+
 
   const focusTab = (key: TabKey) => {
     setActiveTab(key);
@@ -134,10 +284,13 @@ export function TriNationTabs({ profileId, triNation }: Props) {
             {tab.key === "compose" ? (
               <ComposeView triNation={triNation} />
             ) : (
-              <LifetimeFrameCard
-                profileId={profileId}
-                schoolKey={tab.key}
+              <LifetimeFrameView
                 frame={triNation.frames[FRAME_KEY[tab.key]]}
+                narrative={narratives[tab.key].text}
+                loading={narratives[tab.key].loading}
+                error={narratives[tab.key].error}
+                retryRemainingMs={remainingMs(narratives[tab.key])}
+                onFetch={() => fetchNarrative(tab.key)}
               />
             )}
           </div>
