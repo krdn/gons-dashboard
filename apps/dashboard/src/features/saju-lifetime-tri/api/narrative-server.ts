@@ -28,6 +28,45 @@ const MAX_NARRATIVE_TOKENS = 4096;
 
 export type NarrativeSchool = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
 
+// LLM 응답이 prose/마크다운으로 시작/종료해도 JSON 본문을 추출한다.
+// system prompt 가 "JSON 만" 지시해도 cli-proxy-api 경유 시 마크다운 헤더, 한국어
+// 접두사("명조 분석 요약 ..."), ```json 펜스 등의 변형이 운영에서 관측됐다.
+// 전략: 첫 '{' 부터 균형 잡힌 '}' 까지를 brace counter 로 추출. 문자열 리터럴 안의
+// 중괄호와 escape 를 인식해 오추출 방지.
+export function extractJsonObject(text: string): string {
+  const start = text.indexOf("{");
+  if (start === -1) {
+    throw new Error("no JSON object found in LLM response");
+  }
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === "\\") {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  throw new Error("unbalanced JSON object in LLM response");
+}
+
 const narrativeOutputSchema = z.object({
   narrativeText: z.string(),
   sections: z.object({
@@ -115,15 +154,8 @@ export async function getOrBuildNarrative(
   const text =
     firstBlock && firstBlock.type === "text" ? firstBlock.text : "";
 
-  // Anthropic 이 ```json ... ``` 마크다운 코드블록으로 감싸는 경우 fence strip.
-  // system prompt 가 "JSON 만" 지시해도 모델 출력 편차로 흔하게 발생.
-  const stripped = text
-    .replace(/^\s*```(?:json)?\s*\n?/i, "")
-    .replace(/\n?\s*```\s*$/i, "")
-    .trim();
-
   // JSON.parse / zod.parse 실패는 그대로 throw — 호출자(route)가 catch 해 500 매핑.
-  const json = JSON.parse(stripped);
+  const json = JSON.parse(extractJsonObject(text));
   const parsed = narrativeOutputSchema.parse(json);
 
   // 3) 캐시 저장 — 동시 cache miss 시 unique violation 회피
