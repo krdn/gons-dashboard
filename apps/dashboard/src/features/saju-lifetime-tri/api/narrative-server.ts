@@ -154,6 +154,13 @@ export async function getOrBuildNarrative(
   const text =
     firstBlock && firstBlock.type === "text" ? firstBlock.text : "";
 
+  // 임시 진단 로그 — proxy 응답이 'no JSON object found' 로 실패하는 회귀 추적용.
+  // 응답 본문 패턴 파악 후 별도 PR 로 제거.
+  console.warn(
+    "[saju/narrative] LLM raw response head (500 chars):",
+    text.slice(0, 500),
+  );
+
   // JSON.parse / zod.parse 실패는 그대로 throw — 호출자(route)가 catch 해 500 매핑.
   const json = JSON.parse(extractJsonObject(text));
   const parsed = narrativeOutputSchema.parse(json);
