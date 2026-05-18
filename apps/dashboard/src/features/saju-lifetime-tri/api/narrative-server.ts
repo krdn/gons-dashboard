@@ -135,13 +135,16 @@ export async function getOrBuildNarrative(
   //
   // cli-proxy-api 경유 시 system prompt 의 "JSON 만" 지시가 약하게 적용되는
   // 회귀(2026-05-18 운영 관측: 응답 = "명조 분석 JSON 요약입니다." 12자 prose)를
-  // 막기 위해 두 가지 패턴 적용:
+  // 막기 위해:
   //  (a) user message 에서 'JSON' 키워드 제거 — prose 답변 시그널 차단
-  //  (b) assistant prefill '{' — 모델이 객체 본문부터 이어쓰도록 강제
-  //      (Anthropic SDK 표준 패턴: messages 마지막을 assistant role 로 prefill)
+  //  (b) system prompt 에서 "JSON 객체만, prose 없이" 명시
+  //
+  // assistant prefill 패턴은 claude-opus-4-7 미지원으로 사용 불가
+  // (proxy 가 명시 400: "This model does not support assistant message prefill").
+  // 대신 응답이 prose 접두/접미를 포함하더라도 extractJsonObject 가 본문 추출.
   const systemPrompt = `당신은 ${SCHOOL_PROMPT[school]} 학파 사주 명리학자입니다.
 입력으로 받은 결정형 명조 분석을 바탕으로 sections 를 한국어로 작성하세요.
-출력은 반드시 아래 형식의 JSON 객체 하나만. 설명이나 prose 없이 JSON 본문만 출력:
+출력은 반드시 아래 형식의 JSON 객체 하나만. 설명, 인사, 마크다운 펜스 없이 '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력하세요:
 {"narrativeText":"전체 5문단", "sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"..."}, "citations":["출처1", "출처2"]}`;
 
   const response = await anthropic.messages.create({
@@ -153,18 +156,13 @@ export async function getOrBuildNarrative(
         role: "user",
         content: `명조 분석:\n${JSON.stringify(frame, null, 2)}`,
       },
-      {
-        role: "assistant",
-        content: "{",
-      },
     ],
   });
 
   // content[0] 가 비어있거나 text 가 아니면 JSON.parse 가 throw → route 가 500 처리.
-  // assistant prefill '{' 은 응답 content 에 포함되지 않으므로 다시 붙여줘야 한다.
   const firstBlock = response.content[0];
   const text =
-    firstBlock && firstBlock.type === "text" ? "{" + firstBlock.text : "";
+    firstBlock && firstBlock.type === "text" ? firstBlock.text : "";
 
   // JSON.parse / zod.parse 실패는 그대로 throw — 호출자(route)가 catch 해 500 매핑.
   const json = JSON.parse(extractJsonObject(text));
