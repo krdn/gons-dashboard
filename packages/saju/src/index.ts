@@ -81,3 +81,14 @@ export type {
   ShenStrengthBasis,
 } from "./types/yongshin";
 export type { YearlyFrame, TriNationYearly } from "./types/yearly";
+
+// v0.2 — 4학파 용신/년운 어댑터 + TriNationYearly compose
+export { buildYongshinKo } from "./adapters/ko/yongshin";
+export { buildYearlyKo } from "./adapters/ko/yearly";
+export { buildYongshinCnZiping } from "./adapters/cn-ziping/yongshin";
+export { buildYearlyCnZiping } from "./adapters/cn-ziping/yearly";
+export { buildYongshinCnMangpai } from "./adapters/cn-mangpai/yongshin";
+export { buildYearlyCnMangpai } from "./adapters/cn-mangpai/yearly";
+export { buildYongshinJp } from "./adapters/jp/yongshin";
+export { buildYearlyJp } from "./adapters/jp/yearly";
+export { buildTriNationYearly } from "./compose/yearly";
