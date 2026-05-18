@@ -133,19 +133,22 @@ export async function getOrBuildNarrative(
 
   // 2) miss → LLM 호출
   //
-  // cli-proxy-api 경유 시 system prompt 의 "JSON 만" 지시가 약하게 적용되는
-  // 회귀(2026-05-18 운영 관측: 응답 = "명조 분석 JSON 요약입니다." 12자 prose)를
-  // 막기 위해:
-  //  (a) user message 에서 'JSON' 키워드 제거 — prose 답변 시그널 차단
-  //  (b) system prompt 에서 "JSON 객체만, prose 없이" 명시
+  // cli-proxy-api 경유 시 system prompt 의 JSON 강제 지시가 무효화되는 이슈가
+  // 2026-05-18 운영에서 관측됨 (응답이 마크다운 prose 로 옴 — `## 명조 분석`).
+  // 같은 prompt 를 plain Anthropic API 에는 JSON 으로 답하지만, proxy 경유 시
+  // backend Claude Code 가 자체 컨텍스트(CLAUDE.md 등)를 주입하면서 system prompt
+  // 의 강제력이 희석되는 것으로 추정.
   //
-  // assistant prefill 패턴은 claude-opus-4-7 미지원으로 사용 불가
-  // (proxy 가 명시 400: "This model does not support assistant message prefill").
-  // 대신 응답이 prose 접두/접미를 포함하더라도 extractJsonObject 가 본문 추출.
+  // 회피: 동일 JSON 스키마 지시를 user message 본문 자체에 박는다. cli-proxy
+  // 가 어떤 처리를 하든 user content 는 모델에 직접 전달되므로 강제력 보존.
+  // assistant prefill 패턴은 claude-opus-4-7 이 거부하므로 사용 불가.
   const systemPrompt = `당신은 ${SCHOOL_PROMPT[school]} 학파 사주 명리학자입니다.
-입력으로 받은 결정형 명조 분석을 바탕으로 sections 를 한국어로 작성하세요.
-출력은 반드시 아래 형식의 JSON 객체 하나만. 설명, 인사, 마크다운 펜스 없이 '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력하세요:
-{"narrativeText":"전체 5문단", "sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"..."}, "citations":["출처1", "출처2"]}`;
+입력으로 받은 결정형 명조 분석을 바탕으로 sections 를 한국어로 작성하세요.`;
+
+  const userContent = `명조 분석:\n${JSON.stringify(frame, null, 2)}
+
+위 명조를 다음 JSON 스키마로만 답하세요. 마크다운 헤더, 펜스, prose 설명, 인사말 모두 금지. '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력:
+{"narrativeText":"전체 5문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"..."},"citations":["출처1","출처2"]}`;
 
   const response = await anthropic.messages.create({
     model: MODEL_ID,
@@ -154,7 +157,7 @@ export async function getOrBuildNarrative(
     messages: [
       {
         role: "user",
-        content: `명조 분석:\n${JSON.stringify(frame, null, 2)}`,
+        content: userContent,
       },
     ],
   });
