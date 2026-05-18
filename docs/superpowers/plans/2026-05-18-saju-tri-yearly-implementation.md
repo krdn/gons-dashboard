@@ -1,5 +1,7 @@
 # 사주 삼국 분석 v0.2 — 년운(歲運) + 용신 Implementation Plan
 
+> **STATUS — code-complete 2026-05-18.** Phase 0~6 모두 main 머지 (PR #79, #80, #81, #82, #83, #84, #85). 운영 배포 완료 (image SHA `16e9a6fe`). **Phase 7 (Task 7.1 — 사용자 브라우저 UI 검증)** 만 pending. 진행 기록은 본 파일의 step 체크박스가 아닌 git log + PR 목록을 정본으로 한다 (체크박스는 빌드 시점 가이드라인).
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `packages/saju` 에 4학파 용신(yongshin) 계산 + 현재 세운(歲運) 1년 결정형 frame 빌더를 추가하고, `/fortune/[profileId]` 안에 v0.1 평생운 아래 `<SajuTriYearly />` 위젯을 주입한다. LLM narrative 는 학파별 lazy + DB 영구 캐시.
