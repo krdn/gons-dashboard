@@ -22,7 +22,7 @@ import {
   date,
   customType,
 } from "drizzle-orm/pg-core";
-import type { TriNationLifetime } from "@gons/saju";
+import type { TriNationLifetime, TriNationYearly } from "@gons/saju";
 
 /* =========================================================================
  * Auth.js v5 표준 테이블 (DrizzleAdapter 사양)
@@ -605,3 +605,80 @@ export const sajuLifetimeNarrative = pgTable(
     ),
   ],
 );
+
+/* =========================================================================
+ * 삼국 분석 v0.2 년운(歲運) 캐시
+ * - saju_yearly_tri       : 결정형 TriNationYearly ((profile_id, school, target_year, input_hash, schema_version) UNIQUE)
+ * - saju_yearly_narrative : LLM narrative ((profile_id, school, target_year, frame_hash, model_id) UNIQUE)
+ * - school CHECK / cache UNIQUE / 조회 INDEX 는 생성된 SQL 후처리(ALTER TABLE) 로 적용한다.
+ * ========================================================================= */
+export const sajuYearlyTri = pgTable(
+  "saju_yearly_tri",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    targetYear: integer("target_year").notNull(),
+    inputHash: text("input_hash").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    frameJsonb: jsonb("frame_jsonb").$type<TriNationYearly>().notNull(),
+    computedAt: timestamp("computed_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_yearly_tri_profile_idx").on(t.profileId, t.targetYear),
+    uniqueIndex("saju_yearly_tri_cache_key").on(
+      t.profileId,
+      t.school,
+      t.targetYear,
+      t.inputHash,
+      t.schemaVersion,
+    ),
+  ],
+);
+
+export type SajuYearlyTriRow = typeof sajuYearlyTri.$inferSelect;
+
+export const sajuYearlyNarrative = pgTable(
+  "saju_yearly_narrative",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    targetYear: integer("target_year").notNull(),
+    frameHash: text("frame_hash").notNull(),
+    modelId: text("model_id").notNull(),
+    narrativeText: text("narrative_text").notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").$type<NarrativeSections>().notNull(),
+    citations: text("citations")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    generatedAt: timestamp("generated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_yearly_narrative_profile_idx").on(t.profileId, t.targetYear),
+    uniqueIndex("saju_yearly_narrative_cache_key").on(
+      t.profileId,
+      t.school,
+      t.targetYear,
+      t.frameHash,
+      t.modelId,
+    ),
+  ],
+);
+
+export type SajuYearlyNarrativeRow = typeof sajuYearlyNarrative.$inferSelect;

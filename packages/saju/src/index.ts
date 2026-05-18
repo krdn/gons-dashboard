@@ -70,3 +70,14 @@ export type {
   TrueSolarMeta,
   ExtendedChart,
 } from "./core/extendedTypes";
+
+// v0.2 — 년운(歲運) + 용신 타입 정의
+export type {
+  Yongshin,
+  KoYongshin,
+  CnZipingYongshin,
+  CnMangpaiYongshin,
+  JpYongshin,
+  ShenStrengthBasis,
+} from "./types/yongshin";
+export type { YearlyFrame, TriNationYearly } from "./types/yearly";
