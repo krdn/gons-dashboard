@@ -1,13 +1,16 @@
 ---
 title: 사주 삼국 분석 v0.2 — 년운(歲運) + 용신(yongshin) 설계
 date: 2026-05-18
-status: design
+status: shipped
 related:
   - docs/superpowers/specs/2026-05-16-saju-tri-nation-analysis-design.md (v0.1)
   - docs/superpowers/plans/2026-05-16-saju-tri-nation-lifetime.md (v0.1 plan)
+  - docs/superpowers/plans/2026-05-18-saju-tri-yearly-implementation.md (본 spec 의 plan)
 ---
 
 # 사주 삼국 분석 v0.2 — 년운(歲運) + 용신(yongshin) 설계
+
+> **STATUS — shipped 2026-05-18.** PR #79~#85 머지 + 운영 배포 (image SHA `16e9a6fe`). Phase 7 (사용자 브라우저 UI 검증) pending. 본 spec 의 결정사항은 그대로 구현됨 — 변경된 부분이 있으면 git log 또는 plan 의 commit log 가 정본.
 
 ## 1. 배경 — 왜 v0.2 가 필요한가
 
