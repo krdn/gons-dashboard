@@ -52,7 +52,8 @@ export async function GET(
   }
 
   // rate limit — Redis INCR 기반. 호출 자체가 카운트되므로 캐시 hit/miss 무관.
-  const rate = await checkRateLimit(session.user.id);
+  // keyPrefix='lifetime' — v0.2 yearly narrative 와 카운터 분리.
+  const rate = await checkRateLimit(session.user.id, "lifetime");
   if (!rate.allowed) {
     return NextResponse.json(
       { error: "RATE_LIMIT", retryAfterMs: rate.retryAfterMs },
