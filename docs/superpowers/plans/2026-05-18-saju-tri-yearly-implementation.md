@@ -18,6 +18,38 @@
 - v0.1 narrative 패턴은 `apps/dashboard/src/features/saju-lifetime-tri/api/narrative-server.ts` 가 정답 (PR #76 `c1aa446` + `d9090af`). yearly narrative-server 는 이걸 복사 + 입력 frame 만 교체.
 - 회귀 보호: 모든 PR 은 `cd apps/dashboard && pnpm typecheck && pnpm lint` 통과 필수 (memory: `react-error-boundaries-lint-rule.md`).
 
+**Plan revisions (2026-05-18 patch — 구현 시작 전 발견된 결함 4건):**
+
+1. **`Element` 타입은 영어 enum** — `packages/saju/src/hanja.ts` 에서 `"wood" | "fire" | "earth" | "metal" | "water"` 로 정의됨. plan 본문의 모든 `STEM_ELEMENT` / `BRANCH_ELEMENT` / `PRODUCES` / `PRODUCED_BY` / `CONTROLS` 매핑 값 + Record key 가 sed 일괄 교체 완료 (`"木"`→`"wood"` 등).
+
+2. **`MajorFortune` 에 `endAge` 필드 없음** — 실제 type 은 `{ startAge, startYear, stem, branch }` 4개 필드만 존재. plan 코드 안의 `endAge` 사용처는 구현 시 다음 패턴으로 보정:
+
+   ```ts
+   // findCurrentDaeun 헬퍼: 다음 항목의 startAge 미만으로 범위 판정
+   function findCurrentDaeun(daeun: MajorFortune[], age: number): { d: MajorFortune; endAge: number } {
+     for (let i = 0; i < daeun.length; i++) {
+       const startAge = daeun[i].startAge;
+       const endAge = daeun[i + 1] ? daeun[i + 1].startAge - 1 : startAge + 9;  // 마지막은 10년 가정
+       if (age >= startAge && age <= endAge) return { d: daeun[i], endAge };
+     }
+     return { d: daeun[0], endAge: daeun[0].startAge + 9 };
+   }
+   ```
+
+   test fixture 의 `endAge: NN` 필드는 제거 + 필요 시 `startYear` 추가 (또는 `as unknown as SajuChart` 캐스트로 우회 — 기존 v0.1 패턴).
+
+3. **`SajuChart` 구조** — pillars 가 한 단계 더 깊음:
+   ```ts
+   // 잘못된 plan 코드: chart.year.stem, chart.day.branch
+   // 올바른 접근:     chart.pillars.year.stem, chart.pillars.day.branch
+   ```
+
+   plan 코드의 `chart.year`, `chart.month`, `chart.day`, `chart.hour` 모두 `chart.pillars.year` 등으로 보정. test fixture 도 `{ pillars: { year, month, day, hour }, majorFortunes }` 형식으로.
+
+4. **`SajuChart.yongSin` 는 이미 `Element[]`** — plan §11 acceptance criterion 6 의 "v0.2 미적용 해소" 는 v0.1 시점에서 이미 빈 배열이 아닌 채워진 상태일 수 있음. 어댑터 lifetime.ts 의 `TODO(v0.2)` 주석은 v0.1 LifetimeFrame 의 `yongshin?: ...` 필드 (extendedTypes.ts) 가 `undefined` 인 것을 가리키며, plan §종료 follow-up Task 8.1 은 그 필드 주입 작업. yongSin 배열 자체와는 다른 수준.
+
+**구현 정책:** 각 Task 의 코드 블록을 따라가되, 위 4건은 컴파일 시 자연스럽게 드러나므로 발견 즉시 해당 task 안에서 보정 (별도 plan 재revise 없이 진행).
+
 ---
 
 ## Task 0.1: DB 마이그레이션 — saju_yearly_tri + saju_yearly_narrative
@@ -398,8 +430,8 @@ describe("buildYongshinKo — canonical 1967", () => {
     expect(result.basisShenStrength).toBe("신강");
     expect(result.basisJohuMode).toBe("균형");
     // 신강 → 설기/극제 오행이 용신. 봄 木 강하므로 火土 가 적합.
-    expect(["火", "土"]).toContain(result.primary);
-    expect(result.gisin).toContain("水");
+    expect(["fire", "earth"]).toContain(result.primary);
+    expect(result.gisin).toContain("water");
   });
 });
 ```
@@ -419,20 +451,20 @@ import type { KoYongshin, ShenStrengthBasis } from "../../types/yongshin";
 
 // 10천간 → 5행
 const STEM_ELEMENT: Record<Stem, Element> = {
-  甲: "木", 乙: "木",
-  丙: "火", 丁: "火",
-  戊: "土", 己: "土",
-  庚: "金", 辛: "金",
-  壬: "水", 癸: "水",
+  甲: "wood", 乙: "wood",
+  丙: "fire", 丁: "fire",
+  戊: "earth", 己: "earth",
+  庚: "metal", 辛: "metal",
+  壬: "water", 癸: "water",
 };
 
 // 12지지 → 5행
 const BRANCH_ELEMENT: Record<Branch, Element> = {
-  子: "水", 亥: "水",
-  寅: "木", 卯: "木",
-  巳: "火", 午: "火",
-  申: "金", 酉: "金",
-  辰: "土", 戌: "土", 丑: "土", 未: "土",
+  子: "water", 亥: "water",
+  寅: "wood", 卯: "wood",
+  巳: "fire", 午: "fire",
+  申: "metal", 酉: "metal",
+  辰: "earth", 戌: "earth", 丑: "earth", 未: "earth",
 };
 
 // 12지지 → 계절 (조후 판정용)
@@ -444,9 +476,9 @@ const BRANCH_SEASON: Record<Branch, "봄" | "여름" | "가을" | "겨울"> = {
 };
 
 // 5행 상생/상극
-const PRODUCES: Record<Element, Element> = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
-const PRODUCED_BY: Record<Element, Element> = { 火: "木", 土: "火", 金: "土", 水: "金", 木: "水" };
-const CONTROLS: Record<Element, Element> = { 木: "土", 火: "金", 土: "水", 金: "木", 水: "火" };
+const PRODUCES: Record<Element, Element> = { wood: "fire", fire: "earth", earth: "metal", metal: "water", water: "wood" };
+const PRODUCED_BY: Record<Element, Element> = { fire: "wood", earth: "fire", metal: "earth", water: "metal", wood: "water" };
+const CONTROLS: Record<Element, Element> = { wood: "earth", fire: "metal", earth: "water", metal: "wood", water: "fire" };
 
 /** 일간 대비 한 오행의 역할 분류 */
 function classify(dayElement: Element, target: Element): "비겁" | "인성" | "식상" | "재성" | "관성" {
@@ -527,8 +559,8 @@ export function buildYongshinKo(chart: SajuChart): KoYongshin {
 
   // 조후 보조
   let secondary: Element | undefined;
-  if (johu === "한랭") secondary = "火";
-  else if (johu === "조열") secondary = "水";
+  if (johu === "한랭") secondary = "fire";
+  else if (johu === "조열") secondary = "water";
 
   // 충돌 시 조후 우선
   if (secondary && gisin.includes(secondary)) {
@@ -593,7 +625,7 @@ describe("buildYongshinCnZiping — canonical 1967", () => {
     expect(r.school).toBe("cn-ziping");
     expect(r.basisShenStrength).toBe("신강");
     // 신강 → 설기/극제 (壬水 일간 → 식상=木 / 재성=火 / 관성=土)
-    expect(["木", "火", "土"]).toContain(r.primary);
+    expect(["wood", "fire", "earth"]).toContain(r.primary);
   });
 });
 ```
@@ -612,18 +644,18 @@ import type { SajuChart, Stem, Branch, Element } from "../../types";
 import type { CnZipingYongshin } from "../../types/yongshin";
 
 const STEM_ELEMENT: Record<Stem, Element> = {
-  甲: "木", 乙: "木", 丙: "火", 丁: "火",
-  戊: "土", 己: "土", 庚: "金", 辛: "金",
-  壬: "水", 癸: "水",
+  甲: "wood", 乙: "wood", 丙: "fire", 丁: "fire",
+  戊: "earth", 己: "earth", 庚: "metal", 辛: "metal",
+  壬: "water", 癸: "water",
 };
 const BRANCH_ELEMENT: Record<Branch, Element> = {
-  子: "水", 亥: "水", 寅: "木", 卯: "木",
-  巳: "火", 午: "火", 申: "金", 酉: "金",
-  辰: "土", 戌: "土", 丑: "土", 未: "土",
+  子: "water", 亥: "water", 寅: "wood", 卯: "wood",
+  巳: "fire", 午: "fire", 申: "metal", 酉: "metal",
+  辰: "earth", 戌: "earth", 丑: "earth", 未: "earth",
 };
-const PRODUCES: Record<Element, Element> = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
-const PRODUCED_BY: Record<Element, Element> = { 火: "木", 土: "火", 金: "土", 水: "金", 木: "水" };
-const CONTROLS: Record<Element, Element> = { 木: "土", 火: "金", 土: "水", 金: "木", 水: "火" };
+const PRODUCES: Record<Element, Element> = { wood: "fire", fire: "earth", earth: "metal", metal: "water", water: "wood" };
+const PRODUCED_BY: Record<Element, Element> = { fire: "wood", earth: "fire", metal: "earth", water: "metal", wood: "water" };
+const CONTROLS: Record<Element, Element> = { wood: "earth", fire: "metal", earth: "water", metal: "wood", water: "fire" };
 
 function classify(d: Element, t: Element): "비겁" | "인성" | "식상" | "재성" | "관성" {
   if (t === d) return "비겁";
@@ -726,8 +758,8 @@ describe("buildYongshinCnMangpai — canonical 1967", () => {
   it("壬日 卯月 — 식상 木 용신 + 응기 hint", () => {
     const r = buildYongshinCnMangpai(canonical1967);
     expect(r.school).toBe("cn-mangpai");
-    expect(r.primary).toBe("木");                       // 식상 (壬→木)
-    expect(r.emergenceHint).toContain("木");
+    expect(r.primary).toBe("wood");                       // 식상 (壬→木)
+    expect(r.emergenceHint).toContain("wood");
   });
 });
 ```
@@ -753,24 +785,24 @@ import type { CnMangpaiYongshin } from "../../types/yongshin";
  */
 
 const STEM_ELEMENT: Record<Stem, Element> = {
-  甲: "木", 乙: "木", 丙: "火", 丁: "火",
-  戊: "土", 己: "土", 庚: "金", 辛: "金",
-  壬: "水", 癸: "水",
+  甲: "wood", 乙: "wood", 丙: "fire", 丁: "fire",
+  戊: "earth", 己: "earth", 庚: "metal", 辛: "metal",
+  壬: "water", 癸: "water",
 };
 const BRANCH_ELEMENT: Record<Branch, Element> = {
-  子: "水", 亥: "水", 寅: "木", 卯: "木",
-  巳: "火", 午: "火", 申: "金", 酉: "金",
-  辰: "土", 戌: "土", 丑: "土", 未: "土",
+  子: "water", 亥: "water", 寅: "wood", 卯: "wood",
+  巳: "fire", 午: "fire", 申: "metal", 酉: "metal",
+  辰: "earth", 戌: "earth", 丑: "earth", 未: "earth",
 };
-const CONTROLS: Record<Element, Element> = { 木: "土", 火: "金", 土: "水", 金: "木", 水: "火" };
+const CONTROLS: Record<Element, Element> = { wood: "earth", fire: "metal", earth: "water", metal: "wood", water: "fire" };
 
 // 일간별 단건업 식상-우선 용신 (간략)
 const STEM_TO_YONGSHIN: Record<Stem, Element> = {
-  甲: "火", 乙: "火",   // 木日 → 식상 火
-  丙: "土", 丁: "土",   // 火日 → 식상 土
-  戊: "金", 己: "金",   // 土日 → 식상 金
-  庚: "水", 辛: "水",   // 金日 → 식상 水
-  壬: "木", 癸: "木",   // 水日 → 식상 木
+  甲: "fire", 乙: "fire",   // 木日 → 식상 火
+  丙: "earth", 丁: "earth",   // 火日 → 식상 土
+  戊: "metal", 己: "metal",   // 土日 → 식상 金
+  庚: "water", 辛: "water",   // 金日 → 식상 水
+  壬: "wood", 癸: "wood",   // 水日 → 식상 木
 };
 
 export function buildYongshinCnMangpai(chart: SajuChart): CnMangpaiYongshin {
@@ -951,14 +983,14 @@ import type { KoYongshin } from "../../types/yongshin";
 import type { YearlyFrame } from "../../types/yearly";
 
 const STEM_ELEMENT: Record<Stem, Element> = {
-  甲: "木", 乙: "木", 丙: "火", 丁: "火",
-  戊: "土", 己: "土", 庚: "金", 辛: "金",
-  壬: "水", 癸: "水",
+  甲: "wood", 乙: "wood", 丙: "fire", 丁: "fire",
+  戊: "earth", 己: "earth", 庚: "metal", 辛: "metal",
+  壬: "water", 癸: "water",
 };
 const BRANCH_ELEMENT: Record<Branch, Element> = {
-  子: "水", 亥: "水", 寅: "木", 卯: "木",
-  巳: "火", 午: "火", 申: "金", 酉: "金",
-  辰: "土", 戌: "土", 丑: "土", 未: "土",
+  子: "water", 亥: "water", 寅: "wood", 卯: "wood",
+  巳: "fire", 午: "fire", 申: "metal", 酉: "metal",
+  辰: "earth", 戌: "earth", 丑: "earth", 未: "earth",
 };
 
 // 60갑자 — index 0 = 甲子 (1984)
@@ -1147,14 +1179,14 @@ import type { YearlyFrame } from "../../types/yearly";
 
 // (KO yearly.ts 와 동일 상수 — 의도적 중복)
 const STEM_ELEMENT: Record<Stem, Element> = {
-  甲: "木", 乙: "木", 丙: "火", 丁: "火",
-  戊: "土", 己: "土", 庚: "金", 辛: "金",
-  壬: "水", 癸: "水",
+  甲: "wood", 乙: "wood", 丙: "fire", 丁: "fire",
+  戊: "earth", 己: "earth", 庚: "metal", 辛: "metal",
+  壬: "water", 癸: "water",
 };
 const BRANCH_ELEMENT: Record<Branch, Element> = {
-  子: "水", 亥: "水", 寅: "木", 卯: "木",
-  巳: "火", 午: "火", 申: "金", 酉: "金",
-  辰: "土", 戌: "土", 丑: "土", 未: "土",
+  子: "water", 亥: "water", 寅: "wood", 卯: "wood",
+  巳: "fire", 午: "fire", 申: "metal", 酉: "metal",
+  辰: "earth", 戌: "earth", 丑: "earth", 未: "earth",
 };
 const STEMS: Stem[] = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
 const BRANCHES: Branch[] = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
@@ -1317,12 +1349,12 @@ import type { CnMangpaiYongshin } from "../../types/yongshin";
 import type { YearlyFrame } from "../../types/yearly";
 
 const STEM_ELEMENT: Record<Stem, Element> = {
-  甲:"木",乙:"木",丙:"火",丁:"火",戊:"土",己:"土",
-  庚:"金",辛:"金",壬:"水",癸:"水",
+  甲:"wood",乙:"wood",丙:"fire",丁:"fire",戊:"earth",己:"earth",
+  庚:"metal",辛:"metal",壬:"water",癸:"water",
 };
 const BRANCH_ELEMENT: Record<Branch, Element> = {
-  子:"水",亥:"水",寅:"木",卯:"木",巳:"火",午:"火",
-  申:"金",酉:"金",辰:"土",戌:"土",丑:"土",未:"土",
+  子:"water",亥:"water",寅:"wood",卯:"wood",巳:"fire",午:"fire",
+  申:"metal",酉:"metal",辰:"earth",戌:"earth",丑:"earth",未:"earth",
 };
 const STEMS: Stem[] = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
 const BRANCHES: Branch[] = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
