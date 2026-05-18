@@ -85,6 +85,13 @@
       "when": 1778938237387,
       "tag": "0011_dark_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779090333243,
+      "tag": "0012_lucky_warlock",
+      "breakpoints": true
     }
   ]
 }
