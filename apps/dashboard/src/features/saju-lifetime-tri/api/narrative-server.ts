@@ -132,9 +132,16 @@ export async function getOrBuildNarrative(
   }
 
   // 2) miss → LLM 호출
+  //
+  // cli-proxy-api 경유 시 system prompt 의 "JSON 만" 지시가 약하게 적용되는
+  // 회귀(2026-05-18 운영 관측: 응답 = "명조 분석 JSON 요약입니다." 12자 prose)를
+  // 막기 위해 두 가지 패턴 적용:
+  //  (a) user message 에서 'JSON' 키워드 제거 — prose 답변 시그널 차단
+  //  (b) assistant prefill '{' — 모델이 객체 본문부터 이어쓰도록 강제
+  //      (Anthropic SDK 표준 패턴: messages 마지막을 assistant role 로 prefill)
   const systemPrompt = `당신은 ${SCHOOL_PROMPT[school]} 학파 사주 명리학자입니다.
-입력으로 받은 결정형 명조 분석(LifetimeFrame)을 바탕으로 sections 를 한국어로 작성하세요.
-출력은 JSON 만:
+입력으로 받은 결정형 명조 분석을 바탕으로 sections 를 한국어로 작성하세요.
+출력은 반드시 아래 형식의 JSON 객체 하나만. 설명이나 prose 없이 JSON 본문만 출력:
 {"narrativeText":"전체 5문단", "sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"..."}, "citations":["출처1", "출처2"]}`;
 
   const response = await anthropic.messages.create({
@@ -144,22 +151,20 @@ export async function getOrBuildNarrative(
     messages: [
       {
         role: "user",
-        content: `명조 분석 JSON:\n${JSON.stringify(frame, null, 2)}`,
+        content: `명조 분석:\n${JSON.stringify(frame, null, 2)}`,
+      },
+      {
+        role: "assistant",
+        content: "{",
       },
     ],
   });
 
   // content[0] 가 비어있거나 text 가 아니면 JSON.parse 가 throw → route 가 500 처리.
+  // assistant prefill '{' 은 응답 content 에 포함되지 않으므로 다시 붙여줘야 한다.
   const firstBlock = response.content[0];
   const text =
-    firstBlock && firstBlock.type === "text" ? firstBlock.text : "";
-
-  // 임시 진단 로그 — proxy 응답이 'no JSON object found' 로 실패하는 회귀 추적용.
-  // 응답 본문 패턴 파악 후 별도 PR 로 제거.
-  console.warn(
-    "[saju/narrative] LLM raw response head (500 chars):",
-    text.slice(0, 500),
-  );
+    firstBlock && firstBlock.type === "text" ? "{" + firstBlock.text : "";
 
   // JSON.parse / zod.parse 실패는 그대로 throw — 호출자(route)가 catch 해 500 매핑.
   const json = JSON.parse(extractJsonObject(text));
