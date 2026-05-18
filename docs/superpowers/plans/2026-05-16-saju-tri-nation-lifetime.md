@@ -1560,6 +1560,22 @@ import { createHash } from "node:crypto";
 
 const SCHEMA_VERSION = 1;
 
+// route catch 분기가 안정 식별할 수 있도록 named error class 사용.
+// 한국어 메시지는 features/saju-lifetime-tri/lib/errorMessage.ts (toUserMessage) 에서 매핑.
+export class ProfileNotFoundError extends Error {
+  constructor() {
+    super("PROFILE_NOT_FOUND");
+    this.name = "ProfileNotFoundError";
+  }
+}
+
+export class LifetimeBuildError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LifetimeBuildError";
+  }
+}
+
 export interface GetLifetimeResult {
   triNation: TriNationLifetime;
   cachedAt: string;
@@ -1570,15 +1586,23 @@ export async function getOrBuildLifetime(profileId: string, userId: string): Pro
   const profile = await db.query.fortuneProfiles.findFirst({
     where: and(eq(fortuneProfiles.id, profileId), eq(fortuneProfiles.userId, userId)),
   });
-  if (!profile) throw new Error("프로필을 찾을 수 없습니다.");
+  if (!profile) throw new ProfileNotFoundError();
+
+  // 검증 실패는 LifetimeBuildError 로 throw — route 가 422 매핑.
+  if (profile.calendar !== "solar" && profile.calendar !== "lunar") {
+    throw new LifetimeBuildError(`INVALID_CALENDAR: ${profile.calendar}`);
+  }
+  if (profile.gender !== "male" && profile.gender !== "female") {
+    throw new LifetimeBuildError(`INVALID_GENDER: ${profile.gender}`);
+  }
 
   const input = {
     birthDateLocal: profile.birthDate,
     birthTimeLocal: profile.birthTime ?? "",
     timezone: "Asia/Seoul" as const,
     longitudeDeg: Number(profile.longitudeDeg ?? 127),
-    calendar: (profile.calendar ?? "solar") as "solar" | "lunar",
-    gender: profile.gender as "male" | "female",
+    calendar: profile.calendar,
+    gender: profile.gender,
   };
 
   const inputHash = createHash("sha256").update(JSON.stringify(input)).digest("hex");
@@ -1600,7 +1624,7 @@ export async function getOrBuildLifetime(profileId: string, userId: string): Pro
   }
 
   const result = await buildTriNationLifetime(input);
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw new LifetimeBuildError(result.error.message);
 
   await db.insert(sajuLifetimeTri).values({
     profileId,
@@ -1620,9 +1644,17 @@ export async function getOrBuildLifetime(profileId: string, userId: string): Pro
 
 ```ts
 import { auth } from "@/features/auth/lib/auth";
-import { getOrBuildLifetime } from "@/features/saju-lifetime-tri/api/lifetime-server";
+import {
+  getOrBuildLifetime,
+  LifetimeBuildError,
+  ProfileNotFoundError,
+} from "@/features/saju-lifetime-tri/api/lifetime-server";
 import { NextResponse } from "next/server";
 
+// 에러 분기 (stable codes — UI 는 errorMessage.ts toUserMessage 로 한국어 매핑):
+//   * ProfileNotFoundError → 404 { error: "PROFILE_NOT_FOUND" }
+//   * LifetimeBuildError   → 422 { error: "<message>" }  (INVALID_CALENDAR:.. / INVALID_GENDER:.. / 만세력 합의 실패 등)
+//   * 그 외                  → 500 { error: "INTERNAL_ERROR" } + console.error
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ profileId: string }> },
@@ -1635,7 +1667,14 @@ export async function GET(
     const result = await getOrBuildLifetime(profileId, session.user.id);
     return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    if (err instanceof ProfileNotFoundError) {
+      return NextResponse.json({ error: "PROFILE_NOT_FOUND" }, { status: 404 });
+    }
+    if (err instanceof LifetimeBuildError) {
+      return NextResponse.json({ error: err.message }, { status: 422 });
+    }
+    console.error("[saju/lifetime] internal error:", err);
+    return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
 ```
@@ -1791,7 +1830,11 @@ export async function getOrBuildNarrative(
 
 ```ts
 import { auth } from "@/features/auth/lib/auth";
-import { getOrBuildLifetime } from "@/features/saju-lifetime-tri/api/lifetime-server";
+import {
+  getOrBuildLifetime,
+  LifetimeBuildError,
+  ProfileNotFoundError,
+} from "@/features/saju-lifetime-tri/api/lifetime-server";
 import { getOrBuildNarrative } from "@/features/saju-lifetime-tri/api/narrative-server";
 import { checkRateLimit } from "@/shared/lib/llm/rateLimit";
 import { NextResponse } from "next/server";
@@ -1803,6 +1846,13 @@ const SCHOOL_MAP = {
   jp: "jp",
 } as const;
 
+// 에러 분기 (stable codes — UI 는 errorMessage.ts toUserMessage 로 한국어 매핑):
+//   * 인증 누락                → 401 { error: "Unauthorized" }
+//   * 학파 파라미터 무효       → 400 { error: "INVALID_SCHOOL" }
+//   * rate limit               → 429 { error: "RATE_LIMIT", retryAfterMs }
+//   * ProfileNotFoundError     → 404 { error: "PROFILE_NOT_FOUND" }
+//   * LifetimeBuildError       → 422 { error: "<message>" }
+//   * 그 외 (LLM/JSON/zod)      → 500 { error: "INTERNAL_ERROR" } + console.error
 export async function GET(req: Request, ctx: { params: Promise<{ profileId: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -1810,12 +1860,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ profileId: stri
   const { profileId } = await ctx.params;
   const schoolParam = new URL(req.url).searchParams.get("school") as keyof typeof SCHOOL_MAP | null;
   if (!schoolParam || !SCHOOL_MAP[schoolParam]) {
-    return NextResponse.json({ error: "Invalid school" }, { status: 400 });
+    return NextResponse.json({ error: "INVALID_SCHOOL" }, { status: 400 });
   }
 
-  const rate = checkRateLimit(session.user.id);
+  const rate = await checkRateLimit(session.user.id);
   if (!rate.allowed) {
-    return NextResponse.json({ error: "Rate limit", retryAfterMs: rate.retryAfterMs }, { status: 429 });
+    return NextResponse.json({ error: "RATE_LIMIT", retryAfterMs: rate.retryAfterMs }, { status: 429 });
   }
 
   try {
@@ -1824,7 +1874,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ profileId: stri
     const result = await getOrBuildNarrative(profileId, schoolParam, frame);
     return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    if (err instanceof ProfileNotFoundError) {
+      return NextResponse.json({ error: "PROFILE_NOT_FOUND" }, { status: 404 });
+    }
+    if (err instanceof LifetimeBuildError) {
+      return NextResponse.json({ error: err.message }, { status: 422 });
+    }
+    console.error("[saju/narrative] LLM error:", err);
+    return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
 ```
