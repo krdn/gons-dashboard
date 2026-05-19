@@ -17,6 +17,10 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TriNationLifetime } from "@gons/saju";
+import type {
+  LifetimeNarrativeSections,
+  SchoolSpecific,
+} from "@/shared/lib/db/schema";
 import { LifetimeFrameView } from "./LifetimeFrameView";
 import { toUserMessage } from "../lib/errorMessage";
 
@@ -41,8 +45,15 @@ const FRAME_KEY: Record<SchoolKey, keyof TriNationLifetime["frames"]> = {
 const tabId = (key: TabKey) => `tri-tab-${key}`;
 const panelId = (key: TabKey) => `tri-panel-${key}`;
 
+interface NarrativePayload {
+  narrativeText: string;
+  sections: LifetimeNarrativeSections;
+  schoolSpecific: SchoolSpecific;
+  citations: string[];
+}
+
 interface NarrativeState {
-  text: string | null;
+  payload: NarrativePayload | null;
   loading: boolean;
   error: string | null;
   retryAt: number | null;
@@ -51,7 +62,7 @@ interface NarrativeState {
 type NarrativeCache = Record<SchoolKey, NarrativeState>;
 
 const INITIAL_NARRATIVE_STATE: NarrativeState = {
-  text: null,
+  payload: null,
   loading: false,
   error: null,
   retryAt: null,
@@ -168,14 +179,25 @@ export function TriNationTabs({ profileId, triNation }: Props) {
           }
           throw new Error(data.error ?? "INTERNAL_ERROR");
         }
-        const data = (await res.json()) as { narrativeText: string };
+        const data = (await res.json()) as NarrativePayload & {
+          fromCache: boolean;
+          modelId: string;
+          promptVersion: number;
+          generatedAt: string;
+          school: SchoolKey;
+        };
+
         setNarratives((prev) => ({
           ...prev,
           [school]: {
-            text: data.narrativeText,
+            ...prev[school],
+            payload: {
+              narrativeText: data.narrativeText,
+              sections: data.sections,
+              schoolSpecific: data.schoolSpecific,
+              citations: data.citations,
+            },
             loading: false,
-            error: null,
-            retryAt: null,
           },
         }));
       } catch (err) {
@@ -286,7 +308,8 @@ export function TriNationTabs({ profileId, triNation }: Props) {
             ) : (
               <LifetimeFrameView
                 frame={triNation.frames[FRAME_KEY[tab.key]]}
-                narrative={narratives[tab.key].text}
+                school={tab.key as SchoolKey}
+                narrative={narratives[tab.key].payload}
                 loading={narratives[tab.key].loading}
                 error={narratives[tab.key].error}
                 retryRemainingMs={remainingMs(narratives[tab.key])}
