@@ -3,9 +3,9 @@
 exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > 2026 세운 wrapper 출력 snapshot 일치 1`] = `
 {
   "crossCheck": {
-    "agreement": "low",
+    "agreement": "medium",
     "notes": [
-      "학파별 판단 분기 — LLM narrative 로 학파별 입장 확인 권장",
+      "3학파 중 2학파 동의 (favorable=2, unfavorable=1)",
     ],
   },
   "frames": {
@@ -86,8 +86,10 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > 2026 �
         "stem": "丙",
       },
       "yongShinDelta": {
-        "netVerdict": "mixed",
-        "reinforced": [],
+        "netVerdict": "favorable",
+        "reinforced": [
+          "fire",
+        ],
         "weakened": [],
       },
       "yongShinUsed": {
@@ -182,8 +184,10 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > 2026 �
         "stem": "丙",
       },
       "yongShinDelta": {
-        "netVerdict": "mixed",
-        "reinforced": [],
+        "netVerdict": "favorable",
+        "reinforced": [
+          "fire",
+        ],
         "weakened": [],
       },
       "yongShinUsed": {
@@ -277,6 +281,7 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > targetY
         "netVerdict": "favorable",
         "reinforced": [
           "wood",
+          "fire",
         ],
         "weakened": [],
       },
@@ -357,6 +362,7 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > targetY
         "netVerdict": "favorable",
         "reinforced": [
           "wood",
+          "fire",
         ],
         "weakened": [],
       },

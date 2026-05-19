@@ -86,8 +86,19 @@ export function buildYearlyCnZiping(args: {
   const yearBranchEl = BRANCH_ELEMENT[yearGanji.branch];
   const reinforced: Element[] = [];
   const weakened: Element[] = [];
+
+  // v0.3 종격 cascade — 종아/종재/종살격은 primary 다음 흐름 (PRODUCES[primary]) 도 喜神
+  const PRODUCES: Record<Element, Element> = {
+    wood: "fire", fire: "earth", earth: "metal", metal: "water", water: "wood",
+  };
+  const isJonggyeok =
+    yongShin.basisShenStrength === "종아" ||
+    yongShin.basisShenStrength === "종재" ||
+    yongShin.basisShenStrength === "종살";
+  const xishen: Element | null = isJonggyeok ? PRODUCES[yongShin.primary] : null;
+
   for (const el of [yearStemEl, yearBranchEl]) {
-    if (el === yongShin.primary && !reinforced.includes(el)) reinforced.push(el);
+    if ((el === yongShin.primary || el === xishen) && !reinforced.includes(el)) reinforced.push(el);
     if (yongShin.gisin.includes(el) && !weakened.includes(el)) weakened.push(el);
   }
   const netVerdict: "favorable" | "unfavorable" | "mixed" =

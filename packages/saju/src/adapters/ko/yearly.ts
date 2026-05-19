@@ -105,8 +105,20 @@ export function buildYearlyKo(args: {
   const yearBranchEl = BRANCH_ELEMENT[yearGanji.branch];
   const reinforced: Element[] = [];
   const weakened: Element[] = [];
+
+  // v0.3 종격 cascade — 종아/종재/종살격은 primary 다음 흐름 (PRODUCES[primary]) 도 喜神
+  // 食傷生財(종아), 財官相生(종재), 官印相生(종살) 원리
+  const PRODUCES: Record<Element, Element> = {
+    wood: "fire", fire: "earth", earth: "metal", metal: "water", water: "wood",
+  };
+  const isJonggyeok =
+    yongShin.basisShenStrength === "종아" ||
+    yongShin.basisShenStrength === "종재" ||
+    yongShin.basisShenStrength === "종살";
+  const xishen: Element | null = isJonggyeok ? PRODUCES[yongShin.primary] : null;
+
   for (const el of [yearStemEl, yearBranchEl]) {
-    if (el === yongShin.primary || el === yongShin.secondary) {
+    if (el === yongShin.primary || el === yongShin.secondary || el === xishen) {
       if (!reinforced.includes(el)) reinforced.push(el);
     }
     if (yongShin.gisin.includes(el)) {
