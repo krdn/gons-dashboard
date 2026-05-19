@@ -1,38 +1,53 @@
 "use client";
 
-// LifetimeFrame 표시 + narrative 영역 (Polish G).
-//
-// LifetimeFrameCard 가 자체 state 로 fetch + retry 카운트다운까지 모두 관리하는 반면
-// 이 컴포넌트는 순수 presentational. narrative 캐시 / loading / error / 카운트다운 표시값
-// 모두 props 로 받는다. 부모 (TriNationTabs) 가 학파별 캐시 + AbortController + 카운트다운
-// useEffect 를 lift-up 해서 보유.
-//
-// 두 가지 사용처:
-// - TriNationTabs: 학파별 캐시 공유 + 탭 전환 race condition 방지 (이 컴포넌트 사용)
-// - /fortune/[profileId]/lifetime/[school] 라우트: 단독 카드라 캐시 불필요 (LifetimeFrameCard 사용)
-
+// LifetimeFrame 표시 + narrative 영역 (v0.2 — KeyTermsStrip / NarrativeSection ×5 /
+// SchoolSpecificCard / CitationsFootnote 조립).
 import type { LifetimeFrame } from "@gons/saju";
+import type {
+  LifetimeNarrativeSections,
+  SchoolSpecific,
+} from "@/shared/lib/db/schema";
+import type { NarrativeSchool } from "../api/prompts";
+import { KeyTermsStrip } from "./KeyTermsStrip";
+import { NarrativeSection } from "./NarrativeSection";
+import { CitationsFootnote } from "./CitationsFootnote";
+import { SchoolSpecificCard } from "./school-specific/SchoolSpecificCard";
+
+interface NarrativePayload {
+  narrativeText: string;
+  sections: LifetimeNarrativeSections;
+  schoolSpecific: SchoolSpecific;
+  citations: string[];
+}
 
 interface Props {
   frame: LifetimeFrame;
-  narrative: string | null;
+  school: NarrativeSchool;
+  narrative: NarrativePayload | null;
   loading: boolean;
   error: string | null;
-  retryRemainingMs: number; // 0 = rate-limit 상태 아님
+  retryRemainingMs: number;
   onFetch: () => void;
 }
 
 function formatRetryRemaining(ms: number): string {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
-  const mm = Math.floor(totalSec / 60)
-    .toString()
-    .padStart(2, "0");
+  const mm = Math.floor(totalSec / 60).toString().padStart(2, "0");
   const ss = (totalSec % 60).toString().padStart(2, "0");
   return `${mm}:${ss}`;
 }
 
+const SECTION_LABELS = {
+  personality: "성격·기질",
+  career: "직업·진로",
+  relationship: "인간관계",
+  health: "건강 관리",
+  daeunSummary: "대운 흐름",
+} as const;
+
 export function LifetimeFrameView({
   frame,
+  school,
   narrative,
   loading,
   error,
@@ -44,7 +59,9 @@ export function LifetimeFrameView({
   return (
     <div className="border rounded p-4 space-y-2">
       <div className="font-bold">격국: {frame.formatGyeokguk.name}</div>
-      <div className="text-sm text-gray-700">{frame.formatGyeokguk.reasoning}</div>
+      <div className="text-sm text-gray-700">
+        {frame.formatGyeokguk.reasoning}
+      </div>
       {frame.yongshin && (
         <div className="text-sm">
           용신: {frame.yongshin.element} — {frame.yongshin.reasoning}
@@ -56,8 +73,36 @@ export function LifetimeFrameView({
         <div>건강: {frame.healthHints.join(" · ")}</div>
         <div>주의: {frame.cautions.join(" · ")}</div>
       </div>
+
       {narrative ? (
-        <div className="whitespace-pre-wrap text-sm">{narrative}</div>
+        <div className="space-y-3">
+          <KeyTermsStrip keyTerms={narrative.sections.keyTerms} />
+          <NarrativeSection
+            title={SECTION_LABELS.personality}
+            body={narrative.sections.personality}
+          />
+          <NarrativeSection
+            title={SECTION_LABELS.career}
+            body={narrative.sections.career}
+          />
+          <NarrativeSection
+            title={SECTION_LABELS.relationship}
+            body={narrative.sections.relationship}
+          />
+          <NarrativeSection
+            title={SECTION_LABELS.health}
+            body={narrative.sections.health}
+          />
+          <NarrativeSection
+            title={SECTION_LABELS.daeunSummary}
+            body={narrative.sections.daeunSummary}
+          />
+          <SchoolSpecificCard
+            school={school}
+            schoolSpecific={narrative.schoolSpecific}
+          />
+          <CitationsFootnote citations={narrative.citations} />
+        </div>
       ) : (
         <button
           type="button"
@@ -74,11 +119,14 @@ export function LifetimeFrameView({
       )}
       {rateLimited && (
         <div className="text-amber-700 text-sm" role="status" aria-live="polite">
-          분당 요청 한도 초과 — {formatRetryRemaining(retryRemainingMs)} 후 다시 시도해주세요.
+          분당 요청 한도 초과 — {formatRetryRemaining(retryRemainingMs)} 후 다시
+          시도해주세요.
         </div>
       )}
       {error && !rateLimited && (
-        <div className="text-red-600 text-sm" role="alert">{error}</div>
+        <div className="text-red-600 text-sm" role="alert">
+          {error}
+        </div>
       )}
     </div>
   );

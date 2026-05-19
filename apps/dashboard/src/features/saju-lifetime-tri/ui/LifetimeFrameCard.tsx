@@ -15,8 +15,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { LifetimeFrame } from "@gons/saju";
+import type {
+  LifetimeNarrativeSections,
+  SchoolSpecific,
+} from "@/shared/lib/db/schema";
 import { LifetimeFrameView } from "./LifetimeFrameView";
 import { toUserMessage } from "../lib/errorMessage";
+
+interface NarrativePayload {
+  narrativeText: string;
+  sections: LifetimeNarrativeSections;
+  schoolSpecific: SchoolSpecific;
+  citations: string[];
+}
 
 type SchoolKey = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
 
@@ -27,7 +38,7 @@ interface Props {
 }
 
 export function LifetimeFrameCard({ profileId, schoolKey, frame }: Props) {
-  const [narrative, setNarrative] = useState<string | null>(null);
+  const [narrative, setNarrative] = useState<NarrativePayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 429 RATE_LIMIT 응답을 받았을 때 retry 가능 시각 (epoch ms). null = rate-limit 상태 아님.
@@ -92,8 +103,17 @@ export function LifetimeFrameCard({ profileId, schoolKey, frame }: Props) {
           }
           throw new Error(data.error ?? "INTERNAL_ERROR");
         }
-        const data = (await res.json()) as { narrativeText: string };
-        setNarrative(data.narrativeText);
+        const data = (await res.json()) as NarrativePayload & {
+          fromCache: boolean;
+          modelId: string;
+          promptVersion: number;
+        };
+        setNarrative({
+          narrativeText: data.narrativeText,
+          sections: data.sections,
+          schoolSpecific: data.schoolSpecific,
+          citations: data.citations,
+        });
         setLoading(false);
       } catch (err) {
         // AbortError 는 의도된 취소 — 에러 표시하지 않음.
@@ -111,6 +131,7 @@ export function LifetimeFrameCard({ profileId, schoolKey, frame }: Props) {
   return (
     <LifetimeFrameView
       frame={frame}
+      school={schoolKey}
       narrative={narrative}
       loading={loading}
       error={error}

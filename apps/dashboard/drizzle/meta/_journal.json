@@ -92,6 +92,13 @@
       "when": 1779090333243,
       "tag": "0012_lucky_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779169551119,
+      "tag": "0013_lively_hulk",
+      "breakpoints": true
     }
   ]
 }
