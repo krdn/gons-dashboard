@@ -62,7 +62,7 @@ export function computePattern(input: ComputePatternInput): PatternResult {
   const pattern = TEN_GOD_TO_PATTERN[monthTenGod] ?? "未定格";
 
   const dayEl = STEM_ELEMENT[dayStem];
-  const strongLike = strength === "strong" || strength === "very-strong";
+  const strongLike = strength === "신강";
 
   const yongSin: Element[] = strongLike
     ? [

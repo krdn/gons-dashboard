@@ -28,23 +28,28 @@ describe("computeElements", () => {
 });
 
 describe("computeStrength", () => {
-  it("G1: 일간 壬(水), 水 카운트 3 → strong", () => {
-    expect(computeStrength({ wood: 2, fire: 1, earth: 2, metal: 0, water: 3 }, "壬")).toBe("strong");
+  it("G1: 일간 壬(水), 水 카운트 3 / 총 8 = 37.5% → 균형", () => {
+    // 3/8 = 37.5% → 0.25 이상 0.4 미만 → 균형
+    expect(computeStrength({ wood: 2, fire: 1, earth: 2, metal: 0, water: 3 }, "壬")).toBe("균형");
   });
 
-  it("일간 오행 4개 → very-strong", () => {
-    expect(computeStrength({ wood: 0, fire: 4, earth: 2, metal: 1, water: 1 }, "丁")).toBe("very-strong");
+  it("일간 오행 4개 / 총 8 = 50% → 신강", () => {
+    // 4/8 = 50% → 0.4 이상 → 신강
+    expect(computeStrength({ wood: 0, fire: 4, earth: 2, metal: 1, water: 1 }, "丁")).toBe("신강");
   });
 
-  it("일간 오행 0개 → very-weak", () => {
-    expect(computeStrength({ wood: 2, fire: 0, earth: 3, metal: 2, water: 1 }, "丁")).toBe("very-weak");
+  it("일간 오행 0개 / 총 8 = 0% → 신약", () => {
+    // 0/8 = 0% → 0.25 미만 → 신약
+    expect(computeStrength({ wood: 2, fire: 0, earth: 3, metal: 2, water: 1 }, "丁")).toBe("신약");
   });
 
-  it("일간 오행 2개 → balanced", () => {
-    expect(computeStrength({ wood: 2, fire: 2, earth: 2, metal: 1, water: 1 }, "甲")).toBe("balanced");
+  it("일간 오행 2개 / 총 8 = 25% → 균형", () => {
+    // 2/8 = 25% → 0.25 이상 0.4 미만 → 균형
+    expect(computeStrength({ wood: 2, fire: 2, earth: 2, metal: 1, water: 1 }, "甲")).toBe("균형");
   });
 
-  it("일간 오행 1개 → weak", () => {
-    expect(computeStrength({ wood: 1, fire: 2, earth: 2, metal: 2, water: 1 }, "甲")).toBe("weak");
+  it("일간 오행 1개 / 총 8 = 12.5% → 신약", () => {
+    // 1/8 = 12.5% → 0.25 미만 → 신약
+    expect(computeStrength({ wood: 1, fire: 2, earth: 2, metal: 2, water: 1 }, "甲")).toBe("신약");
   });
 });
