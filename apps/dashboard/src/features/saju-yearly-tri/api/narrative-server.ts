@@ -68,8 +68,9 @@ export function extractJsonObject(text: string): string {
   throw new Error("unbalanced JSON object in LLM response");
 }
 
-// sections 키는 lifetime 과 동일 (schema 가 같은 NarrativeSections 타입 공유) —
-// UI 가 같은 LifetimeFrameView 컴포넌트로 lifetime/yearly 모두 렌더링 가능.
+// yearly sections 는 5필드 (YearlyNarrativeSections) — v0.2 에서 lifetime (7필드)과 분리.
+// UI 는 공통 5필드(personality/career/relationship/health/daeunSummary)만 렌더링하므로
+// LifetimeFrameView 컴포넌트 재사용 가능.
 // 단 의미는 다르게 — yearly 의 narrativeText 와 각 section 은 "올해 한 해" 관점.
 const narrativeOutputSchema = z.object({
   narrativeText: z.string(),

@@ -16,6 +16,8 @@ import type { LifetimeFrame } from "@gons/saju";
 import { env } from "@/shared/config/env";
 import { anthropic } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
+// TODO(Task 3.1): NarrativeSections → LifetimeNarrativeSections 로 교체 예정.
+// 이 파일은 Task 3.1 에서 전면 재작성된다. 현재 5-field shape 은 bridge 유지용.
 import {
   sajuLifetimeNarrative,
   type NarrativeSections,

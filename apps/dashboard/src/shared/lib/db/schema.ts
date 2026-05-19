@@ -630,6 +630,7 @@ export const sajuLifetimeNarrative = pgTable(
     modelId: text("model_id").notNull(),
     // v0.2 — 프롬프트 스키마 버전. PROMPT_VERSION bump 시 자동으로 캐시 무효화.
     // 기존 row 는 default 1 로 채워지고, 신규 코드는 PROMPT_VERSION=2 로 적재.
+    // integer (text 형 다른 promptVersion 컬럼과 달리) — 단조 증가 정수이므로 비교 연산 명확.
     promptVersion: integer("prompt_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
     sectionsJsonb: jsonb("sections_jsonb").$type<LifetimeNarrativeSections>().notNull(),
