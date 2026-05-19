@@ -564,13 +564,42 @@ export const sajuLifetimeTri = pgTable(
  * 그대로 컬럼에 직렬화한다. shared 가 features 를 import 하면 FSD 의존성 방향
  * (features → shared) 을 깨므로 type 정의를 schema 쪽에 둔다.
  */
+export interface NarrativeKeyTerm {
+  term: string;
+  gloss: string;
+}
+
 export interface NarrativeSections {
   personality: string;
   career: string;
   relationship: string;
   health: string;
   daeunSummary: string;
+  keyTerms: NarrativeKeyTerm[];
+  cautions: string[];
 }
+
+// 학파별 schoolSpecific 의 union. v0.2 도입.
+// (서버에서 zod 검증을 통과한 값만 컬럼에 저장하므로 UI 는 학파에 따라 narrowing 가능)
+export type SchoolSpecificKo = {
+  joohuFocus: string;
+  shinsalNotes: string[];
+};
+export type SchoolSpecificZiping = {
+  gyeokgukRationale: string;
+  yongshinAnalysis: string;
+};
+export type SchoolSpecificMangpai = {
+  eventTimings: Array<{ period: string; event: string }>;
+};
+export type SchoolSpecificJp = {
+  palaceMap: Array<{ palace: string; note: string }>;
+};
+export type SchoolSpecific =
+  | SchoolSpecificKo
+  | SchoolSpecificZiping
+  | SchoolSpecificMangpai
+  | SchoolSpecificJp;
 
 export const sajuLifetimeNarrative = pgTable(
   "saju_lifetime_narrative",
@@ -582,8 +611,13 @@ export const sajuLifetimeNarrative = pgTable(
     school: text("school").notNull(),
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
+    // v0.2 — 프롬프트 스키마 버전. PROMPT_VERSION bump 시 자동으로 캐시 무효화.
+    // 기존 row 는 default 1 로 채워지고, 신규 코드는 PROMPT_VERSION=2 로 적재.
+    promptVersion: integer("prompt_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
     sectionsJsonb: jsonb("sections_jsonb").$type<NarrativeSections>().notNull(),
+    // v0.2 — 학파별로 다른 구조. v1 row 는 null.
+    schoolSpecificJsonb: jsonb("school_specific_jsonb").$type<SchoolSpecific>(),
     citations: text("citations")
       .array()
       .notNull()
@@ -602,6 +636,7 @@ export const sajuLifetimeNarrative = pgTable(
       t.school,
       t.frameHash,
       t.modelId,
+      t.promptVersion,
     ),
   ],
 );
