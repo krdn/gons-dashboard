@@ -5,7 +5,7 @@
 //  - frame_hash: LifetimeFrame JSON.stringify 의 sha256 (학파별로 독립)
 //  - miss 시 Anthropic SDK 호출 → JSON.parse + zod.parse 후 캐시 저장
 //  - LLM/JSON/zod 실패 모두 throw → route 에서 500 + console.error
-//  - 동시 cache miss 시 unique violation 회피: onConflictDoNothing
+//  - 동시 cache miss / null schoolSpecific 자가 치유: onConflictDoUpdate
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
@@ -161,10 +161,16 @@ export async function getOrBuildNarrative(
 
   // JSON.parse / zod.parse 실패는 그대로 throw — 호출자(route)가 catch 해 500 매핑.
   const json = JSON.parse(extractJsonObject(text));
+  // SCHOOL_SCHEMAS 는 Record<NarrativeSchool, z.ZodType> 로 typing 되어 있어
+  // .parse() 반환이 unknown. 학파별 스키마 출력은 모두 NarrativeOutput 의 structural superset
+  // (schemas.ts 의 satisfies z.ZodType<...> 가 보장) 이므로 cast 안전.
   const parsed = SCHOOL_SCHEMAS[school].parse(json) as NarrativeOutput;
 
-  // 3) 캐시 저장 — 동시 cache miss 시 unique violation 회피
-  //    sajuLifetimeNarrative 의 uniqueIndex (profileId, school, frameHash, modelId, promptVersion).
+  // 3) 캐시 저장 — onConflictDoUpdate 로 변경 (이전: onConflictDoNothing).
+  //    이유: v2 row 가 null schoolSpecificJsonb 로 들어간 경우(이론상 도달 불가하나 DB nullable)
+  //    다음 cache miss 시 LLM 재호출 후 update 가 컬럼을 채워 자가 치유.
+  //    정상 동시 cache miss 에서는 same payload 로 update 되므로 무해.
+  //    target: uniqueIndex (profileId, school, frameHash, modelId, promptVersion).
   await db
     .insert(sajuLifetimeNarrative)
     .values({
@@ -178,7 +184,22 @@ export async function getOrBuildNarrative(
       schoolSpecificJsonb: parsed.schoolSpecific,
       citations: parsed.citations,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [
+        sajuLifetimeNarrative.profileId,
+        sajuLifetimeNarrative.school,
+        sajuLifetimeNarrative.frameHash,
+        sajuLifetimeNarrative.modelId,
+        sajuLifetimeNarrative.promptVersion,
+      ],
+      set: {
+        narrativeText: parsed.narrativeText,
+        sectionsJsonb: parsed.sections,
+        schoolSpecificJsonb: parsed.schoolSpecific,
+        citations: parsed.citations,
+        generatedAt: new Date(),
+      },
+    });
 
   return {
     school,
