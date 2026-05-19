@@ -71,8 +71,20 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 매일 00:05 KST — v0.3 tri 일진 4학파 자동 생성 (generate-daily-fortunes 보다 4분 stagger).
+cron.schedule(
+  "5 0 * * *",
+  () => {
+    void callCron(
+      "/api/cron/generate-daily-tri-fortunes",
+      "generate-daily-tri-fortunes",
+    );
+  },
+  { timezone: TIMEZONE },
+);
+
 console.log(
-  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST",
+  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST",
 );
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.
