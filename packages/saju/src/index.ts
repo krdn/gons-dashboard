@@ -101,3 +101,14 @@ export { buildMonthlyCnZiping } from "./adapters/cn-ziping/monthly";
 export { buildMonthlyCnMangpai } from "./adapters/cn-mangpai/monthly";
 export { buildMonthlyJp } from "./adapters/jp/monthly";
 export { buildTriNationMonthly, buildTriNationMonthlyFromBirth } from "./compose/monthly";
+
+// v0.3 — tri 일진(日辰) 단순화 타입 + 4학파 어댑터 + TriNationDailyLite compose
+export type { DailyLiteFrame, TriNationDailyLite } from "./types/daily-tri";
+export { buildDailyLiteKo } from "./adapters/ko/daily";
+export { buildDailyLiteCnZiping } from "./adapters/cn-ziping/daily";
+export { buildDailyLiteCnMangpai } from "./adapters/cn-mangpai/daily";
+export { buildDailyLiteJp } from "./adapters/jp/daily";
+export {
+  buildTriNationDailyLite,
+  buildTriNationDailyLiteFromBirth,
+} from "./compose/daily-tri";
