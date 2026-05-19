@@ -312,9 +312,10 @@ export const sajuCharts = pgTable(
     yongSin: jsonb("yong_sin").notNull().$type<string[]>(),
     giSin: jsonb("gi_sin").notNull().$type<string[]>(),
     majorFortunes: jsonb("major_fortunes").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("saju_charts_profile_idx").on(t.profileId)],
+  (t) => [uniqueIndex("saju_charts_profile_idx").on(t.profileId, t.inputHash, t.algorithmVersion)],
 );
 
 export const sajuReadings = pgTable(
@@ -632,6 +633,7 @@ export const sajuLifetimeNarrative = pgTable(
     // 기존 row 는 default 1 로 채워지고, 신규 코드는 PROMPT_VERSION=2 로 적재.
     // integer (text 형 다른 promptVersion 컬럼과 달리) — 단조 증가 정수이므로 비교 연산 명확.
     promptVersion: integer("prompt_version").notNull().default(1),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
     sectionsJsonb: jsonb("sections_jsonb").$type<LifetimeNarrativeSections>().notNull(),
     // v0.2 — 학파별로 다른 구조. v1 row 는 null.
@@ -655,6 +657,7 @@ export const sajuLifetimeNarrative = pgTable(
       t.frameHash,
       t.modelId,
       t.promptVersion,
+      t.algorithmVersion,
     ),
   ],
 );
@@ -676,6 +679,7 @@ export const sajuYearlyTri = pgTable(
     targetYear: integer("target_year").notNull(),
     inputHash: text("input_hash").notNull(),
     schemaVersion: integer("schema_version").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
     frameJsonb: jsonb("frame_jsonb").$type<TriNationYearly>().notNull(),
     computedAt: timestamp("computed_at", {
       withTimezone: true,
@@ -692,6 +696,7 @@ export const sajuYearlyTri = pgTable(
       t.targetYear,
       t.inputHash,
       t.schemaVersion,
+      t.algorithmVersion,
     ),
   ],
 );
@@ -709,6 +714,7 @@ export const sajuYearlyNarrative = pgTable(
     targetYear: integer("target_year").notNull(),
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
     sectionsJsonb: jsonb("sections_jsonb").$type<YearlyNarrativeSections>().notNull(),
     citations: text("citations")
@@ -730,6 +736,7 @@ export const sajuYearlyNarrative = pgTable(
       t.targetYear,
       t.frameHash,
       t.modelId,
+      t.algorithmVersion,
     ),
   ],
 );
