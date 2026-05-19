@@ -93,3 +93,11 @@ export { buildYongshinJp } from "./adapters/jp/yongshin";
 export { buildYearlyJp } from "./adapters/jp/yearly";
 export { buildTriNationYearly, buildTriNationYearlyFromBirth } from "./compose/yearly";
 export { ALGORITHM_VERSION } from "./lib/algorithm-version";
+
+// v0.3 — 월운(月運) 타입 + 4학파 어댑터 + TriNationMonthly compose
+export type { MonthlyFrame, TriNationMonthly } from "./types/monthly";
+export { buildMonthlyKo } from "./adapters/ko/monthly";
+export { buildMonthlyCnZiping } from "./adapters/cn-ziping/monthly";
+export { buildMonthlyCnMangpai } from "./adapters/cn-mangpai/monthly";
+export { buildMonthlyJp } from "./adapters/jp/monthly";
+export { buildTriNationMonthly, buildTriNationMonthlyFromBirth } from "./compose/monthly";
