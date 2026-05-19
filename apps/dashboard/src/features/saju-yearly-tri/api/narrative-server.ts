@@ -21,7 +21,7 @@ import { anthropic } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
 import {
   sajuYearlyNarrative,
-  type NarrativeSections,
+  type YearlyNarrativeSections,
 } from "@/shared/lib/db/schema";
 
 // Opus 4.x — temperature 매개변수 미지정 (proxy 가 400 반환). v0.1 과 동일 모델/제약.
@@ -95,7 +95,7 @@ export interface YearlyNarrativeResult {
   school: NarrativeSchool;
   targetYear: number;
   narrativeText: string;
-  sections: NarrativeSections;
+  sections: YearlyNarrativeSections;
   citations: string[];
   modelId: string;
   generatedAt: string;

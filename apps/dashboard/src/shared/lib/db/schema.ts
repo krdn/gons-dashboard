@@ -558,18 +558,23 @@ export const sajuLifetimeTri = pgTable(
 );
 
 /**
- * sajuLifetimeNarrative.sectionsJsonb 의 $type.
+ * sajuLifetimeNarrative / sajuYearlyNarrative sectionsJsonb 의 $type.
  *
  * features/saju-lifetime-tri/api/narrative-server.ts 에서 LLM 출력의 sections 를
  * 그대로 컬럼에 직렬화한다. shared 가 features 를 import 하면 FSD 의존성 방향
  * (features → shared) 을 깨므로 type 정의를 schema 쪽에 둔다.
+ *
+ * v0.2 에서 lifetime 전용 필드(keyTerms, cautions)가 추가됐으므로 두 타입으로 분리:
+ *  - LifetimeNarrativeSections — 7필드 (v0.2 확장형)
+ *  - YearlyNarrativeSections  — 5필드 (기존 그대로)
  */
 export interface NarrativeKeyTerm {
   term: string;
   gloss: string;
 }
 
-export interface NarrativeSections {
+/** lifetime 전용 — v0.2 에서 keyTerms + cautions 추가 */
+export interface LifetimeNarrativeSections {
   personality: string;
   career: string;
   relationship: string;
@@ -578,6 +583,18 @@ export interface NarrativeSections {
   keyTerms: NarrativeKeyTerm[];
   cautions: string[];
 }
+
+/** yearly 전용 — 기존 5필드 그대로 */
+export interface YearlyNarrativeSections {
+  personality: string;
+  career: string;
+  relationship: string;
+  health: string;
+  daeunSummary: string;
+}
+
+/** @deprecated YearlyNarrativeSections 를 직접 사용하세요 (하위호환 alias) */
+export type NarrativeSections = YearlyNarrativeSections;
 
 // 학파별 schoolSpecific 의 union. v0.2 도입.
 // (서버에서 zod 검증을 통과한 값만 컬럼에 저장하므로 UI 는 학파에 따라 narrowing 가능)
@@ -615,7 +632,7 @@ export const sajuLifetimeNarrative = pgTable(
     // 기존 row 는 default 1 로 채워지고, 신규 코드는 PROMPT_VERSION=2 로 적재.
     promptVersion: integer("prompt_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
-    sectionsJsonb: jsonb("sections_jsonb").$type<NarrativeSections>().notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").$type<LifetimeNarrativeSections>().notNull(),
     // v0.2 — 학파별로 다른 구조. v1 row 는 null.
     schoolSpecificJsonb: jsonb("school_specific_jsonb").$type<SchoolSpecific>(),
     citations: text("citations")
@@ -692,7 +709,7 @@ export const sajuYearlyNarrative = pgTable(
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
     narrativeText: text("narrative_text").notNull(),
-    sectionsJsonb: jsonb("sections_jsonb").$type<NarrativeSections>().notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").$type<YearlyNarrativeSections>().notNull(),
     citations: text("citations")
       .array()
       .notNull()
