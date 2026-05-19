@@ -539,6 +539,7 @@ export const sajuLifetimeTri = pgTable(
     school: text("school").notNull(),
     inputHash: text("input_hash").notNull(),
     schemaVersion: integer("schema_version").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
     frameJsonb: jsonb("frame_jsonb").$type<TriNationLifetime>().notNull(),
     computedAt: timestamp("computed_at", {
       withTimezone: true,
@@ -554,6 +555,7 @@ export const sajuLifetimeTri = pgTable(
       t.school,
       t.inputHash,
       t.schemaVersion,
+      t.algorithmVersion,
     ),
   ],
 );
