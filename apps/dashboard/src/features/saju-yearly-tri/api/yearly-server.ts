@@ -6,21 +6,27 @@
 //  - miss 시 buildTriNationYearlyFromBirth(sync) 호출 → frameJsonb 컬럼에 저장 후 리턴
 //  - 같은 input + targetYear 로 재요청하면 캐시 row 재사용 (school='compose' 한정)
 //
-// v0.1 lifetime-server.ts 와의 차이:
-//  - targetYear 추가 (cache key + input hash 포함)
-//  - currentAge KST 기준 계산 (birthDate ↔ 현재 KST 시점 diff)
-//  - buildTriNationYearlyFromBirth wrapper 호출 (lifetime 의 verifyConsensus 일관성)
+// v0.3 Phase 1 리팩터: birth input 정규화 + currentAge 계산 + KST 헬퍼를
+// `shared/lib/saju/resolveBirthInput` 으로 분리. cache+build glue 만 이 파일에 남는다.
+// 외부 호출자가 import 하는 ProfileNotFoundError / currentKstYear / currentKstAge 는
+// re-export 로 호환 유지.
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { z } from "zod";
 import {
   ALGORITHM_VERSION,
   buildTriNationYearlyFromBirth,
   type TriNationYearly,
 } from "@gons/saju";
 import { db } from "@/shared/lib/db/client";
-import { fortuneProfiles, sajuYearlyTri } from "@/shared/lib/db/schema";
+import { sajuYearlyTri } from "@/shared/lib/db/schema";
+import {
+  BirthInputValidationError,
+  ProfileNotFoundError,
+  currentKstAge,
+  currentKstYear,
+  resolveBirthInput,
+} from "@/shared/lib/saju/resolveBirthInput";
 
 // SCHEMA_VERSION 정책: TriNationYearly 구조 변경 시 +1.
 // 캐시 키 (profile_id, school, target_year, input_hash, schema_version) 가 달라져
@@ -28,16 +34,8 @@ import { fortuneProfiles, sajuYearlyTri } from "@/shared/lib/db/schema";
 const SCHEMA_VERSION = 1;
 const SCHOOL = "compose";
 
-// 한국 표준 경도 — profile.longitudeDeg null 시 fallback. lifetime-server.ts 와 동일 값.
-const DEFAULT_LONGITUDE_KR = 127;
-
-/** 프로필 미존재 또는 소유권 불일치. route 에서 404 매핑. */
-export class ProfileNotFoundError extends Error {
-  constructor() {
-    super("PROFILE_NOT_FOUND");
-    this.name = "ProfileNotFoundError";
-  }
-}
+// 외부 호출자(route.ts, narrative-server.ts, SajuTriYearly.tsx) 호환 re-export.
+export { ProfileNotFoundError, currentKstAge, currentKstYear };
 
 /** 빌드 단계 실패 (입력 검증/만세력 합의 불일치 등). route 에서 422 매핑. */
 export class YearlyBuildError extends Error {
@@ -53,96 +51,25 @@ export interface GetYearlyResult {
   fromCache: boolean;
 }
 
-/**
- * KST 기준 현재 연도 — `targetYear` 쿼리가 누락된 경우 default.
- * Asia/Seoul 은 DST 없음 (UTC+9 고정) → Intl 으로 KST 연도 단순 추출.
- */
-export function currentKstYear(now: Date = new Date()): number {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-  });
-  return Number(formatter.format(now));
-}
-
-/**
- * 한국식 만 나이 (KST 기준) — birthDate (YYYY-MM-DD 로컬) 와 현재 KST 시점 diff.
- *
- * 사주에서의 currentAge 는 대운 단계 lookup 에만 쓰이므로 일/시 단위 정확도는 불필요.
- * 단순 year diff - (생일 미경과 시 -1) 로 충분.
- */
-export function currentKstAge(
-  birthDate: string,
-  now: Date = new Date(),
-): number {
-  const [byStr, bmStr, bdStr] = birthDate.split("-");
-  const birthY = Number(byStr);
-  const birthM = Number(bmStr);
-  const birthD = Number(bdStr);
-
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  });
-  const parts = fmt.formatToParts(now);
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-  const curY = get("year");
-  const curM = get("month");
-  const curD = get("day");
-
-  let age = curY - birthY;
-  if (curM < birthM || (curM === birthM && curD < birthD)) {
-    age -= 1;
-  }
-  return age;
-}
-
 export async function getOrBuildYearly(
   profileId: string,
   userId: string,
   targetYear: number,
 ): Promise<GetYearlyResult> {
-  // 1) 프로필 fetch (소유권 확인)
-  const profile = await db.query.fortuneProfiles.findFirst({
-    where: and(
-      eq(fortuneProfiles.id, profileId),
-      eq(fortuneProfiles.userId, userId),
-    ),
-  });
-  if (!profile) throw new ProfileNotFoundError();
-
-  // 2) calendar/gender Zod 검증 — DB schema text 라 enum 범위 보장 안 됨
-  const calendarParsed = z
-    .enum(["solar", "lunar"])
-    .safeParse(profile.calendar ?? "solar");
-  const genderParsed = z.enum(["male", "female"]).safeParse(profile.gender);
-  if (!calendarParsed.success) {
-    throw new YearlyBuildError(`INVALID_CALENDAR: ${profile.calendar}`);
+  // 1) 프로필 fetch + birth input 정규화 + currentAge (KST) 한 번에.
+  //    BirthInputValidationError 는 YearlyBuildError 로 래핑해 기존 422 매핑 유지.
+  let resolved;
+  try {
+    resolved = await resolveBirthInput(profileId, userId);
+  } catch (err) {
+    if (err instanceof BirthInputValidationError) {
+      throw new YearlyBuildError(err.message);
+    }
+    throw err;
   }
-  if (!genderParsed.success) {
-    throw new YearlyBuildError(`INVALID_GENDER: ${profile.gender}`);
-  }
+  const { input, currentAge } = resolved;
 
-  // 3) birthTime null/empty → "12:00" default (lifetime-server.ts 와 동일 정책)
-  const birthTimeLocal = profile.birthTime?.trim() || "12:00";
-
-  // 4) 입력 정규화 → BirthInputResolved
-  const input = {
-    birthDateLocal: profile.birthDate,
-    birthTimeLocal,
-    timezone: "Asia/Seoul" as const,
-    longitudeDeg: Number(profile.longitudeDeg ?? DEFAULT_LONGITUDE_KR),
-    calendar: calendarParsed.data,
-    gender: genderParsed.data,
-  };
-
-  // 5) currentAge KST 기준 계산 — wrapper 에 그대로 전달
-  const currentAge = currentKstAge(profile.birthDate);
-
-  // 6) inputHash — birth 필드 + targetYear 명시 join.
+  // 2) inputHash — birth 필드 + targetYear 명시 join.
   //    targetYear 가 같은 (profile_id, school, schema_version) 와 함께 cache key 를
   //    구성하므로 input_hash 자체에는 birth 필드만 반영하면 cache key 가 정상 작동하지만,
   //    실수로 cache key 가 (profile, target_year) 단일이 되더라도 무음 miss 가 발생하도록
@@ -161,7 +88,7 @@ export async function getOrBuildYearly(
     )
     .digest("hex");
 
-  // 7) 캐시 조회
+  // 3) 캐시 조회
   const cached = await db.query.sajuYearlyTri.findFirst({
     where: and(
       eq(sajuYearlyTri.profileId, profileId),
@@ -180,7 +107,7 @@ export async function getOrBuildYearly(
     };
   }
 
-  // 8) miss → 빌드 (sync, Result<TriNationYearly>)
+  // 4) miss → 빌드 (sync, Result<TriNationYearly>)
   const result = buildTriNationYearlyFromBirth({
     input,
     targetYear,
@@ -188,7 +115,7 @@ export async function getOrBuildYearly(
   });
   if (!result.ok) throw new YearlyBuildError(result.error.message);
 
-  // 9) 캐시에 저장 — 동시 cache miss 시 unique violation 회피 (idempotent)
+  // 5) 캐시에 저장 — 동시 cache miss 시 unique violation 회피 (idempotent)
   //    sajuYearlyTri 의 uniqueIndex (profileId, school, targetYear, inputHash, schemaVersion).
   await db
     .insert(sajuYearlyTri)
