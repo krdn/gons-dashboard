@@ -53,6 +53,7 @@ function detectJonggyeok(
     { role: "재성", count: 재성 },
     { role: "관성", count: 관성 },
   ];
+  // 동점 시 식상 우선 (배열 순서 + strict '>' )
   const dominant = candidates.reduce((max, c) => c.count > max.count ? c : max);
 
   if (인성 === 0 && 비겁 <= 1 && dominant.count >= 6) {

@@ -106,3 +106,15 @@ describe("computeShenStrength — 가종 경계 + 트리거 fail", () => {
     expect(result.jonggyeokKind).toBeNull();
   });
 });
+
+describe("computeShenStrength — hour 없음 (시주 미상)", () => {
+  it("hour=null 정상 처리 (신강 케이스)", () => {
+    // year 壬子 + month 甲寅 + day 甲寅, hour=null. 일간 甲. 7 positions only.
+    // stem: 壬(인성水), 甲(비겁木), 甲(비겁). branch: 子(인성), 寅(비겁), 寅(비겁).
+    // = 비겁 4 + 인성 2 = support 6, drain 0. diff +6 ≥ 2 → 신강
+    const chart = chartOf("壬","子", "甲","寅", "甲","寅", null, null);
+    const result = computeShenStrength(chart);
+    expect(result.verdict).toBe("신강");
+    expect(result.jonggyeokKind).toBeNull();
+  });
+});
