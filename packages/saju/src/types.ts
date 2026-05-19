@@ -35,7 +35,11 @@ export interface MajorFortune {
   branch: Branch;
 }
 
-export type Strength = "very-strong" | "strong" | "balanced" | "weak" | "very-weak";
+// v0.2: "very-strong" | "strong" | "balanced" | "weak" | "very-weak";
+// v0.3: 자평 룰 통합 + 종격 도입 — 한국어 6-tier
+export type Strength =
+  | "신강" | "신약" | "균형"
+  | "종아" | "종재" | "종살";
 
 export interface SajuChart {
   pillars: SajuPillars;

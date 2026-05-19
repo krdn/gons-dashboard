@@ -3,9 +3,9 @@
 exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > 2026 세운 wrapper 출력 snapshot 일치 1`] = `
 {
   "crossCheck": {
-    "agreement": "high",
+    "agreement": "medium",
     "notes": [
-      "KO·CN자평·CN맹파 3학파가 unfavorable 합의",
+      "3학파 중 2학파 동의 (favorable=2, unfavorable=1)",
     ],
   },
   "frames": {
@@ -86,19 +86,20 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > 2026 �
         "stem": "丙",
       },
       "yongShinDelta": {
-        "netVerdict": "unfavorable",
-        "reinforced": [],
-        "weakened": [
+        "netVerdict": "favorable",
+        "reinforced": [
           "fire",
         ],
+        "weakened": [],
       },
       "yongShinUsed": {
-        "basisShenStrength": "신약",
+        "basisShenStrength": "종아",
         "gisin": [
-          "wood",
-          "fire",
+          "water",
+          "metal",
         ],
-        "primary": "metal",
+        "primary": "wood",
+        "rationale": "인성 0·비겁 4 약함, 식상 6 우세 — 가종 종아격으로 식상의 흐름을 따른다",
         "school": "cn-ziping",
         "structureHint": "기타",
       },
@@ -183,20 +184,21 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > 2026 �
         "stem": "丙",
       },
       "yongShinDelta": {
-        "netVerdict": "unfavorable",
-        "reinforced": [],
-        "weakened": [
+        "netVerdict": "favorable",
+        "reinforced": [
           "fire",
         ],
+        "weakened": [],
       },
       "yongShinUsed": {
         "basisJohuMode": "균형",
-        "basisShenStrength": "신약",
+        "basisShenStrength": "종아",
         "gisin": [
-          "wood",
-          "fire",
+          "water",
+          "metal",
         ],
-        "primary": "metal",
+        "primary": "wood",
+        "rationale": "인성 0·비겁 4 약함, 식상 6 우세 — 가종 종아격으로 식상의 흐름을 따른다",
         "school": "ko",
         "secondary": undefined,
       },
@@ -211,7 +213,7 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > targetY
   "crossCheck": {
     "agreement": "medium",
     "notes": [
-      "3학파 중 2학파 동의 (favorable=0, unfavorable=2)",
+      "3학파 중 2학파 동의 (favorable=2, unfavorable=0)",
     ],
   },
   "frames": {
@@ -276,20 +278,21 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > targetY
         "stem": "乙",
       },
       "yongShinDelta": {
-        "netVerdict": "unfavorable",
-        "reinforced": [],
-        "weakened": [
+        "netVerdict": "favorable",
+        "reinforced": [
           "wood",
           "fire",
         ],
+        "weakened": [],
       },
       "yongShinUsed": {
-        "basisShenStrength": "신약",
+        "basisShenStrength": "종아",
         "gisin": [
-          "wood",
-          "fire",
+          "water",
+          "metal",
         ],
-        "primary": "metal",
+        "primary": "wood",
+        "rationale": "인성 0·비겁 4 약함, 식상 6 우세 — 가종 종아격으로 식상의 흐름을 따른다",
         "school": "cn-ziping",
         "structureHint": "기타",
       },
@@ -356,21 +359,22 @@ exports[`buildTriNationYearlyFromBirth — 1967-03-29 canonical golden > targetY
         "stem": "乙",
       },
       "yongShinDelta": {
-        "netVerdict": "unfavorable",
-        "reinforced": [],
-        "weakened": [
+        "netVerdict": "favorable",
+        "reinforced": [
           "wood",
           "fire",
         ],
+        "weakened": [],
       },
       "yongShinUsed": {
         "basisJohuMode": "균형",
-        "basisShenStrength": "신약",
+        "basisShenStrength": "종아",
         "gisin": [
-          "wood",
-          "fire",
+          "water",
+          "metal",
         ],
-        "primary": "metal",
+        "primary": "wood",
+        "rationale": "인성 0·비겁 4 약함, 식상 6 우세 — 가종 종아격으로 식상의 흐름을 따른다",
         "school": "ko",
         "secondary": undefined,
       },

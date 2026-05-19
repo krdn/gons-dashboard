@@ -9,7 +9,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { buildTriNationLifetime, type TriNationLifetime } from "@gons/saju";
+import { ALGORITHM_VERSION, buildTriNationLifetime, type TriNationLifetime } from "@gons/saju";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles, sajuLifetimeTri } from "@/shared/lib/db/schema";
 
@@ -109,6 +109,7 @@ export async function getOrBuildLifetime(
       eq(sajuLifetimeTri.school, SCHOOL),
       eq(sajuLifetimeTri.inputHash, inputHash),
       eq(sajuLifetimeTri.schemaVersion, SCHEMA_VERSION),
+      eq(sajuLifetimeTri.algorithmVersion, ALGORITHM_VERSION),
     ),
   });
   if (cached) {
@@ -130,6 +131,7 @@ export async function getOrBuildLifetime(
     school: SCHOOL,
     inputHash,
     schemaVersion: SCHEMA_VERSION,
+    algorithmVersion: ALGORITHM_VERSION,
     frameJsonb: result.value,
   }).onConflictDoNothing();
 

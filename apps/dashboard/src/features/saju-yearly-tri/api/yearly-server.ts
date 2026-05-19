@@ -15,6 +15,7 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
+  ALGORITHM_VERSION,
   buildTriNationYearlyFromBirth,
   type TriNationYearly,
 } from "@gons/saju";
@@ -168,6 +169,7 @@ export async function getOrBuildYearly(
       eq(sajuYearlyTri.targetYear, targetYear),
       eq(sajuYearlyTri.inputHash, inputHash),
       eq(sajuYearlyTri.schemaVersion, SCHEMA_VERSION),
+      eq(sajuYearlyTri.algorithmVersion, ALGORITHM_VERSION),
     ),
   });
   if (cached) {
@@ -196,6 +198,7 @@ export async function getOrBuildYearly(
       targetYear,
       inputHash,
       schemaVersion: SCHEMA_VERSION,
+      algorithmVersion: ALGORITHM_VERSION,
       frameJsonb: result.value,
     })
     .onConflictDoNothing();

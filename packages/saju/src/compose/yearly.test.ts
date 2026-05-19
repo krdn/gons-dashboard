@@ -11,7 +11,7 @@ const canonical1967: SajuChart = {
     hour: { stem: "癸", branch: "卯" },
   },
   elements: { wood: 2, fire: 1, earth: 1, metal: 0, water: 4 },
-  strength: "strong",
+  strength: "신강",
   tenGods: {
     yearStem: "正財",
     yearBranch: "正官",

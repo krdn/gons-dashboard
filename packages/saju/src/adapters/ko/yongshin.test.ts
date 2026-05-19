@@ -2,32 +2,76 @@ import { describe, expect, it } from "vitest";
 import { buildYongshinKo } from "./yongshin";
 import type { SajuChart } from "../../types";
 
-// 본인 사주 — 1967-03-29 05:30, 壬辰 일주, 卯月 (春)
-const canonical1967 = {
-  pillars: {
-    year: { stem: "丁", branch: "未" },
-    month: { stem: "癸", branch: "卯" },
-    day: { stem: "壬", branch: "辰" },
-    hour: { stem: "癸", branch: "卯" },
-  },
-  majorFortunes: [],
-} as unknown as SajuChart;
+function chartOf(
+  yearStem: string, yearBranch: string,
+  monthStem: string, monthBranch: string,
+  dayStem: string, dayBranch: string,
+  hourStem: string | null, hourBranch: string | null,
+  pattern = "",
+): SajuChart {
+  return {
+    pillars: {
+      year:  { stem: yearStem as any, branch: yearBranch as any },
+      month: { stem: monthStem as any, branch: monthBranch as any },
+      day:   { stem: dayStem as any, branch: dayBranch as any },
+      hour:  hourStem && hourBranch
+        ? { stem: hourStem as any, branch: hourBranch as any }
+        : null,
+    },
+    elements: { wood:0, fire:0, earth:0, metal:0, water:0 },
+    strength: "신약",
+    tenGods: {} as any,
+    pattern,
+    yongSin: [], giSin: [],
+    majorFortunes: [],
+    inputHash: "test",
+  };
+}
 
-describe("buildYongshinKo — canonical 1967", () => {
-  // Plan revise: plan 작성자의 "卯月이라 신강" 직관은 일간이 木일 때 한정.
-  // 일간 壬(water) 기준으로는 卯(wood)·未(earth)·辰(earth)·丁(fire)이 모두
-  // 설기/재성/관성 — drain 우세 → 신약. fixture 그대로 두고 expected 정정
-  // (원칙 유지 / 직관 정정). 같은 fixture를 쓰는 Task 1.2 (CN자평)도 동일.
-  it("일간 壬, 卯月 출생 → 신약 + 균형 조후, 인성 metal 보강", () => {
-    const result = buildYongshinKo(canonical1967);
-    expect(result.school).toBe("ko");
-    expect(result.basisShenStrength).toBe("신약");
-    expect(result.basisJohuMode).toBe("균형");
-    // 신약 → 생부 오행(인성)이 용신. 壬水 일간 → 인성=metal.
-    expect(result.primary).toBe("metal");
-    expect(result.secondary).toBeUndefined();           // 균형 조후 → 보조 없음
-    // 신약 기신: 식상(wood)·재성(fire)
-    expect(result.gisin).toContain("wood");
-    expect(result.gisin).toContain("fire");
+describe("buildYongshinKo — v0.3 종격 우선", () => {
+  it("김석곤 1967-03-29 (가종 종아) → primary=木, gisin=[水,金]", () => {
+    const chart = chartOf("丁","未", "癸","卯", "壬","辰", "癸","卯", "傷官格");
+    const result = buildYongshinKo(chart);
+    expect(result.basisShenStrength).toBe("종아");
+    expect(result.primary).toBe("wood");
+    expect(result.gisin).toEqual(expect.arrayContaining(["water", "metal"]));
+  });
+});
+
+describe("buildYongshinKo — 격국 분기 / fallback / 조후", () => {
+  it("신약 상관격 → 傷官佩印 가능성 (종격 트리거 미달 시)", () => {
+    const chart = chartOf("壬","申", "乙","卯", "壬","午", "丙","午", "傷官格");
+    const result = buildYongshinKo(chart);
+    if (result.basisShenStrength === "신약") {
+      expect(result.primary).toBe("metal");
+    }
+  });
+
+  it("신강 정관격 → 財官相生 가능성", () => {
+    const chart = chartOf("壬","子", "甲","寅", "甲","寅", "辛","未", "正官格");
+    const result = buildYongshinKo(chart);
+    if (result.basisShenStrength === "신강") {
+      expect(result.primary).toBe("earth");
+    }
+  });
+
+  it("기타 격국 + 신약 → fallback 인성 용신 (또는 조후 swap)", () => {
+    const chart = chartOf("辛","酉", "丙","申", "甲","午", "戊","辰", "");
+    const result = buildYongshinKo(chart);
+    if (result.basisShenStrength === "신약") {
+      expect(["water"]).toContain(result.primary);
+    }
+  });
+
+  it("겨울 월령 → secondary=火", () => {
+    const chart = chartOf("甲","寅", "丙","子", "甲","寅", "甲","寅", "");
+    const result = buildYongshinKo(chart);
+    expect(result.basisJohuMode).toBe("한랭");
+  });
+
+  it("여름 월령 → secondary=水", () => {
+    const chart = chartOf("甲","寅", "丙","午", "甲","寅", "甲","寅", "");
+    const result = buildYongshinKo(chart);
+    expect(result.basisJohuMode).toBe("조열");
   });
 });

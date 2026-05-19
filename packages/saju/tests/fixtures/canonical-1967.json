@@ -16,6 +16,21 @@
     },
     "elementBalance": { "wood": 2, "fire": 1, "earth": 2, "metal": 0, "water": 3 },
     "daeun": { "startAge": 8, "direction": "backward" },
-    "ko": { "gyeokguk": "傷官格" }
+    "ko": {
+      "gyeokguk": "傷官格",
+      "yongshin": {
+        "primary": "wood",
+        "gisin": ["water", "metal"],
+        "basisShenStrength": "종아"
+      }
+    },
+    "cnZiping": {
+      "yongshin": {
+        "primary": "wood",
+        "gisin": ["water", "metal"],
+        "basisShenStrength": "종아",
+        "structureHint": "기타"
+      }
+    }
   }
 }

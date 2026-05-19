@@ -1,0 +1,26 @@
+{
+  "input": {
+    "birthDateLocal": "1985-08-22",
+    "birthTimeLocal": "14:30",
+    "timezone": "Asia/Seoul",
+    "longitudeDeg": 126.98,
+    "calendar": "solar",
+    "gender": "female"
+  },
+  "synthetic": true,
+  "expected": {
+    "pillars": {
+      "year":  { "stem": "乙", "branch": "丑" },
+      "month": { "stem": "甲", "branch": "申" },
+      "day":   { "stem": "庚", "branch": "辰" },
+      "hour":  { "stem": "癸", "branch": "未" }
+    },
+    "ko": {
+      "yongshin": {
+        "primary": "water",
+        "gisin": ["earth", "metal"],
+        "basisShenStrength": "신강"
+      }
+    }
+  }
+}
