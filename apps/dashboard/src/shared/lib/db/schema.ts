@@ -22,7 +22,7 @@ import {
   date,
   customType,
 } from "drizzle-orm/pg-core";
-import type { TriNationLifetime, TriNationYearly } from "@gons/saju";
+import type { TriNationLifetime, TriNationYearly, TriNationMonthly } from "@gons/saju";
 
 /* =========================================================================
  * Auth.js v5 표준 테이블 (DrizzleAdapter 사양)
@@ -596,6 +596,21 @@ export interface YearlyNarrativeSections {
   daeunSummary: string;
 }
 
+/**
+ * v0.3 monthly 전용 — 기존 yearly 와 동일 5필드 (구조 동일).
+ *
+ * yearly 와 같은 인터페이스를 재사용하지 않고 별도 선언한 이유: yearly 가 lifetime 과
+ * 분리한 선례 (v0.2 에서 keyTerms/cautions 추가 시) 와 동일 — 향후 monthly-only 필드
+ * (e.g. `keyTransitionWarnings`) 추가 시 yearly 와 독립 분기 가능.
+ */
+export interface MonthlyNarrativeSections {
+  personality: string;
+  career: string;
+  relationship: string;
+  health: string;
+  daeunSummary: string;
+}
+
 /** @deprecated YearlyNarrativeSections 를 직접 사용하세요 (하위호환 alias) */
 export type NarrativeSections = YearlyNarrativeSections;
 
@@ -767,7 +782,7 @@ export const sajuMonthlyTri = pgTable(
     inputHash: text("input_hash").notNull(),
     schemaVersion: integer("schema_version").notNull(),
     algorithmVersion: integer("algorithm_version").notNull().default(1),
-    frameJsonb: jsonb("frame_jsonb").notNull(),
+    frameJsonb: jsonb("frame_jsonb").$type<TriNationMonthly>().notNull(),
     computedAt: timestamp("computed_at", {
       withTimezone: true,
       mode: "date",
@@ -809,7 +824,7 @@ export const sajuMonthlyNarrative = pgTable(
     modelId: text("model_id").notNull(),
     algorithmVersion: integer("algorithm_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
-    sectionsJsonb: jsonb("sections_jsonb").notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").$type<MonthlyNarrativeSections>().notNull(),
     citations: text("citations")
       .array()
       .notNull()

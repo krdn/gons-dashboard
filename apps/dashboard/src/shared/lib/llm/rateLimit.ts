@@ -2,9 +2,10 @@
 //
 // 정책:
 //  - key 형식: saju:${keyPrefix}:narrative:${userId}
-//  - keyPrefix 로 v0.1 lifetime ('lifetime') 과 v0.2 yearly ('yearly') 카운터 분리.
-//    사용자 한 명이 분당 LLM 5회씩 각각 호출 가능 (총 10회/분). lifetime narrative
-//    캐시 hit 가 흔하므로 yearly 진입 시 lifetime 쿼터를 깎고 싶지 않다는 UX 결정.
+//  - keyPrefix 로 v0.1 lifetime ('lifetime'), v0.2 yearly ('yearly'),
+//    v0.3 monthly ('monthly') 카운터 분리. 사용자 한 명이 분당 LLM 5회씩 각각 호출 가능
+//    (총 15회/분). lifetime narrative 캐시 hit 가 흔하므로 다른 도메인 진입 시
+//    lifetime 쿼터를 깎고 싶지 않다는 UX 결정.
 //  - INCR + EXPIRE NX → 첫 호출이든 INCR 직후 크래시 후 재시작이든 항상 TTL 보장
 //    (NX: 이미 TTL 있으면 skip → 윈도우 무한 확장 방지)
 //  - limit: 5 / 분
@@ -19,7 +20,7 @@ import { getRedisClient } from "@/shared/lib/redis/client";
 const WINDOW_SECONDS = 60;
 const DEFAULT_LIMIT = 5;
 
-export type RateLimitKeyPrefix = "lifetime" | "yearly";
+export type RateLimitKeyPrefix = "lifetime" | "yearly" | "monthly";
 
 export interface RateLimitResult {
   allowed: boolean;
