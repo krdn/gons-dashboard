@@ -37,8 +37,11 @@ const sectionsSchema = z.object({
   cautions: z.array(z.string().min(1)).max(5),
 }) satisfies z.ZodType<YearlyNarrativeSections>;
 
+// narrativeText min 을 1000 으로 약화 (advisor 권고). 목표 분량은 1200~1600 자이지만
+// LLM 이 1100자 부근으로 응답 시 zod throw → route 500 회피를 위한 안전판.
+// 운영 검증 후 안정되면 1200 으로 복원 검토.
 const baseOutputSchema = z.object({
-  narrativeText: z.string().min(1200).max(2000),
+  narrativeText: z.string().min(1000).max(2000),
   sections: sectionsSchema,
   citations: z.array(z.string().min(1)).min(2),
 });

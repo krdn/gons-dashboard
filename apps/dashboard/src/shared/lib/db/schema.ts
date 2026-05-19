@@ -617,6 +617,14 @@ export interface MonthlyNarrativeSections {
 /** @deprecated YearlyNarrativeSections 를 직접 사용하세요 (하위호환 alias) */
 export type NarrativeSections = YearlyNarrativeSections;
 
+/**
+ * Tri-nation narrative 의 학파 union. v0.3.1 에서 shared 로 승격.
+ *
+ * lifetime/yearly/monthly 의 api/prompts.ts 와 shared/ui/saju-narrative 가 모두
+ * 이 타입을 단일 source 로 사용한다. CHECK constraint 와 동일 4개 literal.
+ */
+export type NarrativeSchool = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
+
 // 학파별 schoolSpecific 의 union. v0.2 도입.
 // (서버에서 zod 검증을 통과한 값만 컬럼에 저장하므로 UI 는 학파에 따라 narrowing 가능)
 export type SchoolSpecificKo = {
