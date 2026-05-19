@@ -15,7 +15,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import type { YearlyFrame } from "@gons/saju";
+import { ALGORITHM_VERSION, type YearlyFrame } from "@gons/saju";
 import { env } from "@/shared/config/env";
 import { anthropic } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
@@ -99,6 +99,7 @@ export interface YearlyNarrativeResult {
   sections: YearlyNarrativeSections;
   citations: string[];
   modelId: string;
+  algorithmVersion: number;
   generatedAt: string;
   fromCache: boolean;
 }
@@ -125,6 +126,7 @@ export async function getOrBuildYearlyNarrative(
       eq(sajuYearlyNarrative.targetYear, targetYear),
       eq(sajuYearlyNarrative.frameHash, frameHash),
       eq(sajuYearlyNarrative.modelId, MODEL_ID),
+      eq(sajuYearlyNarrative.algorithmVersion, ALGORITHM_VERSION),
     ),
   });
   if (cached) {
@@ -135,6 +137,7 @@ export async function getOrBuildYearlyNarrative(
       sections: cached.sectionsJsonb,
       citations: cached.citations,
       modelId: cached.modelId,
+      algorithmVersion: cached.algorithmVersion,
       generatedAt: cached.generatedAt.toISOString(),
       fromCache: true,
     };
@@ -184,6 +187,7 @@ export async function getOrBuildYearlyNarrative(
       targetYear,
       frameHash,
       modelId: MODEL_ID,
+      algorithmVersion: ALGORITHM_VERSION,
       narrativeText: parsed.narrativeText,
       sectionsJsonb: parsed.sections,
       citations: parsed.citations,
@@ -197,6 +201,7 @@ export async function getOrBuildYearlyNarrative(
     sections: parsed.sections,
     citations: parsed.citations,
     modelId: MODEL_ID,
+    algorithmVersion: ALGORITHM_VERSION,
     generatedAt: new Date().toISOString(),
     fromCache: false,
   };

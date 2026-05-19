@@ -9,7 +9,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import type { LifetimeFrame } from "@gons/saju";
+import { ALGORITHM_VERSION, type LifetimeFrame } from "@gons/saju";
 import { env } from "@/shared/config/env";
 import { anthropic } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
@@ -79,6 +79,7 @@ export interface NarrativeResult {
   citations: string[];
   modelId: string;
   promptVersion: number;
+  algorithmVersion: number;
   generatedAt: string;
   fromCache: boolean;
 }
@@ -105,6 +106,7 @@ export async function getOrBuildNarrative(
       eq(sajuLifetimeNarrative.frameHash, frameHash),
       eq(sajuLifetimeNarrative.modelId, MODEL_ID),
       eq(sajuLifetimeNarrative.promptVersion, PROMPT_VERSION),
+      eq(sajuLifetimeNarrative.algorithmVersion, ALGORITHM_VERSION),
     ),
   });
   if (cached) {
@@ -124,6 +126,7 @@ export async function getOrBuildNarrative(
         citations: cached.citations,
         modelId: cached.modelId,
         promptVersion: cached.promptVersion,
+        algorithmVersion: cached.algorithmVersion,
         generatedAt: cached.generatedAt.toISOString(),
         fromCache: true,
       };
@@ -179,6 +182,7 @@ export async function getOrBuildNarrative(
       frameHash,
       modelId: MODEL_ID,
       promptVersion: PROMPT_VERSION,
+      algorithmVersion: ALGORITHM_VERSION,
       narrativeText: parsed.narrativeText,
       sectionsJsonb: parsed.sections,
       schoolSpecificJsonb: parsed.schoolSpecific,
@@ -191,6 +195,7 @@ export async function getOrBuildNarrative(
         sajuLifetimeNarrative.frameHash,
         sajuLifetimeNarrative.modelId,
         sajuLifetimeNarrative.promptVersion,
+        sajuLifetimeNarrative.algorithmVersion,
       ],
       set: {
         narrativeText: parsed.narrativeText,
@@ -209,6 +214,7 @@ export async function getOrBuildNarrative(
     citations: parsed.citations,
     modelId: MODEL_ID,
     promptVersion: PROMPT_VERSION,
+    algorithmVersion: ALGORITHM_VERSION,
     generatedAt: new Date().toISOString(),
     fromCache: false,
   };

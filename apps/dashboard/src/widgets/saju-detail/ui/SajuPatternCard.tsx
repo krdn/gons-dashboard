@@ -2,11 +2,12 @@ import type { Element, Strength } from "@gons/saju";
 import { ELEMENT_KO } from "@gons/saju";
 
 const STRENGTH_KO: Record<Strength, string> = {
-  "very-strong": "극왕",
-  "strong": "신왕",
-  "balanced": "중화",
-  "weak": "신약",
-  "very-weak": "극약",
+  "신강": "신강",
+  "신약": "신약",
+  "균형": "균형",
+  "종아": "종아",
+  "종재": "종재",
+  "종살": "종살",
 };
 
 export interface SajuPatternCardProps {
