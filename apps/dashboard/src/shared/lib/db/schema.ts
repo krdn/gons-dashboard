@@ -587,20 +587,21 @@ export interface LifetimeNarrativeSections {
   cautions: string[];
 }
 
-/** yearly 전용 — 기존 5필드 그대로 */
+/** yearly 전용 — v0.3.1 에서 keyTerms + cautions 추가 (lifetime v0.2 와 동일 구조). */
 export interface YearlyNarrativeSections {
   personality: string;
   career: string;
   relationship: string;
   health: string;
   daeunSummary: string;
+  keyTerms: NarrativeKeyTerm[];
+  cautions: string[];
 }
 
 /**
- * v0.3 monthly 전용 — 기존 yearly 와 동일 5필드 (구조 동일).
+ * v0.3 monthly 전용 — v0.3.1 에서 keyTerms + cautions 추가.
  *
- * yearly 와 같은 인터페이스를 재사용하지 않고 별도 선언한 이유: yearly 가 lifetime 과
- * 분리한 선례 (v0.2 에서 keyTerms/cautions 추가 시) 와 동일 — 향후 monthly-only 필드
+ * yearly 와 같은 인터페이스를 재사용하지 않고 별도 선언한 이유: 향후 monthly-only 필드
  * (e.g. `keyTransitionWarnings`) 추가 시 yearly 와 독립 분기 가능.
  */
 export interface MonthlyNarrativeSections {
@@ -609,6 +610,8 @@ export interface MonthlyNarrativeSections {
   relationship: string;
   health: string;
   daeunSummary: string;
+  keyTerms: NarrativeKeyTerm[];
+  cautions: string[];
 }
 
 /** @deprecated YearlyNarrativeSections 를 직접 사용하세요 (하위호환 alias) */
@@ -731,9 +734,15 @@ export const sajuYearlyNarrative = pgTable(
     targetYear: integer("target_year").notNull(),
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
+    // v0.3.1 — 프롬프트 스키마 버전. PROMPT_VERSION bump 시 자동으로 캐시 무효화.
+    // 기존 row 는 default 1 로 채워지고, 신규 코드는 PROMPT_VERSION=2 로 적재.
+    // lifetime narrative 와 동일 패턴.
+    promptVersion: integer("prompt_version").notNull().default(1),
     algorithmVersion: integer("algorithm_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
     sectionsJsonb: jsonb("sections_jsonb").$type<YearlyNarrativeSections>().notNull(),
+    // v0.3.1 — 학파별로 다른 구조. v1 row 는 null.
+    schoolSpecificJsonb: jsonb("school_specific_jsonb").$type<SchoolSpecific>(),
     citations: text("citations")
       .array()
       .notNull()
@@ -753,6 +762,7 @@ export const sajuYearlyNarrative = pgTable(
       t.targetYear,
       t.frameHash,
       t.modelId,
+      t.promptVersion,
       t.algorithmVersion,
     ),
   ],
@@ -822,9 +832,13 @@ export const sajuMonthlyNarrative = pgTable(
     targetMonth: integer("target_month").notNull(),
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
+    // v0.3.1 — yearly 와 동일 prompt_version 패턴.
+    promptVersion: integer("prompt_version").notNull().default(1),
     algorithmVersion: integer("algorithm_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
     sectionsJsonb: jsonb("sections_jsonb").$type<MonthlyNarrativeSections>().notNull(),
+    // v0.3.1 — 학파별로 다른 구조. v1 row 는 null.
+    schoolSpecificJsonb: jsonb("school_specific_jsonb").$type<SchoolSpecific>(),
     citations: text("citations")
       .array()
       .notNull()
@@ -849,6 +863,7 @@ export const sajuMonthlyNarrative = pgTable(
       t.targetMonth,
       t.frameHash,
       t.modelId,
+      t.promptVersion,
       t.algorithmVersion,
     ),
   ],
