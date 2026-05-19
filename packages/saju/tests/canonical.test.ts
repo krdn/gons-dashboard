@@ -4,6 +4,9 @@ import { buildYongshinKo } from "../src/adapters/ko/yongshin";
 import { buildYongshinCnZiping } from "../src/adapters/cn-ziping/yongshin";
 import type { SajuChart } from "../src/types";
 import canonical1967 from "./fixtures/canonical-1967.json" with { type: "json" };
+import jonggyeokJongjae from "./fixtures/fixture-jonggyeok-complete-jongjae.json" with { type: "json" };
+import gyeokgukSangwan from "./fixtures/fixture-gyeokguk-shenyak-sangwan.json" with { type: "json" };
+import gyeokgukJeonggwan from "./fixtures/fixture-gyeokguk-shenkang-jeonggwan.json" with { type: "json" };
 
 // buildChartFromExpected — synthetic fixture 용 헬퍼.
 // pillars 를 직접 주입해 chart 합성 (daycomputation 우회).
@@ -24,6 +27,9 @@ function buildChartFromExpected(pillars: any, gyeokguk?: string): SajuChart {
 // ── fixture 목록 ──────────────────────────────────────────────
 const FIXTURES = [
   { name: "1967-03-29 김석곤 (가종 종아)", data: canonical1967 as any },
+  { name: "synthetic 완전종 종재", data: jonggyeokJongjae as any },
+  { name: "synthetic 신약 甲일간 상관", data: gyeokgukSangwan as any },
+  { name: "synthetic 신강 庚일간 정관", data: gyeokgukJeonggwan as any },
 ];
 
 describe.each(FIXTURES)("canonical fixture — $name", ({ data }) => {
