@@ -744,3 +744,168 @@ export const sajuYearlyNarrative = pgTable(
 );
 
 export type SajuYearlyNarrativeRow = typeof sajuYearlyNarrative.$inferSelect;
+
+/* =========================================================================
+ * 삼국 분석 v0.3 월운(月運) + tri 일진(日辰) 캐시
+ * - saju_monthly_tri       : 결정형 TriNationMonthly ((profile_id, school, target_year, target_month, input_hash, schema_version, algorithm_version) UNIQUE)
+ * - saju_monthly_narrative : 월운 LLM narrative ((profile_id, school, target_year, target_month, frame_hash, model_id, algorithm_version) UNIQUE)
+ * - saju_daily_tri         : 결정형 TriNationDailyLite ((profile_id, for_date, input_hash, schema_version, algorithm_version) UNIQUE)
+ * - saju_daily_narrative   : tri 일진 LLM narrative ((profile_id, school, for_date, frame_hash, model_id, algorithm_version) UNIQUE)
+ *
+ * v0.2 yearly 패턴(algorithm_version 포함) 재사용. frame_jsonb 의 $type 은 Phase 2에서 보강.
+ * ========================================================================= */
+export const sajuMonthlyTri = pgTable(
+  "saju_monthly_tri",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    targetYear: integer("target_year").notNull(),
+    targetMonth: integer("target_month").notNull(),
+    inputHash: text("input_hash").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
+    frameJsonb: jsonb("frame_jsonb").notNull(),
+    computedAt: timestamp("computed_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_monthly_tri_profile_idx").on(
+      t.profileId,
+      t.targetYear,
+      t.targetMonth,
+    ),
+    uniqueIndex("saju_monthly_tri_cache_key").on(
+      t.profileId,
+      t.school,
+      t.targetYear,
+      t.targetMonth,
+      t.inputHash,
+      t.schemaVersion,
+      t.algorithmVersion,
+    ),
+  ],
+);
+
+export type SajuMonthlyTriRow = typeof sajuMonthlyTri.$inferSelect;
+
+export const sajuMonthlyNarrative = pgTable(
+  "saju_monthly_narrative",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    targetYear: integer("target_year").notNull(),
+    targetMonth: integer("target_month").notNull(),
+    frameHash: text("frame_hash").notNull(),
+    modelId: text("model_id").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
+    narrativeText: text("narrative_text").notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").notNull(),
+    citations: text("citations")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    generatedAt: timestamp("generated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_monthly_narrative_profile_idx").on(
+      t.profileId,
+      t.targetYear,
+      t.targetMonth,
+    ),
+    uniqueIndex("saju_monthly_narrative_cache_key").on(
+      t.profileId,
+      t.school,
+      t.targetYear,
+      t.targetMonth,
+      t.frameHash,
+      t.modelId,
+      t.algorithmVersion,
+    ),
+  ],
+);
+
+export type SajuMonthlyNarrativeRow = typeof sajuMonthlyNarrative.$inferSelect;
+
+export const sajuDailyTri = pgTable(
+  "saju_daily_tri",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    forDate: date("for_date").notNull(),
+    inputHash: text("input_hash").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
+    frameJsonb: jsonb("frame_jsonb").notNull(),
+    computedAt: timestamp("computed_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_daily_tri_date_idx").on(t.forDate),
+    index("saju_daily_tri_profile_idx").on(t.profileId, t.forDate),
+    uniqueIndex("saju_daily_tri_cache_key").on(
+      t.profileId,
+      t.forDate,
+      t.inputHash,
+      t.schemaVersion,
+      t.algorithmVersion,
+    ),
+  ],
+);
+
+export type SajuDailyTriRow = typeof sajuDailyTri.$inferSelect;
+
+export const sajuDailyNarrative = pgTable(
+  "saju_daily_narrative",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => fortuneProfiles.id, { onDelete: "cascade" }),
+    school: text("school").notNull(),
+    forDate: date("for_date").notNull(),
+    frameHash: text("frame_hash").notNull(),
+    modelId: text("model_id").notNull(),
+    algorithmVersion: integer("algorithm_version").notNull().default(1),
+    narrativeText: text("narrative_text").notNull(),
+    generatedAt: timestamp("generated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("saju_daily_narrative_profile_idx").on(t.profileId, t.forDate),
+    uniqueIndex("saju_daily_narrative_cache_key").on(
+      t.profileId,
+      t.school,
+      t.forDate,
+      t.frameHash,
+      t.modelId,
+      t.algorithmVersion,
+    ),
+  ],
+);
+
+export type SajuDailyNarrativeRow = typeof sajuDailyNarrative.$inferSelect;
