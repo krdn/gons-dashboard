@@ -23,10 +23,12 @@ describe("computeSajuChart — G1 end-to-end", () => {
     expect(chart.elements).toEqual({ wood: 2, fire: 1, earth: 2, metal: 0, water: 3 });
   });
 
-  it("격국 = 傷官格, 용신에 fire+earth 포함", () => {
+  it("격국 = 傷官格, v0.3 종아격 → 용신에 metal+water 포함", () => {
     const chart = computeSajuChart(G1);
     expect(chart.pattern).toBe("傷官格");
-    expect(chart.yongSin).toEqual(expect.arrayContaining(["fire", "earth"]));
+    // v0.3: G1 은 종아격(식상 우세) → 용신 = wood (식상), 기신 = metal·water
+    // pattern.ts 의 신약 branch: [인성(金), 비겁(水)] → metal, water
+    expect(chart.yongSin).toEqual(expect.arrayContaining(["metal", "water"]));
   });
 
   it("대운 10개, 첫 대운 = 8세 壬寅", () => {

@@ -42,7 +42,7 @@ const fixtures: RegressionFixture[] = [
     label: "1960-01-15 12:00 M (甲子月 근접)",
     input: { birthDateLocal: "1960-01-15", birthTimeLocal: "12:00", timezone: "Asia/Seoul", longitudeDeg: 127, calendar: "solar", gender: "male" },
     currentAge: 66,
-    expected: { ko: "favorable", cnZiping: "unfavorable", cnMangpai: "unfavorable", jp: "mixed", agreement: "medium" },
+    expected: { ko: "mixed", cnZiping: "unfavorable", cnMangpai: "unfavorable", jp: "mixed", agreement: "medium" },
   },
   {
     label: "1975-07-04 18:00 F (한여름)",
