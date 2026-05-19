@@ -99,6 +99,13 @@
       "when": 1779169551119,
       "tag": "0013_lively_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779181856544,
+      "tag": "0014_slimy_boom_boom",
+      "breakpoints": true
     }
   ]
 }
