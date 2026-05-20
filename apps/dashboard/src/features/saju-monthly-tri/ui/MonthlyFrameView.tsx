@@ -21,6 +21,7 @@ import type {
 import {
   CitationsFootnote,
   KeyTermsStrip,
+  ModelBadge,
   NarrativeSection,
   SchoolSpecificCard,
 } from "@/shared/ui/saju-narrative";
@@ -31,6 +32,7 @@ export interface MonthlyNarrativePayload {
   // v1 row 호환 (v0.3 시점 에는 schoolSpecific 가 없었음).
   schoolSpecific: SchoolSpecific | null;
   citations: string[];
+  modelId: string;
 }
 
 interface Props {
@@ -99,7 +101,10 @@ export function MonthlyFrameView({
     <div className="border rounded p-4 space-y-3">
       {/* 헤드라인: netVerdict + monthGanji + currentDaeun */}
       <div className="space-y-1">
-        <div className={`text-lg ${verdict.className}`}>{verdict.label}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className={`text-lg ${verdict.className}`}>{verdict.label}</div>
+          {narrative && <ModelBadge modelId={narrative.modelId} />}
+        </div>
         <div className="text-sm text-gray-700">
           {frame.targetYear}년 {frame.targetMonth}월 월운:{" "}
           <span className="font-medium">{formatGanji(frame.monthGanji)}</span>

@@ -31,6 +31,7 @@ import type {
 import {
   CitationsFootnote,
   KeyTermsStrip,
+  ModelBadge,
   NarrativeSection,
   SchoolSpecificCard,
 } from "@/shared/ui/saju-narrative";
@@ -41,6 +42,7 @@ export interface YearlyNarrativePayload {
   // v1 row (v0.3 시점) 는 schoolSpecific 가 없으므로 nullable.
   schoolSpecific: SchoolSpecific | null;
   citations: string[];
+  modelId: string;
 }
 
 interface Props {
@@ -110,7 +112,10 @@ export function YearlyFrameView({
     <div className="border rounded p-4 space-y-3">
       {/* 헤드라인: netVerdict + yearGanji + currentDaeun */}
       <div className="space-y-1">
-        <div className={`text-lg ${verdict.className}`}>{verdict.label}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className={`text-lg ${verdict.className}`}>{verdict.label}</div>
+          {narrative && <ModelBadge modelId={narrative.modelId} />}
+        </div>
         <div className="text-sm text-gray-700">
           {frame.targetYear}년 세운: <span className="font-medium">{formatGanji(frame.yearGanji)}</span>
         </div>

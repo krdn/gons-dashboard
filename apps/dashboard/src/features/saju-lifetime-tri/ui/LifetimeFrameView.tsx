@@ -11,6 +11,7 @@ import type {
 import {
   CitationsFootnote,
   KeyTermsStrip,
+  ModelBadge,
   NarrativeSection,
   SchoolSpecificCard,
 } from "@/shared/ui/saju-narrative";
@@ -20,6 +21,7 @@ interface NarrativePayload {
   sections: LifetimeNarrativeSections;
   schoolSpecific: SchoolSpecific;
   citations: string[];
+  modelId: string;
 }
 
 interface Props {
@@ -60,7 +62,10 @@ export function LifetimeFrameView({
 
   return (
     <div className="border rounded p-4 space-y-2">
-      <div className="font-bold">격국: {frame.formatGyeokguk.name}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-bold">격국: {frame.formatGyeokguk.name}</div>
+        {narrative && <ModelBadge modelId={narrative.modelId} />}
+      </div>
       <div className="text-sm text-gray-700">
         {frame.formatGyeokguk.reasoning}
       </div>
