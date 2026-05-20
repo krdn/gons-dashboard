@@ -39,10 +39,17 @@ const baseOutputSchema = z.object({
   citations: z.array(z.string().min(1)).min(1),
 });
 
+// Hotfix #4 (v0.3.1.2): LLM 이 array 대신 string 으로 응답하는 경우 자동 wrap.
+// 운영에서 `shinsalNotes: "괴강, 도화..."` (string) 응답 관측 — 이걸 [string] 으로
+// normalize 해 schema 통과시킴. preprocess 의 input 이 unknown 이므로 satisfies 의
+// input generic 을 unknown 으로 풀어 호환. parse 결과 output 은 SchoolSpecificKo.
 const koSpecificSchema = z.object({
   joohuFocus: z.string().min(30),
-  shinsalNotes: z.array(z.string().min(1)).min(1),
-}) satisfies z.ZodType<SchoolSpecificKo>;
+  shinsalNotes: z.preprocess(
+    (v) => (typeof v === "string" ? [v] : v),
+    z.array(z.string().min(1)).min(1),
+  ),
+}) satisfies z.ZodType<SchoolSpecificKo, z.ZodTypeDef, unknown>;
 
 const zipingSpecificSchema = z.object({
   gyeokgukRationale: z.string().min(40),

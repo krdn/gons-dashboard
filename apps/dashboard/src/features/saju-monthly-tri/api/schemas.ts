@@ -44,10 +44,15 @@ const baseOutputSchema = z.object({
   citations: z.array(z.string().min(1)).min(1),
 });
 
+// Hotfix #4 (v0.3.1.2): LLM 이 array 대신 string 으로 응답하는 경우 자동 wrap.
+// preprocess input 이 unknown 이므로 satisfies generic 도 unknown.
 const koSpecificSchema = z.object({
   joohuFocus: z.string().min(20),
-  shinsalNotes: z.array(z.string().min(1)).min(1),
-}) satisfies z.ZodType<SchoolSpecificKo>;
+  shinsalNotes: z.preprocess(
+    (v) => (typeof v === "string" ? [v] : v),
+    z.array(z.string().min(1)).min(1),
+  ),
+}) satisfies z.ZodType<SchoolSpecificKo, z.ZodTypeDef, unknown>;
 
 const zipingSpecificSchema = z.object({
   gyeokgukRationale: z.string().min(30),
