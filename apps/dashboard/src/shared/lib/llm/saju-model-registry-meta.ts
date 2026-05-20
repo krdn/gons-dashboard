@@ -42,3 +42,17 @@ export function parseSajuModelKey(raw: unknown): SajuModelKey {
     ? (raw as SajuModelKey)
     : DEFAULT_SAJU_MODEL_KEY;
 }
+
+/**
+ * DB 캐시 row 의 modelId 문자열로부터 사용자에게 보일 라벨을 추론.
+ * env 가 갱신돼 옛 row 의 modelId 가 현재 env 값과 다를 수 있으므로
+ * vendor prefix 기반 휴리스틱 사용 — picker registry 와는 독립.
+ * 알 수 없는 값은 modelId 원문을 그대로 반환 (디버깅 친화).
+ */
+export function getModelDisplayLabel(modelId: string): string {
+  const id = modelId.toLowerCase();
+  if (id.startsWith("claude")) return "Claude";
+  if (id.startsWith("gpt") || id.includes("codex")) return "Codex";
+  if (id.startsWith("gemini")) return "Gemini";
+  return modelId;
+}

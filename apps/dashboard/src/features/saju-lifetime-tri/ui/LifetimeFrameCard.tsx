@@ -27,6 +27,7 @@ interface NarrativePayload {
   sections: LifetimeNarrativeSections;
   schoolSpecific: SchoolSpecific;
   citations: string[];
+  modelId: string;
 }
 
 type SchoolKey = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
@@ -113,6 +114,7 @@ export function LifetimeFrameCard({ profileId, schoolKey, frame }: Props) {
           sections: data.sections,
           schoolSpecific: data.schoolSpecific,
           citations: data.citations,
+          modelId: data.modelId,
         });
         setLoading(false);
       } catch (err) {

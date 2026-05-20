@@ -5,3 +5,4 @@ export { KeyTermsStrip } from "./KeyTermsStrip";
 export { NarrativeSection } from "./NarrativeSection";
 export { CitationsFootnote } from "./CitationsFootnote";
 export { SchoolSpecificCard } from "./school-specific/SchoolSpecificCard";
+export { ModelBadge } from "./ModelBadge";

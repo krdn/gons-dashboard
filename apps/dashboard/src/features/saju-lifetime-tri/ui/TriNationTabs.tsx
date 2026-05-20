@@ -50,6 +50,7 @@ interface NarrativePayload {
   sections: LifetimeNarrativeSections;
   schoolSpecific: SchoolSpecific;
   citations: string[];
+  modelId: string;
 }
 
 interface NarrativeState {
@@ -197,6 +198,7 @@ export function TriNationTabs({ profileId, triNation, modelId }: Props) {
               sections: data.sections,
               schoolSpecific: data.schoolSpecific,
               citations: data.citations,
+              modelId: data.modelId,
             },
             loading: false,
           },
