@@ -27,6 +27,7 @@
     "@gons/saju": "workspace:*",
     "@gons/shared-google": "workspace:*",
     "@gons/shared-mcp-runtime": "workspace:*",
+    "@gons/stock-analysis": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.38.3",
