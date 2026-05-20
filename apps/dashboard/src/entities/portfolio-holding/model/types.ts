@@ -1,7 +1,8 @@
 // portfolio-holding entity — 환경 중립 타입.
-// AssetClass/Market 은 stock entity 의 client 진입점에서 import (server-only 비전염).
+// AssetClass/Market 은 cross-cutting 타입이라 shared 에 둠 (FSD entities 간 직접
+// 참조 금지 룰 준수).
 
-import type { AssetClass, Market } from "@/entities/stock/client";
+import type { AssetClass, Market } from "@/shared/lib/stock/types";
 
 export interface PortfolioHolding {
   id: string;

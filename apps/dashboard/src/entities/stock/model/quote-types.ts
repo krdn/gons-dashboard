@@ -1,5 +1,6 @@
-export type AssetClass = "stock" | "crypto" | "commodity";
-export type Market = "NASDAQ" | "NYSE" | "KRX" | "CRYPTO" | "COMMODITY";
+import type { AssetClass, Market } from "@/shared/lib/stock/types";
+
+export type { AssetClass, Market };
 
 export interface Quote {
   symbol: string;
