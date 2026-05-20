@@ -14,3 +14,6 @@ export {
   type DailyNarrativeResult,
 } from "./api/narrative-server";
 export { PROMPT_VERSION } from "./api/prompts";
+export { DailyCrossCheckBadge } from "./ui/DailyCrossCheckBadge";
+export { TriDailyTabs } from "./ui/TriDailyTabs";
+export type { DailyNarrativePayload } from "./ui/DailyFrameView";
