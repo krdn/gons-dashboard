@@ -45,14 +45,6 @@ export interface GetDailyResult {
   fromCache: boolean;
 }
 
-/**
- * KST 기준 오늘 (YYYY-MM-DD) — cron route 와 widget 의 default.
- */
-export function kstTodayDate(now: Date = new Date()): string {
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
-}
-
 export async function getOrBuildDaily(
   profileId: string,
   userId: string,

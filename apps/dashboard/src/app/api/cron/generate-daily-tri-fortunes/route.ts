@@ -18,10 +18,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles } from "@/shared/lib/db/schema";
 import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
-import {
-  getOrBuildDaily,
-  kstTodayDate,
-} from "@/features/saju-daily-tri/api/daily-server";
+import { getOrBuildDaily } from "@/features/saju-daily-tri/api/daily-server";
+import { currentKstDate } from "@/shared/lib/saju/resolveBirthInput";
 import {
   getOrBuildDailyNarrative,
   type NarrativeSchool,
@@ -66,7 +64,7 @@ export const POST = createCronHandler({
   getId: (t) => t.profileId,
   getLabel: (t) => t.name,
   perTarget: async (t): Promise<Payload> => {
-    const forDate = kstTodayDate();
+    const forDate = currentKstDate();
 
     // 1) frame (4학파 결정형 분석) — sync, 빠름. 실패 시 throw → createCronHandler 가 격리.
     const dailyResult = await getOrBuildDaily(t.profileId, t.userId, forDate);
@@ -99,5 +97,5 @@ export const POST = createCronHandler({
     };
   },
   concurrency: 2,
-  extra: async () => ({ forDate: kstTodayDate() }),
+  extra: async () => ({ forDate: currentKstDate() }),
 });
