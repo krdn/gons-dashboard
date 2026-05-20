@@ -27,6 +27,10 @@ import {
   type NarrativeSchool,
 } from "@/features/saju-yearly-tri/api/narrative-server";
 import { checkRateLimit } from "@/shared/lib/llm/rateLimit";
+import {
+  SAJU_MODEL_REGISTRY,
+  parseSajuModelKey,
+} from "@/shared/lib/llm/saju-model-registry";
 
 // URL 쿼리 학파(ko/cn-ziping/cn-mangpai/jp) → TriNationYearly.frames 키 매핑.
 // (frames 의 키는 camelCase, 쿼리는 kebab-case 로 가독성 유지)
@@ -90,11 +94,14 @@ export async function GET(
     const yearly = await getOrBuildYearly(profileId, session.user.id, targetYear);
     const frame = yearly.triNation.frames[SCHOOL_FRAME_KEY[schoolParam]];
     const school: NarrativeSchool = schoolParam;
+    const modelKey = parseSajuModelKey(searchParams.get("model"));
+    const modelId = SAJU_MODEL_REGISTRY[modelKey].id;
     const result = await getOrBuildYearlyNarrative(
       profileId,
       school,
       targetYear,
       frame,
+      modelId,
     );
     return NextResponse.json(result);
   } catch (err) {

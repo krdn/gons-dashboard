@@ -78,9 +78,10 @@ const INITIAL_CACHE: NarrativeCache = {
 interface Props {
   profileId: string;
   triNation: TriNationLifetime;
+  modelId: string;
 }
 
-export function TriNationTabs({ profileId, triNation }: Props) {
+export function TriNationTabs({ profileId, triNation, modelId }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
   // 카운트다운 표시용 현재 시각 (epoch ms). render 중 Date.now() 호출 금지(react-hooks/purity)
@@ -155,7 +156,7 @@ export function TriNationTabs({ profileId, triNation }: Props) {
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/lifetime/${profileId}/narrative?school=${school}`,
+          `/api/saju/lifetime/${profileId}/narrative?school=${school}&model=${encodeURIComponent(modelId)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

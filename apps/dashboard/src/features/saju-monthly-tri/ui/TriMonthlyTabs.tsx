@@ -64,6 +64,7 @@ interface Props {
   targetYear: number;
   targetMonth: number;
   triNation: TriNationMonthly;
+  modelId: string;
 }
 
 export function TriMonthlyTabs({
@@ -71,6 +72,7 @@ export function TriMonthlyTabs({
   targetYear,
   targetMonth,
   triNation,
+  modelId,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
@@ -137,7 +139,7 @@ export function TriMonthlyTabs({
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/monthly/${profileId}/narrative?school=${school}&year=${targetYear}&month=${targetMonth}`,
+          `/api/saju/monthly/${profileId}/narrative?school=${school}&year=${targetYear}&month=${targetMonth}&model=${encodeURIComponent(modelId)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {
