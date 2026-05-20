@@ -30,6 +30,11 @@ const schema = z.object({
 
   // 사주 상세 읽기 — features/saju-reading (spec §7)
   SAJU_LLM_MODEL: z.string().default("claude-opus-4-7"),
+  // 사주 narrative 모델 선택 (v0.3.2) — 3종 백엔드별 모델 ID
+  // 프록시(ANTHROPIC_BASE_URL=:8317)가 model 문자열을 보고 Claude/Codex/Gemini로 라우팅.
+  SAJU_LLM_MODEL_CLAUDE: z.string().default("claude-opus-4-7"),
+  SAJU_LLM_MODEL_CODEX: z.string().default("gpt-5-codex"),
+  SAJU_LLM_MODEL_GEMINI: z.string().default("gemini-2.5-pro"),
   SAJU_LLM_DAILY_BUDGET_KRW: z.coerce.number().int().positive().default(1000),
   SAJU_LLM_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
 
