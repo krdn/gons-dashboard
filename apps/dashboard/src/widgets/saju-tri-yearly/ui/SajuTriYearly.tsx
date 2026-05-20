@@ -22,9 +22,10 @@ interface Props {
   profileId: string;
   userId: string;
   targetYear?: number;
+  modelId: string;
 }
 
-export async function SajuTriYearly({ profileId, userId, targetYear }: Props) {
+export async function SajuTriYearly({ profileId, userId, targetYear, modelId }: Props) {
   const year = targetYear ?? currentKstYear();
 
   const result = await getOrBuildYearly(profileId, userId, year).then(
@@ -55,6 +56,7 @@ export async function SajuTriYearly({ profileId, userId, targetYear }: Props) {
             profileId={profileId}
             targetYear={year}
             triNation={result.triNation}
+            modelId={modelId}
           />
         </div>
       </section>

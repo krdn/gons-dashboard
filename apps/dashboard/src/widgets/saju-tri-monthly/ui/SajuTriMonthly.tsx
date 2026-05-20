@@ -25,6 +25,7 @@ interface Props {
   userId: string;
   targetYear?: number;
   targetMonth?: number;
+  modelId: string;
 }
 
 export async function SajuTriMonthly({
@@ -32,6 +33,7 @@ export async function SajuTriMonthly({
   userId,
   targetYear,
   targetMonth,
+  modelId,
 }: Props) {
   const year = targetYear ?? currentKstYear();
   const month = targetMonth ?? currentKstMonth();
@@ -65,6 +67,7 @@ export async function SajuTriMonthly({
             targetYear={year}
             targetMonth={month}
             triNation={result.triNation}
+            modelId={modelId}
           />
         </div>
       </section>

@@ -20,6 +20,11 @@ import {
 import { SajuTriLifetime } from "@/widgets/saju-tri-lifetime";
 import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
 import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
+import {
+  SAJU_MODEL_REGISTRY,
+  parseSajuModelKey,
+} from "@/shared/lib/llm/saju-model-registry";
+import { SajuModelPicker } from "@/features/saju-model-picker";
 import type {
   Element,
   MajorFortune,
@@ -33,7 +38,10 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ profileId: string }> };
+type Props = {
+  params: Promise<{ profileId: string }>;
+  searchParams: Promise<{ model?: string | string[] }>;
+};
 
 function ageFromBirthDate(birthDate: string): number {
   const [y, m, d] = birthDate.split("-").map(Number);
@@ -52,8 +60,13 @@ function kstTodayDate(): string {
   return kst.toISOString().slice(0, 10);
 }
 
-export default async function SajuDetailPage({ params }: Props) {
+export default async function SajuDetailPage({ params, searchParams }: Props) {
   const { profileId } = await params;
+  const sp = await searchParams;
+  const modelKey = parseSajuModelKey(
+    Array.isArray(sp.model) ? sp.model[0] : sp.model,
+  );
+  const modelId = SAJU_MODEL_REGISTRY[modelKey].id;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -118,13 +131,16 @@ export default async function SajuDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto w-full max-w-[900px] px-6 py-12">
-      <SajuDetailHeader profile={profile} />
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <SajuDetailHeader profile={profile} />
+        <SajuModelPicker selected={modelKey} />
+      </div>
 
-      <SajuTriLifetime profileId={profileId} userId={session.user.id} />
+      <SajuTriLifetime profileId={profileId} userId={session.user.id} modelId={modelId} />
 
-      <SajuTriYearly profileId={profileId} userId={session.user.id} />
+      <SajuTriYearly profileId={profileId} userId={session.user.id} modelId={modelId} />
 
-      <SajuTriMonthly profileId={profileId} userId={session.user.id} />
+      <SajuTriMonthly profileId={profileId} userId={session.user.id} modelId={modelId} />
 
       <section
         aria-labelledby="pillars-heading"

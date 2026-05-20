@@ -17,9 +17,10 @@ import { toUserMessage } from "@/features/saju-lifetime-tri/lib/errorMessage";
 interface Props {
   profileId: string;
   userId: string;
+  modelId: string;
 }
 
-export async function SajuTriLifetime({ profileId, userId }: Props) {
+export async function SajuTriLifetime({ profileId, userId, modelId }: Props) {
   const result = await getOrBuildLifetime(profileId, userId).then(
     ({ triNation }) => ({ ok: true as const, triNation }),
     (e: unknown) => ({
@@ -43,7 +44,7 @@ export async function SajuTriLifetime({ profileId, userId }: Props) {
         </h2>
         <div className="space-y-4">
           <CrossCheckBadge triNation={result.triNation} />
-          <TriNationTabs profileId={profileId} triNation={result.triNation} />
+          <TriNationTabs profileId={profileId} triNation={result.triNation} modelId={modelId} />
         </div>
       </section>
     );
