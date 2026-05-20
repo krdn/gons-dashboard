@@ -78,3 +78,8 @@ docker-compose.override.yml
 
 # Git worktrees (superpowers using-git-worktrees skill)
 .worktrees/
+
+# Local agent/vector sidecar artifacts (ruvector, agentdb)
+ruvector.db
+agentdb.rvf
+agentdb.rvf.lock
