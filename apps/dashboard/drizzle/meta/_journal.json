@@ -127,6 +127,13 @@
       "when": 1779203517522,
       "tag": "0017_conscious_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1779242568741,
+      "tag": "0018_silent_compose_fix",
+      "breakpoints": true
     }
   ]
 }

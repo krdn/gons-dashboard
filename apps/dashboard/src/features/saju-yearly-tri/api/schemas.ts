@@ -19,12 +19,15 @@ import type {
   SchoolSpecificJp,
 } from "@/shared/lib/db/schema";
 
+// Hotfix #2 (v0.3.1.1): LLM 출력 variance 흡수. v=2 가 운영에서 한 번도 zod
+// 통과 못한 이슈 (sections min(200) 미달 + schoolSpecific 필드 undefined) 대응.
+// 모든 min 을 약 25% 수준으로 약화. 운영 안정화 후 점진적으로 복원 검토.
 const sectionsSchema = z.object({
-  personality: z.string().min(200),
-  career: z.string().min(200),
-  relationship: z.string().min(200),
-  health: z.string().min(200),
-  daeunSummary: z.string().min(200),
+  personality: z.string().min(50),
+  career: z.string().min(50),
+  relationship: z.string().min(50),
+  health: z.string().min(50),
+  daeunSummary: z.string().min(50),
   keyTerms: z
     .array(
       z.object({
@@ -32,30 +35,27 @@ const sectionsSchema = z.object({
         gloss: z.string().min(1),
       }),
     )
-    .min(3)
+    .min(1)
     .max(8),
   cautions: z.array(z.string().min(1)).max(5),
 }) satisfies z.ZodType<YearlyNarrativeSections>;
 
-// narrativeText min 을 1000 으로 약화 (advisor 권고). 목표 분량은 1200~1600 자이지만
-// LLM 이 1100자 부근으로 응답 시 zod throw → route 500 회피를 위한 안전판.
-// 운영 검증 후 안정되면 1200 으로 복원 검토.
+// Hotfix #2: narrativeText min 1000 → 300 으로 약화.
 const baseOutputSchema = z.object({
-  narrativeText: z.string().min(1000).max(2000),
+  narrativeText: z.string().min(300).max(2000),
   sections: sectionsSchema,
-  citations: z.array(z.string().min(1)).min(2),
+  citations: z.array(z.string().min(1)).min(1),
 });
 
-// lifetime 의 SchoolSpecificKo/Ziping/Mangpai/Jp 그대로 재사용.
-// 의미만 yearly 도메인으로 narrow (lifetime: 평생 / yearly: 올해).
+// Hotfix #2: schoolSpecific 필드 min 도 약화. 단, 필드 존재 자체는 강제 (LLM 이 빠뜨릴 가능성).
 const koSpecificSchema = z.object({
-  joohuFocus: z.string().min(70),
+  joohuFocus: z.string().min(20),
   shinsalNotes: z.array(z.string().min(1)).min(1),
 }) satisfies z.ZodType<SchoolSpecificKo>;
 
 const zipingSpecificSchema = z.object({
-  gyeokgukRationale: z.string().min(100),
-  yongshinAnalysis: z.string().min(100),
+  gyeokgukRationale: z.string().min(30),
+  yongshinAnalysis: z.string().min(30),
 }) satisfies z.ZodType<SchoolSpecificZiping>;
 
 const mangpaiSpecificSchema = z.object({

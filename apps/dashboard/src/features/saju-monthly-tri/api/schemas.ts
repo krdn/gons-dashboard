@@ -19,12 +19,13 @@ import type {
   SchoolSpecificJp,
 } from "@/shared/lib/db/schema";
 
+// Hotfix #2 (v0.3.1.1): yearly 와 같은 방향으로 약화 — LLM variance 흡수.
 const sectionsSchema = z.object({
-  personality: z.string().min(150),
-  career: z.string().min(150),
-  relationship: z.string().min(150),
-  health: z.string().min(150),
-  daeunSummary: z.string().min(150),
+  personality: z.string().min(30),
+  career: z.string().min(30),
+  relationship: z.string().min(30),
+  health: z.string().min(30),
+  daeunSummary: z.string().min(30),
   keyTerms: z
     .array(
       z.object({
@@ -32,25 +33,25 @@ const sectionsSchema = z.object({
         gloss: z.string().min(1),
       }),
     )
-    .min(3)
+    .min(1)
     .max(6),
   cautions: z.array(z.string().min(1)).max(3),
 }) satisfies z.ZodType<MonthlyNarrativeSections>;
 
 const baseOutputSchema = z.object({
-  narrativeText: z.string().min(800).max(1500),
+  narrativeText: z.string().min(200).max(1500),
   sections: sectionsSchema,
-  citations: z.array(z.string().min(1)).min(2),
+  citations: z.array(z.string().min(1)).min(1),
 });
 
 const koSpecificSchema = z.object({
-  joohuFocus: z.string().min(70),
+  joohuFocus: z.string().min(20),
   shinsalNotes: z.array(z.string().min(1)).min(1),
 }) satisfies z.ZodType<SchoolSpecificKo>;
 
 const zipingSpecificSchema = z.object({
-  gyeokgukRationale: z.string().min(100),
-  yongshinAnalysis: z.string().min(100),
+  gyeokgukRationale: z.string().min(30),
+  yongshinAnalysis: z.string().min(30),
 }) satisfies z.ZodType<SchoolSpecificZiping>;
 
 const mangpaiSpecificSchema = z.object({

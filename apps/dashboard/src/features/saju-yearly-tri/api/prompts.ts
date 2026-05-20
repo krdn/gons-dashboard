@@ -9,7 +9,8 @@
 // lifetime/api/prompts.ts 와 동일 패턴이지만 "올해 한 해 세운" 관점으로 변환:
 // - 평생 명조 → 올해 세운 frame
 // - 분기별 타이밍, 현 대운과의 상호작용 강조
-export const PROMPT_VERSION = 2;
+// Hotfix #2 (v0.3.1.1): zod schema 약화로 인한 캐시 무효화 — v=2 → v=3.
+export const PROMPT_VERSION = 3;
 
 // v0.3.1 — NarrativeSchool 의 source 는 shared/lib/db/schema. 여기서는 re-export.
 import type { NarrativeSchool } from "@/shared/lib/db/schema";

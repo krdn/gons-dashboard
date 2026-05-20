@@ -6,7 +6,8 @@
 // - 캐시 키 (profile_id, school, target_year, target_month, frame_hash, model_id,
 //   prompt_version, algorithm_version) 의 일부.
 // - 프롬프트 또는 출력 스키마 변경 시 bump → 자동 캐시 무효화.
-export const PROMPT_VERSION = 2;
+// Hotfix #2 (v0.3.1.1): zod schema 약화로 인한 캐시 무효화 — v=2 → v=3.
+export const PROMPT_VERSION = 3;
 
 // v0.3.1 — NarrativeSchool 의 source 는 shared/lib/db/schema. 여기서는 re-export.
 import type { NarrativeSchool } from "@/shared/lib/db/schema";

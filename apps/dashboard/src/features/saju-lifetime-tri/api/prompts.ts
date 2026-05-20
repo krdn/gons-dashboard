@@ -4,7 +4,9 @@
 // - 캐시 키 (profile_id, school, frame_hash, model_id, prompt_version) 의 일부.
 // - 프롬프트 또는 출력 스키마 변경 시 bump → 자동 캐시 무효화.
 // - 기존 row 는 그대로 두고 신규 row 가 새 버전으로 적재 (감사용 보존).
-export const PROMPT_VERSION = 2;
+// Hotfix #2 (v0.3.1.1): zod schema 약화로 인한 캐시 무효화 — v=2 → v=3.
+// 기존 v=2 row 가 운영에 0건이라 실질 손실 없음 (v=2 가 한 번도 성공 못함).
+export const PROMPT_VERSION = 3;
 
 // v0.3.1 — NarrativeSchool 의 source 는 shared/lib/db/schema. 여기서는 re-export.
 import type { NarrativeSchool } from "@/shared/lib/db/schema";

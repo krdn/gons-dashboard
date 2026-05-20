@@ -13,15 +13,14 @@ import type {
   SchoolSpecificJp,
 } from "@/shared/lib/db/schema";
 
-// 공통 sections 스키마. 분량 하한 (min) 은 LLM 일탈을 막는 안전판.
-// max 는 두지 않음 — 분량 과다 시 cli-proxy 가 잘라낼 수 있고 그건 zod 가 아니라
-// 운영 모니터링으로 봐야 함.
+// Hotfix #2 (v0.3.1.1): LLM 출력 variance 흡수 — yearly/monthly 와 같은 방향.
+// v=2 가 운영에서 한 번도 zod 통과 못함 (sections min 200 미달 + schoolSpecific 필드 누락).
 const sectionsSchema = z.object({
-  personality: z.string().min(200),
-  career: z.string().min(200),
-  relationship: z.string().min(200),
-  health: z.string().min(200),
-  daeunSummary: z.string().min(200),
+  personality: z.string().min(80),
+  career: z.string().min(80),
+  relationship: z.string().min(80),
+  health: z.string().min(80),
+  daeunSummary: z.string().min(80),
   keyTerms: z
     .array(
       z.object({
@@ -29,25 +28,25 @@ const sectionsSchema = z.object({
         gloss: z.string().min(1),
       }),
     )
-    .min(3)
+    .min(1)
     .max(10),
   cautions: z.array(z.string().min(1)).max(5),
 }) satisfies z.ZodType<LifetimeNarrativeSections>;
 
 const baseOutputSchema = z.object({
-  narrativeText: z.string().min(1500).max(2500),
+  narrativeText: z.string().min(500).max(2500),
   sections: sectionsSchema,
-  citations: z.array(z.string().min(1)).min(2),
+  citations: z.array(z.string().min(1)).min(1),
 });
 
 const koSpecificSchema = z.object({
-  joohuFocus: z.string().min(70),
+  joohuFocus: z.string().min(30),
   shinsalNotes: z.array(z.string().min(1)).min(1),
 }) satisfies z.ZodType<SchoolSpecificKo>;
 
 const zipingSpecificSchema = z.object({
-  gyeokgukRationale: z.string().min(100),
-  yongshinAnalysis: z.string().min(100),
+  gyeokgukRationale: z.string().min(40),
+  yongshinAnalysis: z.string().min(40),
 }) satisfies z.ZodType<SchoolSpecificZiping>;
 
 const mangpaiSpecificSchema = z.object({

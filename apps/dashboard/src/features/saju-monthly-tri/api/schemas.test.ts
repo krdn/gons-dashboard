@@ -142,10 +142,11 @@ describe("monthly SCHOOL_SCHEMAS — 공통 base 검증", () => {
     expect(() => SCHOOL_SCHEMAS.ko.parse(payload)).toThrow();
   });
 
-  it("citations 1개 → throw (min 2)", () => {
+  // Hotfix #2: min 약화로 boundary 갱신 — citations/keyTerms min 1.
+  it("citations 0개 → throw (min 1)", () => {
     const payload = {
       ...baseOk(),
-      citations: ["단일 출처"],
+      citations: [],
       schoolSpecific: {
         joohuFocus: "다".repeat(70),
         shinsalNotes: ["x"],
@@ -154,15 +155,12 @@ describe("monthly SCHOOL_SCHEMAS — 공통 base 검증", () => {
     expect(() => SCHOOL_SCHEMAS.ko.parse(payload)).toThrow();
   });
 
-  it("keyTerms 2개 → throw (min 3)", () => {
+  it("keyTerms 0개 → throw (min 1)", () => {
     const payload = {
       ...baseOk(),
       schoolSpecific: { joohuFocus: "다".repeat(70), shinsalNotes: ["x"] },
     };
-    payload.sections.keyTerms = [
-      { term: "a", gloss: "1" },
-      { term: "b", gloss: "2" },
-    ];
+    payload.sections.keyTerms = [];
     expect(() => SCHOOL_SCHEMAS.ko.parse(payload)).toThrow();
   });
 });
