@@ -115,9 +115,10 @@ async function callLlmAndParseWithRetry(
       throw err;
     }
 
-    const firstBlock = response.content[0];
-    const text =
-      firstBlock && firstBlock.type === "text" ? firstBlock.text : "";
+    // Hotfix #6 (v0.3.2.2): Codex/GPT-5 응답은 종종 [thinking, text] 순서 — find 로
+    // 첫 text block 추출. (Claude/Gemini 도 동일 패턴이므로 backward compatible.)
+    const textBlock = response.content.find((b) => b.type === "text");
+    const text = textBlock ? textBlock.text : "";
     const stopReason = response.stop_reason;
 
     try {
