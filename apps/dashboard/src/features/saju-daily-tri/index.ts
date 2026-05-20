@@ -13,3 +13,4 @@ export {
   type NarrativeSchool,
   type DailyNarrativeResult,
 } from "./api/narrative-server";
+export { PROMPT_VERSION } from "./api/prompts";
