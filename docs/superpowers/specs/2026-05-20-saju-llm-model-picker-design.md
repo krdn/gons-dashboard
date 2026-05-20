@@ -261,9 +261,11 @@ env.ts의 `.default(...)` 가 fallback 제공. 실제 throw는 안 남.
 5. 브라우저 뒤로가기 → 이전 모델 선택 복원
 6. SQL: `SELECT DISTINCT model_id FROM saju_yearly_narrative WHERE profile_id = '<test>'` → 사용한 모델 ID들이 분리 row로 존재 확인
 
-## 10. 배포 순서 (4 Phase)
+## 10. 배포 순서 (단일 PR + 단계별 커밋)
 
-### Phase 1 — Foundation
+**전략**: Phase 1~3을 하나의 PR로 묶되, 리뷰/롤백 용이성을 위해 **단계별 커밋 분리**. Phase 4는 PR 머지 후 운영 검증 작업.
+
+### Commit 1 — Foundation
 
 - `env.ts`: `SAJU_LLM_MODEL_CLAUDE / CODEX / GEMINI` 3개 추가
 - `shared/lib/llm/saju-model-registry.ts` 신규
@@ -271,28 +273,32 @@ env.ts의 `.default(...)` 가 fallback 제공. 실제 throw는 안 남.
 - **영향**: 없음 (사용 안 함)
 - **검증**: `pnpm typecheck && pnpm lint && pnpm test`
 
-### Phase 2 — narrative-server 인자화
+### Commit 2 — narrative-server 인자화
 
 - 4개 narrative-server에 `modelId` 인자 추가
 - 호출부 (widget RSC 4개) 에서 기본값 (`SAJU_MODEL_REGISTRY.claude.id`) 전달
 - **영향**: 동작 변화 없음 — 모두 Claude 모델로 계속 작동
 - **마이그레이션**: 불필요 (캐시 키 `model_id` 이미 존재)
-- **검증**: 운영 배포 후 기존 위젯 정상, 새 캐시 row 발생 없음
 
-### Phase 3 — UI Picker
+### Commit 3 — UI Picker
 
 - `features/saju-model-picker` 신규
 - `saju-profile/[profileId]/page.tsx`: searchParams 파싱 + picker 배치 + prop 전달
 - Component test
 - **영향**: UI 노출 — 사용자가 모델 선택 가능
-- **검증**: 브라우저 6단계 + SQL row 분리 확인
 
-### Phase 4 — Proxy 호환성 검증
+### PR 머지 전 통합 검증
+
+- `pnpm typecheck && pnpm lint && pnpm test` 모두 PASS
+- 로컬 브라우저 6단계 (§9.4) 통과
+- 단, Codex/Gemini 실제 호출은 **운영 환경에서만 가능** (프록시 192.168.0.5:8317 접근) — PR에서는 Claude만 검증
+
+### Phase 4 — Proxy 호환성 검증 (PR 머지 후)
 
 - Codex/Gemini 모델 ID로 실제 호출 → 응답 검증
-- 프록시가 unknown provider 반환하면 env default 교체
+- 프록시가 unknown provider 반환하면 env default 교체하여 hotfix PR
 - schema 검증 실패율 모니터링 (모델별)
-- **회귀 시**: env에서 해당 모델 ID 비활성화
+- **회귀 시**: env에서 해당 모델 ID 비활성화 (registry에서 제외하는 hotfix)
 
 ## 11. 롤백 시나리오
 
@@ -300,7 +306,7 @@ env.ts의 `.default(...)` 가 fallback 제공. 실제 throw는 안 남.
 |------|------|
 | Codex/Gemini 응답 품질 심각하게 부적합 | `SAJU_MODEL_KEYS = ['claude']` 한 줄 변경 → picker 숨김. registry/env default 코드 보존 |
 | 프록시가 특정 모델 ID 거부 | env에서 해당 모델 ID 정정 후 재배포 |
-| narrative-server 동작 회귀 | Phase 2의 PR revert — Phase 3은 picker만 사라지고 동작 영향 없음 |
+| narrative-server 동작 회귀 | Commit 2 단위 revert (Commit 3은 picker만 사라지고 동작 영향 없음) 또는 PR 전체 revert |
 
 ## 12. 명시적 비범위
 
