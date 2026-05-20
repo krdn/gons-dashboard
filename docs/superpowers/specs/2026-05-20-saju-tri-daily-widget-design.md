@@ -347,21 +347,30 @@ monthly `/api/saju/monthly-narrative` 1:1 미러. POST 핸들러:
 
 ## 7. 옛 시스템 처리
 
-### 7.1 PR-A (이번 PR) — 사용 중지 + 표면 제거
+> **2026-05-20 패치 — 대시보드 FortuneCard 발견**: 구현 시작 전 검증에서 옛 `SajuDailyFortune` 위젯이 *page.tsx 외*에 **대시보드 메인 면의 `FortuneCardClient.tsx`** (대시보드 카드 그리드, profile select + 오늘 일진 카드)에서도 사용 중임을 확인. 옛 `getTodayDailyFortunesForUser` (복수형) 도 `FortuneCard.tsx` 에서 사용. *이 카드는 daily 탭과 다른 도메인* (간략 카드 vs 상세 분석) 이므로 옛 시스템을 모두 제거하면 *대시보드 회귀*가 발생. 사용자가 **Path B (대시보드 FortuneCard 보존)** 선택. PR-A 범위는 *daily 탭 + reading 탭 안의 옛 섹션* 만으로 좁힌다.
 
-- `widgets/saju-detail/index.ts`: `SajuDailyFortune` export 제거
-- `widgets/saju-detail/ui/SajuDailyFortune.tsx`: 파일 제거 (다른 호출자 grep 후)
-- `page.tsx`: `getTodayDailyFortune` import 제거, `dailyRow` fetch 제거, 옛 일진 섹션 JSX 제거
-- `apps/dashboard/tests/saju-cron-daily.integration.test.ts`: 삭제
+### 7.1 PR-A (이번 PR) — fortune 페이지 reading 탭 안의 옛 일진 섹션만 제거
 
-### 7.2 PR-B (Follow-up) — 깊은 정리
+- `apps/dashboard/src/app/fortune/[profileId]/page.tsx`:
+  - `getTodayDailyFortune` import 제거
+  - `dailyRow` Promise.all fetch 제거 + `kstTodayDate()` 로컬 함수 제거
+  - reading 탭 안 `{dailyRow && (...)}` 섹션 JSX 제거
+  - daily 탭 (`SajuTriDaily`) 분기 신규 추가
+- `apps/dashboard/src/widgets/saju-detail/index.ts`: **변경 없음** — `SajuDailyFortune` export 유지 (FortuneCardClient 가 의존)
+- `apps/dashboard/src/widgets/saju-detail/ui/SajuDailyFortune.tsx`: **파일 유지** — FortuneCardClient 가 직접/간접 사용
+- `apps/dashboard/tests/saju-cron-daily.integration.test.ts`: **변경 없음** — cron-prefill 시스템이 FortuneCard 위해 살아 있음
 
-- `entities/saju-chart/api/*`: `getTodayDailyFortune` 함수 제거 (다른 호출자 없음 확인)
-- `packages/saju/src/dailyFortune.ts`: 파일 제거
-- `packages/saju/src/types/daily.ts`: `DailyFortunePayload` 등 제거
-- `packages/saju` barrel: 위 타입 re-export 제거
-- `apps/cron`: daily prefill 호출 job 제거 (있을 경우)
-- `0014_drop_saju_daily_fortunes.sql`: 테이블 drop
+### 7.2 PR-B (Follow-up, 별도 시점) — 대시보드 FortuneCard 자체 v0.3 재설계 (별도 spec 필요)
+
+옛 cron-prefill + `SajuDailyFortune` 시스템 자체를 PR-A 가 건드리지 않으므로 PR-B 는 별도 spec/plan 으로 다룬다 — 대시보드 FortuneCard 가 새 daily-narrative API 를 어떻게 부분 활용할지 (예: profile×4학파 카드 vs 단일 학파 단일 카드 vs 옛 시스템 유지) 결정 필요.
+
+따라서 본 PR-A 의 명시적 제외:
+- `entities/saju-chart/api/getTodayDailyFortune.ts` 제거 → PR-B
+- `entities/saju-chart/api/getTodayDailyFortunesForUser.ts` 제거 → PR-B
+- `packages/saju/src/dailyFortune.ts` 제거 → PR-B
+- `packages/saju/src/types/daily.ts` (`DailyFortunePayload`) 제거 → PR-B
+- `apps/cron` daily prefill job 정리 → PR-B
+- `saju_daily_fortunes` 테이블 drop → PR-B
 
 ## 8. 에러 처리
 
