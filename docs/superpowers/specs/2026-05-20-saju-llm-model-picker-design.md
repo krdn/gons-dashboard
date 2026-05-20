@@ -1,7 +1,7 @@
 # Saju LLM Model Picker — 설계
 
 **Date**: 2026-05-20
-**Scope**: 사주 프로필 페이지 (lifetime + yearly + monthly + daily)
+**Scope**: 사주 프로필 페이지 v1 — lifetime + yearly + monthly 3 위젯 (daily는 cron 정책 그대로 유지)
 **Status**: Design (pending implementation)
 **Related**: `2026-05-19-saju-tri-narrative-richer-v031-design.md` (이 위에 얹는 기능)
 
@@ -21,7 +21,7 @@
 | 영역 | 결정 |
 |------|------|
 | 프록시 라우팅 | 단일 `ANTHROPIC_BASE_URL`, `model` 필드 문자열로 백엔드 분기 |
-| 선택 범위 | 페이지 전역 (lifetime + yearly + monthly + daily 4 위젯이 같은 모델) |
+| 선택 범위 | 페이지 전역 (lifetime + yearly + monthly 3 위젯이 같은 모델). daily는 v1 범위 외 — cron 정책 유지 |
 | 캐시 정책 | 모델별 독립 캐시. 기존 캐시 키의 `model_id` 컬럼이 자연 분리 키 |
 | 상태 저장 | URL search param `?model=claude|codex|gemini` |
 | 모델 ID 주입 | env 3쌍 (`SAJU_LLM_MODEL_CLAUDE/CODEX/GEMINI`) → registry → narrative-server |
@@ -30,23 +30,38 @@
 
 ## 3. 아키텍처
 
+실제 narrative 호출 경로는 **client lazy fetch + API route** (RSC는 frame만 prefetch). modelId는 URL → page → widget RSC → client tab → API route(query string) → narrative-server 로 전파.
+
 ```
-[사용자] /saju-profile/[id]?model=codex
+[사용자] /fortune/[profileId]?model=codex
     │
     ▼
 [page.tsx (RSC)]
+  ├─ searchParams = await searchParams  (Next.js 16: Promise)
   ├─ modelKey = parseSajuModelKey(searchParams.model)
   ├─ modelId = SAJU_MODEL_REGISTRY[modelKey].id
   └─ render:
       <SajuModelPicker selected={modelKey} />
-      <SajuTriLifetime  profileId={id} modelId={modelId} />
-      <SajuTriYearly    profileId={id} modelId={modelId} targetYear={2026} />
-      <SajuTriMonthly   profileId={id} modelId={modelId} targetMonth={...} />
-      <SajuTriDaily     profileId={id} modelId={modelId} targetDate={...} />
+      <SajuTriLifetime profileId={id} userId={uid} modelId={modelId} />
+      <SajuTriYearly   profileId={id} userId={uid} modelId={modelId} />
+      <SajuTriMonthly  profileId={id} userId={uid} modelId={modelId} />
     │
     ▼
-[narrative-server.ts × 4]
-  ├─ 캐시 조회: where(model_id = modelId) AND (profile, school, year, frame_hash, prompt_version, alg_version)
+[Widget RSC] frame data 만 prefetch (getOrBuildLifetime/Yearly/Monthly)
+    │
+    ▼
+[Client Tab (TriLifetimeTabs / TriYearlyTabs / TriMonthlyTabs)]
+    │ modelId prop 전달
+    ▼
+[fetch('/api/saju/<scope>/[profileId]/narrative?school=ko&year=2026&model=gpt-5-codex')]
+    │
+    ▼
+[API Route] modelId 쿼리스트링 파싱 (없으면 default Claude id)
+    │
+    ▼
+[narrative-server.ts × 3]  (lifetime / yearly / monthly)
+  ├─ 함수 시그니처에 modelId: string 인자 추가
+  ├─ 캐시 조회: where(model_id = modelId) AND (profile, school, ..., frame_hash, prompt_version, alg_version)
   ├─ HIT  → return cached row
   └─ MISS → anthropic.messages.create({ model: modelId, ... })
            → JSON.parse + zod.parse (1회 재시도)
@@ -55,6 +70,8 @@
     ▼
 [Proxy :8317] modelId 문자열 → Claude / Codex / Gemini 백엔드로 라우팅
 ```
+
+**daily는 v1 범위 외**: SajuTriDaily 위젯은 현재 페이지에 마운트되지 않음. daily narrative는 cron job이 매일 자동 생성 (`/api/cron/generate-daily-tri-fortunes` → `getOrBuildDailyNarrative`). 모델 선택은 lifetime/yearly/monthly 3개 위젯에만 적용. daily는 cron 정책 그대로 Claude 고정 유지.
 
 ## 4. 컴포넌트 분배
 
@@ -88,31 +105,39 @@ apps/dashboard/src/shared/config/env.ts
   + SAJU_LLM_MODEL_GEMINI:  z.string().default('gemini-2.5-pro')
   유지: SAJU_LLM_MODEL (saju-reading 등 모델 선택 적용 안 한 곳에서 계속 사용)
 
-apps/dashboard/src/features/saju-{lifetime,yearly,monthly,daily}-tri/api/narrative-server.ts (4개)
+apps/dashboard/src/features/saju-{lifetime,yearly,monthly}-tri/api/narrative-server.ts (3개)
   - 함수 시그니처에 modelId: string 인자 추가
   - 내부 `const MODEL_ID = env.SAJU_LLM_MODEL` 제거 → 인자 modelId 사용
   - anthropic.messages.create({ model: modelId, ... })
   - 캐시 INSERT/조회: model_id 컬럼에 modelId 그대로 저장/매칭
 
-apps/dashboard/src/widgets/saju-tri-{lifetime,yearly,monthly,daily}/ui/SajuTri*.tsx (4개)
-  - props에 modelId: string 추가
+apps/dashboard/src/app/api/saju/{lifetime,yearly,monthly}/[profileId]/narrative/route.ts (3개)
+  - 쿼리스트링에 ?model=<modelId> 받기 (없으면 default Claude id 사용)
   - getOrBuildXxxNarrative(..., modelId) 호출
 
-apps/dashboard/src/app/saju-profile/[profileId]/page.tsx
-  - searchParams: { model?: string } 받기
-  - modelKey = parseSajuModelKey(searchParams.model)
+apps/dashboard/src/features/saju-{lifetime,yearly,monthly}-tri/ui/Tri*Tabs.tsx (3개, client)
+  - props에 modelId: string 추가
+  - fetch URL 에 ?model=<modelId> 쿼리 부착
+
+apps/dashboard/src/widgets/saju-tri-{lifetime,yearly,monthly}/ui/SajuTri*.tsx (3개, RSC)
+  - props에 modelId: string 추가
+  - <Tri*Tabs modelId={modelId} /> 로 전달
+
+apps/dashboard/src/app/fortune/[profileId]/page.tsx
+  - Props 타입에 searchParams: Promise<{ model?: string }> 추가
+  - modelKey = parseSajuModelKey((await searchParams).model)
   - modelId = SAJU_MODEL_REGISTRY[modelKey].id
-  - 페이지 헤더 우측에 <SajuModelPicker selected={modelKey} />
-  - 4개 위젯에 modelId prop 전달
+  - <SajuDetailHeader> 우측에 <SajuModelPicker selected={modelKey} />
+  - 3개 위젯에 modelId prop 전달
 ```
 
 ### 4.3 FSD 경계
 
 | 슬라이스 | 이유 |
 |---------|------|
-| `saju-model-registry` → `shared/lib/llm` | 4개 narrative-server (features) + picker UI (feature) + 호출 페이지 (app) 모두에서 사용. features → features cross-import 회피 |
-| `saju-model-picker` → `features` | 단일 비즈니스 엔티티가 아니라 사용자 의도 (모델 선택). 4개 위젯이 공유하는 횡단 관심사이지만 자체 동작(URL 갱신) 보유 |
-| 4 narrative-server | 기존 위치 유지, 시그니처만 변경 |
+| `saju-model-registry` → `shared/lib/llm` | 3 narrative-server (features) + picker UI (feature) + 호출 페이지 (app) + 3 API route + 3 client tab 모두에서 사용. features → features cross-import 회피 |
+| `saju-model-picker` → `features` | 단일 비즈니스 엔티티가 아니라 사용자 의도 (모델 선택). 3 위젯이 공유하는 횡단 관심사이지만 자체 동작(URL 갱신) 보유 |
+| 3 narrative-server | 기존 위치 유지, 시그니처만 변경 |
 
 ## 5. UI 디자인
 
@@ -144,8 +169,8 @@ apps/dashboard/src/app/saju-profile/[profileId]/page.tsx
 ### 5.2 상호작용
 
 - 탭 클릭 → `router.replace('?model=codex', { scroll: false })`
-- RSC가 새 `searchParams.model` 로 재렌더 → 4개 위젯이 새 modelId로 호출
-- 캐시 hit 시 즉시 렌더, miss 시 lazy fetch (기존 패턴)
+- RSC가 새 `searchParams.model` 로 재렌더 → 3 위젯이 새 modelId를 client tab → API route 로 전파
+- 캐시 hit 시 즉시 렌더, miss 시 lazy fetch (기존 client 패턴)
 - 활성 탭은 학파 탭과 동일한 강조 스타일 (밑줄 + 색상)
 
 ### 5.3 v1 범위 제한 (YAGNI)
@@ -254,8 +279,8 @@ env.ts의 `.default(...)` 가 fallback 제공. 실제 throw는 안 남.
 
 ### 9.4 Manual / Browser 검증
 
-1. `/saju-profile/[id]` 방문 → Claude 탭 활성, 4개 위젯 정상 렌더
-2. Codex 탭 클릭 → URL `?model=codex` 갱신, 4개 위젯 lazy fetch (또는 hit)
+1. `/fortune/[profileId]` 방문 → Claude 탭 활성, 3 위젯 정상 렌더
+2. Codex 탭 클릭 → URL `?model=codex` 갱신, 3 위젯 client lazy fetch (또는 hit)
 3. Gemini 탭 클릭 → 동일
 4. `?model=invalid` 직접 입력 → Claude로 폴백 (페이지 정상)
 5. 브라우저 뒤로가기 → 이전 모델 선택 복원
@@ -275,15 +300,18 @@ env.ts의 `.default(...)` 가 fallback 제공. 실제 throw는 안 남.
 
 ### Commit 2 — narrative-server 인자화
 
-- 4개 narrative-server에 `modelId` 인자 추가
-- 호출부 (widget RSC 4개) 에서 기본값 (`SAJU_MODEL_REGISTRY.claude.id`) 전달
+- 3 narrative-server (lifetime/yearly/monthly) 에 `modelId` 인자 추가
+- 호출부 3 API route 에서 쿼리스트링 `?model=` 파싱, 없으면 기본값 (`SAJU_MODEL_REGISTRY.claude.id`) 전달
 - **영향**: 동작 변화 없음 — 모두 Claude 모델로 계속 작동
 - **마이그레이션**: 불필요 (캐시 키 `model_id` 이미 존재)
+- daily(cron) narrative-server는 손대지 않음 (v1 범위 외)
 
-### Commit 3 — UI Picker
+### Commit 3 — UI Picker + Tab/Widget 전파
 
 - `features/saju-model-picker` 신규
-- `saju-profile/[profileId]/page.tsx`: searchParams 파싱 + picker 배치 + prop 전달
+- `fortune/[profileId]/page.tsx`: searchParams 파싱 + picker 배치 + 3 위젯에 modelId prop 전달
+- 3 위젯 RSC (`SajuTri{Lifetime,Yearly,Monthly}`): `modelId` prop 받아 client Tab 컴포넌트로 전달
+- 3 client Tab (`Tri{Lifetime,Yearly,Monthly}Tabs`): fetch URL 에 `?model=<modelId>` 부착
 - Component test
 - **영향**: UI 노출 — 사용자가 모델 선택 가능
 
