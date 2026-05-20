@@ -6,7 +6,6 @@ import {
   ensureChartAndReadings,
   generateYearlyReading,
 } from "@/features/saju-reading";
-import { getTodayDailyFortune } from "@/entities/saju-chart";
 import {
   SajuDetailHeader,
   SajuPillarsBoard,
@@ -15,12 +14,12 @@ import {
   SajuPatternCard,
   SajuMajorFortuneTimeline,
   SajuYearlyReading,
-  SajuDailyFortune,
   SajuReadingSections,
 } from "@/widgets/saju-detail";
 import { SajuTriLifetime } from "@/widgets/saju-tri-lifetime";
 import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
 import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
+import { SajuTriDaily } from "@/widgets/saju-tri-daily";
 import { parseSajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 import { SajuModelPicker } from "@/features/saju-model-picker";
 import { TabsNav, TabPanel, TabSkeleton } from "@/shared/ui/Tabs";
@@ -36,7 +35,6 @@ import type {
   TenGodAssignment,
   Stem,
   Branch,
-  DailyFortunePayload,
   SajuChart,
 } from "@gons/saju";
 
@@ -62,12 +60,6 @@ function ageFromBirthDate(birthDate: string): number {
     (now.getMonth() + 1 === m && now.getDate() >= d);
   if (!hadBirthday) age -= 1;
   return age;
-}
-
-function kstTodayDate(): string {
-  const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
 }
 
 export default async function SajuDetailPage({ params, searchParams }: Props) {
@@ -123,21 +115,18 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
     inputHash: chart.inputHash,
   };
 
-  // 3. 세운 (lazy) + 일진 (cron이 채운 row) 병렬 + 부분 실패 허용
-  const [yearlyResult, dailyRow] = await Promise.all([
-    generateYearlyReading({
-      chart: sajuChart,
-      chartId: chart.id,
-      year: currentYear,
-    }).then(
-      (r) => ({ ok: true as const, body: r.body }),
-      (e: unknown) => ({
-        ok: false as const,
-        error: String(e instanceof Error ? e.message : e).slice(0, 200),
-      }),
-    ),
-    getTodayDailyFortune(chart.id, kstTodayDate()).catch(() => null),
-  ]);
+  // 3. 세운 (lazy) — daily 는 별도 탭으로 분리 (SajuTriDaily widget)
+  const yearlyResult = await generateYearlyReading({
+    chart: sajuChart,
+    chartId: chart.id,
+    year: currentYear,
+  }).then(
+    (r) => ({ ok: true as const, body: r.body }),
+    (e: unknown) => ({
+      ok: false as const,
+      error: String(e instanceof Error ? e.message : e).slice(0, 200),
+    }),
+  );
 
   return (
     <main className="mx-auto w-full max-w-[900px] px-6 py-12">
@@ -181,6 +170,18 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
         <TabPanel tabKey="monthly" idPrefix={FORTUNE_TAB_PREFIX}>
           <Suspense fallback={<TabSkeleton />}>
             <SajuTriMonthly
+              profileId={profileId}
+              userId={session.user.id}
+              modelKey={modelKey}
+            />
+          </Suspense>
+        </TabPanel>
+      )}
+
+      {activeTab === "daily" && (
+        <TabPanel tabKey="daily" idPrefix={FORTUNE_TAB_PREFIX}>
+          <Suspense fallback={<TabSkeleton />}>
+            <SajuTriDaily
               profileId={profileId}
               userId={session.user.id}
               modelKey={modelKey}
@@ -287,24 +288,6 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
               year={currentYear}
             />
           </section>
-
-          {dailyRow && (
-            <section
-              aria-labelledby="daily-heading"
-              className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-            >
-              <h2
-                id="daily-heading"
-                className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-              >
-                오늘 일진
-              </h2>
-              <SajuDailyFortune
-                payload={dailyRow.payload as DailyFortunePayload}
-                dayPillar={`${dailyRow.dayStem}${dailyRow.dayBranch}`}
-              />
-            </section>
-          )}
 
           <section aria-labelledby="readings-heading" className="mb-8">
             <h2 id="readings-heading" className="mb-4 text-base font-semibold">
