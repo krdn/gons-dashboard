@@ -155,12 +155,24 @@ describe("monthly SCHOOL_SCHEMAS — 공통 base 검증", () => {
     expect(() => SCHOOL_SCHEMAS.ko.parse(payload)).toThrow();
   });
 
-  it("keyTerms 0개 → throw (min 1)", () => {
+  // Hotfix #5: keyTerms 가 누락되거나 0개여도 통과 (Gemini variance 흡수).
+  it("keyTerms 누락 → empty array 로 default", () => {
+    const payload = {
+      ...baseOk(),
+      schoolSpecific: { joohuFocus: "다".repeat(70), shinsalNotes: ["x"] },
+    };
+    // @ts-expect-error — Hotfix #5 행동 검증: undefined 도 통과
+    delete payload.sections.keyTerms;
+    const result = SCHOOL_SCHEMAS.ko.parse(payload);
+    expect(result.sections.keyTerms).toEqual([]);
+  });
+
+  it("keyTerms 0개 → 통과 (Hotfix #5)", () => {
     const payload = {
       ...baseOk(),
       schoolSpecific: { joohuFocus: "다".repeat(70), shinsalNotes: ["x"] },
     };
     payload.sections.keyTerms = [];
-    expect(() => SCHOOL_SCHEMAS.ko.parse(payload)).toThrow();
+    expect(() => SCHOOL_SCHEMAS.ko.parse(payload)).not.toThrow();
   });
 });

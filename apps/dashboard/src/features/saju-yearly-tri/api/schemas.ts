@@ -19,9 +19,37 @@ import type {
   SchoolSpecificJp,
 } from "@/shared/lib/db/schema";
 
+// Hotfix #5: LLM (특히 Gemini) 이 array-of-string 자리에 object 나
+// array-of-object 를 응답하는 경우를 흡수.
+// - string                              → [string]
+// - object {k: v, ...}                  → ["k: v", ...]
+// - array of (string | object)          → 각 원소를 string 으로 정규화
+// - 그 외 (null/undefined/number 등)    → 그대로 (Zod array 검증에서 실패)
+function normalizeStringArray(v: unknown): unknown {
+  const toStr = (item: unknown): string => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      return Object.entries(item)
+        .map(([k, val]) => `${k}: ${typeof val === "string" ? val : JSON.stringify(val)}`)
+        .join(" / ");
+    }
+    return String(item);
+  };
+  if (typeof v === "string") return [v];
+  if (Array.isArray(v)) return v.map(toStr);
+  if (v && typeof v === "object") {
+    return Object.entries(v).map(
+      ([k, val]) => `${k}: ${typeof val === "string" ? val : JSON.stringify(val)}`,
+    );
+  }
+  return v;
+}
+
 // Hotfix #2 (v0.3.1.1): LLM 출력 variance 흡수. v=2 가 운영에서 한 번도 zod
 // 통과 못한 이슈 (sections min(200) 미달 + schoolSpecific 필드 undefined) 대응.
 // 모든 min 을 약 25% 수준으로 약화. 운영 안정화 후 점진적으로 복원 검토.
+// Hotfix #5 (v0.3.2.1): Gemini 가 keyTerms/cautions 를 빠뜨리는 경우 — optional() 로 약화.
+//   Claude 는 여전히 채워서 응답하므로 호환 유지.
 const sectionsSchema = z.object({
   personality: z.string().min(50),
   career: z.string().min(50),
@@ -35,10 +63,11 @@ const sectionsSchema = z.object({
         gloss: z.string().min(1),
       }),
     )
-    .min(1)
-    .max(8),
-  cautions: z.array(z.string().min(1)).max(5),
-}) satisfies z.ZodType<YearlyNarrativeSections>;
+    .max(8)
+    .optional()
+    .default([]),
+  cautions: z.array(z.string().min(1)).max(5).optional().default([]),
+}) satisfies z.ZodType<YearlyNarrativeSections, z.ZodTypeDef, unknown>;
 
 // Hotfix #2: narrativeText min 1000 → 300 으로 약화.
 const baseOutputSchema = z.object({
@@ -49,13 +78,13 @@ const baseOutputSchema = z.object({
 
 // Hotfix #2: schoolSpecific 필드 min 도 약화. 단, 필드 존재 자체는 강제 (LLM 이 빠뜨릴 가능성).
 // Hotfix #4 (v0.3.1.2): LLM 이 array 대신 string 으로 응답하는 경우 자동 wrap.
+// Hotfix #5 (v0.3.2.1): Gemini 가 object / array-of-object 로 응답하는 경우도 수용.
+//   - object {"괴강살": "...", "도화살": "..."} → ["괴강살: ...", "도화살: ..."]
+//   - array of object [{ "괴강살": "..." }, ...] → ["괴강살: ..."]
 // preprocess input 이 unknown 이므로 satisfies generic 도 unknown.
 const koSpecificSchema = z.object({
   joohuFocus: z.string().min(20),
-  shinsalNotes: z.preprocess(
-    (v) => (typeof v === "string" ? [v] : v),
-    z.array(z.string().min(1)).min(1),
-  ),
+  shinsalNotes: z.preprocess(normalizeStringArray, z.array(z.string().min(1)).min(1)),
 }) satisfies z.ZodType<SchoolSpecificKo, z.ZodTypeDef, unknown>;
 
 const zipingSpecificSchema = z.object({
