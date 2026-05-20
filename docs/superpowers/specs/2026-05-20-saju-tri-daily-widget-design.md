@@ -1,8 +1,10 @@
 # 사주 삼국 일운(日運) 위젯 설계 — v0.3.x
 
 작성일: 2026-05-20
-상태: Draft → User Review
+상태: Draft → User Approved (Path A) → Patched after migration 0016 discovery
 선행 문서: `2026-05-19-saju-tri-monthly-daily-design.md`, `2026-05-18-saju-tri-yearly-design.md`
+
+> **패치 노트 (2026-05-20)**: 본 spec 초안은 daily 테이블이 *없다* 전제로 작성됐으나, 구현 시작 전 검증에서 **마이그레이션 0016 이 이미 두 테이블을 만들었음**을 확인했다. 단 현재 컬럼이 monthly 와 다르고 (sections/schoolSpecific/citations/promptVersion 없음), narrative-server 도 plain text 150~300자만 생성하는 v0.3 *초기 단순화 모델* 상태다. 사용자가 **Path A (monthly 완전 동일)** 를 선택하여 spec 을 *ALTER TABLE + 코드 재작성* 방향으로 패치한다.
 
 ## 0. 문제 정의
 
@@ -11,9 +13,23 @@
 현재 일운 인프라는 두 갈래로 존재한다:
 
 1. **v0.2 단발 cron-prefill 시스템** — `entities/saju-chart` 의 `getTodayDailyFortune` + `packages/saju` 의 `dailyFortune.ts` + `widgets/saju-detail/SajuDailyFortune` + `saju_daily_fortunes` 테이블. `reading` 탭 안 한 섹션으로 표시. 4학파 분리 없음.
-2. **v0.3 4학파 narrative 기반 일운 — 절반만 존재** — `packages/saju` 의 `buildTriNationDailyLiteFromBirth` + `TriNationDailyLite` + 4학파 daily adapter + `features/saju-daily-tri/api/{daily-server,narrative-server}.ts` 까지는 구현됐으나 prompts/schemas/UI/위젯/페이지 통합이 누락된 상태.
+2. **v0.3 4학파 narrative 기반 일운 — 초기 단순화 모델 상태** — 다음이 *이미* 존재:
+   - `packages/saju`: `buildTriNationDailyLiteFromBirth` + `TriNationDailyLite` + 4학파 daily adapter
+   - `apps/dashboard/src/features/saju-daily-tri/`: `api/daily-server.ts`, `api/narrative-server.ts`, `lib/errorMessage.ts`, `index.ts`
+   - DB 마이그레이션 `0016_nervous_galactus.sql`: `saju_daily_tri`, `saju_daily_narrative` 테이블 + Drizzle schema 정의
+   - 단 monthly 와 비교하면 의도적 단순화 흔적이 남아 있다:
+     - `saju_daily_narrative` 는 `prompt_version / sections_jsonb / school_specific_jsonb / citations` 컬럼 *없음*
+     - `narrative-server.ts` 는 plain text 150~300자 1-2문단만 생성 (zod 스키마 없음, JSON 강제 없음, 학파 톤이 1줄 문자열)
+     - prompts/schemas/UI/위젯/페이지 통합 부재
 
-본 spec은 (2)를 monthly와 동일 패턴으로 완성하고 (1)을 제거한다.
+본 spec(Path A) 은 다음을 수행한다:
+- (2)의 DB 스키마를 monthly 와 동일하게 *ALTER TABLE*로 보강한다 (CREATE TABLE 아님).
+- `narrative-server.ts` 를 monthly 패턴 (zod schemas, JSON 강제, retry, sections, schoolSpecific) 으로 재작성한다.
+- daily-server.ts 는 시그니처 유지하되 `kstTodayDate()` 를 shared helper `currentKstDate()` 로 이동한다.
+- prompts.ts, schemas.ts, ui/{DailyCrossCheckBadge,DailyFrameView,TriDailyTabs} 를 신규 작성한다.
+- `widgets/saju-tri-daily` + `app/fortune/[profileId]/page.tsx` daily 탭 분기를 신규 작성한다.
+- `app/api/saju/daily-narrative/route.ts` 를 신규 작성한다.
+- (1) 옛 시스템은 단계적으로 제거한다 (PR-A 표면 제거, PR-B 깊은 정리).
 
 ## 1. 결정 요약
 
@@ -24,7 +40,7 @@
 | 탭 순서 | `lifetime → yearly → monthly → **daily** → chart → reading` | 대→소 시간 스케일 자연스러운 멘탈 모델. |
 | Fetch 전략 | **Lazy fetch** (사용자가 탭 클릭 시 4학파 narrative 생성) | yearly/monthly와 동일. cron prefill 부하 없음. |
 | Narrative 분량 | **800~1200자** (`narrativeText` zod: min 200 / max 1500, 프롬프트로 유도) | monthly와 동일 — 매일 읽기 부담 균형. |
-| DB | **신규 `saju_daily_tri` + `saju_daily_narrative`** 테이블 생성, 옛 `saju_daily_fortunes` 는 Follow-up PR 에서 drop | 신규 시스템 안정 확인 후 옛 시스템 제거 — 두 단계 분리로 회귀 위험 최소화. |
+| DB | **기존 `saju_daily_tri` 는 그대로**, **`saju_daily_narrative` 는 ALTER TABLE** 로 4 컬럼 추가 (`prompt_version`, `sections_jsonb`, `school_specific_jsonb`, `citations`) + UNIQUE INDEX 재작성. 옛 `saju_daily_fortunes` 는 Follow-up PR 에서 drop | 마이그레이션 0016 에서 v0.3 초기 모델이 이미 적용됨 — monthly 패턴으로 보강하는 형태가 가장 안전. 신규 시스템 안정 후 옛 시스템 제거. |
 | 시간 키 | `for_date date` (KST YYYY-MM-DD) | DST 없음. `kstTodayDate` 패턴을 `currentKstDate()` shared helper 로 승격. |
 | Sections 타입 | **`MonthlyNarrativeSections` 재사용** (`personality / career / relationship / health / daeunSummary / keyTerms / cautions`) | DRY. `daeunSummary` 는 daily 맥락에서 "오늘의 흐름 요약" 으로 재해석 (프롬프트로 유도). |
 
@@ -44,19 +60,19 @@ apps/dashboard/src/
 │   ├── resolveBirthInput.ts                # currentKstDate() helper 추가
 │   └── tab-key.ts                          # FORTUNE_TAB_KEYS 에 "daily" 추가
 │
-├── features/saju-daily-tri/                # 신규 / 기존 절반 확장
+├── features/saju-daily-tri/                # 일부 신규 / 일부 재작성
 │   ├── api/
-│   │   ├── daily-server.ts                 # 신규 — getOrBuildDaily (현재 stub은 폐기·재작성)
-│   │   ├── narrative-server.ts             # 신규 — getOrBuildDailyNarrative (현재 stub은 폐기·재작성)
-│   │   ├── prompts.ts                      # 신규 — PROMPT_VERSION=1, SCHOOL_PROMPTS
-│   │   ├── schemas.ts                      # 신규 — 4학파 zod 스키마
+│   │   ├── daily-server.ts                 # 기존 유지 + 미세 수정 — kstTodayDate 제거 (shared helper 사용)
+│   │   ├── narrative-server.ts             # 재작성 — monthly 패턴(zod + retry + sections + schoolSpecific + citations + promptVersion) 적용
+│   │   ├── prompts.ts                      # 신규 — PROMPT_VERSION=1, SCHOOL_PROMPTS (학파별 BODY 일운 톤)
+│   │   ├── schemas.ts                      # 신규 — 4학파 zod 스키마 (monthly 패턴)
 │   │   └── schemas.test.ts                 # 신규
 │   ├── ui/
 │   │   ├── DailyCrossCheckBadge.tsx        # 신규
 │   │   ├── DailyFrameView.tsx              # 신규
 │   │   └── TriDailyTabs.tsx                # 신규 (client)
-│   ├── lib/errorMessage.ts                 # 기존 — daily 메시지 보강
-│   └── index.ts                            # barrel
+│   ├── lib/errorMessage.ts                 # 기존 유지 (이미 INVALID_DATE 포함, 보강 불필요)
+│   └── index.ts                            # 기존 — export 갱신 (DailyNarrativeResult 변경 반영)
 │
 ├── widgets/saju-tri-daily/                 # 신규
 │   ├── ui/SajuTriDaily.tsx                 # RSC
@@ -67,11 +83,7 @@ apps/dashboard/src/
     └── fortune/[profileId]/page.tsx        # daily 탭 분기 + reading 탭 옛 일진 제거
 ```
 
-> **확인 필요 — §0 "절반만 존재" 모듈 처리**: 기존 `features/saju-daily-tri/api/{daily-server,narrative-server}.ts` 의 *현재* 시그니처가 monthly 패턴(§2.3) 과 다를 가능성이 있다. 구현 1단계에서 두 파일 내용을 검토하여:
-> - 시그니처가 §2.3 과 호환 → 그대로 확장 (prompts.ts, schemas.ts, ui/ 추가)
-> - 호환 안 됨 → 폐기·재작성하고 monthly 패턴으로 통일
->
-> 이 결정은 plan 작성 시점이 아니라 *구현 시작 시점*의 첫 작업이다. plan 의 첫 Task로 이 검토를 박는다.
+> **확인 완료 (2026-05-20 패치)**: 기존 `daily-server.ts` 는 §2.3 시그니처와 호환 — `kstTodayDate` 를 shared helper `currentKstDate` 로 이동만 하면 미세 수정. 기존 `narrative-server.ts` 는 *완전 재작성* (plain text → JSON + zod + sections + schoolSpecific + citations + promptVersion). plan 의 첫 Task 묶음으로 이 두 변경을 박는다.
 
 ### 2.2 데이터 흐름
 
@@ -84,7 +96,7 @@ getOrBuildDaily(profileId, userId, forDate=currentKstDate())
   ├── resolveBirthInput(profileId, userId)            ← Phase 1 helper 재사용
   ├── inputHash = sha256(birth fields | forDate)
   ├── sajuDailyTri cache lookup
-  │     (profileId, school='compose', forDate, inputHash, schemaVersion, algorithmVersion)
+  │     (profileId, forDate, inputHash, schemaVersion, algorithmVersion)   ← school 컬럼 없음 — 4학파 frame 을 한 row jsonb 에 통합
   └── miss 시 buildTriNationDailyLiteFromBirth({ input, forDate })
         → onConflictDoNothing 저장
   ↓
@@ -146,61 +158,76 @@ export async function getOrBuildDailyNarrative(
 
 ## 3. DB 스키마
 
-### 3.1 신규 테이블 — `saju_daily_tri`
+### 3.1 기존 테이블 — `saju_daily_tri` (변경 없음)
+
+마이그레이션 `0016_nervous_galactus.sql` 에서 이미 생성됨. 본 spec 에서 변경 없음.
 
 ```sql
+-- (기존 0016 정의 — 참고용)
 CREATE TABLE saju_daily_tri (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id        uuid NOT NULL REFERENCES fortune_profile(id) ON DELETE CASCADE,
-  school            text NOT NULL,
+  profile_id        uuid NOT NULL REFERENCES fortune_profiles(id) ON DELETE CASCADE,
   for_date          date NOT NULL,
   input_hash        text NOT NULL,
   schema_version    integer NOT NULL,
-  algorithm_version integer NOT NULL,
-  frame_jsonb       jsonb NOT NULL,
-  computed_at       timestamptz NOT NULL DEFAULT now(),
-
-  CONSTRAINT saju_daily_tri_school_check CHECK (school IN ('compose'))
+  algorithm_version integer NOT NULL DEFAULT 1,
+  frame_jsonb       jsonb NOT NULL,           -- TriNationDailyLite (4학파 frame 통합)
+  computed_at       timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX saju_daily_tri_uniq ON saju_daily_tri
-  (profile_id, school, for_date, input_hash, schema_version, algorithm_version);
-CREATE INDEX saju_daily_tri_profile_date_idx ON saju_daily_tri
-  (profile_id, for_date DESC);
+CREATE UNIQUE INDEX saju_daily_tri_cache_key
+  ON saju_daily_tri (profile_id, for_date, input_hash, schema_version, algorithm_version);
+CREATE INDEX saju_daily_tri_profile_idx ON saju_daily_tri (profile_id, for_date);
+CREATE INDEX saju_daily_tri_date_idx ON saju_daily_tri (for_date);
 ```
 
-### 3.2 신규 테이블 — `saju_daily_narrative`
+> **monthly 와 차이**: `school` 컬럼 없음 — 4학파 frame 을 한 row 의 `frame_jsonb` 에 통합. v0.3 daily 설계의 의도적 단순화 (`packages/saju/src/types/daily-tri.ts` 코멘트 참조). 본 spec 은 이 구조를 유지.
+
+### 3.2 기존 테이블 — `saju_daily_narrative` (ALTER TABLE 로 보강)
+
+마이그레이션 `0016` 에서 v0.3 *초기 plain-text 모델*로 생성됨. monthly 패턴으로 맞추기 위해 **새 마이그레이션 (이번 PR) 에서 4 컬럼 추가 + UNIQUE INDEX 재작성**.
+
+#### 기존 컬럼 (0016 적용분)
 
 ```sql
-CREATE TABLE saju_daily_narrative (
-  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id            uuid NOT NULL REFERENCES fortune_profile(id) ON DELETE CASCADE,
-  school                text NOT NULL,
-  for_date              date NOT NULL,
-  frame_hash            text NOT NULL,
-  model_id              text NOT NULL,
-  prompt_version        integer NOT NULL,
-  algorithm_version     integer NOT NULL,
-  narrative_text        text NOT NULL,
-  sections_jsonb        jsonb NOT NULL,
-  school_specific_jsonb jsonb NOT NULL,
-  citations             text[] NOT NULL,
-  generated_at          timestamptz NOT NULL DEFAULT now(),
-
-  CONSTRAINT saju_daily_narr_school_check
-    CHECK (school IN ('ko','cn-ziping','cn-mangpai','jp'))
-);
-CREATE UNIQUE INDEX saju_daily_narr_uniq ON saju_daily_narrative
-  (profile_id, school, for_date, frame_hash, model_id, prompt_version, algorithm_version);
-CREATE INDEX saju_daily_narr_profile_date_idx ON saju_daily_narrative
-  (profile_id, for_date DESC);
+-- (참고용 — 변경 안 함)
+id, profile_id, school, for_date, frame_hash, model_id,
+algorithm_version, narrative_text, generated_at
+-- UNIQUE INDEX (profile_id, school, for_date, frame_hash, model_id, algorithm_version)
 ```
+
+#### 추가 컬럼 (이번 PR 마이그레이션)
+
+```sql
+-- 이번 PR 의 새 마이그레이션 — 최종 번호는 drizzle-kit generate 결과 (현재 최신 0018 → 0019 예상)
+ALTER TABLE saju_daily_narrative
+  ADD COLUMN prompt_version       integer NOT NULL DEFAULT 1,
+  ADD COLUMN sections_jsonb       jsonb,                       -- nullable: monthly 와 동일 (자가 치유 패턴)
+  ADD COLUMN school_specific_jsonb jsonb,                      -- nullable: 위와 동일
+  ADD COLUMN citations            text[] NOT NULL DEFAULT '{}'::text[];
+
+-- 기존 UNIQUE INDEX drop 후 prompt_version 포함하여 재생성
+DROP INDEX saju_daily_narrative_cache_key;
+CREATE UNIQUE INDEX saju_daily_narrative_cache_key
+  ON saju_daily_narrative (profile_id, school, for_date, frame_hash, model_id, prompt_version, algorithm_version);
+```
+
+> **`sections_jsonb` 와 `school_specific_jsonb` 를 nullable 로 두는 이유**: 0016 에서 만들어진 기존 row 들 (v0.3 plain-text 모델) 이 이미 존재할 수 있다. NOT NULL 강제하면 ALTER 가 실패한다. monthly 의 `narrative-server.ts` 도 *null cached row → regen* 자가 치유 분기를 갖고 있어 (yearly/lifetime 패턴) 동일하게 처리.
+>
+> **PROMPT_VERSION=1 (신규)**: 캐시 키에 `prompt_version=1` 이 들어가므로 기존 plain-text row (prompt_version DEFAULT 1) 와 신규 sections-rich row 는 동일 키를 만들 수 있다. 이를 해결하기 위해 `narrative-server.ts` 의 cache lookup 에서 `sections_jsonb IS NOT NULL` 조건도 함께 확인하거나, *기존 plain-text row 를 백필/삭제*하는 것이 안전. **결정: ALTER 와 함께 기존 row 를 DELETE** (마이그레이션에 포함):
+>
+> ```sql
+> -- 기존 plain-text row 청소 — 신규 모델로 캐시 자동 재생성 (lazy regen).
+> DELETE FROM saju_daily_narrative;
+> ```
+>
+> daily narrative 는 매일 행 단위로 자연 재생성되므로 손실 영향 미미 (오늘 첫 방문 시 새로 빌드).
 
 ### 3.3 마이그레이션 분할
 
-- **PR-A (이번 PR)**: `0019_saju_tri_daily.sql` — 두 테이블 생성. 옛 `saju_daily_fortunes` 는 건드리지 않음. (현재 최신 마이그레이션은 `0018_silent_compose_fix.sql`.)
-- **PR-B (Follow-up, 며칠 후)**: `0020_drop_saju_daily_fortunes.sql` — `DROP TABLE saju_daily_fortunes`. 신규 시스템 운영 안정성 확인 후 진행.
+- **PR-A (이번 PR)**: `apps/dashboard/drizzle/<next>_saju_daily_narrative_richer.sql` — 위 ALTER TABLE + DROP INDEX + CREATE UNIQUE INDEX + DELETE. **현재 최신은 `0018_silent_compose_fix.sql`** 이라 `drizzle-kit generate` 결과 `0019_...` 가 될 가능성 높지만, drizzle-kit 이 자동 부여하므로 PR 시점 번호를 따른다. ALTER 만 한다 (옛 `saju_daily_fortunes` 는 건드리지 않음).
+- **PR-B (Follow-up, 며칠 후)**: `<next+1>_drop_saju_daily_fortunes.sql` — `DROP TABLE saju_daily_fortunes`. 신규 시스템 운영 안정성 확인 후 진행.
 
-> **참고**: `drizzle-kit generate` 가 자동으로 다음 번호를 부여하므로 *최종 파일명은 다를 수 있음*. spec은 *순서·내용 의도*만 명시. PR 시점에 `apps/dashboard/drizzle/` 최신 번호 확인하여 +1, +2 로 잡는다.
+> **drizzle-kit 자동 생성 한계**: drizzle-kit 은 Drizzle schema 변경을 감지해 ALTER 를 생성하지만, `DROP INDEX` 후 `CREATE UNIQUE INDEX` 재작성과 `DELETE FROM` 는 자동 생성 안 됨. 생성된 `.sql` 파일을 손으로 추가 편집해 두 statement 를 박는다 (`drizzle-kit` 의 "수동 append" 패턴 — 0016 의 CHECK 추가와 동일 방식).
 
 ### 3.4 캐시 자가 치유
 
@@ -391,7 +418,7 @@ TanStack Query 학파별 key 분리로 한 학파 narrative 실패가 다른 학
 
 ```bash
 cd apps/dashboard
-pnpm db:generate              # 0013_saju_tri_daily.sql
+pnpm db:generate              # 새 SQL 생성 (0019 예상) — DROP/CREATE INDEX + DELETE 수동 append
 pnpm db:migrate \
   --i-know-this-is-prod       # 192.168.0.5:5440 적용
 ```
@@ -411,8 +438,8 @@ API 라우트 검증:
 
 ### 10.3 Rollback 전략
 
-- **PR-A revert**: 신규 테이블 2개 drop (`DROP TABLE saju_daily_narrative; DROP TABLE saju_daily_tri;`) + 코드 revert. 옛 시스템 그대로 살아있음.
-- **PR-B revert**: 옛 테이블/코드 복원 시 신규 시스템과 공존 가능 (서로 독립).
+- **PR-A revert**: 코드 revert + 보강 컬럼 4 개 drop (`ALTER TABLE saju_daily_narrative DROP COLUMN prompt_version, DROP COLUMN sections_jsonb, DROP COLUMN school_specific_jsonb, DROP COLUMN citations;`) + UNIQUE INDEX 원상복구 (`(profile_id, school, for_date, frame_hash, model_id, algorithm_version)`). 0016 의 plain-text 모델로 복귀. 옛 시스템 (`saju_daily_fortunes` + `SajuDailyFortune` 위젯) 그대로 살아있음.
+- **PR-B revert**: `saju_daily_fortunes` 테이블 복원 (백업 필요) + 옛 코드 git revert. 신규 시스템과 공존 가능 (서로 독립).
 
 ## 11. 명시적 Out-of-Scope
 
