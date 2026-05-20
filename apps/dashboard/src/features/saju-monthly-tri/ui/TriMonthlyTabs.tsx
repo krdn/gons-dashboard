@@ -14,6 +14,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TriNationMonthly, MonthlyFrame } from "@gons/saju";
 import { MonthlyFrameView, type MonthlyNarrativePayload } from "./MonthlyFrameView";
 import { toUserMessage } from "../lib/errorMessage";
+import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 
 const TABS = [
   { key: "ko", label: "한국" },
@@ -64,7 +65,7 @@ interface Props {
   targetYear: number;
   targetMonth: number;
   triNation: TriNationMonthly;
-  modelId: string;
+  modelKey: SajuModelKey;
 }
 
 export function TriMonthlyTabs({
@@ -72,7 +73,7 @@ export function TriMonthlyTabs({
   targetYear,
   targetMonth,
   triNation,
-  modelId,
+  modelKey,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
@@ -139,7 +140,7 @@ export function TriMonthlyTabs({
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/monthly/${profileId}/narrative?school=${school}&year=${targetYear}&month=${targetMonth}&model=${encodeURIComponent(modelId)}`,
+          `/api/saju/monthly/${profileId}/narrative?school=${school}&year=${targetYear}&month=${targetMonth}&model=${modelKey}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

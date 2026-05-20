@@ -17,6 +17,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TriNationYearly, YearlyFrame } from "@gons/saju";
 import { YearlyFrameView, type YearlyNarrativePayload } from "./YearlyFrameView";
 import { toUserMessage } from "../lib/errorMessage";
+import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 
 const TABS = [
   { key: "ko", label: "한국" },
@@ -67,10 +68,10 @@ interface Props {
   profileId: string;
   targetYear: number;
   triNation: TriNationYearly;
-  modelId: string;
+  modelKey: SajuModelKey;
 }
 
-export function TriYearlyTabs({ profileId, targetYear, triNation, modelId }: Props) {
+export function TriYearlyTabs({ profileId, targetYear, triNation, modelKey }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
   // 카운트다운 표시용 현재 시각. render 중 Date.now() 금지 — fetchNarrative 핸들러에서
@@ -141,7 +142,7 @@ export function TriYearlyTabs({ profileId, targetYear, triNation, modelId }: Pro
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/yearly/${profileId}/narrative?school=${school}&year=${targetYear}&model=${encodeURIComponent(modelId)}`,
+          `/api/saju/yearly/${profileId}/narrative?school=${school}&year=${targetYear}&model=${modelKey}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

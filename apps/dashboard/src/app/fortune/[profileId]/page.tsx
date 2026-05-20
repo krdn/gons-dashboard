@@ -20,10 +20,7 @@ import {
 import { SajuTriLifetime } from "@/widgets/saju-tri-lifetime";
 import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
 import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
-import {
-  SAJU_MODEL_REGISTRY,
-  parseSajuModelKey,
-} from "@/shared/lib/llm/saju-model-registry";
+import { parseSajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 import { SajuModelPicker } from "@/features/saju-model-picker";
 import type {
   Element,
@@ -66,7 +63,6 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
   const modelKey = parseSajuModelKey(
     Array.isArray(sp.model) ? sp.model[0] : sp.model,
   );
-  const modelId = SAJU_MODEL_REGISTRY[modelKey].id;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -136,11 +132,11 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
         <SajuModelPicker selected={modelKey} />
       </div>
 
-      <SajuTriLifetime profileId={profileId} userId={session.user.id} modelId={modelId} />
+      <SajuTriLifetime profileId={profileId} userId={session.user.id} modelKey={modelKey} />
 
-      <SajuTriYearly profileId={profileId} userId={session.user.id} modelId={modelId} />
+      <SajuTriYearly profileId={profileId} userId={session.user.id} modelKey={modelKey} />
 
-      <SajuTriMonthly profileId={profileId} userId={session.user.id} modelId={modelId} />
+      <SajuTriMonthly profileId={profileId} userId={session.user.id} modelKey={modelKey} />
 
       <section
         aria-labelledby="pillars-heading"

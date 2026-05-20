@@ -19,13 +19,14 @@ import {
   TriMonthlyTabs,
 } from "@/features/saju-monthly-tri";
 import { toUserMessage } from "@/features/saju-monthly-tri/lib/errorMessage";
+import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 
 interface Props {
   profileId: string;
   userId: string;
   targetYear?: number;
   targetMonth?: number;
-  modelId: string;
+  modelKey: SajuModelKey;
 }
 
 export async function SajuTriMonthly({
@@ -33,7 +34,7 @@ export async function SajuTriMonthly({
   userId,
   targetYear,
   targetMonth,
-  modelId,
+  modelKey,
 }: Props) {
   const year = targetYear ?? currentKstYear();
   const month = targetMonth ?? currentKstMonth();
@@ -67,7 +68,7 @@ export async function SajuTriMonthly({
             targetYear={year}
             targetMonth={month}
             triNation={result.triNation}
-            modelId={modelId}
+            modelKey={modelKey}
           />
         </div>
       </section>

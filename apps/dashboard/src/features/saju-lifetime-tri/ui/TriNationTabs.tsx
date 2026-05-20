@@ -23,6 +23,7 @@ import type {
 } from "@/shared/lib/db/schema";
 import { LifetimeFrameView } from "./LifetimeFrameView";
 import { toUserMessage } from "../lib/errorMessage";
+import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 
 const TABS = [
   { key: "ko", label: "한국" },
@@ -79,10 +80,10 @@ const INITIAL_CACHE: NarrativeCache = {
 interface Props {
   profileId: string;
   triNation: TriNationLifetime;
-  modelId: string;
+  modelKey: SajuModelKey;
 }
 
-export function TriNationTabs({ profileId, triNation, modelId }: Props) {
+export function TriNationTabs({ profileId, triNation, modelKey }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
   // 카운트다운 표시용 현재 시각 (epoch ms). render 중 Date.now() 호출 금지(react-hooks/purity)
@@ -157,7 +158,7 @@ export function TriNationTabs({ profileId, triNation, modelId }: Props) {
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/lifetime/${profileId}/narrative?school=${school}&model=${encodeURIComponent(modelId)}`,
+          `/api/saju/lifetime/${profileId}/narrative?school=${school}&model=${modelKey}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

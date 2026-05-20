@@ -13,14 +13,15 @@ import { getOrBuildLifetime } from "@/features/saju-lifetime-tri/api/lifetime-se
 import { TriNationTabs } from "@/features/saju-lifetime-tri/ui/TriNationTabs";
 import { CrossCheckBadge } from "@/features/saju-lifetime-tri/ui/CrossCheckBadge";
 import { toUserMessage } from "@/features/saju-lifetime-tri/lib/errorMessage";
+import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 
 interface Props {
   profileId: string;
   userId: string;
-  modelId: string;
+  modelKey: SajuModelKey;
 }
 
-export async function SajuTriLifetime({ profileId, userId, modelId }: Props) {
+export async function SajuTriLifetime({ profileId, userId, modelKey }: Props) {
   const result = await getOrBuildLifetime(profileId, userId).then(
     ({ triNation }) => ({ ok: true as const, triNation }),
     (e: unknown) => ({
@@ -44,7 +45,7 @@ export async function SajuTriLifetime({ profileId, userId, modelId }: Props) {
         </h2>
         <div className="space-y-4">
           <CrossCheckBadge triNation={result.triNation} />
-          <TriNationTabs profileId={profileId} triNation={result.triNation} modelId={modelId} />
+          <TriNationTabs profileId={profileId} triNation={result.triNation} modelKey={modelKey} />
         </div>
       </section>
     );
