@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { getFortuneProfile } from "@/entities/fortune-profile";
@@ -22,6 +23,12 @@ import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
 import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
 import { parseSajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 import { SajuModelPicker } from "@/features/saju-model-picker";
+import { TabsNav, TabPanel, TabSkeleton } from "@/shared/ui/Tabs";
+import {
+  FORTUNE_TAB_KEYS,
+  FORTUNE_TAB_META,
+  parseFortuneTabKey,
+} from "@/shared/lib/saju/tab-key";
 import type {
   Element,
   MajorFortune,
@@ -37,8 +44,14 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ profileId: string }>;
-  searchParams: Promise<{ model?: string | string[] }>;
+  searchParams: Promise<{ model?: string | string[]; tab?: string | string[] }>;
 };
+
+const FORTUNE_TAB_PREFIX = "fortune";
+const FORTUNE_TABS = FORTUNE_TAB_KEYS.map((k) => ({
+  key: k,
+  label: FORTUNE_TAB_META[k].label,
+}));
 
 function ageFromBirthDate(birthDate: string): number {
   const [y, m, d] = birthDate.split("-").map(Number);
@@ -63,6 +76,7 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
   const modelKey = parseSajuModelKey(
     Array.isArray(sp.model) ? sp.model[0] : sp.model,
   );
+  const activeTab = parseFortuneTabKey(sp.tab);
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -132,129 +146,174 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
         <SajuModelPicker selected={modelKey} />
       </div>
 
-      <SajuTriLifetime profileId={profileId} userId={session.user.id} modelKey={modelKey} />
+      <TabsNav
+        tabs={FORTUNE_TABS}
+        activeKey={activeTab}
+        ariaLabel="사주 분석 탭"
+        idPrefix={FORTUNE_TAB_PREFIX}
+      />
 
-      <SajuTriYearly profileId={profileId} userId={session.user.id} modelKey={modelKey} />
-
-      <SajuTriMonthly profileId={profileId} userId={session.user.id} modelKey={modelKey} />
-
-      <section
-        aria-labelledby="pillars-heading"
-        className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-      >
-        <h2
-          id="pillars-heading"
-          className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-        >
-          사주팔자
-        </h2>
-        <SajuPillarsBoard chart={chart} tenGods={tenGods} />
-      </section>
-
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <section
-          aria-labelledby="elements-heading"
-          className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-        >
-          <h2
-            id="elements-heading"
-            className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-          >
-            오행 분포
-          </h2>
-          <SajuElementsChart elements={elements} />
-        </section>
-        <section
-          aria-labelledby="pattern-heading"
-          className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-        >
-          <h2
-            id="pattern-heading"
-            className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-          >
-            격국 · 용신
-          </h2>
-          <SajuPatternCard
-            pattern={chart.pattern}
-            strength={strength}
-            yongSin={yongSin}
-            giSin={giSin}
-          />
-        </section>
-      </div>
-
-      <section
-        aria-labelledby="ten-gods-heading"
-        className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-      >
-        <h2
-          id="ten-gods-heading"
-          className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-        >
-          십신
-        </h2>
-        <SajuTenGodsTable tenGods={tenGods} />
-      </section>
-
-      <section
-        aria-labelledby="major-fortune-heading"
-        className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-      >
-        <h2
-          id="major-fortune-heading"
-          className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-        >
-          대운 흐름
-        </h2>
-        <SajuMajorFortuneTimeline
-          majorFortunes={majorFortunes}
-          currentAge={currentAge}
-          dayStem={chart.dayStem as Stem}
-          majorFortuneBody={readings.major_fortune}
-        />
-      </section>
-
-      <section
-        aria-labelledby="yearly-heading"
-        className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-      >
-        <h2
-          id="yearly-heading"
-          className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-        >
-          {currentYear}년 세운 · 월운
-        </h2>
-        <SajuYearlyReading
-          body={yearlyResult.ok ? yearlyResult.body : null}
-          error={yearlyResult.ok ? null : yearlyResult.error}
-          year={currentYear}
-        />
-      </section>
-
-      {dailyRow && (
-        <section
-          aria-labelledby="daily-heading"
-          className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
-        >
-          <h2
-            id="daily-heading"
-            className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
-          >
-            오늘 일진
-          </h2>
-          <SajuDailyFortune
-            payload={dailyRow.payload as DailyFortunePayload}
-            dayPillar={`${dailyRow.dayStem}${dailyRow.dayBranch}`}
-          />
-        </section>
+      {activeTab === "lifetime" && (
+        <TabPanel tabKey="lifetime" idPrefix={FORTUNE_TAB_PREFIX}>
+          <Suspense fallback={<TabSkeleton />}>
+            <SajuTriLifetime
+              profileId={profileId}
+              userId={session.user.id}
+              modelKey={modelKey}
+            />
+          </Suspense>
+        </TabPanel>
       )}
 
-      <section aria-labelledby="readings-heading" className="mb-8">
-        <h2 id="readings-heading" className="mb-4 text-base font-semibold">
-          해설
-        </h2>
-        <SajuReadingSections readings={readings} errors={errors} />
-      </section>
+      {activeTab === "yearly" && (
+        <TabPanel tabKey="yearly" idPrefix={FORTUNE_TAB_PREFIX}>
+          <Suspense fallback={<TabSkeleton />}>
+            <SajuTriYearly
+              profileId={profileId}
+              userId={session.user.id}
+              modelKey={modelKey}
+            />
+          </Suspense>
+        </TabPanel>
+      )}
+
+      {activeTab === "monthly" && (
+        <TabPanel tabKey="monthly" idPrefix={FORTUNE_TAB_PREFIX}>
+          <Suspense fallback={<TabSkeleton />}>
+            <SajuTriMonthly
+              profileId={profileId}
+              userId={session.user.id}
+              modelKey={modelKey}
+            />
+          </Suspense>
+        </TabPanel>
+      )}
+
+      {activeTab === "chart" && (
+        <TabPanel tabKey="chart" idPrefix={FORTUNE_TAB_PREFIX}>
+          <section
+            aria-labelledby="pillars-heading"
+            className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+          >
+            <h2
+              id="pillars-heading"
+              className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+            >
+              사주팔자
+            </h2>
+            <SajuPillarsBoard chart={chart} tenGods={tenGods} />
+          </section>
+
+          <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <section
+              aria-labelledby="elements-heading"
+              className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+            >
+              <h2
+                id="elements-heading"
+                className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+              >
+                오행 분포
+              </h2>
+              <SajuElementsChart elements={elements} />
+            </section>
+            <section
+              aria-labelledby="pattern-heading"
+              className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+            >
+              <h2
+                id="pattern-heading"
+                className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+              >
+                격국 · 용신
+              </h2>
+              <SajuPatternCard
+                pattern={chart.pattern}
+                strength={strength}
+                yongSin={yongSin}
+                giSin={giSin}
+              />
+            </section>
+          </div>
+
+          <section
+            aria-labelledby="ten-gods-heading"
+            className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+          >
+            <h2
+              id="ten-gods-heading"
+              className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+            >
+              십신
+            </h2>
+            <SajuTenGodsTable tenGods={tenGods} />
+          </section>
+        </TabPanel>
+      )}
+
+      {activeTab === "reading" && (
+        <TabPanel tabKey="reading" idPrefix={FORTUNE_TAB_PREFIX}>
+          <section
+            aria-labelledby="major-fortune-heading"
+            className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+          >
+            <h2
+              id="major-fortune-heading"
+              className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+            >
+              대운 흐름
+            </h2>
+            <SajuMajorFortuneTimeline
+              majorFortunes={majorFortunes}
+              currentAge={currentAge}
+              dayStem={chart.dayStem as Stem}
+              majorFortuneBody={readings.major_fortune}
+            />
+          </section>
+
+          <section
+            aria-labelledby="yearly-heading"
+            className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+          >
+            <h2
+              id="yearly-heading"
+              className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+            >
+              {currentYear}년 세운 · 월운
+            </h2>
+            <SajuYearlyReading
+              body={yearlyResult.ok ? yearlyResult.body : null}
+              error={yearlyResult.ok ? null : yearlyResult.error}
+              year={currentYear}
+            />
+          </section>
+
+          {dailyRow && (
+            <section
+              aria-labelledby="daily-heading"
+              className="mb-8 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5"
+            >
+              <h2
+                id="daily-heading"
+                className="mb-4 text-sm font-semibold text-[var(--color-text-muted)]"
+              >
+                오늘 일진
+              </h2>
+              <SajuDailyFortune
+                payload={dailyRow.payload as DailyFortunePayload}
+                dayPillar={`${dailyRow.dayStem}${dailyRow.dayBranch}`}
+              />
+            </section>
+          )}
+
+          <section aria-labelledby="readings-heading" className="mb-8">
+            <h2 id="readings-heading" className="mb-4 text-base font-semibold">
+              해설
+            </h2>
+            <SajuReadingSections readings={readings} errors={errors} />
+          </section>
+        </TabPanel>
+      )}
     </main>
   );
 }
