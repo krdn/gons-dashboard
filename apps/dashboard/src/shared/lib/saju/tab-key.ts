@@ -9,6 +9,7 @@ export const FORTUNE_TAB_KEYS = [
   "lifetime",
   "yearly",
   "monthly",
+  "daily",
   "chart",
   "reading",
 ] as const;
@@ -21,6 +22,7 @@ export const FORTUNE_TAB_META: Record<FortuneTabKey, { label: string }> = {
   lifetime: { label: "평생운세" },
   yearly: { label: "세운" },
   monthly: { label: "월운" },
+  daily: { label: "일운" },
   chart: { label: "사주원국" },
   reading: { label: "대운·해설" },
 };
