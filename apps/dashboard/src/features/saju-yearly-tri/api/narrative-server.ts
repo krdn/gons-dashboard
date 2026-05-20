@@ -103,24 +103,42 @@ async function callYearlyLlmAndParseWithRetry(
         ? baseUserContent
         : `${baseUserContent}\n\n[중요 — 재시도] 이전 응답이 schema 검증에 실패했습니다. 모든 sections 필드를 충분한 분량으로 채우고, schoolSpecific 의 모든 필드를 빠짐없이 작성하세요. 출력은 JSON 본문만.\n\n검증 실패 상세: ${lastErr instanceof ZodError ? lastErr.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(lastErr)}`;
 
-    const response = await anthropic.messages.create({
-      model: modelId,
-      max_tokens: MAX_NARRATIVE_TOKENS,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userContent }],
-    });
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model: modelId,
+        max_tokens: MAX_NARRATIVE_TOKENS,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userContent }],
+      });
+    } catch (err) {
+      console.error(
+        `[saju-yearly-narrative] LLM_CALL_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
+    }
 
     const firstBlock = response.content[0];
     const text =
       firstBlock && firstBlock.type === "text" ? firstBlock.text : "";
+    const stopReason = response.stop_reason;
 
     try {
       const json = JSON.parse(extractJsonObject(text));
       return SCHOOL_SCHEMAS[school].parse(json) as NarrativeOutput;
     } catch (err) {
       lastErr = err;
-      if (!(err instanceof ZodError)) throw err;
-      if (attempt === 2) throw err;
+      if (err instanceof ZodError) {
+        console.error(
+          `[saju-yearly-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+        );
+        if (attempt === 2) throw err;
+      } else {
+        console.error(
+          `[saju-yearly-narrative] JSON_PARSE_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length} text_head=${JSON.stringify(text.slice(0, 200))}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        throw err;
+      }
     }
   }
   throw lastErr ?? new Error("LLM retry loop exited without result");
