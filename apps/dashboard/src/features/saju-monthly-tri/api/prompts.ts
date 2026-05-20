@@ -8,7 +8,9 @@
 // - 프롬프트 또는 출력 스키마 변경 시 bump → 자동 캐시 무효화.
 export const PROMPT_VERSION = 2;
 
-export type NarrativeSchool = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
+// v0.3.1 — NarrativeSchool 의 source 는 shared/lib/db/schema. 여기서는 re-export.
+import type { NarrativeSchool } from "@/shared/lib/db/schema";
+export type { NarrativeSchool };
 
 const COMMON_HEADER = `당신은 30년 경력의 사주 명리학 전문가입니다. 비전문가 사용자에게 이번 달 한 달의 흐름을 깊이 이해시키는 것이 목표입니다.
 

@@ -1,32 +1,22 @@
 "use client";
 
-// YearlyFrame 표시 + narrative 영역.
+// MonthlyFrame 표시 + narrative 영역.
 //
-// lifetime 의 LifetimeFrameView 와 동일한 props 패턴 (narrative/loading/error/retryRemainingMs/onFetch)
-// 이나, frame shape 가 완전히 달라 별도 컴포넌트.
-//
-// 헤드라인 (D5 권장안):
-//   - netVerdict 색 발레키 (favorable=그린, unfavorable=레드, mixed=회색)
-//   - currentDaeun (대운 구간)
-//   - yearGanji (세운 간지)
-//
-// 그 외 정보 (보조):
-//   - yongShinDelta (강해진/약해진 오행)
-//   - daeunTransition (대운 전환 예고, 있을 때만)
-//   - ganjiInteractions (충/합/형/파/해, 있을 때만)
-//   - shensha (신살, 있을 때만)
-//   - schoolSpecificHints (학파 고유 힌트)
-//
-// state lift-up (Polish G): narrative 캐시/AbortController/카운트다운 모두 부모(TriYearlyTabs) 보유.
+// YearlyFrameView 미러. 차이:
+//  - frame.yearGanji → frame.monthGanji
+//  - 헤더에 targetMonth 추가 ("YYYY년 M월 월운")
+//  - narrative sections shape 는 MonthlyNarrativeSections (yearly 와 동일 7필드)
 //
 // v0.3.1 narrative richer: narrative 가 단순 문자열에서 구조화 payload 로 변경.
-// shared/ui/saju-narrative 의 4 컴포넌트로 lifetime 과 동일 패턴 렌더.
+// shared/ui/saju-narrative 의 4 컴포넌트로 lifetime/yearly 와 동일 패턴 렌더.
+//
+// state lift-up (yearly 와 동일): narrative 캐시/AbortController/카운트다운은 부모(TriMonthlyTabs).
 
-import type { YearlyFrame, Yongshin } from "@gons/saju";
+import type { MonthlyFrame, Yongshin } from "@gons/saju";
 import type {
+  MonthlyNarrativeSections,
   NarrativeSchool,
   SchoolSpecific,
-  YearlyNarrativeSections,
 } from "@/shared/lib/db/schema";
 import {
   CitationsFootnote,
@@ -35,18 +25,18 @@ import {
   SchoolSpecificCard,
 } from "@/shared/ui/saju-narrative";
 
-export interface YearlyNarrativePayload {
+export interface MonthlyNarrativePayload {
   narrativeText: string;
-  sections: YearlyNarrativeSections;
-  // v1 row (v0.3 시점) 는 schoolSpecific 가 없으므로 nullable.
+  sections: MonthlyNarrativeSections;
+  // v1 row 호환 (v0.3 시점 에는 schoolSpecific 가 없었음).
   schoolSpecific: SchoolSpecific | null;
   citations: string[];
 }
 
 interface Props {
-  frame: YearlyFrame;
+  frame: MonthlyFrame;
   school: NarrativeSchool;
-  narrative: YearlyNarrativePayload | null;
+  narrative: MonthlyNarrativePayload | null;
   loading: boolean;
   error: string | null;
   retryRemainingMs: number; // 0 = rate-limit 상태 아님
@@ -62,7 +52,7 @@ function formatRetryRemaining(ms: number): string {
   return `${mm}:${ss}`;
 }
 
-function verdictStyle(verdict: YearlyFrame["yongShinDelta"]["netVerdict"]): {
+function verdictStyle(verdict: MonthlyFrame["yongShinDelta"]["netVerdict"]): {
   label: string;
   className: string;
 } {
@@ -80,7 +70,6 @@ function formatGanji(gz: { stem: string; branch: string }): string {
   return `${gz.stem}${gz.branch}`;
 }
 
-// Yongshin 은 학파별 discriminated union — 핵심 식별값을 한 줄로 압축.
 function formatYongshin(ys: Yongshin): string {
   switch (ys.school) {
     case "ko":
@@ -94,7 +83,7 @@ function formatYongshin(ys: Yongshin): string {
   }
 }
 
-export function YearlyFrameView({
+export function MonthlyFrameView({
   frame,
   school,
   narrative,
@@ -108,11 +97,12 @@ export function YearlyFrameView({
 
   return (
     <div className="border rounded p-4 space-y-3">
-      {/* 헤드라인: netVerdict + yearGanji + currentDaeun */}
+      {/* 헤드라인: netVerdict + monthGanji + currentDaeun */}
       <div className="space-y-1">
         <div className={`text-lg ${verdict.className}`}>{verdict.label}</div>
         <div className="text-sm text-gray-700">
-          {frame.targetYear}년 세운: <span className="font-medium">{formatGanji(frame.yearGanji)}</span>
+          {frame.targetYear}년 {frame.targetMonth}월 월운:{" "}
+          <span className="font-medium">{formatGanji(frame.monthGanji)}</span>
         </div>
         <div className="text-sm text-gray-700">
           대운 ({frame.currentDaeun.startAge}–{frame.currentDaeun.endAge}세):{" "}
@@ -157,7 +147,7 @@ export function YearlyFrameView({
         </div>
       )}
 
-      {/* 신살 (shensha) */}
+      {/* 신살 */}
       {frame.shensha.length > 0 && (
         <div className="text-sm space-y-0.5">
           <div className="text-[var(--color-text-muted)]">신살:</div>

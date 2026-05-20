@@ -19,6 +19,7 @@ import {
 } from "@/widgets/saju-detail";
 import { SajuTriLifetime } from "@/widgets/saju-tri-lifetime";
 import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
+import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
 import type {
   Element,
   MajorFortune,
@@ -122,6 +123,8 @@ export default async function SajuDetailPage({ params }: Props) {
       <SajuTriLifetime profileId={profileId} userId={session.user.id} />
 
       <SajuTriYearly profileId={profileId} userId={session.user.id} />
+
+      <SajuTriMonthly profileId={profileId} userId={session.user.id} />
 
       <section
         aria-labelledby="pillars-heading"

@@ -1,21 +1,18 @@
 "use client";
 
-// 5탭 (한국·中자평·中맹파·日추명·통합 비교) — 학파별 YearlyFrameView 또는 ComposeView 렌더.
+// 5탭 (한국·中자평·中맹파·日추명·통합 비교) — 학파별 MonthlyFrameView 또는 ComposeView 렌더.
 //
-// lifetime 의 TriNationTabs 패턴 미러:
-//  - WAI-ARIA Tabs Pattern (manual activation, 방향키/Home/End/roving tabindex)
-//  - state lift-up: 학파별 narrative 캐시, AbortController, 429 retryAt 카운트다운
-//  - render 중 Date.now() 금지 + useEffect body 동기 setState 금지
-//    (memory `react-19-purity-set-state-in-effect`)
+// TriYearlyTabs 패턴 미러. 차이:
+//  - fetch URL 에 month 쿼리 추가
+//  - frame shape 가 MonthlyFrame (monthGanji + targetMonth)
+//  - ComposeView 의 항목은 yearly 와 동일 (netVerdict / 용신 변동 / 대운)
 //
-// yearly 만의 차이:
-//  - fetch URL 에 year 쿼리 추가 (Phase 4 narrative route 검증 요구)
-//  - frame shape 가 YearlyFrame (lifetime 의 LifetimeFrame 과 다름)
-//  - ComposeView 는 netVerdict / yongShinDelta / currentDaeun 3행 (D6 권장)
+// state lift-up (Polish G): narrative 캐시, AbortController, 429 retryAt 카운트다운.
+// render 중 Date.now() 금지 + useEffect body 동기 setState 금지 (memory `react-19-purity-set-state-in-effect`).
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { TriNationYearly, YearlyFrame } from "@gons/saju";
-import { YearlyFrameView, type YearlyNarrativePayload } from "./YearlyFrameView";
+import type { TriNationMonthly, MonthlyFrame } from "@gons/saju";
+import { MonthlyFrameView, type MonthlyNarrativePayload } from "./MonthlyFrameView";
 import { toUserMessage } from "../lib/errorMessage";
 
 const TABS = [
@@ -29,19 +26,18 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 type SchoolKey = Exclude<TabKey, "compose">;
 
-const FRAME_KEY: Record<SchoolKey, keyof TriNationYearly["frames"]> = {
+const FRAME_KEY: Record<SchoolKey, keyof TriNationMonthly["frames"]> = {
   ko: "ko",
   "cn-ziping": "cnZiping",
   "cn-mangpai": "cnMangpai",
   jp: "jp",
 };
 
-const tabId = (key: TabKey) => `tri-yearly-tab-${key}`;
-const panelId = (key: TabKey) => `tri-yearly-panel-${key}`;
+const tabId = (key: TabKey) => `tri-monthly-tab-${key}`;
+const panelId = (key: TabKey) => `tri-monthly-panel-${key}`;
 
 interface NarrativeState {
-  // v0.3.1: 구조화 payload 로 변경 (이전: text: string | null).
-  payload: YearlyNarrativePayload | null;
+  payload: MonthlyNarrativePayload | null;
   loading: boolean;
   error: string | null;
   retryAt: number | null;
@@ -66,14 +62,18 @@ const INITIAL_CACHE: NarrativeCache = {
 interface Props {
   profileId: string;
   targetYear: number;
-  triNation: TriNationYearly;
+  targetMonth: number;
+  triNation: TriNationMonthly;
 }
 
-export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
+export function TriMonthlyTabs({
+  profileId,
+  targetYear,
+  targetMonth,
+  triNation,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
-  // 카운트다운 표시용 현재 시각. render 중 Date.now() 금지 — fetchNarrative 핸들러에서
-  // 초기화하고 useEffect 안의 setInterval 콜백에서만 갱신.
   const [nowMs, setNowMs] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,7 +86,6 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
     compose: null,
   });
 
-  // 학파 중 하나라도 retryAt 가 살아 있으면 카운트다운 setInterval 운영.
   const anyRetryAt = (Object.values(narratives) as NarrativeState[]).reduce<
     number | null
   >((earliest, s) => {
@@ -100,7 +99,6 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
     tickRef.current = setInterval(() => {
       const now = Date.now();
       setNowMs(now);
-      // 만료된 학파의 retryAt 정리.
       setNarratives((prev) => {
         let changed = false;
         const next = { ...prev };
@@ -118,7 +116,6 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
     };
   }, [anyRetryAt]);
 
-  // unmount 시 진행 중 fetch abort.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -140,7 +137,7 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/yearly/${profileId}/narrative?school=${school}&year=${targetYear}`,
+          `/api/saju/monthly/${profileId}/narrative?school=${school}&year=${targetYear}&month=${targetMonth}`,
           { signal: controller.signal },
         );
         if (!res.ok) {
@@ -165,8 +162,7 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
           throw new Error(data.error ?? "INTERNAL_ERROR");
         }
         // v0.3.1: API route 반환 shape — narrativeText + sections + schoolSpecific + citations.
-        // server-side YearlyNarrativeOutput (narrative-server.ts) 와 1:1 매핑.
-        const data = (await res.json()) as YearlyNarrativePayload;
+        const data = (await res.json()) as MonthlyNarrativePayload;
         setNarratives((prev) => ({
           ...prev,
           [school]: {
@@ -177,7 +173,6 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
           },
         }));
       } catch (err) {
-        // AbortError 는 의도된 취소 — 에러 표시하지 않음.
         if (err instanceof DOMException && err.name === "AbortError") return;
         const rawCode = err instanceof Error ? err.message : null;
         setNarratives((prev) => ({
@@ -231,7 +226,7 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
 
   return (
     <div className="space-y-3">
-      <div role="tablist" aria-label="삼국 학파 탭 (년운)" className="flex gap-2 border-b">
+      <div role="tablist" aria-label="삼국 학파 탭 (월운)" className="flex gap-2 border-b">
         {TABS.map((tab) => {
           const selected = activeTab === tab.key;
           return (
@@ -279,9 +274,9 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
             tabIndex={0}
           >
             {tab.key === "compose" ? (
-              <YearlyComposeView triNation={triNation} />
+              <MonthlyComposeView triNation={triNation} />
             ) : (
-              <YearlyFrameView
+              <MonthlyFrameView
                 frame={triNation.frames[FRAME_KEY[tab.key]]}
                 school={tab.key}
                 narrative={narratives[tab.key].payload}
@@ -298,8 +293,8 @@ export function TriYearlyTabs({ profileId, targetYear, triNation }: Props) {
   );
 }
 
-// 통합 비교 — D6 권장: netVerdict / yongShinDelta(강/약) / currentDaeun 3행.
-// yearGanji 는 4학파 모두 동일하므로 비교에서 제외.
+// 통합 비교 — yearly 와 동일 3행 (netVerdict / 용신 변동 / 대운).
+// monthGanji 는 4학파 모두 동일하므로 비교에서 제외.
 interface ComposeRow {
   label: string;
   ko: string;
@@ -308,21 +303,21 @@ interface ComposeRow {
   jp: string;
 }
 
-function verdictLabel(v: YearlyFrame["yongShinDelta"]["netVerdict"]): string {
+function verdictLabel(v: MonthlyFrame["yongShinDelta"]["netVerdict"]): string {
   return v === "favorable" ? "길" : v === "unfavorable" ? "흉" : "혼";
 }
 
-function deltaLabel(delta: YearlyFrame["yongShinDelta"]): string {
+function deltaLabel(delta: MonthlyFrame["yongShinDelta"]): string {
   const r = delta.reinforced.join("/") || "-";
   const w = delta.weakened.join("/") || "-";
   return `↑${r} / ↓${w}`;
 }
 
-function daeunLabel(d: YearlyFrame["currentDaeun"]): string {
+function daeunLabel(d: MonthlyFrame["currentDaeun"]): string {
   return `${d.startAge}-${d.endAge} ${d.ganji.stem}${d.ganji.branch}`;
 }
 
-function YearlyComposeView({ triNation }: { triNation: TriNationYearly }) {
+function MonthlyComposeView({ triNation }: { triNation: TriNationMonthly }) {
   const { ko, cnZiping, cnMangpai, jp } = triNation.frames;
   const rows: ComposeRow[] = [
     {
@@ -350,7 +345,7 @@ function YearlyComposeView({ triNation }: { triNation: TriNationYearly }) {
   return (
     <table className="w-full text-sm border">
       <caption className="sr-only">
-        삼국 학파별 년운 비교 표 (한국/中자평/中맹파/日추명)
+        삼국 학파별 월운 비교 표 (한국/中자평/中맹파/日추명)
       </caption>
       <thead>
         <tr>

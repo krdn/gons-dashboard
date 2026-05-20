@@ -5,13 +5,15 @@
 import type { LifetimeFrame } from "@gons/saju";
 import type {
   LifetimeNarrativeSections,
+  NarrativeSchool,
   SchoolSpecific,
 } from "@/shared/lib/db/schema";
-import type { NarrativeSchool } from "../api/prompts";
-import { KeyTermsStrip } from "./KeyTermsStrip";
-import { NarrativeSection } from "./NarrativeSection";
-import { CitationsFootnote } from "./CitationsFootnote";
-import { SchoolSpecificCard } from "./school-specific/SchoolSpecificCard";
+import {
+  CitationsFootnote,
+  KeyTermsStrip,
+  NarrativeSection,
+  SchoolSpecificCard,
+} from "@/shared/ui/saju-narrative";
 
 interface NarrativePayload {
   narrativeText: string;

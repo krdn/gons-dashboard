@@ -1,12 +1,12 @@
 // 학파별 detail 컴포넌트 dispatcher.
 import type {
+  NarrativeSchool,
   SchoolSpecific,
   SchoolSpecificKo,
   SchoolSpecificZiping,
   SchoolSpecificMangpai,
   SchoolSpecificJp,
 } from "@/shared/lib/db/schema";
-import type { NarrativeSchool } from "../../api/prompts";
 import { KoSchoolDetail } from "./KoSchoolDetail";
 import { ZipingSchoolDetail } from "./ZipingSchoolDetail";
 import { MangpaiSchoolDetail } from "./MangpaiSchoolDetail";
