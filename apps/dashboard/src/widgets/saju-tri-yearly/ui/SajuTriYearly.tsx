@@ -17,15 +17,16 @@ import {
 import { YearlyCrossCheckBadge } from "@/features/saju-yearly-tri/ui/YearlyCrossCheckBadge";
 import { TriYearlyTabs } from "@/features/saju-yearly-tri/ui/TriYearlyTabs";
 import { toUserMessage } from "@/features/saju-yearly-tri/lib/errorMessage";
+import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 
 interface Props {
   profileId: string;
   userId: string;
   targetYear?: number;
-  modelId: string;
+  modelKey: SajuModelKey;
 }
 
-export async function SajuTriYearly({ profileId, userId, targetYear, modelId }: Props) {
+export async function SajuTriYearly({ profileId, userId, targetYear, modelKey }: Props) {
   const year = targetYear ?? currentKstYear();
 
   const result = await getOrBuildYearly(profileId, userId, year).then(
@@ -56,7 +57,7 @@ export async function SajuTriYearly({ profileId, userId, targetYear, modelId }: 
             profileId={profileId}
             targetYear={year}
             triNation={result.triNation}
-            modelId={modelId}
+            modelKey={modelKey}
           />
         </div>
       </section>
