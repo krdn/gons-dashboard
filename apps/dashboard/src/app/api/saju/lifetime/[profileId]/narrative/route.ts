@@ -20,6 +20,10 @@ import {
   type NarrativeSchool,
 } from "@/features/saju-lifetime-tri/api/narrative-server";
 import { checkRateLimit } from "@/shared/lib/llm/rateLimit";
+import {
+  SAJU_MODEL_REGISTRY,
+  parseSajuModelKey,
+} from "@/shared/lib/llm/saju-model-registry";
 
 // URL 쿼리 학파(ko/cn-ziping/cn-mangpai/jp) → TriNationLifetime.frames 키 매핑.
 // (frames 의 키는 camelCase, 쿼리는 kebab-case 로 가독성 유지)
@@ -65,7 +69,9 @@ export async function GET(
     const lifetime = await getOrBuildLifetime(profileId, session.user.id);
     const frame = lifetime.triNation.frames[SCHOOL_FRAME_KEY[schoolParam]];
     const school: NarrativeSchool = schoolParam;
-    const result = await getOrBuildNarrative(profileId, school, frame);
+    const modelKey = parseSajuModelKey(new URL(req.url).searchParams.get("model"));
+    const modelId = SAJU_MODEL_REGISTRY[modelKey].id;
+    const result = await getOrBuildNarrative(profileId, school, frame, modelId);
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof ProfileNotFoundError) {

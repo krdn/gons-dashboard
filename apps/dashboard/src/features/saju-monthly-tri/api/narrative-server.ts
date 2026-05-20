@@ -19,7 +19,6 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { ALGORITHM_VERSION, type MonthlyFrame } from "@gons/saju";
-import { env } from "@/shared/config/env";
 import { anthropic } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
 import {
@@ -34,7 +33,7 @@ import {
 } from "./prompts";
 import { SCHOOL_SCHEMAS, type NarrativeOutput } from "./schemas";
 
-const MODEL_ID = env.SAJU_LLM_MODEL;
+// 모델 ID 는 호출자(API route)가 명시 전달 — v0.3.2: 사용자가 선택한 모델 (Claude/Codex/Gemini).
 const MAX_NARRATIVE_TOKENS = 4096;
 
 export type { NarrativeSchool } from "./prompts";
@@ -95,6 +94,7 @@ async function callMonthlyLlmAndParseWithRetry(
   school: NarrativeSchool,
   systemPrompt: string,
   baseUserContent: string,
+  modelId: string,
 ): Promise<NarrativeOutput> {
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -104,7 +104,7 @@ async function callMonthlyLlmAndParseWithRetry(
         : `${baseUserContent}\n\n[중요 — 재시도] 이전 응답이 schema 검증에 실패했습니다. 모든 sections 필드를 충분한 분량으로 채우고, schoolSpecific 의 모든 필드를 빠짐없이 작성하세요. 출력은 JSON 본문만.\n\n검증 실패 상세: ${lastErr instanceof ZodError ? lastErr.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(lastErr)}`;
 
     const response = await anthropic.messages.create({
-      model: MODEL_ID,
+      model: modelId,
       max_tokens: MAX_NARRATIVE_TOKENS,
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
@@ -132,6 +132,7 @@ export async function getOrBuildMonthlyNarrative(
   targetYear: number,
   targetMonth: number,
   frame: MonthlyFrame,
+  modelId: string,
 ): Promise<MonthlyNarrativeResult> {
   // frame_hash — MonthlyFrame JSON 직렬화 후 sha256.
   const frameHash = createHash("sha256")
@@ -146,7 +147,7 @@ export async function getOrBuildMonthlyNarrative(
       eq(sajuMonthlyNarrative.targetYear, targetYear),
       eq(sajuMonthlyNarrative.targetMonth, targetMonth),
       eq(sajuMonthlyNarrative.frameHash, frameHash),
-      eq(sajuMonthlyNarrative.modelId, MODEL_ID),
+      eq(sajuMonthlyNarrative.modelId, modelId),
       eq(sajuMonthlyNarrative.promptVersion, PROMPT_VERSION),
       eq(sajuMonthlyNarrative.algorithmVersion, ALGORITHM_VERSION),
     ),
@@ -191,7 +192,7 @@ export async function getOrBuildMonthlyNarrative(
 위 ${targetYear}년 ${targetMonth}월 월운을 다음 JSON 스키마로만 답하세요. 마크다운 헤더, 펜스, prose 설명, 인사말 모두 금지. '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력:
 {"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["..."]},"schoolSpecific":{...학파별 필드...},"citations":["출처1","출처2"]}`;
 
-  const parsed = await callMonthlyLlmAndParseWithRetry(school, systemPrompt, baseUserContent);
+  const parsed = await callMonthlyLlmAndParseWithRetry(school, systemPrompt, baseUserContent, modelId);
 
   // 3) 캐시 저장 — onConflictDoUpdate 로 자가 치유 (yearly 와 동일 패턴).
   await db
@@ -202,7 +203,7 @@ export async function getOrBuildMonthlyNarrative(
       targetYear,
       targetMonth,
       frameHash,
-      modelId: MODEL_ID,
+      modelId,
       promptVersion: PROMPT_VERSION,
       algorithmVersion: ALGORITHM_VERSION,
       narrativeText: parsed.narrativeText,
@@ -238,7 +239,7 @@ export async function getOrBuildMonthlyNarrative(
     sections: parsed.sections,
     schoolSpecific: parsed.schoolSpecific,
     citations: parsed.citations,
-    modelId: MODEL_ID,
+    modelId,
     promptVersion: PROMPT_VERSION,
     algorithmVersion: ALGORITHM_VERSION,
     generatedAt: new Date().toISOString(),

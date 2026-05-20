@@ -26,6 +26,10 @@ import {
   type NarrativeSchool,
 } from "@/features/saju-monthly-tri/api/narrative-server";
 import { checkRateLimit } from "@/shared/lib/llm/rateLimit";
+import {
+  SAJU_MODEL_REGISTRY,
+  parseSajuModelKey,
+} from "@/shared/lib/llm/saju-model-registry";
 
 // URL 쿼리 학파 → TriNationMonthly.frames 키 매핑.
 const SCHOOL_FRAME_KEY = {
@@ -106,12 +110,15 @@ export async function GET(
     );
     const frame = monthly.triNation.frames[SCHOOL_FRAME_KEY[schoolParam]];
     const school: NarrativeSchool = schoolParam;
+    const modelKey = parseSajuModelKey(searchParams.get("model"));
+    const modelId = SAJU_MODEL_REGISTRY[modelKey].id;
     const result = await getOrBuildMonthlyNarrative(
       profileId,
       school,
       targetYear,
       targetMonth,
       frame,
+      modelId,
     );
     return NextResponse.json(result);
   } catch (err) {
