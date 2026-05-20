@@ -19,7 +19,30 @@ import type {
   SchoolSpecificJp,
 } from "@/shared/lib/db/schema";
 
+// Hotfix #5: LLM (특히 Gemini) 이 array-of-string 자리에 object/array-of-object 응답 흡수.
+// (yearly/lifetime schemas.ts 와 동일 — DRY 검토 후보지만 현재는 의도적 복제 유지.)
+function normalizeStringArray(v: unknown): unknown {
+  const toStr = (item: unknown): string => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      return Object.entries(item)
+        .map(([k, val]) => `${k}: ${typeof val === "string" ? val : JSON.stringify(val)}`)
+        .join(" / ");
+    }
+    return String(item);
+  };
+  if (typeof v === "string") return [v];
+  if (Array.isArray(v)) return v.map(toStr);
+  if (v && typeof v === "object") {
+    return Object.entries(v).map(
+      ([k, val]) => `${k}: ${typeof val === "string" ? val : JSON.stringify(val)}`,
+    );
+  }
+  return v;
+}
+
 // Hotfix #2 (v0.3.1.1): yearly 와 같은 방향으로 약화 — LLM variance 흡수.
+// Hotfix #5 (v0.3.2.1): Gemini 가 keyTerms/cautions 빠뜨리는 경우 optional() 약화.
 const sectionsSchema = z.object({
   personality: z.string().min(30),
   career: z.string().min(30),
@@ -33,10 +56,11 @@ const sectionsSchema = z.object({
         gloss: z.string().min(1),
       }),
     )
-    .min(1)
-    .max(6),
-  cautions: z.array(z.string().min(1)).max(3),
-}) satisfies z.ZodType<MonthlyNarrativeSections>;
+    .max(6)
+    .optional()
+    .default([]),
+  cautions: z.array(z.string().min(1)).max(3).optional().default([]),
+}) satisfies z.ZodType<MonthlyNarrativeSections, z.ZodTypeDef, unknown>;
 
 const baseOutputSchema = z.object({
   narrativeText: z.string().min(200).max(1500),
@@ -48,10 +72,7 @@ const baseOutputSchema = z.object({
 // preprocess input 이 unknown 이므로 satisfies generic 도 unknown.
 const koSpecificSchema = z.object({
   joohuFocus: z.string().min(20),
-  shinsalNotes: z.preprocess(
-    (v) => (typeof v === "string" ? [v] : v),
-    z.array(z.string().min(1)).min(1),
-  ),
+  shinsalNotes: z.preprocess(normalizeStringArray, z.array(z.string().min(1)).min(1)),
 }) satisfies z.ZodType<SchoolSpecificKo, z.ZodTypeDef, unknown>;
 
 const zipingSpecificSchema = z.object({
