@@ -955,3 +955,81 @@ export const sajuDailyNarrative = pgTable(
 );
 
 export type SajuDailyNarrativeRow = typeof sajuDailyNarrative.$inferSelect;
+
+/* =========================================================================
+ * stock-analysis 위젯 — entities/portfolio + entities/stock-analysis
+ * 디자인 spec: docs/superpowers/specs/2026-05-21-stock-analysis-widget-design.md §4
+ * ========================================================================= */
+export const portfolioHoldings = pgTable(
+  "portfolio_holdings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    assetClass: text("asset_class").notNull(), // 'stock' | 'etf' | 'crypto' 등
+    market: text("market").notNull(), // 'US' | 'KR' | 'CRYPTO' 등
+    displayName: text("display_name").notNull(),
+    quantity: numeric("quantity", { precision: 20, scale: 8 }).notNull(),
+    avgCost: numeric("avg_cost", { precision: 20, scale: 8 }).notNull(),
+    purchasedAt: date("purchased_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("portfolio_holdings_user_symbol_uq").on(t.userId, t.symbol),
+    index("portfolio_holdings_user_idx").on(t.userId),
+  ],
+);
+
+export const stockPersonaPreferences = pgTable("stock_persona_preferences", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // 페르소나별 모델 선호 오버라이드: { fundamentalist: 'claude', technician: 'codex', ... }
+  overrides: jsonb("overrides")
+    .$type<Record<string, "claude" | "codex" | "gemini">>()
+    .default(sql`'{}'::jsonb`)
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const stockAnalysisCache = pgTable(
+  "stock_analysis_cache",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    symbol: text("symbol").notNull(),
+    analysisDate: date("analysis_date").notNull(),
+    // userId nullable: 글로벌 캐시(공용) 와 user-specific 캐시 모두 허용
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    personas: jsonb("personas").notNull(),
+    consensus: jsonb("consensus").notNull(),
+    marketSnapshot: jsonb("market_snapshot").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("stock_cache_lookup_uq").on(t.symbol, t.analysisDate, t.userId),
+    index("stock_cache_lookup_idx").on(t.userId, t.symbol, t.analysisDate),
+  ],
+);
+
+export const stockConsensusFlips = pgTable(
+  "stock_consensus_flips",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    fromVerdict: text("from_verdict").notNull(),
+    toVerdict: text("to_verdict").notNull(),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow().notNull(),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  },
+  (t) => [
+    // 미전송 flip 큐 조회용 partial index
+    index("flips_pending_idx").on(t.notifiedAt).where(sql`${t.notifiedAt} IS NULL`),
+  ],
+);

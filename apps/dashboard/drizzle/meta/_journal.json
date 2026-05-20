@@ -141,6 +141,20 @@
       "when": 1779280516082,
       "tag": "0019_dizzy_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779293271844,
+      "tag": "0020_left_wolfsbane",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779293290994,
+      "tag": "0021_stock_checks",
+      "breakpoints": true
     }
   ]
 }
