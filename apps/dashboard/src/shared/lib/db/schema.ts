@@ -924,8 +924,15 @@ export const sajuDailyNarrative = pgTable(
     forDate: date("for_date").notNull(),
     frameHash: text("frame_hash").notNull(),
     modelId: text("model_id").notNull(),
+    promptVersion: integer("prompt_version").notNull().default(1),
     algorithmVersion: integer("algorithm_version").notNull().default(1),
     narrativeText: text("narrative_text").notNull(),
+    sectionsJsonb: jsonb("sections_jsonb").$type<MonthlyNarrativeSections>(),
+    schoolSpecificJsonb: jsonb("school_specific_jsonb").$type<SchoolSpecific>(),
+    citations: text("citations")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     generatedAt: timestamp("generated_at", {
       withTimezone: true,
       mode: "date",
@@ -941,6 +948,7 @@ export const sajuDailyNarrative = pgTable(
       t.forDate,
       t.frameHash,
       t.modelId,
+      t.promptVersion,
       t.algorithmVersion,
     ),
   ],

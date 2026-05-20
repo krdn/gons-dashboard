@@ -74,6 +74,17 @@ export function currentKstMonth(now: Date = new Date()): number {
 }
 
 /**
+ * KST(Asia/Seoul) 기준 오늘 날짜 — "YYYY-MM-DD" 형식.
+ *
+ * DST 없음 가정 (한국은 1988 이후 미적용). UTC +9h offset 후 ISO slice.
+ * @param now - 테스트용 주입 가능. 기본 new Date().
+ */
+export function currentKstDate(now: Date = new Date()): string {
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
+/**
  * 한국식 만 나이 (KST 기준) — birthDate (YYYY-MM-DD 로컬) 와 현재 KST 시점 diff.
  *
  * 사주에서의 currentAge 는 대운 단계 lookup 에만 쓰이므로 일/시 단위 정확도는 불필요.

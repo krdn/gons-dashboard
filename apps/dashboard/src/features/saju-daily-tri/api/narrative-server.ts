@@ -1,45 +1,138 @@
-// Saju 삼국 분석 v0.3 — LLM tri 일진 narrative 빌더/캐시 서버 헬퍼.
+// v0.3.x — LLM daily narrative 빌더/캐시 서버 헬퍼.
 //
-// 정책 (yearly narrative-server 미러링 + sections 제거):
-//  - 캐시 키: (profile_id, school, for_date, frame_hash, model_id, algorithm_version)
-//  - frame_hash: DailyLiteFrame JSON.stringify 의 sha256 (학파 + 날짜별 독립)
-//  - miss 시 Anthropic SDK 호출 → text 추출 후 캐시 저장
-//  - DailyLiteFrame 은 단순화 frame 이라 narrative 도 plain text (yearly 의 sections 없음)
-//  - LLM 실패는 throw → cron route 가 isolate 후 results[].status='error' 로 격리
-//  - 동시 cache miss 시 unique violation 회피: onConflictDoNothing
+// 정책 (monthly narrative-server.ts 1:1 미러):
+//  - 캐시 키: (profile_id, school, for_date, frame_hash, model_id,
+//             prompt_version, algorithm_version)
+//  - frame_hash: DailyLiteFrame JSON.stringify 의 sha256
+//  - miss 시 Anthropic SDK 호출 → JSON.parse + zod.parse 후 캐시 저장
+//  - LLM/JSON/zod 실패는 throw → route 가 500 + console.error
+//  - 동시 cache miss / null schoolSpecific 자가 치유: onConflictDoUpdate
 //
-// MAX_NARRATIVE_TOKENS 축소 (yearly 4096 → 1024) — 일진은 1-2 문단 짧은 분량.
+// v0.3 초기 plain-text 모델에서 v0.3.x richer 모델로 완전 재작성. 마이그레이션은
+// 기존 row 를 DELETE 하여 cache key 충돌 회피.
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { ZodError } from "zod";
 import { ALGORITHM_VERSION, type DailyLiteFrame } from "@gons/saju";
-import { env } from "@/shared/config/env";
 import { anthropic } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
-import { sajuDailyNarrative } from "@/shared/lib/db/schema";
+import {
+  sajuDailyNarrative,
+  type MonthlyNarrativeSections,
+  type SchoolSpecific,
+} from "@/shared/lib/db/schema";
+import {
+  PROMPT_VERSION,
+  SCHOOL_PROMPTS,
+  type NarrativeSchool,
+} from "./prompts";
+import { SCHOOL_SCHEMAS, type NarrativeOutput } from "./schemas";
 
-const MODEL_ID = env.SAJU_LLM_MODEL;
-const MAX_NARRATIVE_TOKENS = 1024;
+const MAX_NARRATIVE_TOKENS = 4096;
 
-// CHECK constraint: school IN ('ko','cn-ziping','cn-mangpai','jp')
-export type NarrativeSchool = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
+export type { NarrativeSchool } from "./prompts";
 
-// 학파별 톤 — "이번 날 하루" 관점.
-const SCHOOL_PROMPT: Record<NarrativeSchool, string> = {
-  ko: "한국식 자평+조후+신살 관점. 박재완·박청화 톤. 일진 간지와 용신 충합으로 본 오늘 하루.",
-  "cn-ziping": "중국 자평진전 톤. 일진 간지가 용신/격국에 미치는 영향 중심의 오늘 하루.",
-  "cn-mangpai": "중국 맹파 단건업 체계 톤. 응기(應期) 관점에서 오늘 일진의 사건성.",
-  jp: "일본 추명학 톤. 통변성 중심의 오늘 하루 처세 지침.",
-};
+// monthly narrative-server.ts 와 동일 동작. cross-feature import 는 FSD boundary 위반 — 의도적 복제.
+export function extractJsonObject(text: string): string {
+  const start = text.indexOf("{");
+  if (start === -1) {
+    throw new Error("no JSON object found in LLM response");
+  }
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === "\\") {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  throw new Error("unbalanced JSON object in LLM response");
+}
 
 export interface DailyNarrativeResult {
   school: NarrativeSchool;
   forDate: string;
   narrativeText: string;
+  sections: MonthlyNarrativeSections;
+  schoolSpecific: SchoolSpecific;
+  citations: string[];
   modelId: string;
+  promptVersion: number;
   algorithmVersion: number;
   generatedAt: string;
   fromCache: boolean;
+}
+
+async function callDailyLlmAndParseWithRetry(
+  school: NarrativeSchool,
+  systemPrompt: string,
+  baseUserContent: string,
+  modelId: string,
+): Promise<NarrativeOutput> {
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const userContent =
+      attempt === 1
+        ? baseUserContent
+        : `${baseUserContent}\n\n[중요 — 재시도] 이전 응답이 schema 검증에 실패했습니다. 모든 sections 필드를 충분한 분량으로 채우고, schoolSpecific 의 모든 필드를 빠짐없이 작성하세요. 출력은 JSON 본문만.\n\n검증 실패 상세: ${lastErr instanceof ZodError ? lastErr.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(lastErr)}`;
+
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model: modelId,
+        max_tokens: MAX_NARRATIVE_TOKENS,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userContent }],
+      });
+    } catch (err) {
+      console.error(
+        `[saju-daily-narrative] LLM_CALL_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
+    }
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    const text = textBlock ? textBlock.text : "";
+    const stopReason = response.stop_reason;
+
+    try {
+      const json = JSON.parse(extractJsonObject(text));
+      return SCHOOL_SCHEMAS[school].parse(json) as NarrativeOutput;
+    } catch (err) {
+      lastErr = err;
+      if (err instanceof ZodError) {
+        console.error(
+          `[saju-daily-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+        );
+        if (attempt === 2) throw err;
+      } else {
+        console.error(
+          `[saju-daily-narrative] JSON_PARSE_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length} text_head=${JSON.stringify(text.slice(0, 200))}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        throw err;
+      }
+    }
+  }
+  throw lastErr ?? new Error("LLM retry loop exited without result");
 }
 
 export async function getOrBuildDailyNarrative(
@@ -47,58 +140,61 @@ export async function getOrBuildDailyNarrative(
   school: NarrativeSchool,
   forDate: string,
   frame: DailyLiteFrame,
+  modelId: string,
 ): Promise<DailyNarrativeResult> {
   const frameHash = createHash("sha256")
     .update(JSON.stringify(frame))
     .digest("hex");
 
-  // 1) 캐시 조회 — (profileId, school, forDate, frameHash, modelId, algorithmVersion) UNIQUE
+  // 1) 캐시 조회 — promptVersion 필터로 마이그레이션 직후 새 row 부터 시작.
   const cached = await db.query.sajuDailyNarrative.findFirst({
     where: and(
       eq(sajuDailyNarrative.profileId, profileId),
       eq(sajuDailyNarrative.school, school),
       eq(sajuDailyNarrative.forDate, forDate),
       eq(sajuDailyNarrative.frameHash, frameHash),
-      eq(sajuDailyNarrative.modelId, MODEL_ID),
+      eq(sajuDailyNarrative.modelId, modelId),
+      eq(sajuDailyNarrative.promptVersion, PROMPT_VERSION),
       eq(sajuDailyNarrative.algorithmVersion, ALGORITHM_VERSION),
     ),
   });
   if (cached) {
-    return {
-      school,
-      forDate,
-      narrativeText: cached.narrativeText,
-      modelId: cached.modelId,
-      algorithmVersion: cached.algorithmVersion,
-      generatedAt: cached.generatedAt.toISOString(),
-      fromCache: true,
-    };
+    if (!cached.sectionsJsonb || !cached.schoolSpecificJsonb) {
+      console.warn(
+        "[saju/daily-narrative] cached row with null sections/schoolSpecific — falling through to regen",
+        { profileId, school, forDate, promptVersion: cached.promptVersion },
+      );
+    } else {
+      return {
+        school,
+        forDate,
+        narrativeText: cached.narrativeText,
+        sections: cached.sectionsJsonb,
+        schoolSpecific: cached.schoolSpecificJsonb,
+        citations: cached.citations,
+        modelId: cached.modelId,
+        promptVersion: cached.promptVersion,
+        algorithmVersion: cached.algorithmVersion,
+        generatedAt: cached.generatedAt.toISOString(),
+        fromCache: true,
+      };
+    }
   }
 
-  // 2) miss → LLM 호출. yearly/monthly 와 달리 JSON 강제 없음 — plain text 1-2 문단.
-  const systemPrompt = `당신은 ${SCHOOL_PROMPT[school]} 학파 사주 명리학자입니다.
-입력으로 받은 ${forDate} 일진 분석을 바탕으로 오늘 하루 운세를 한국어로 1-2 문단(150-300자) 작성하세요.
-마크다운 헤더, 펜스, 인사말, JSON 모두 금지 — 본문 문장만.`;
+  const systemPrompt = SCHOOL_PROMPTS[school];
 
-  const userContent = `${forDate} 일진 분석:\n${JSON.stringify(frame, null, 2)}
+  const baseUserContent = `${forDate} 일운 분석:\n${JSON.stringify(frame, null, 2)}
 
-위 일진 분석을 1-2 문단으로 풀어쓰세요. 일진 간지 ${frame.dayGanji.stem}${frame.dayGanji.branch} 의 dayVibe (${frame.dayVibe}) 가 사용자에게 어떻게 작용할지 학파 톤으로 설명하세요.`;
+위 ${forDate} 일운을 다음 JSON 스키마로만 답하세요. 마크다운 헤더, 펜스, prose 설명, 인사말 모두 금지. '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력:
+{"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["..."]},"schoolSpecific":{...학파별 필드...},"citations":["출처1","출처2"]}`;
 
-  const response = await anthropic.messages.create({
-    model: MODEL_ID,
-    max_tokens: MAX_NARRATIVE_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userContent }],
-  });
+  const parsed = await callDailyLlmAndParseWithRetry(
+    school,
+    systemPrompt,
+    baseUserContent,
+    modelId,
+  );
 
-  const firstBlock = response.content[0];
-  const text =
-    firstBlock && firstBlock.type === "text" ? firstBlock.text.trim() : "";
-  if (!text) {
-    throw new Error("empty narrative from LLM");
-  }
-
-  // 3) 캐시 저장 — 동시 cache miss 시 unique violation 회피
   await db
     .insert(sajuDailyNarrative)
     .values({
@@ -106,17 +202,42 @@ export async function getOrBuildDailyNarrative(
       school,
       forDate,
       frameHash,
-      modelId: MODEL_ID,
+      modelId,
+      promptVersion: PROMPT_VERSION,
       algorithmVersion: ALGORITHM_VERSION,
-      narrativeText: text,
+      narrativeText: parsed.narrativeText,
+      sectionsJsonb: parsed.sections,
+      schoolSpecificJsonb: parsed.schoolSpecific,
+      citations: parsed.citations,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [
+        sajuDailyNarrative.profileId,
+        sajuDailyNarrative.school,
+        sajuDailyNarrative.forDate,
+        sajuDailyNarrative.frameHash,
+        sajuDailyNarrative.modelId,
+        sajuDailyNarrative.promptVersion,
+        sajuDailyNarrative.algorithmVersion,
+      ],
+      set: {
+        narrativeText: parsed.narrativeText,
+        sectionsJsonb: parsed.sections,
+        schoolSpecificJsonb: parsed.schoolSpecific,
+        citations: parsed.citations,
+        generatedAt: new Date(),
+      },
+    });
 
   return {
     school,
     forDate,
-    narrativeText: text,
-    modelId: MODEL_ID,
+    narrativeText: parsed.narrativeText,
+    sections: parsed.sections,
+    schoolSpecific: parsed.schoolSpecific,
+    citations: parsed.citations,
+    modelId,
+    promptVersion: PROMPT_VERSION,
     algorithmVersion: ALGORITHM_VERSION,
     generatedAt: new Date().toISOString(),
     fromCache: false,
