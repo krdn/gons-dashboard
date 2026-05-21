@@ -83,8 +83,29 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 매일 16:30 KST — KR 종목 재분석 + flip 알림 (KRX 장 마감 후).
+cron.schedule(
+  "30 16 * * *",
+  () => {
+    void callCron("/api/cron/stock-analyze?market=KR", "stock-analyze-kr");
+  },
+  { timezone: TIMEZONE },
+);
+
+// 매일 06:30 KST — US/Crypto/Commodity 재분석 + flip 알림 (US 장 마감 + crypto/commodity 일중).
+cron.schedule(
+  "30 6 * * *",
+  () => {
+    void callCron(
+      "/api/cron/stock-analyze?market=US_GLOBAL",
+      "stock-analyze-us-global",
+    );
+  },
+  { timezone: TIMEZONE },
+);
+
 console.log(
-  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST",
+  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST",
 );
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.
