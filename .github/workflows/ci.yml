@@ -75,6 +75,7 @@ jobs:
           MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
           PG_ENCRYPTION_KEY: a-placeholder-pg-encryption-key-of-at-least-32-chars
           PLAYMCP_CLIENT_ID: placeholder-playmcp-client-id
+          KRX_DATA_GO_KR_API_KEY: placeholder-krx-key
         run: pnpm test
 
       - name: Build MCP packages
@@ -98,6 +99,7 @@ jobs:
           MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
           PG_ENCRYPTION_KEY: a-placeholder-pg-encryption-key-of-at-least-32-chars
           PLAYMCP_CLIENT_ID: placeholder-playmcp-client-id
+          KRX_DATA_GO_KR_API_KEY: placeholder-krx-key
         run: pnpm build
 
   docker:
