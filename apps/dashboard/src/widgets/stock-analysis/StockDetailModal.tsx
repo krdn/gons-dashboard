@@ -13,6 +13,7 @@ import {
   ConsensusBadge,
   PersonaTab,
 } from "@/entities/stock-analysis/client";
+import { triggerAnalysis } from "@/features/stock-analysis-server";
 import { Modal } from "@/shared/ui/Modal";
 import { PriceChart } from "@/shared/ui/PriceChart";
 
@@ -190,7 +191,14 @@ export function StockDetailModal({
               );
             })}
           </div>
-          <PersonaTab persona={activeTab} analysis={personas[activeTab] ?? null} />
+          <PersonaTab
+            persona={activeTab}
+            analysis={personas[activeTab] ?? null}
+            symbol={holding.symbol}
+            onRegenerate={() =>
+              triggerAnalysis({ symbol: holding.symbol, persona: activeTab })
+            }
+          />
         </section>
 
         {/* 면책 */}
