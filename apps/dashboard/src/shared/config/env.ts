@@ -43,6 +43,9 @@ const schema = z.object({
   // Cron
   CRON_BEARER_TOKEN: z.string().min(32, "openssl rand -hex 32 로 생성"),
 
+  // KRX (공공데이터포털) API
+  KRX_DATA_GO_KR_API_KEY: z.string().min(1, "공공데이터포털 KRX API 키. https://www.data.go.kr/ 에서 발급."),
+
   // Web Push (VAPID)
   VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),
