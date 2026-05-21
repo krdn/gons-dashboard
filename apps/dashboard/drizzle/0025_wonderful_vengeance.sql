@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "flips_dedup_uq" ON "stock_consensus_flips" USING btree ("user_id","symbol",("detected_at"::date));

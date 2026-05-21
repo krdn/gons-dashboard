@@ -1031,6 +1031,13 @@ export const stockConsensusFlips = pgTable(
   (t) => [
     // 미전송 flip 큐 조회용 partial index
     index("flips_pending_idx").on(t.notifiedAt).where(sql`${t.notifiedAt} IS NULL`),
+    // 24h 1회 cap (spec §2.1 #4) — 같은 (user, symbol) 의 같은 날짜 detection 단 1회.
+    // INSERT 시 unique violation 발생하면 cron 이 catch + skip (이미 알림 보냄).
+    uniqueIndex("flips_dedup_uq").on(
+      t.userId,
+      t.symbol,
+      sql`(${t.detectedAt}::date)`,
+    ),
   ],
 );
 
