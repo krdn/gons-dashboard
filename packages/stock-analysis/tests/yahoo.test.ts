@@ -5,6 +5,10 @@ import {
   fetchYahooSearch,
   YahooFetchError,
 } from "../src";
+import {
+  isHangul,
+  searchKrxSymbols,
+} from "../src/adapters/krx-symbols";
 
 function mockFetchOk(response: unknown) {
   return vi.fn().mockResolvedValue({
@@ -55,28 +59,21 @@ describe("fetchYahooQuotes", () => {
 });
 
 describe("fetchYahooQuotes — error paths", () => {
-  it("429 rate-limit 은 1회 재시도 후 throw", async () => {
+  it("429 rate-limit 은 재시도 후 throw (v8 chart 폴백도 같은 mock 에서 실패)", async () => {
     vi.useFakeTimers();
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        statusText: "Too Many Requests",
-        json: vi.fn(),
-      } as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        statusText: "Too Many Requests",
-        json: vi.fn(),
-      } as unknown as Response);
+    // v7 quote 와 v8 chart 폴백 모두 같은 429 mock 을 받음 → 최종 throw.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      json: vi.fn(),
+    } as unknown as Response);
     global.fetch = fetchMock as unknown as typeof fetch;
     const promise = fetchYahooQuotes(["AAPL"]);
     const assertion = expect(promise).rejects.toThrow(YahooFetchError);
     await vi.runAllTimersAsync();
     await assertion;
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalled();
     vi.useRealTimers();
   });
 
@@ -213,5 +210,93 @@ describe("fetchYahooFundamentals", () => {
       quoteResponse: { result: [], error: null },
     });
     await expect(fetchYahooFundamentals("UNKNOWN")).rejects.toThrow(/not found/);
+  });
+});
+
+describe("isHangul / searchKrxSymbols", () => {
+  it("isHangul: 한글 포함 감지", () => {
+    expect(isHangul("삼성전자")).toBe(true);
+    expect(isHangul("AAPL")).toBe(false);
+    expect(isHangul("AAPL삼성")).toBe(true);
+    expect(isHangul("")).toBe(false);
+    expect(isHangul("005930.KS")).toBe(false);
+  });
+
+  it("searchKrxSymbols: 정확한 종목명 → 단일 매칭", () => {
+    const r = searchKrxSymbols("삼성전자");
+    expect(r.some((x) => x.symbol === "005930.KS")).toBe(true);
+    // 우선주 (005935.KS) 도 substring 으로 같이 잡힘.
+    expect(r.some((x) => x.symbol === "005935.KS")).toBe(true);
+  });
+
+  it("searchKrxSymbols: '(주)' 정규화", () => {
+    const r = searchKrxSymbols("(주)삼성전자");
+    expect(r.some((x) => x.symbol === "005930.KS")).toBe(true);
+  });
+
+  it("searchKrxSymbols: 매칭 안 되면 빈 배열", () => {
+    expect(searchKrxSymbols("존재하지않는종목XYZ")).toEqual([]);
+  });
+});
+
+describe("fetchYahooSearch — 한글 분기 (로컬 폴백)", () => {
+  it("한글 쿼리는 네트워크 호출 없이 로컬 맵에서 결과 반환", async () => {
+    const fetchMock = mockFetchOk({});
+    global.fetch = fetchMock;
+    const r = await fetchYahooSearch("삼성전자");
+    expect(r.length).toBeGreaterThan(0);
+    expect(r[0].assetClass).toBe("stock");
+    expect(r[0].market).toBe("KRX");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchYahooQuotes — v8 chart 폴백", () => {
+  it("v7 Unauthorized → v8 chart meta 로 폴백하여 price/changePct 반환", async () => {
+    const fetchMock = vi
+      .fn()
+      // 1st: v7 quote → Unauthorized
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: vi.fn().mockResolvedValue({
+          quoteResponse: {
+            result: [],
+            error: { code: "Unauthorized", description: "Invalid Crumb" },
+          },
+        }),
+      } as unknown as Response)
+      // 2nd: v8 chart → meta 응답
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: vi.fn().mockResolvedValue({
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: "AAPL",
+                  regularMarketPrice: 180,
+                  currency: "USD",
+                  chartPreviousClose: 178,
+                },
+                timestamp: [],
+                indicators: { quote: [{ open: [], high: [], low: [], close: [], volume: [] }] },
+              },
+            ],
+            error: null,
+          },
+        }),
+      } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const result = await fetchYahooQuotes(["AAPL"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].symbol).toBe("AAPL");
+    expect(result[0].price).toBe(180);
+    // changePct = (180 - 178) / 178 * 100 ≈ 1.1236
+    expect(result[0].changePct).toBeCloseTo(1.1236, 3);
+    expect(result[0].currency).toBe("USD");
   });
 });

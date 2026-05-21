@@ -34,10 +34,19 @@ export interface YahooSearchResponse {
   count?: number;
 }
 
+export interface YahooChartMeta {
+  symbol: string;
+  regularMarketPrice?: number;
+  currency?: string;
+  chartPreviousClose?: number;
+  previousClose?: number;
+  exchangeName?: string;
+}
+
 export interface YahooChartResponse {
   chart: {
     result: Array<{
-      meta: { symbol: string; regularMarketPrice?: number; currency?: string };
+      meta: YahooChartMeta;
       timestamp: number[];
       indicators: {
         quote: Array<{
