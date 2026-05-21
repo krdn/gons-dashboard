@@ -12,6 +12,7 @@ import type {
   AssetClass,
   Market,
 } from "./normalized-types";
+import { searchKrxSymbols, isHangul } from "./krx-symbols";
 
 const QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
@@ -19,25 +20,66 @@ const CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
 
 export { YahooFetchError };
 
+// v7/finance/quote 가 일부 IP/UA 에서 401/403 Unauthorized 를 반환할 때
+// v8 chart meta 로 폴백. chart meta 는 marketCap/PE/PBR 등 펀더멘털은 없지만
+// price/changePct/currency 는 제공 → orchestrator 가 quote 만 있으면 분석 가능.
+async function fetchQuoteFromChart(symbol: string): Promise<NormalizedQuote> {
+  const url = `${CHART_URL}/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
+  const data = await yahooFetchJson<YahooChartResponse>(url);
+  if (!data.chart.result || data.chart.result.length === 0) {
+    throw new YahooFetchError(`Yahoo chart empty for ${symbol}`);
+  }
+  const meta = data.chart.result[0].meta;
+  const price = meta.regularMarketPrice ?? 0;
+  const prev = meta.chartPreviousClose ?? meta.previousClose ?? price;
+  const changePct = prev > 0 ? ((price - prev) / prev) * 100 : 0;
+  return {
+    symbol: meta.symbol,
+    price,
+    changePct,
+    currency: meta.currency ?? "USD",
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 export async function fetchYahooQuotes(
   symbols: string[],
 ): Promise<NormalizedQuote[]> {
   if (symbols.length === 0) return [];
   const url = `${QUOTE_URL}?symbols=${encodeURIComponent(symbols.join(","))}`;
-  const data = await yahooFetchJson<YahooQuoteResponse>(url);
-  if (data.quoteResponse.error) {
-    throw new YahooFetchError(
-      `Yahoo quote error: ${data.quoteResponse.error.description}`,
+  try {
+    const data = await yahooFetchJson<YahooQuoteResponse>(url);
+    if (data.quoteResponse.error) {
+      throw new YahooFetchError(
+        `Yahoo quote error: ${data.quoteResponse.error.description}`,
+      );
+    }
+    const now = new Date().toISOString();
+    return data.quoteResponse.result.map((r) => ({
+      symbol: r.symbol,
+      price: r.regularMarketPrice ?? 0,
+      changePct: r.regularMarketChangePercent ?? 0,
+      currency: r.currency ?? "USD",
+      fetchedAt: now,
+    }));
+  } catch (err) {
+    // v7 Unauthorized/403/empty → v8 chart 폴백. 심볼별 병렬 fetch.
+    const results = await Promise.allSettled(
+      symbols.map((s) => fetchQuoteFromChart(s)),
     );
+    const ok = results
+      .filter(
+        (r): r is PromiseFulfilledResult<NormalizedQuote> =>
+          r.status === "fulfilled",
+      )
+      .map((r) => r.value);
+    if (ok.length === 0) {
+      throw err instanceof Error
+        ? err
+        : new YahooFetchError(`Yahoo quote fallback failed: ${String(err)}`);
+    }
+    return ok;
   }
-  const now = new Date().toISOString();
-  return data.quoteResponse.result.map((r) => ({
-    symbol: r.symbol,
-    price: r.regularMarketPrice ?? 0,
-    changePct: r.regularMarketChangePercent ?? 0,
-    currency: r.currency ?? "USD",
-    fetchedAt: now,
-  }));
 }
 
 export async function fetchYahooFundamentals(
@@ -84,6 +126,11 @@ export async function fetchYahooSearch(
 ): Promise<NormalizedSearchResult[]> {
   const trimmed = query.trim();
   if (trimmed.length === 0) return [];
+  // Yahoo v1/finance/search 는 한글 쿼리를 "Invalid Search Query" 로 거부 →
+  // 로컬 KRX 정적 맵으로 폴백. 영문/숫자/티커는 기존 Yahoo 경로.
+  if (isHangul(trimmed)) {
+    return searchKrxSymbols(trimmed);
+  }
   const url = `${SEARCH_URL}?q=${encodeURIComponent(trimmed)}&quotesCount=10&newsCount=0`;
   const data = await yahooFetchJson<YahooSearchResponse>(url);
   return data.quotes

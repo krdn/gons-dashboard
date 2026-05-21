@@ -158,6 +158,48 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test
 
 회복 안 될 때만 폴백: `scripts/fix-oauth-scope.ts` (accounts row DELETE → fresh INSERT).
 
+### 7. features barrel server/client seam (Phase 6 사고 + 패턴)
+
+`features/<name>/index.ts` 가 server-only 함수 (postgres 등 Node-only 의존) 와 `"use server"` Server Action 을 동시에 export 하면, client 컴포넌트가 그 barrel 을 import 하는 순간 next build 가 `Module not found: Can't resolve 'tls' / 'perf_hooks' / 'net'` 으로 실패한다. Server Action 의 RPC 경계 (`"use server"`) 는 함수 단위지만 import 는 모듈 단위라, 같은 barrel 의 다른 server-only export 가 함께 client bundle 그래프로 끌려간다.
+
+**해결 패턴**: entity barrel seam (Gotcha #1 의 server.ts + client.ts) 을 features 에도 미러:
+- `features/<name>/index.ts` — server entrypoint (`import "server-only"` + server-only 함수 export)
+- `features/<name>/client.ts` — RPC 경계가 있는 Server Action 만 re-export
+- `"use client"` 컴포넌트 는 `@/features/<name>/client` 로만 import
+
+**적용 예시**: `features/stock-analysis-server/` 가 `analyzeStock` (server-only) + `triggerAnalysis` ("use server") 동시 export → Phase 6 PR-back 사고. 이후 server.ts + client.ts 분리 패턴 적용.
+
+**검증**: `pnpm typecheck && pnpm lint` 만으로는 못 잡는다 — `cd apps/dashboard && pnpm build` 를 PR 전 1회 실행 필수. CI 에서 잡히면 PR-back fix 사이클이 추가됨.
+
+### 8. 운영 compose+env 백업 필수 — working_dir 실종 시 다운
+
+운영 서버 `192.168.0.5:/home/gon/projects/gon/gons-dashboard/` 의 `docker-compose.yml` + `.env` 가 사라지면 `docker compose up` 시 빈 env 로 컨테이너가 재생성되어 Zod 검증 실패 → 운영 다운. 2026-05-21 발생 사고 — 원인 불명, 디렉토리 root 소유로 root 권한 cleanup 가능성.
+
+**백업 위치**: `~/.gstack/projects/gons-dashboard/secrets/prod.env.YYYYMMDD-HHMMSS` (mode 600). 1Password Secure Note 에 추가 보관 권장.
+
+**복구 절차**:
+1. 로컬 레포 `docker-compose.yml` 을 운영 working_dir 에 `scp` + `sudo cp` (root 소유 디렉토리)
+2. 백업 .env 동일 위치로 복원
+3. `docker exec gons-dashboard-postgres psql -U gons -c "ALTER USER gons WITH PASSWORD '<env-pw>'"` (pg_hba.conf `local all all trust` 덕에 비밀번호 없이 접근 가능 — DB 비밀번호 잃어도 회복 가능)
+4. `docker compose -f /home/gon/projects/gon/gons-dashboard/docker-compose.yml --env-file /home/gon/projects/gon/gons-dashboard/.env up -d --force-recreate`
+5. `curl http://localhost:3020/api/health` → 200 확인
+
+⚠️ ssh 한 줄 `cd && docker compose` 는 cwd 인식 안 됨 — **`-f <abs-path> --env-file <abs-path>` 명시** 필수.
+
+### 9. PostgreSQL timestamptz::date 는 IMMUTABLE 아님 — expression index 거부
+
+`CREATE INDEX ... ON tbl ((some_timestamptz::date))` 는 `functions in index expression must be marked IMMUTABLE` 로 거부. timestamptz 의 `::date` 캐스트는 timezone 의존이라 IMMUTABLE 못 만족.
+
+**해결 패턴 (Phase 7 stock_consensus_flips 적용)**: KST 자정 기준 generated column 추가 후 그 컬럼에 index.
+
+```sql
+ALTER TABLE tbl ADD COLUMN d date
+  GENERATED ALWAYS AS (((ts AT TIME ZONE 'Asia/Seoul')::date)) STORED;
+CREATE UNIQUE INDEX uq ON tbl (... , d);
+```
+
+Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 단, drizzle-kit 가 generated 속성을 인지하려면 `generatedAlwaysAs` 명시 필수 — 빠뜨리면 다음 db:generate 가 DROP+ADD 의 spurious diff 생성.
+
 ## 환경 변수
 
 `.env.example` 에 전체 목록. 부팅 시 `shared/config/env.ts` 가 Zod 로 검증해 빈 값/잘못된 형식이면 즉시 throw.
