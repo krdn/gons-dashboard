@@ -28,6 +28,7 @@
     "@gons/shared-google": "workspace:*",
     "@gons/shared-mcp-runtime": "workspace:*",
     "@gons/stock-analysis": "workspace:*",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@tanstack/react-query": "^5.62.7",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.38.3",
