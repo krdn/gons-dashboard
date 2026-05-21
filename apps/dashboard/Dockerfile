@@ -14,6 +14,7 @@ COPY packages/shared-google/package.json ./packages/shared-google/
 COPY packages/shared-mcp-runtime/package.json ./packages/shared-mcp-runtime/
 COPY packages/mcp-calendar/package.json ./packages/mcp-calendar/
 COPY packages/saju/package.json ./packages/saju/
+COPY packages/stock-analysis/package.json ./packages/stock-analysis/
 RUN pnpm install --frozen-lockfile --prod=false
 
 # ---- Stage 2: build ----
@@ -26,6 +27,7 @@ COPY --from=deps /app/packages/shared-google/node_modules ./packages/shared-goog
 COPY --from=deps /app/packages/shared-mcp-runtime/node_modules ./packages/shared-mcp-runtime/node_modules
 COPY --from=deps /app/packages/mcp-calendar/node_modules ./packages/mcp-calendar/node_modules
 COPY --from=deps /app/packages/saju/node_modules ./packages/saju/node_modules
+COPY --from=deps /app/packages/stock-analysis/node_modules ./packages/stock-analysis/node_modules
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY apps/dashboard ./apps/dashboard
 COPY packages ./packages
