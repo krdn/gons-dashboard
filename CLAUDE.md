@@ -200,6 +200,12 @@ CREATE UNIQUE INDEX uq ON tbl (... , d);
 
 Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 단, drizzle-kit 가 generated 속성을 인지하려면 `generatedAlwaysAs` 명시 필수 — 빠뜨리면 다음 db:generate 가 DROP+ADD 의 spurious diff 생성.
 
+### 10. LLM Proxy ≠ NextAuth Google OAuth
+
+`ANTHROPIC_BASE_URL=http://192.168.0.5:8317` 의 cli-proxy-api 는 **LLM 추론 통합 endpoint** (Claude/Gemini/Codex 라우팅). `GOOGLE_CLIENT_ID/SECRET` 의 NextAuth Google OAuth 는 **사용자 웹 로그인 + Gmail/Calendar scope** — 둘은 서로 대체 불가. 자세한 차이는 "AI 호출 정책 — LLM Proxy 정의" 섹션의 비교 표 참조.
+
+자주 헷갈리는 시나리오: LLM 추론은 정상 동작하는데 (proxy 통해) NextAuth 로그인은 `changeme-*` placeholder 라 안 됨 → 둘은 별개 흐름이라 로그인 안 돼도 LLM 호출은 정상.
+
 ## 환경 변수
 
 `.env.example` 에 전체 목록. 부팅 시 `shared/config/env.ts` 가 Zod 로 검증해 빈 값/잘못된 형식이면 즉시 throw.
@@ -241,15 +247,44 @@ ssh gon@192.168.0.5 "curl -s http://localhost:3020/api/health"            # {"st
 
 (`$COMPOSE` = `/home/gon/projects/gon/gons-dashboard/docker-compose.yml`)
 
-## AI 호출 정책
+## AI 호출 정책 — LLM Proxy 정의
 
-Anthropic SDK 사용. 단, Anthropic API 직접이 아닌 **Claude Code CLI Proxy** 를 향한다. SDK가 표준 환경변수를 자동 인식하므로 추가 설정 불필요:
+### LLM Proxy 란
+
+운영 서버에서 도는 **`cli-proxy-api`** 컨테이너 (`192.168.0.5:8317`, image `eceasy/cli-proxy-api`). Claude / Codex / Gemini 셋을 **단일 OpenAI/Anthropic 호환 endpoint** 로 묶어 제공.
+
+- **인증 방식**: 각 모델의 CLI tool (Claude Code CLI, Codex CLI, Gemini CLI) 이 사전에 OAuth 로 로그인해 발급한 **auth file** (`/home/gon/projects/cli-proxy-api/auths/{claude,gemini,codex}-krdn.net@gmail.com-*.json`) 을 proxy 가 읽어 토큰 자동 갱신.
+- **결과**: dashboard 는 **API key 발급 없이** Claude/Gemini/Codex 모두 사용. 토큰 비용은 CLI 의 사용 한도 (예: Claude Code 의 Pro/Max plan) 안에서 처리.
+- **dashboard `.env`** 의 `ANTHROPIC_BASE_URL=http://192.168.0.5:8317` + `ANTHROPIC_API_KEY=my-proxy-key` 만 설정 → Anthropic SDK 가 표준 환경변수를 인식해 자동으로 proxy 로 라우팅.
 
 ```typescript
 // shared/lib/llm/anthropic.ts
 import Anthropic from "@anthropic-ai/sdk";
 export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY 자동 인식
 ```
+
+### 모델 라우팅 — proxy 가 `model` 문자열로 분기
+
+- `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5` → Claude Code CLI auth
+- `gpt-5.3-codex` → Codex CLI auth
+- `gemini-2.5-pro` → Gemini CLI auth
+
+`SAJU_LLM_MODEL_CLAUDE/CODEX/GEMINI` 가 페르소나/학파별로 분기. saju v0.3.2 의 [`persona-router.ts`](apps/dashboard/src/shared/lib/llm/persona-router.ts) 가 모델 선택, stock-analysis Phase 3 의 [`shared/lib/llm/persona-router.ts`](apps/dashboard/src/shared/lib/llm/persona-router.ts) 가 페르소나별 override 적용.
+
+### ⚠️ NextAuth Google OAuth 와 LLM Proxy 는 **완전히 별개**
+
+같이 헷갈리지 말 것 — 두 흐름은 목적도 인증 주체도 다르다:
+
+| 항목 | NextAuth Google OAuth | LLM Proxy (cli-proxy-api) |
+|---|---|---|
+| 환경변수 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET` | `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY` |
+| 목적 | 사용자 웹 **로그인** + Gmail/Calendar API scope | LLM **추론** API 호출 (Claude/Gemini/Codex) |
+| 인증 주체 | 사용자 본인 브라우저 | 운영 컨테이너 (server-to-server) |
+| OAuth Client | Google Cloud Console 에 별도 발급 | (proxy 내부에서 Gemini CLI 가 자체 발급한 Client 와 token 사용) |
+| 만료/갱신 | refresh token 으로 events.signIn 시 자동 갱신 | proxy 가 auth file watch + 15분 주기 자동 갱신 |
+| Down 시 영향 | 사용자 로그인 불가 | LLM 호출 불가 (페르소나 분석, 사주 narrative 모두 fail) |
+
+**한 쪽을 다른 쪽으로 대체할 수 없다.** LLM Proxy 의 auth file 에 들어있는 `client_id` / `client_secret` 은 Gemini CLI 가 자체 발급한 OAuth Client 의 자격이라 redirect URI 가 NextAuth 와 다르고, scope 도 (`cloud-platform`, `userinfo.email`) NextAuth Google provider 의 (`openid email profile`) 와 다름. 재사용 시도하면 redirect URI 추가가 필요한데 그 Client 자체가 Gemini CLI 가 관리하는 자동 생성 프로젝트라 수정 위험.
 
 ## MCP 도구 호출 정책
 
