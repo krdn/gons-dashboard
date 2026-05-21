@@ -10,7 +10,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/client";
-import { triggerAnalysis } from "@/features/stock-analysis-server";
+import { triggerAnalysis } from "@/features/stock-analysis-server/client";
 import { usePollingAnalysis } from "./usePollingAnalysis";
 
 interface Props {

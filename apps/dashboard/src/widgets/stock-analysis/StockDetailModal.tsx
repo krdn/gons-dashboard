@@ -13,7 +13,7 @@ import {
   ConsensusBadge,
   PersonaTab,
 } from "@/entities/stock-analysis/client";
-import { triggerAnalysis } from "@/features/stock-analysis-server";
+import { triggerAnalysis } from "@/features/stock-analysis-server/client";
 import { Modal } from "@/shared/ui/Modal";
 import { PriceChart } from "@/shared/ui/PriceChart";
 
