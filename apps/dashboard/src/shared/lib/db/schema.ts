@@ -1067,3 +1067,52 @@ export const stockAnalysisRuns = pgTable(
       .where(sql`${t.status} IN ('queued', 'running')`),
   ],
 );
+
+/* =========================================================================
+ * KRX 종목 마스터 — entities/stock-master + features/krx-master-sync
+ * 한글 검색을 위한 종목 마스터. 주 1회 일요일 06:00 KST cron 으로 갱신.
+ * pg_trgm GIN 인덱스로 ILIKE '%주성%' <5ms.
+ * ========================================================================= */
+export const stockMaster = pgTable(
+  "stock_master",
+  {
+    symbol: text("symbol").primaryKey(), // "005930.KS", "036930.KQ"
+    krxCode: text("krx_code").notNull(), // "005930"
+    koreanName: text("korean_name").notNull(), // "삼성전자"
+    englishName: text("english_name"), // "Samsung Electronics Co Ltd"
+    marketCategory: text("market_category").notNull(), // 'KOSPI' | 'KOSDAQ'
+    securityType: text("security_type").notNull(), // 'EQUITY' | 'ETF' | 'ETN' | 'REIT' | 'SPAC'
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    delisted: boolean("delisted").notNull().default(false),
+  },
+  (t) => [
+    index("stock_master_krx_code_idx").on(t.krxCode),
+    // pg_trgm GIN — ILIKE '%주성%' 빠른 검색 (4,000 row 에서 <5ms)
+    index("stock_master_korean_name_trgm_idx").using(
+      "gin",
+      sql`${t.koreanName} gin_trgm_ops`,
+    ),
+    index("stock_master_market_active_idx").on(t.marketCategory, t.delisted),
+  ],
+);
+
+// 이전상장 회수 audit log. 예: 066970.KQ → 066970.KS (엘앤에프 KOSDAQ→KOSPI 이전).
+export const stockSymbolMigrations = pgTable(
+  "stock_symbol_migrations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    krxCode: text("krx_code").notNull(),
+    fromSymbol: text("from_symbol").notNull(),
+    toSymbol: text("to_symbol").notNull(),
+    detectedAt: timestamp("detected_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    affectedHoldings: integer("affected_holdings").notNull().default(0),
+    invalidatedCacheRows: integer("invalidated_cache_rows").notNull().default(0),
+  },
+  (t) => [
+    index("stock_symbol_migrations_detected_idx").on(t.detectedAt.desc()),
+  ],
+);
