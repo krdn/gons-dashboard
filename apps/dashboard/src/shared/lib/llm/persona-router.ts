@@ -3,11 +3,8 @@ import { env } from "@/shared/config/env";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { stockPersonaPreferences } from "@/shared/lib/db/schema";
-import type {
-  ModelName,
-  PersonaOrConsensus,
-} from "@/entities/stock-analysis/client";
-import { DEFAULT_PERSONA_MODELS } from "@/entities/stock-analysis/client";
+import type { ModelName, PersonaOrConsensus } from "@gons/stock-analysis";
+import { DEFAULT_PERSONA_MODELS } from "@gons/stock-analysis";
 
 export interface PersonaModelMapping {
   wallStreet: ModelName;

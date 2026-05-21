@@ -26,3 +26,23 @@ export const PersonaAnalysisSchema = z.object({
 });
 
 export type PersonaAnalysis = z.infer<typeof PersonaAnalysisSchema>;
+
+// PersonaOrConsensus + 기본 모델 매핑 — persona-router (shared 레이어) 가 package 에서 직접 import 하도록 단일 정의 소스.
+export type PersonaOrConsensus = PersonaKey | "consensus";
+
+export const PERSONA_DISPLAY: Record<PersonaKey, string> = {
+  wallStreet: "월스트리트 전문가",
+  krExpert: "한국 전문가",
+  value: "가치 투자",
+  growth: "성장 투자",
+  technical: "기술적 분석",
+};
+
+export const DEFAULT_PERSONA_MODELS: Record<PersonaOrConsensus, ModelName> = {
+  wallStreet: "claude",
+  krExpert: "claude",
+  value: "codex",
+  growth: "gemini",
+  technical: "codex",
+  consensus: "claude",
+};
