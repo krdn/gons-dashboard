@@ -21,6 +21,10 @@ import {
   ServerOverviewCard,
   ServerOverviewSkeleton,
 } from "@/widgets/server-overview";
+import {
+  StockAnalysisCard,
+  StockAnalysisSkeleton,
+} from "@/widgets/stock-analysis";
 import { CalendarCard, CalendarSkeleton } from "@/widgets/calendar";
 import { FortuneCard, FortuneSkeleton } from "@/widgets/fortune";
 
@@ -93,6 +97,9 @@ export default async function DashboardPage() {
           </Suspense>
           <Suspense fallback={<ServerOverviewSkeleton />}>
             <ServerOverviewCard />
+          </Suspense>
+          <Suspense fallback={<StockAnalysisSkeleton />}>
+            <StockAnalysisCard />
           </Suspense>
         </div>
 
