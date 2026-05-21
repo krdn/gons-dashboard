@@ -104,8 +104,17 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 매주 일요일 06:00 KST — KRX 종목 마스터 갱신 (공공데이터포털 API).
+cron.schedule(
+  "0 6 * * 0",
+  () => {
+    void callCron("/api/cron/krx-master-sync", "krx-master-sync");
+  },
+  { timezone: TIMEZONE },
+);
+
 console.log(
-  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST",
+  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST",
 );
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.
