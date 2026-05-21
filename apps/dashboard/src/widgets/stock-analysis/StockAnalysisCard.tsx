@@ -12,6 +12,7 @@ import type {
 import { fetchYahooQuotes, fetchYahooDailyOHLC } from "@gons/stock-analysis";
 import { SettingsButton } from "./SettingsButton";
 import { HoldingDetailButton } from "./HoldingDetailButton";
+import { AnalysisPendingPlaceholder } from "./AnalysisPendingPlaceholder";
 
 export async function StockAnalysisCard() {
   const session = await auth();
@@ -62,7 +63,9 @@ export async function StockAnalysisCard() {
 
   const headlineSnapshot = headline?.analysis?.marketSnapshot;
   const headlineQuote = headline?.quote;
-  const pendingCount = enriched.filter((e) => e.analysis === null).length;
+  const pendingHoldings = enriched
+    .filter((e) => e.analysis === null)
+    .map((e) => e.holding);
 
   return (
     <section
@@ -126,10 +129,8 @@ export async function StockAnalysisCard() {
         )}
 
         {/* 캐시 miss 종목 — Phase 6 lazy trigger placeholder */}
-        {pendingCount > 0 && (
-          <div className="rounded-lg border border-dashed border-[var(--color-hairline)] p-3 text-xs text-[var(--color-text-muted)]">
-            {pendingCount}개 종목 분석 대기 중 (Phase 6: 자동 생성)
-          </div>
+        {pendingHoldings.length > 0 && (
+          <AnalysisPendingPlaceholder holdings={pendingHoldings} />
         )}
       </div>
     </section>
