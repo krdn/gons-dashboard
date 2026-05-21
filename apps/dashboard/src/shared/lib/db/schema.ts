@@ -1033,3 +1033,28 @@ export const stockConsensusFlips = pgTable(
     index("flips_pending_idx").on(t.notifiedAt).where(sql`${t.notifiedAt} IS NULL`),
   ],
 );
+
+// Phase 6: lazy trigger 진행 상태 추적.
+// partial unique index 로 같은 (user, symbol, persona) in-flight 중복 trigger 차단 →
+// API 라우트에서 unique violation catch 후 기존 run id 반환하여 idempotent 보장.
+export const stockAnalysisRuns = pgTable(
+  "stock_analysis_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    persona: text("persona"), // NULL = 전체 분석, persona 키 = 그 페르소나만
+    status: text("status").notNull(), // 'queued' | 'running' | 'completed' | 'failed'
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    errorMessage: text("error_message"),
+  },
+  (t) => [
+    index("stock_runs_user_symbol_idx").on(t.userId, t.symbol),
+    uniqueIndex("stock_runs_in_flight_uq")
+      .on(t.userId, t.symbol, t.persona)
+      .where(sql`${t.status} IN ('queued', 'running')`),
+  ],
+);
