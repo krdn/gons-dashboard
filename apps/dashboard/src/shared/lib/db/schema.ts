@@ -1026,18 +1026,20 @@ export const stockConsensusFlips = pgTable(
     fromVerdict: text("from_verdict").notNull(),
     toVerdict: text("to_verdict").notNull(),
     detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow().notNull(),
+    // 24h dedup 용 generated column — DB 가 detected_at 에서 KST 자정 기준 date 자동 산출.
+    // (detected_at AT TIME ZONE 'Asia/Seoul')::date STORED — IMMUTABLE 만족.
+    // GENERATED ALWAYS AS STORED — 코드 INSERT 시 명시 금지 (DB 가 자동 채움).
+    detectedDate: date("detected_date").generatedAlwaysAs(
+      sql`((detected_at AT TIME ZONE 'Asia/Seoul')::date)`,
+    ),
     notifiedAt: timestamp("notified_at", { withTimezone: true }),
   },
   (t) => [
     // 미전송 flip 큐 조회용 partial index
     index("flips_pending_idx").on(t.notifiedAt).where(sql`${t.notifiedAt} IS NULL`),
-    // 24h 1회 cap (spec §2.1 #4) — 같은 (user, symbol) 의 같은 날짜 detection 단 1회.
+    // 24h 1회 cap (spec §2.1 #4) — 같은 (user, symbol) 의 같은 KST 날짜 detection 단 1회.
     // INSERT 시 unique violation 발생하면 cron 이 catch + skip (이미 알림 보냄).
-    uniqueIndex("flips_dedup_uq").on(
-      t.userId,
-      t.symbol,
-      sql`(${t.detectedAt}::date)`,
-    ),
+    uniqueIndex("flips_dedup_uq").on(t.userId, t.symbol, t.detectedDate),
   ],
 );
 
