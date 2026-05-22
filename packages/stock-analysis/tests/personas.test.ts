@@ -91,6 +91,23 @@ describe("PersonaAnalysisSchema", () => {
     expect(() => PersonaAnalysisSchema.parse(invalid)).toThrow();
   });
 
+  it("keyMetrics 에 null 값 허용 (펀더멘털 누락 시 추정 불가 응답)", () => {
+    const validWithNull = {
+      persona: "value" as const,
+      verdict: "HOLD" as const,
+      oneLineThesis: "PER/PBR 데이터 부재로 정량 판단 추정 불가",
+      narrative: "x".repeat(400),
+      keyMetrics: {
+        fairPER: null,
+        marginOfSafety: "추정 불가",
+        dcfTarget: null,
+      },
+      risks: ["가치 함정 가능성", "데이터 부재 리스크"],
+      modelUsed: "codex" as const,
+    };
+    expect(() => PersonaAnalysisSchema.parse(validWithNull)).not.toThrow();
+  });
+
   it("risks 가 0개면 fail (환각 가드)", () => {
     const invalid = {
       persona: "wallStreet" as const,

@@ -20,7 +20,12 @@ export const PersonaAnalysisSchema = z.object({
   verdict: VerdictSchema,
   oneLineThesis: z.string().min(20).max(200),
   narrative: z.string().min(300).max(800),
-  keyMetrics: z.record(z.string(), z.union([z.number(), z.string()])),
+  // null 허용: LLM 이 펀더멘털 누락 시 "추정 불가" + 일부 필드 null 응답.
+  // 거부하면 페르소나 전체 reject → 캐시 누락 (2026-05-22 value 페르소나 사고).
+  keyMetrics: z.record(
+    z.string(),
+    z.union([z.number(), z.string(), z.null()]),
+  ),
   risks: z.array(z.string().min(5).max(200)).min(1).max(5),
   modelUsed: ModelNameSchema,
 });

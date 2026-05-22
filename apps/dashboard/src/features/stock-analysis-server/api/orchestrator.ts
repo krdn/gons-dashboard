@@ -87,7 +87,19 @@ export async function analyzeStock(
   // 2. 페르소나별 모델 해석 (user override + default 머지)
   const models = await resolvePersonaModels(args.userId);
 
-  // 3. 5 페르소나 병렬 호출
+  // 3. 펀더멘털 전무 시 value 페르소나 skip — LLM 비용 + retry 낭비 방지.
+  //    value 는 PER/PBR/배당 정량 분석이 핵심이라 입력 없으면 "추정 불가"
+  //    응답만 반복. Yahoo v7 401 등 외부 데이터 장애 시 의도된 실패로 처리.
+  const hasFundamentals =
+    snapshot.per != null ||
+    snapshot.pbr != null ||
+    snapshot.marketCap != null ||
+    snapshot.dividendYield != null;
+  const activePersonaKeys: PersonaKey[] = hasFundamentals
+    ? PERSONA_KEYS
+    : PERSONA_KEYS.filter((k) => k !== "value");
+
+  // 4. 활성 페르소나 병렬 호출
   const personaInput = {
     symbol: args.symbol,
     displayName: args.displayName,
@@ -97,7 +109,7 @@ export async function analyzeStock(
     dailyOHLC,
   };
   const settled = await Promise.allSettled(
-    PERSONA_KEYS.map(async (key) => {
+    activePersonaKeys.map(async (key) => {
       const builder = PERSONA_BUILDERS[key];
       const prompt = builder(personaInput);
       const model = models[key];
@@ -113,10 +125,10 @@ export async function analyzeStock(
 
   const personas: Partial<Record<PersonaKey, PersonaAnalysis>> = {};
   const successfulResults: PersonaAnalysis[] = [];
-  for (let i = 0; i < PERSONA_KEYS.length; i++) {
+  for (let i = 0; i < activePersonaKeys.length; i++) {
     const r = settled[i];
     if (r.status === "fulfilled") {
-      personas[PERSONA_KEYS[i]] = r.value;
+      personas[activePersonaKeys[i]] = r.value;
       successfulResults.push(r.value);
     }
   }
