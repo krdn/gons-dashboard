@@ -16,7 +16,8 @@ export async function searchStockMaster(
   const trimmed = query.trim();
   if (trimmed.length === 0) return [];
 
-  const isKrxCode = /^\d{6}$/.test(trimmed);
+  // KRX 코드: 보통주 6자리 숫자 + 우선주 끝자리 알파벳 (예: "005930", "00104K").
+  const isKrxCode = /^[0-9A-Z]{6}$/.test(trimmed);
   const condition = isKrxCode
     ? eq(stockMaster.krxCode, trimmed)
     : ilike(stockMaster.koreanName, `%${trimmed}%`);

@@ -21,7 +21,9 @@ import { z } from "zod";
 // 사용자의 KRX OpenAPI 구독 승인 후 첫 호출에서 실제 필드 검증 — 다르면 follow-up PR.
 export const KrxStockItemSchema = z
   .object({
-    ISU_SRT_CD: z.string().regex(/^\d{6}$/, "6자리 단축코드"),
+    // 단축코드 6자리 — 대부분 숫자지만 우선주(전환/신형)는 끝자리에 알파벳 포함
+    // 예: "095570" (보통주), "00104K" (CJ4우선주전환), "37550K" (DL이앤씨1우선주)
+    ISU_SRT_CD: z.string().regex(/^[0-9A-Z]{6}$/, "6자리 영숫자 단축코드"),
     ISU_CD: z.string().min(1),
     ISU_NM: z.string().min(1), // 한글 종목명
     ISU_ABBRV: z.string().optional(),
