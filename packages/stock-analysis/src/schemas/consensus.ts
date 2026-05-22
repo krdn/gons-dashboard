@@ -27,6 +27,18 @@ export const MarketSnapshotSchema = z.object({
   rsi14: z.number().optional(),
   ma20: z.number().optional(),
   ma60: z.number().optional(),
+
+  // PR 2 신규 — DART trailing 정량 지표
+  trailingEPS: z.number().optional(),
+  trailingBPS: z.number().optional(),
+  revenueGrowthYoY: z.number().optional(),
+  opMarginPct: z.number().optional(),
+
+  // PR 2 신규 — 데이터 출처 메타
+  fundamentalsSource: z.enum(["yahoo+dart", "yahoo", "none"]).optional(),
+  fundamentalsAsOf: z.string().optional(),
+  dartReportPeriod: z.string().optional(),
+
   asOf: z.string(),
 });
 

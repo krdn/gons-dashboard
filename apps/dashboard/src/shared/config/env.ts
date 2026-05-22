@@ -50,6 +50,21 @@ const schema = z.object({
     .string()
     .min(1, "KRX OpenAPI AUTH_KEY. https://openapi.krx.co.kr/ 에서 발급 + API 사용 신청."),
 
+  // DART OpenAPI (재무제표) — KR 종목 PBR/배당/EPS/BPS overlay (PR 2)
+  // 발급: opendart.fss.or.kr 회원가입 → 인증키 발급 (T+1).
+  // optional — 키 없거나 STOCK_FUNDAMENTALS_SOURCES=off 면 orchestrator 가 DART 호출 skip.
+  DART_OPENAPI_AUTH_KEY: z
+    .string()
+    .min(1, "DART OpenAPI key. https://opendart.fss.or.kr/ 에서 발급.")
+    .optional(),
+
+  // 펀더멘털 소스 토글 (롤백 스위치, PR 2)
+  // - "yahoo+dart" (기본): yahoo-finance2 + DART overlay
+  // - "off": DART 비활성, yahoo-finance2 만 (PR #120 직후 동작 복귀)
+  STOCK_FUNDAMENTALS_SOURCES: z
+    .enum(["yahoo+dart", "off"])
+    .default("yahoo+dart"),
+
   // Web Push (VAPID)
   VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),

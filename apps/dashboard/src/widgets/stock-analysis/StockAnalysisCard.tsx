@@ -9,7 +9,11 @@ import type {
   ModelName,
   PersonaOrConsensus,
 } from "@/entities/stock-analysis/server";
-import { fetchYahooQuotes, fetchYahooDailyOHLC } from "@gons/stock-analysis";
+import {
+  fetchYahooQuotes,
+  fetchYahooDailyOHLC,
+  PERSONA_PROMPT_VERSION,
+} from "@gons/stock-analysis";
 import { SettingsButton } from "./SettingsButton";
 import { HoldingDetailButton } from "./HoldingDetailButton";
 import { AnalysisPendingPlaceholder } from "./AnalysisPendingPlaceholder";
@@ -39,7 +43,11 @@ export async function StockAnalysisCard() {
   const today = new Date().toISOString().slice(0, 10);
   const [quotes, analyses, dailySets] = await Promise.all([
     fetchYahooQuotes(symbols).catch(() => []),
-    Promise.all(symbols.map((s) => getCachedAnalysis(s, today, null))),
+    Promise.all(
+      symbols.map((s) =>
+        getCachedAnalysis(s, today, null, PERSONA_PROMPT_VERSION),
+      ),
+    ),
     Promise.all(
       symbols.map((s) => fetchYahooDailyOHLC(s, "1y").catch(() => [])),
     ),
