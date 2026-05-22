@@ -41,6 +41,32 @@ describe("KrxStockItemSchema", () => {
     ).toThrow();
   });
 
+  it("우선주 alphanumeric 코드도 통과 (00104K, 37550K 등)", () => {
+    const cj = KrxStockItemSchema.parse({
+      ISU_SRT_CD: "00104K",
+      ISU_CD: "KR700104K010",
+      ISU_NM: "CJ4우선주(전환)",
+    });
+    expect(cj.ISU_SRT_CD).toBe("00104K");
+
+    const dl = KrxStockItemSchema.parse({
+      ISU_SRT_CD: "37550K",
+      ISU_CD: "KR737550K011",
+      ISU_NM: "DL이앤씨1우선주",
+    });
+    expect(dl.ISU_SRT_CD).toBe("37550K");
+  });
+
+  it("소문자 알파벳은 reject (KRX 단축코드는 모두 대문자)", () => {
+    expect(() =>
+      KrxStockItemSchema.parse({
+        ISU_SRT_CD: "00104k",
+        ISU_CD: "KR700104K010",
+        ISU_NM: "테스트",
+      }),
+    ).toThrow();
+  });
+
   it("알 수 없는 필드는 passthrough (스키마 변경에 견고)", () => {
     const r = KrxStockItemSchema.parse({
       ISU_SRT_CD: "005930",

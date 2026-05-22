@@ -16,9 +16,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [] });
   }
 
-  // 한글 또는 6자리 숫자코드 → KRX 마스터 DB 검색 (Yahoo 한글 우회).
+  // 한글 또는 6자리 KRX 코드 → KRX 마스터 DB 검색 (Yahoo 한글 우회).
+  // KRX 코드는 보통주 6자리 숫자 + 우선주 끝자리 알파벳 (예: "005930", "00104K").
   const isHangul = /[가-힯]/.test(q);
-  const isKrxCode = /^\d{6}$/.test(q);
+  const isKrxCode = /^[0-9A-Z]{6}$/.test(q);
   if (isHangul || isKrxCode) {
     const results = await searchStockMaster(q);
     return NextResponse.json({ results });
