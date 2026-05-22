@@ -34,6 +34,9 @@ export {
   type MarketSnapshot,
 } from "./schemas";
 
-export { PERSONA_BUILDERS } from "./personas";
+export { PERSONA_BUILDERS, PERSONA_PROMPT_VERSION } from "./personas";
 export type { PersonaInput, BuiltPrompt, PromptBuilder } from "./personas";
 export { buildConsensusPrompt, tallyVerdicts } from "./consensus";
+
+// DART 타입만 (server-only 함수 fetchDartFinancials 는 절대 client tree 로 노출 금지).
+export type { DartFinancials } from "./adapters/dart-types";

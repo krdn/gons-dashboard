@@ -34,6 +34,11 @@ export {
 } from "./schemas";
 
 // Personas + Consensus
-export { PERSONA_BUILDERS } from "./personas";
+export { PERSONA_BUILDERS, PERSONA_PROMPT_VERSION } from "./personas";
 export type { PersonaInput, BuiltPrompt, PromptBuilder } from "./personas";
 export { buildConsensusPrompt, tallyVerdicts } from "./consensus";
+
+// DART 어댑터 (KR 종목 trailing 펀더멘털 overlay)
+export { fetchDartFinancials } from "./adapters/dart";
+export { DartError } from "./adapters/dart-types";
+export type { DartFinancials } from "./adapters/dart-types";
