@@ -95,7 +95,9 @@ export function PersonaTab({ persona, analysis, symbol, onRegenerate }: Props) {
               <dt className="text-[10px] uppercase tracking-wide text-[var(--color-text-muted)]">
                 {key}
               </dt>
-              <dd className="font-semibold tabular-nums">{String(value)}</dd>
+              <dd className="font-semibold tabular-nums">
+                {value === null ? "추정 불가" : String(value)}
+              </dd>
             </div>
           ))}
         </dl>
