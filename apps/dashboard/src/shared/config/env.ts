@@ -43,8 +43,12 @@ const schema = z.object({
   // Cron
   CRON_BEARER_TOKEN: z.string().min(32, "openssl rand -hex 32 로 생성"),
 
-  // KRX (공공데이터포털) API
-  KRX_DATA_GO_KR_API_KEY: z.string().min(1, "공공데이터포털 KRX API 키. https://www.data.go.kr/ 에서 발급."),
+  // KRX OpenAPI (한국거래소) — 종목기본정보 시드용
+  // openapi.krx.co.kr 마이페이지 → API 인증키 발급 + 개별 API (sto/stk_isu_base_info,
+  // sto/ksq_isu_base_info) 사용 신청 + 승인 필요.
+  KRX_OPENAPI_AUTH_KEY: z
+    .string()
+    .min(1, "KRX OpenAPI AUTH_KEY. https://openapi.krx.co.kr/ 에서 발급 + API 사용 신청."),
 
   // Web Push (VAPID)
   VAPID_PUBLIC_KEY: z.string().min(1).optional(),

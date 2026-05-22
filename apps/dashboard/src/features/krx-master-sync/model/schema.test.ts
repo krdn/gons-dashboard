@@ -1,80 +1,79 @@
 import { describe, it, expect } from "vitest";
-import { DataGoKrItemSchema, DataGoKrResponseSchema } from "./schema";
+import { KrxStockItemSchema, KrxStockResponseSchema } from "./schema";
 
-describe("DataGoKrItemSchema", () => {
-  it("정상 item parse", () => {
-    const r = DataGoKrItemSchema.parse({
-      srtnCd: "005930",
-      isinCd: "KR7005930003",
-      itmsNm: "삼성전자",
-      mrktCtg: "KOSPI",
-      basDt: "20260521",
+describe("KrxStockItemSchema", () => {
+  it("정상 item parse (필수 필드만)", () => {
+    const r = KrxStockItemSchema.parse({
+      ISU_SRT_CD: "005930",
+      ISU_CD: "KR7005930003",
+      ISU_NM: "삼성전자",
     });
-    expect(r.srtnCd).toBe("005930");
-    expect(r.mrktCtg).toBe("KOSPI");
+    expect(r.ISU_SRT_CD).toBe("005930");
+    expect(r.ISU_NM).toBe("삼성전자");
+  });
+
+  it("optional 필드 포함 parse", () => {
+    const r = KrxStockItemSchema.parse({
+      ISU_SRT_CD: "036930",
+      ISU_CD: "KR7036930007",
+      ISU_NM: "주성엔지니어링",
+      MKT_TP_NM: "KOSDAQ",
+      LIST_DD: "20010411",
+      LIST_SHRS: "76023400",
+    });
+    expect(r.MKT_TP_NM).toBe("KOSDAQ");
+    expect(r.LIST_SHRS).toBe("76023400");
   });
 
   it("필수 필드 누락 시 throw", () => {
-    expect(() => DataGoKrItemSchema.parse({ srtnCd: "005930" })).toThrow();
+    expect(() =>
+      KrxStockItemSchema.parse({ ISU_SRT_CD: "005930" }),
+    ).toThrow();
   });
 
-  it("mrktCtg 가 KOSPI/KOSDAQ 외 값이면 throw", () => {
+  it("ISU_SRT_CD 6자리가 아니면 throw", () => {
     expect(() =>
-      DataGoKrItemSchema.parse({
-        srtnCd: "005930",
-        isinCd: "KR7005930003",
-        itmsNm: "삼성전자",
-        mrktCtg: "KONEX",
-        basDt: "20260521",
+      KrxStockItemSchema.parse({
+        ISU_SRT_CD: "12345",
+        ISU_CD: "KR7000000000",
+        ISU_NM: "테스트",
       }),
     ).toThrow();
   });
+
+  it("알 수 없는 필드는 passthrough (스키마 변경에 견고)", () => {
+    const r = KrxStockItemSchema.parse({
+      ISU_SRT_CD: "005930",
+      ISU_CD: "KR7005930003",
+      ISU_NM: "삼성전자",
+      UNKNOWN_FIELD: "future",
+    });
+    expect(r.ISU_NM).toBe("삼성전자");
+  });
 });
 
-describe("DataGoKrResponseSchema", () => {
-  it("정상 응답 parse + items 추출", () => {
-    const r = DataGoKrResponseSchema.parse({
-      response: {
-        header: { resultCode: "00", resultMsg: "NORMAL SERVICE." },
-        body: {
-          numOfRows: 2,
-          pageNo: 1,
-          totalCount: 4000,
-          items: {
-            item: [
-              {
-                srtnCd: "005930",
-                isinCd: "KR7005930003",
-                itmsNm: "삼성전자",
-                mrktCtg: "KOSPI",
-                basDt: "20260521",
-              },
-              {
-                srtnCd: "036930",
-                isinCd: "KR7036930007",
-                itmsNm: "주성엔지니어링",
-                mrktCtg: "KOSDAQ",
-                basDt: "20260521",
-              },
-            ],
-          },
+describe("KrxStockResponseSchema", () => {
+  it("정상 응답 parse + OutBlock_1 배열 추출", () => {
+    const r = KrxStockResponseSchema.parse({
+      OutBlock_1: [
+        {
+          ISU_SRT_CD: "005930",
+          ISU_CD: "KR7005930003",
+          ISU_NM: "삼성전자",
         },
-      },
+        {
+          ISU_SRT_CD: "036930",
+          ISU_CD: "KR7036930007",
+          ISU_NM: "주성엔지니어링",
+        },
+      ],
     });
-    expect(r.response.body.totalCount).toBe(4000);
-    expect(r.response.body.items.item).toHaveLength(2);
+    expect(r.OutBlock_1).toHaveLength(2);
+    expect(r.OutBlock_1[1].ISU_NM).toBe("주성엔지니어링");
   });
 
-  it("에러 응답 (resultCode != 00) 도 parse 통과 (호출부에서 분기)", () => {
-    const r = DataGoKrResponseSchema.parse({
-      response: {
-        header: {
-          resultCode: "30",
-          resultMsg: "SERVICE KEY IS NOT REGISTERED ERROR.",
-        },
-        body: { numOfRows: 0, pageNo: 1, totalCount: 0, items: { item: [] } },
-      },
-    });
-    expect(r.response.header.resultCode).toBe("30");
+  it("빈 OutBlock_1 도 parse 통과", () => {
+    const r = KrxStockResponseSchema.parse({ OutBlock_1: [] });
+    expect(r.OutBlock_1).toEqual([]);
   });
 });

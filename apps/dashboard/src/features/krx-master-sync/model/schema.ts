@@ -1,44 +1,46 @@
 import { z } from "zod";
 
-// data.go.kr "금융위원회 주식시세정보" - getStockPriceInfo 응답 schema.
-// 필드명은 공식 명세를 따른다 (srtnCd=종목코드, itmsNm=종목명, mrktCtg=시장구분).
-// 응답은 일별 시세도 포함하나 우리는 마스터 정보만 필요.
-export const DataGoKrItemSchema = z.object({
-  srtnCd: z.string().regex(/^\d{6}$/, "6자리 종목코드"),
-  isinCd: z.string().min(1),
-  itmsNm: z.string().min(1), // 한글 종목명
-  mrktCtg: z.enum(["KOSPI", "KOSDAQ"]), // KONEX 등은 v1.0 out of scope → throw
-  basDt: z.string().regex(/^\d{8}$/, "YYYYMMDD"),
-  // 일별 시세 필드들은 마스터 sync 에서 사용 안 함 — optional 로 허용
-  clpr: z.string().optional(),
-  vs: z.string().optional(),
-  fltRt: z.string().optional(),
-  mkp: z.string().optional(),
-  hipr: z.string().optional(),
-  lopr: z.string().optional(),
-  trqu: z.string().optional(),
-  trPrc: z.string().optional(),
-  lstgStCnt: z.string().optional(),
-  mrktTotAmt: z.string().optional(),
+// KRX OpenAPI "유가증권/코스닥 종목기본정보" 응답 schema.
+// 엔드포인트: GET data-dbg.krx.co.kr/svc/apis/sto/{stk|ksq}_isu_base_info?basDd=YYYYMMDD&AUTH_KEY=...
+// 응답 root: { OutBlock_1: [...] }
+//
+// 필드명은 KRX 공식 명세 (대문자 SNAKE_CASE). 공개 sample 기준:
+//   ISU_SRT_CD : 단축코드 (6자리, 예: "005930")
+//   ISU_CD     : ISIN 코드 (12자리, 예: "KR7005930003")
+//   ISU_NM     : 한글 종목명 (예: "삼성전자")
+//   ISU_ABBRV  : 약식 종목명 (선택, 공백 제거된 형태)
+//   ISU_ENG_NM : 영문 종목명 (선택)
+//   LIST_DD    : 상장일 YYYYMMDD (선택)
+//   MKT_TP_NM  : 시장구분 (선택, 응답에 따라 누락 가능 — 우리는 endpoint URL 로 시장 구분)
+//   SECUGRP_NM : 증권그룹구분 (선택, 예: "주권", "외국주권")
+//   SECT_TP_NM : 소속부 (선택)
+//   KIND_STKCERT_TP_NM : 주식종류 (선택)
+//   PARVAL     : 액면가 (선택)
+//   LIST_SHRS  : 상장주식수 (선택)
+//
+// 사용자의 KRX OpenAPI 구독 승인 후 첫 호출에서 실제 필드 검증 — 다르면 follow-up PR.
+export const KrxStockItemSchema = z
+  .object({
+    ISU_SRT_CD: z.string().regex(/^\d{6}$/, "6자리 단축코드"),
+    ISU_CD: z.string().min(1),
+    ISU_NM: z.string().min(1), // 한글 종목명
+    ISU_ABBRV: z.string().optional(),
+    ISU_ENG_NM: z.string().optional(),
+    LIST_DD: z.string().optional(),
+    MKT_TP_NM: z.string().optional(),
+    SECUGRP_NM: z.string().optional(),
+    SECT_TP_NM: z.string().optional(),
+    KIND_STKCERT_TP_NM: z.string().optional(),
+    PARVAL: z.string().optional(),
+    LIST_SHRS: z.string().optional(),
+  })
+  // 알 수 없는 필드는 무시 — 명세에 없는 필드가 추가되어도 깨지지 않도록.
+  .passthrough();
+
+export type KrxStockItem = z.infer<typeof KrxStockItemSchema>;
+
+export const KrxStockResponseSchema = z.object({
+  OutBlock_1: z.array(KrxStockItemSchema),
 });
 
-export type DataGoKrItem = z.infer<typeof DataGoKrItemSchema>;
-
-export const DataGoKrResponseSchema = z.object({
-  response: z.object({
-    header: z.object({
-      resultCode: z.string(),
-      resultMsg: z.string(),
-    }),
-    body: z.object({
-      numOfRows: z.number(),
-      pageNo: z.number(),
-      totalCount: z.number(),
-      items: z.object({
-        item: z.array(DataGoKrItemSchema),
-      }),
-    }),
-  }),
-});
-
-export type DataGoKrResponse = z.infer<typeof DataGoKrResponseSchema>;
+export type KrxStockResponse = z.infer<typeof KrxStockResponseSchema>;
