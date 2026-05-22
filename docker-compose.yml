@@ -88,6 +88,8 @@ services:
       DOCKER_CMD_TIMEOUT_MS: ${DOCKER_CMD_TIMEOUT_MS:-10000}
       # MCP mediator (Calendar MCP 파일럿)
       MCP_DASHBOARD_TOKEN: ${MCP_DASHBOARD_TOKEN}
+      # KRX OpenAPI (한국거래소) — 종목 마스터 주 1회 cron 시드
+      KRX_OPENAPI_AUTH_KEY: ${KRX_OPENAPI_AUTH_KEY}
     ports:
       - "3020:3020"
     volumes:

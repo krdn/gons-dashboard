@@ -33,8 +33,8 @@ if (process.env.TEST_DATABASE_URL) {
 
 // 통합 테스트가 db.client 를 import 하면 env.ts Zod 가 모든 required 키를 검증한다.
 // 테스트 .env 에 누락된 키가 있으면 dummy 주입 — 실제 외부 API 호출은 mock 으로 대체.
-if (!process.env.KRX_DATA_GO_KR_API_KEY) {
-  process.env.KRX_DATA_GO_KR_API_KEY = "test-dummy-key";
+if (!process.env.KRX_OPENAPI_AUTH_KEY) {
+  process.env.KRX_OPENAPI_AUTH_KEY = "test-dummy-key";
 }
 
 const dbUrl = process.env.DATABASE_URL ?? "";

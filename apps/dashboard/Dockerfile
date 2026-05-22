@@ -51,7 +51,7 @@ ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
     ADMIN_EMAILS=build@placeholder.local \
     PG_ENCRYPTION_KEY=a-placeholder-pg-encryption-key-of-at-least-32-chars \
     PLAYMCP_CLIENT_ID=placeholder-playmcp-client-id \
-    KRX_DATA_GO_KR_API_KEY=placeholder-krx-key
+    KRX_OPENAPI_AUTH_KEY=placeholder-krx-key
 
 RUN pnpm --filter @gons/dashboard build
 
