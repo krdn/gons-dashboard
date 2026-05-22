@@ -106,6 +106,7 @@ export async function analyzeStock(
   }
 
   // 3. mergeSnapshot 으로 우선순위 머지 (DART > yahoo)
+  // MA20/MA60/RSI14 계산은 mergeSnapshot 내부에서 처리 (main의 fix #121 동작 유지).
   const closes = dailyOHLC.map((d) => d.close);
   const snapshot = mergeSnapshot(quotes[0], yahooFund, dartResult, closes);
   logSnapshotSources(args.symbol, {
