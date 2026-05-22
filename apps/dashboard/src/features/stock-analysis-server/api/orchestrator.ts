@@ -23,6 +23,11 @@ import {
   type MarketSnapshot,
 } from "@gons/stock-analysis";
 import { resolvePersonaModels } from "@/shared/lib/llm/persona-router";
+import {
+  simpleMovingAverage,
+  relativeStrengthIndex,
+  lastFinite,
+} from "@/shared/lib/ta/indicators";
 import { upsertAnalysis } from "@/entities/stock-analysis/server";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/server";
 import { callLlmAndParseWithRetry } from "./llm-call";
@@ -69,6 +74,7 @@ export async function analyzeStock(
     };
   }
   const q = quotes[0];
+  const closes = dailyOHLC.map((d) => d.close);
   const snapshot: MarketSnapshot = {
     price: q.price,
     changePct: q.changePct,
@@ -77,10 +83,9 @@ export async function analyzeStock(
     per: fundamentals?.per,
     pbr: fundamentals?.pbr,
     dividendYield: fundamentals?.dividendYield,
-    // ma20/ma60/rsi14 — Phase 3 후속 또는 Phase 5 (차트) 에서 일봉으로 계산.
-    ma20: undefined,
-    ma60: undefined,
-    rsi14: undefined,
+    ma20: lastFinite(simpleMovingAverage(closes, 20)),
+    ma60: lastFinite(simpleMovingAverage(closes, 60)),
+    rsi14: lastFinite(relativeStrengthIndex(closes, 14)),
     asOf: q.fetchedAt,
   };
 
