@@ -121,3 +121,75 @@ describe("PersonaAnalysisSchema", () => {
     expect(() => PersonaAnalysisSchema.parse(invalid)).toThrow();
   });
 });
+
+describe("value persona prompt — DART trailing fields (PR 2)", () => {
+  it("includes trailingEPS/BPS/revenueGrowthYoY when DART data present", () => {
+    const built = PERSONA_BUILDERS.value({
+      symbol: "005930.KS",
+      displayName: "삼성전자",
+      assetClass: "stock",
+      market: "KRX",
+      snapshot: {
+        price: 70000,
+        changePct: 1.2,
+        currency: "KRW",
+        asOf: "2026-05-22T00:00:00Z",
+        per: 14,
+        pbr: 1.27,
+        dividendYield: 2.1,
+        marketCap: 4180000000000,
+        trailingEPS: 4500,
+        trailingBPS: 55000,
+        revenueGrowthYoY: 12.3,
+        opMarginPct: 9.8,
+        fundamentalsSource: "yahoo+dart",
+        dartReportPeriod: "2025-Q3",
+      },
+      dailyOHLC: [],
+    });
+    expect(built.user).toContain("trailing EPS: 4500");
+    expect(built.user).toContain("trailing BPS: 55000");
+    expect(built.user).toContain("매출 YoY: 12.3%");
+    expect(built.user).toContain("DART trailing");
+    expect(built.user).toContain("2025-Q3");
+  });
+
+  it("shows '데이터 없음' when DART fields are undefined (yahoo-only)", () => {
+    const built = PERSONA_BUILDERS.value({
+      symbol: "005930.KS",
+      displayName: "삼성전자",
+      assetClass: "stock",
+      market: "KRX",
+      snapshot: {
+        price: 70000,
+        changePct: 0,
+        currency: "KRW",
+        asOf: "2026-05-22T00:00:00Z",
+        fundamentalsSource: "yahoo",
+      },
+      dailyOHLC: [],
+    });
+    expect(built.user).toContain("trailing EPS: 데이터 없음");
+    expect(built.user).toContain("Yahoo forward");
+  });
+});
+
+describe("growth persona system prompt (PR 2)", () => {
+  it("instructs to use revenueGrowthYoY when present", () => {
+    const built = PERSONA_BUILDERS.growth({
+      symbol: "005930.KS",
+      displayName: "삼성전자",
+      assetClass: "stock",
+      market: "KRX",
+      snapshot: {
+        price: 70000,
+        changePct: 0,
+        currency: "KRW",
+        asOf: "2026-05-22T00:00:00Z",
+      },
+      dailyOHLC: [],
+    });
+    expect(built.system).toContain("revenueGrowthYoY");
+    expect(built.system).toContain("fabrication 금지");
+  });
+});
