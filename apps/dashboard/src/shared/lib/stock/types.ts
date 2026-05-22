@@ -3,4 +3,6 @@
 // FSD 의 "entities 간 직접 참조 금지" 룰을 지키려면 shared 에 두는 것이 맞다.
 // 단일 소스는 @gons/stock-analysis — 여기서는 re-export 만 한다.
 
-export type { AssetClass, Market } from "@gons/stock-analysis";
+// `@gons/stock-analysis/client` 서브패스 — top-level entrypoint 는 yahoo-finance2
+// (Node-only) 를 import 그래프에 끌어와서 client component 에서 사용 시 빌드 실패.
+export type { AssetClass, Market } from "@gons/stock-analysis/client";
