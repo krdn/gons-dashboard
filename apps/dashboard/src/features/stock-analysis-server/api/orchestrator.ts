@@ -1,15 +1,18 @@
 // analyzeStock 오케스트레이터 — 5 페르소나 병렬 호출 + 합의 + 글로벌 캐시 upsert.
 // saju 의 getOrBuildNarrative 패턴 미러.
 //
-// Flow:
-// 1. Yahoo 시세 / 펀더멘털 / 일봉 병렬 fetch
-// 2. 사용자별 페르소나 모델 매핑 해석
-// 3. 5 페르소나 병렬 호출 (Promise.allSettled — 1-2명 실패 허용)
-// 4. 성공 >= 3 인 경우만 합의 빌더 호출 + DB upsert
-// 5. 합의 빌더 실패 시 tallyVerdicts 다수결 fallback
+// Flow (PR 2):
+// 1. Yahoo (quote / fundamentals / 일봉) + DART (KR 종목만) 4-way 병렬 fetch
+// 2. mergeSnapshot 으로 yahoo + DART 우선순위 머지
+// 3. 사용자별 페르소나 모델 매핑 해석
+// 4. hasFundamentals 검사 — value 페르소나 skip 여부 결정 (PR #119 유지)
+// 5. 활성 페르소나 병렬 호출 (Promise.allSettled — 1-2명 실패 허용)
+// 6. 성공 >= 3 인 경우만 합의 빌더 호출 + DB upsert (promptVersion 전달)
+// 7. 합의 빌더 실패 시 tallyVerdicts 다수결 fallback
 import "server-only";
 import {
   PERSONA_BUILDERS,
+  PERSONA_PROMPT_VERSION,
   PersonaAnalysisSchema,
   ConsensusSchema,
   buildConsensusPrompt,
@@ -17,6 +20,7 @@ import {
   fetchYahooQuotes,
   fetchYahooFundamentals,
   fetchYahooDailyOHLC,
+  fetchDartFinancials,
   type PersonaAnalysis,
   type PersonaKey,
   type Consensus,
@@ -25,6 +29,8 @@ import {
 import { resolvePersonaModels } from "@/shared/lib/llm/persona-router";
 import { upsertAnalysis } from "@/entities/stock-analysis/server";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/server";
+import { env } from "@/shared/config/env";
+import { mergeSnapshot } from "./merge-snapshot";
 import { callLlmAndParseWithRetry } from "./llm-call";
 
 const MINIMUM_SUCCESS = 3;
@@ -51,14 +57,44 @@ export interface AnalyzeStockResult {
   marketSnapshot: MarketSnapshot | null;
 }
 
+// stdout 한 줄 JSON — source 가용성 추적용. 운영에서 grep 모니터링.
+function logSnapshotSources(
+  symbol: string,
+  info: { yahoo: boolean; dart: boolean; source: string | undefined },
+): void {
+  console.log(
+    JSON.stringify({
+      level: "info",
+      scope: "stock-analysis",
+      event: "snapshot-sources",
+      ts: new Date().toISOString(),
+      symbol,
+      ...info,
+    }),
+  );
+}
+
 export async function analyzeStock(
   args: AnalyzeStockArgs,
 ): Promise<AnalyzeStockResult> {
-  // 1. Yahoo 시세 + 펀더멘털 + 일봉 (병렬, 펀더멘털/일봉은 실패 허용)
-  const [quotes, fundamentals, dailyOHLC] = await Promise.all([
+  // 1. DART 는 KR 종목 + key 있음 + 토글 ON 모두 만족 시에만.
+  const isKrx = args.symbol.endsWith(".KS") || args.symbol.endsWith(".KQ");
+  const krxCode = isKrx ? args.symbol.replace(/\.(KS|KQ)$/, "") : null;
+  const enableDart =
+    env.STOCK_FUNDAMENTALS_SOURCES !== "off" &&
+    krxCode != null &&
+    env.DART_OPENAPI_AUTH_KEY != null;
+
+  // 2. 4-way 병렬 fetch — DART 는 wrapped catch (실패 시 null, yahoo 만으로 진행)
+  const [quotes, yahooFund, dailyOHLC, dartResult] = await Promise.all([
     fetchYahooQuotes([args.symbol]),
     fetchYahooFundamentals(args.symbol).catch(() => null),
     fetchYahooDailyOHLC(args.symbol, "1y").catch(() => []),
+    enableDart && krxCode
+      ? fetchDartFinancials(krxCode, env.DART_OPENAPI_AUTH_KEY!).catch(
+          () => null,
+        )
+      : Promise.resolve(null),
   ]);
   if (quotes.length === 0) {
     return {
@@ -68,38 +104,33 @@ export async function analyzeStock(
       marketSnapshot: null,
     };
   }
-  const q = quotes[0];
-  const snapshot: MarketSnapshot = {
-    price: q.price,
-    changePct: q.changePct,
-    currency: q.currency,
-    marketCap: fundamentals?.marketCap,
-    per: fundamentals?.per,
-    pbr: fundamentals?.pbr,
-    dividendYield: fundamentals?.dividendYield,
-    // ma20/ma60/rsi14 — Phase 3 후속 또는 Phase 5 (차트) 에서 일봉으로 계산.
-    ma20: undefined,
-    ma60: undefined,
-    rsi14: undefined,
-    asOf: q.fetchedAt,
-  };
 
-  // 2. 페르소나별 모델 해석 (user override + default 머지)
+  // 3. mergeSnapshot 으로 우선순위 머지 (DART > yahoo)
+  const closes = dailyOHLC.map((d) => d.close);
+  const snapshot = mergeSnapshot(quotes[0], yahooFund, dartResult, closes);
+  logSnapshotSources(args.symbol, {
+    yahoo: !!yahooFund,
+    dart: !!dartResult,
+    source: snapshot.fundamentalsSource,
+  });
+
+  // 4. 페르소나별 모델 해석 (user override + default 머지)
   const models = await resolvePersonaModels(args.userId);
 
-  // 3. 펀더멘털 전무 시 value 페르소나 skip — LLM 비용 + retry 낭비 방지.
-  //    value 는 PER/PBR/배당 정량 분석이 핵심이라 입력 없으면 "추정 불가"
-  //    응답만 반복. Yahoo v7 401 등 외부 데이터 장애 시 의도된 실패로 처리.
+  // 5. 펀더멘털 전무 시 value 페르소나 skip — PR #119 유지.
+  //    PR 2: trailingEPS/BPS 도 hasFundamentals 신호로 — DART 만 있어도 value 활성.
   const hasFundamentals =
     snapshot.per != null ||
     snapshot.pbr != null ||
     snapshot.marketCap != null ||
-    snapshot.dividendYield != null;
+    snapshot.dividendYield != null ||
+    snapshot.trailingEPS != null ||
+    snapshot.trailingBPS != null;
   const activePersonaKeys: PersonaKey[] = hasFundamentals
     ? PERSONA_KEYS
     : PERSONA_KEYS.filter((k) => k !== "value");
 
-  // 4. 활성 페르소나 병렬 호출
+  // 6. 활성 페르소나 병렬 호출
   const personaInput = {
     symbol: args.symbol,
     displayName: args.displayName,
@@ -133,7 +164,7 @@ export async function analyzeStock(
     }
   }
 
-  // 4. 3명 미만 성공 시 캐시 저장 안 함 (incomplete result 는 cache pollution).
+  // 7. 3명 미만 성공 시 캐시 저장 안 함 (incomplete result 는 cache pollution).
   if (successfulResults.length < MINIMUM_SUCCESS) {
     return {
       status: "failed",
@@ -143,7 +174,7 @@ export async function analyzeStock(
     };
   }
 
-  // 5. 합의 빌더
+  // 8. 합의 빌더
   const consensusModel = models.consensus;
   const consensusPrompt = buildConsensusPrompt(
     successfulResults,
@@ -178,13 +209,11 @@ export async function analyzeStock(
       successfulPersonas: successfulPersonaKeys,
       failedPersonas,
     };
-    // Schema 위반 시 ParseError throw — 호출 측이 catch 해야 함.
     consensus = ConsensusSchema.parse(consensus);
   }
 
-  // 6. DB upsert — 글로벌 캐시 (user_id NULL): 같은 종목/같은 날짜에 대해
-  // 모든 사용자가 동일 결과 공유. 페르소나 model override 가 결과에 미치는
-  // 영향은 v1 에서 무시 (per-user 캐시는 cost 폭발 위험).
+  // 9. DB upsert — promptVersion 동적 전달 (PERSONA_PROMPT_VERSION="v2").
+  //    v1 cache row 는 매칭 안 됨 → 다음 호출에서 자동 재분석.
   const today = new Date().toISOString().slice(0, 10);
   await upsertAnalysis({
     symbol: args.symbol,
@@ -193,6 +222,7 @@ export async function analyzeStock(
     personas,
     consensus,
     marketSnapshot: snapshot,
+    promptVersion: PERSONA_PROMPT_VERSION,
   });
 
   return {

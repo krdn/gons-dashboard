@@ -19,7 +19,8 @@ export type {
 export type { Consensus, MarketSnapshot } from "./model/consensus-types";
 export { DEFAULT_PERSONA_MODELS, PERSONA_DISPLAY } from "./model/persona-types";
 
-export const PROMPT_VERSION = "v1.0";
+// PR 2 (2026-05-23): 하드코딩 "v1.0" 제거 — 호출자가 PERSONA_PROMPT_VERSION 전달.
+// orchestrator 가 @gons/stock-analysis 의 PERSONA_PROMPT_VERSION ("v2") 을 넘긴다.
 
 export interface CachedAnalysisRow {
   symbol: string;
@@ -35,6 +36,7 @@ export async function getCachedAnalysis(
   symbol: string,
   analysisDate: string,
   userId: string | null,
+  promptVersion: string,
 ): Promise<CachedAnalysisRow | null> {
   const rows = await db
     .select()
@@ -43,6 +45,7 @@ export async function getCachedAnalysis(
       and(
         eq(stockAnalysisCache.symbol, symbol),
         eq(stockAnalysisCache.analysisDate, analysisDate),
+        eq(stockAnalysisCache.promptVersion, promptVersion),
         userId === null
           ? sql`${stockAnalysisCache.userId} IS NULL`
           : eq(stockAnalysisCache.userId, userId),
@@ -69,6 +72,7 @@ export interface UpsertAnalysisArgs {
   personas: Partial<Record<PersonaKey, PersonaAnalysis>>;
   consensus: Consensus;
   marketSnapshot: MarketSnapshot;
+  promptVersion: string;
 }
 
 export async function upsertAnalysis(args: UpsertAnalysisArgs): Promise<void> {
@@ -81,7 +85,7 @@ export async function upsertAnalysis(args: UpsertAnalysisArgs): Promise<void> {
       personas: args.personas,
       consensus: args.consensus,
       marketSnapshot: args.marketSnapshot,
-      promptVersion: PROMPT_VERSION,
+      promptVersion: args.promptVersion,
     })
     .onConflictDoUpdate({
       target: [
@@ -93,7 +97,7 @@ export async function upsertAnalysis(args: UpsertAnalysisArgs): Promise<void> {
         personas: args.personas,
         consensus: args.consensus,
         marketSnapshot: args.marketSnapshot,
-        promptVersion: PROMPT_VERSION,
+        promptVersion: args.promptVersion,
         generatedAt: sql`now()`,
       },
     });
