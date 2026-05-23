@@ -21,10 +21,12 @@ export async function updateHolding(input: UpdateHoldingInput): Promise<UpdateHo
     return { success: false, error: parsed.error.issues[0]?.message ?? "검증 실패" };
   }
 
-  const updateValues: Record<string, string | null | Date> = {};
+  const updateValues: Record<string, string | null | Date | boolean> = {};
   if (parsed.data.quantity !== undefined) updateValues.quantity = parsed.data.quantity;
   if (parsed.data.avgCost !== undefined) updateValues.avgCost = parsed.data.avgCost;
   if (parsed.data.purchasedAt !== undefined) updateValues.purchasedAt = parsed.data.purchasedAt;
+  if (parsed.data.kind !== undefined) updateValues.kind = parsed.data.kind;
+  if (parsed.data.pushOptIn !== undefined) updateValues.pushOptIn = parsed.data.pushOptIn;
   updateValues.updatedAt = new Date();
 
   // updatedAt 외 변경 사항이 없으면 no-op
