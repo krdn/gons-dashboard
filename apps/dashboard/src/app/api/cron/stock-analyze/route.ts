@@ -37,7 +37,11 @@ interface SymbolTarget {
   displayName: string;
   assetClass: PortfolioHolding["assetClass"];
   market: PortfolioHolding["market"];
-  holders: { userId: string }[];
+  holders: Array<{
+    userId: string;
+    kind: "holding" | "watchlist";
+    pushOptIn: boolean;
+  }>;
 }
 
 export async function POST(request: Request) {
@@ -69,22 +73,29 @@ export async function POST(request: Request) {
           assetClass: portfolioHoldings.assetClass,
           market: portfolioHoldings.market,
           userId: portfolioHoldings.userId,
+          kind: portfolioHoldings.kind,
+          pushOptIn: portfolioHoldings.pushOptIn,
         })
         .from(portfolioHoldings)
         .where(marketFilter);
 
       const grouped = new Map<string, SymbolTarget>();
       for (const r of rows) {
+        const holder = {
+          userId: r.userId,
+          kind: r.kind as "holding" | "watchlist",
+          pushOptIn: r.pushOptIn,
+        };
         const existing = grouped.get(r.symbol);
         if (existing) {
-          existing.holders.push({ userId: r.userId });
+          existing.holders.push(holder);
         } else {
           grouped.set(r.symbol, {
             symbol: r.symbol,
             displayName: r.displayName,
             assetClass: r.assetClass as PortfolioHolding["assetClass"],
             market: r.market as PortfolioHolding["market"],
-            holders: [{ userId: r.userId }],
+            holders: [holder],
           });
         }
       }
@@ -115,8 +126,10 @@ export async function POST(request: Request) {
       let flipped = 0;
       let notified = 0;
       if (detection) {
-        flipped = t.holders.length;
         for (const holder of t.holders) {
+          // watchlist 이고 pushOptIn=false 면 알림 skip (기본값)
+          if (holder.kind === "watchlist" && !holder.pushOptIn) continue;
+          flipped += 1;
           const notifyResult = await notifyFlip({
             userId: holder.userId,
             detection,
