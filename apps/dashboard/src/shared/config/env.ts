@@ -65,6 +65,9 @@ const schema = z.object({
     .enum(["yahoo+dart", "off"])
     .default("yahoo+dart"),
 
+  // 사용자 1명당 등록 가능한 관심종목(watchlist) 최대 개수. 보유종목은 별도. 기본 10.
+  STOCK_WATCHLIST_MAX_PER_USER: z.coerce.number().int().min(0).default(10),
+
   // Web Push (VAPID)
   VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),
