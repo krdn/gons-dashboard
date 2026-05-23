@@ -102,13 +102,40 @@ export function HoldingRow({ holding, onMutate }: Props) {
         {holding.assetClass}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
-        {renderCell("quantity", holding.quantity)}
+        {holding.kind === "watchlist" && holding.quantity == null
+          ? <span className="text-[var(--color-text-muted)]">—</span>
+          : renderCell("quantity", holding.quantity ?? "")}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
-        {renderCell("avgCost", holding.avgCost)}
+        {holding.kind === "watchlist" && holding.avgCost == null
+          ? <span className="text-[var(--color-text-muted)]">—</span>
+          : renderCell("avgCost", holding.avgCost ?? "")}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {renderCell("purchasedAt", holding.purchasedAt ?? "—")}
+      </td>
+      <td className="px-3 py-2 text-center">
+        <button
+          type="button"
+          onClick={async () => {
+            setBusy(true);
+            const res = await updateHolding({
+              id: holding.id,
+              pushOptIn: !holding.pushOptIn,
+            });
+            setBusy(false);
+            if (!res.success) {
+              setError(res.error ?? "토글 실패");
+              return;
+            }
+            onMutate();
+          }}
+          disabled={busy}
+          aria-label={holding.pushOptIn ? "푸시 끄기" : "푸시 켜기"}
+          className="rounded p-1 text-sm hover:bg-[var(--color-surface-2)] disabled:opacity-50"
+        >
+          {holding.pushOptIn ? "🔔" : "🔕"}
+        </button>
       </td>
       <td className="px-3 py-2 text-right">
         <button
