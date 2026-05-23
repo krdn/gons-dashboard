@@ -61,14 +61,26 @@ export async function StockAnalysisCard() {
     dailyOHLC: dailySets[i],
   }));
 
-  // 헤드라인 = 합의 score 가장 강한 종목.
-  const cached = enriched.filter((e) => e.analysis !== null);
-  const headline = cached.sort((a, b) => {
-    const aScore = Number(a.analysis?.consensus.score.split("/")[0] ?? 0);
-    const bScore = Number(b.analysis?.consensus.score.split("/")[0] ?? 0);
-    return bScore - aScore;
-  })[0];
+  // kind 별로 분리 — headline 은 보유 우선, 보유 없으면 관심.
+  type EnrichedRow = (typeof enriched)[number];
+  const enrichedHoldings = enriched.filter(
+    (e) => e.holding.kind === "holding",
+  );
+  const enrichedWatchlist = enriched.filter(
+    (e) => e.holding.kind === "watchlist",
+  );
 
+  const pickHeadline = (pool: EnrichedRow[]): EnrichedRow | undefined => {
+    const cached = pool.filter((e) => e.analysis !== null);
+    return cached.sort((a, b) => {
+      const aScore = Number(a.analysis?.consensus.score.split("/")[0] ?? 0);
+      const bScore = Number(b.analysis?.consensus.score.split("/")[0] ?? 0);
+      return bScore - aScore;
+    })[0];
+  };
+
+  const headline =
+    pickHeadline(enrichedHoldings) ?? pickHeadline(enrichedWatchlist);
   const headlineSnapshot = headline?.analysis?.marketSnapshot;
   const headlineQuote = headline?.quote;
   const pendingHoldings = enriched
@@ -112,29 +124,8 @@ export async function StockAnalysisCard() {
           />
         )}
 
-        {cached.length > 1 && (
-          <div className="flex flex-col gap-1">
-            {cached
-              .filter((e) => e.holding.id !== headline?.holding.id)
-              .map((e) => {
-                if (!e.analysis) return null;
-                const snap = e.quote
-                  ? { ...e.analysis.marketSnapshot, price: e.quote.price }
-                  : e.analysis.marketSnapshot;
-                return (
-                  <HoldingDetailButton
-                    key={e.holding.id}
-                    holding={e.holding}
-                    personas={e.analysis.personas}
-                    consensus={e.analysis.consensus}
-                    snapshot={snap}
-                    dailyOHLC={e.dailyOHLC}
-                    variant="row"
-                  />
-                );
-              })}
-          </div>
-        )}
+        {renderRowSection("보유", enrichedHoldings, headline?.holding.id)}
+        {renderRowSection("관심", enrichedWatchlist, headline?.holding.id)}
 
         {/* 캐시 miss 종목 — Phase 6 lazy trigger placeholder */}
         {pendingHoldings.length > 0 && (
@@ -167,5 +158,47 @@ function EmptyCard() {
         </p>
       </div>
     </section>
+  );
+}
+
+type EnrichedRowExport = {
+  holding: Awaited<ReturnType<typeof getHoldings>>[number];
+  quote: { price: number } | undefined;
+  analysis: Awaited<ReturnType<typeof getCachedAnalysis>>;
+  dailyOHLC: Array<{ date: string; close: number; volume: number }>;
+};
+
+function renderRowSection(
+  label: string,
+  rows: EnrichedRowExport[],
+  headlineId: string | undefined,
+) {
+  const cached = rows.filter(
+    (e) => e.analysis !== null && e.holding.id !== headlineId,
+  );
+  if (cached.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+        {label} ({rows.length})
+      </div>
+      {cached.map((e) => {
+        if (!e.analysis) return null;
+        const snap = e.quote
+          ? { ...e.analysis.marketSnapshot, price: e.quote.price }
+          : e.analysis.marketSnapshot;
+        return (
+          <HoldingDetailButton
+            key={e.holding.id}
+            holding={e.holding}
+            personas={e.analysis.personas}
+            consensus={e.analysis.consensus}
+            snapshot={snap}
+            dailyOHLC={e.dailyOHLC}
+            variant="row"
+          />
+        );
+      })}
+    </div>
   );
 }

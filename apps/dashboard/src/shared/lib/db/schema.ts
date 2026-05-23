@@ -21,6 +21,7 @@ import {
   numeric,
   date,
   customType,
+  check,
 } from "drizzle-orm/pg-core";
 import type { TriNationLifetime, TriNationYearly, TriNationMonthly, TriNationDailyLite } from "@gons/saju";
 
@@ -971,15 +972,28 @@ export const portfolioHoldings = pgTable(
     assetClass: text("asset_class").notNull(), // 'stock' | 'etf' | 'crypto' 등
     market: text("market").notNull(), // 'US' | 'KR' | 'CRYPTO' 등
     displayName: text("display_name").notNull(),
-    quantity: numeric("quantity", { precision: 20, scale: 8 }).notNull(),
-    avgCost: numeric("avg_cost", { precision: 20, scale: 8 }).notNull(),
+    // watchlist 일 때 NULL 허용 — CHECK 로 강제
+    quantity: numeric("quantity", { precision: 20, scale: 8 }),
+    avgCost: numeric("avg_cost", { precision: 20, scale: 8 }),
     purchasedAt: date("purchased_at"),
+    // kind: 'holding' (실제 보유) | 'watchlist' (관심만)
+    kind: text("kind").notNull().default("holding"),
+    // flip 푸시 알림 토글 — 보유 기본 true, 관심 기본 false (server action 에서 분기)
+    pushOptIn: boolean("push_opt_in").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     uniqueIndex("portfolio_holdings_user_symbol_uq").on(t.userId, t.symbol),
     index("portfolio_holdings_user_idx").on(t.userId),
+    check(
+      "portfolio_holdings_kind_check",
+      sql`${t.kind} IN ('holding', 'watchlist')`,
+    ),
+    check(
+      "portfolio_holdings_holding_qty_check",
+      sql`(${t.kind} = 'watchlist') OR (${t.quantity} IS NOT NULL AND ${t.avgCost} IS NOT NULL)`,
+    ),
   ],
 );
 

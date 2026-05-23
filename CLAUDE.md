@@ -8,7 +8,10 @@
 - **도메인 (현재)**:
   - **Email 분석** — Gmail 폴링 → LLM 분류(important/reply-needed) → 위젯 표시·푸시
   - **Server Infra Monitor** — 등록된 Docker host들의 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그)
-- **확장 방향**: 캘린더, 할 일, 노트 등 도메인을 점진 추가
+  - **Saju (사주)** — `packages/saju` 빌더 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
+  - **Stock Analysis (증권 종목)** — `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 (Phase 1~8 진행 중)
+  - **Calendar / Tiger Reading / Fortune Profile** — `packages/mcp-calendar` 외 보조 위젯
+- **확장 방향**: 할 일, 노트 등 도메인을 점진 추가
 - **아키텍처**: FSD (Feature-Sliced Design)
 - **문서 언어**: 한국어 (코드·식별자는 영어)
 
@@ -60,8 +63,15 @@ gons-dashboard/
 ├── apps/
 │   ├── dashboard/   # Next.js 앱 (@gons/dashboard)
 │   └── cron/        # node-cron 컨테이너 (@gons/cron) — 매시간 /api/cron/* 호출
-└── packages/        # MCP 서버 패키지가 추가될 자리 (plan-B 이후)
+└── packages/        # 도메인 라이브러리 + MCP 서버
+    ├── saju/                # @gons/saju — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
+    ├── stock-analysis/      # @gons/stock-analysis — 페르소나 + consensus + adapter
+    ├── mcp-calendar/        # @gons/mcp-calendar — Google Calendar MCP 서버
+    ├── shared-google/       # @gons/shared-google — Google API 공통 (token mediator client)
+    └── shared-mcp-runtime/  # @gons/shared-mcp-runtime — MCP stdio + in-process 공통
 ```
+
+신규 도메인/MCP 추가 패턴은 아래 "MCP 도구 호출 정책" 섹션 참조.
 
 root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.md
 하위 명령(`pnpm dev`, `pnpm typecheck` 등)은 그대로 동작. 직접 `apps/dashboard/`에
@@ -222,6 +232,9 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | pgcrypto | `PG_ENCRYPTION_KEY` | ✓ (refresh token at-rest) |
 | Timezone | `TZ=Asia/Seoul` | ✓ (KST cron 정확성) |
 | Server Monitor | `DOCKER_DEFAULT_CONTEXT=home-server`, `DOCKER_CMD_TIMEOUT_MS=10000`, `ADMIN_EMAILS` | ✓ |
+| Saju LLM | `SAJU_LLM_MODEL`, `SAJU_LLM_TEMPERATURE`, `SAJU_LLM_DAILY_BUDGET_KRW` | ✓ (saju 도메인 활성 시) |
+| Stock | `KRX_DATA_GO_KR_API_KEY` (KRX 종목 마스터) | ✓ (stock-analysis 활성 시) |
+| MCP / PlayMCP | `MCP_DASHBOARD_TOKEN`, `PLAYMCP_GATEWAY_URL`, `PLAYMCP_CLIENT_ID`, `PLAYMCP_BOOTSTRAP_OTT` | ✓ (MCP stdio + PlayMCP 게이트웨이 사용 시) |
 
 **시크릿은 어떤 형태로도 저장소에 커밋 금지** — README, 주석, 마크다운 본문 포함.
 

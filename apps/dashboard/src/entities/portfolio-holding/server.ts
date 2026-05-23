@@ -23,9 +23,11 @@ export async function getHoldings(userId: string): Promise<PortfolioHolding[]> {
     assetClass: r.assetClass as PortfolioHolding["assetClass"],
     market: r.market as PortfolioHolding["market"],
     displayName: r.displayName,
+    kind: r.kind as PortfolioHolding["kind"],
     quantity: r.quantity,
     avgCost: r.avgCost,
     purchasedAt: r.purchasedAt,
+    pushOptIn: r.pushOptIn,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   }));
