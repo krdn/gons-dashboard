@@ -55,10 +55,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // DB 의 portfolio_holdings.market 은 packages/stock-analysis 의 Market 타입
+  // ("NASDAQ" | "NYSE" | "KRX" | "CRYPTO" | "COMMODITY") 와 정합.
+  // query string 의 market=KR|US_GLOBAL 은 그룹 구분 키이므로 SQL 매핑은 분리.
   const marketFilter =
     market === "KR"
-      ? sql`${portfolioHoldings.market} = 'KR'`
-      : sql`${portfolioHoldings.market} IN ('US','CRYPTO','COMMODITY')`;
+      ? sql`${portfolioHoldings.market} = 'KRX'`
+      : sql`${portfolioHoldings.market} IN ('NASDAQ','NYSE','CRYPTO','COMMODITY')`;
 
   const handler = createCronHandler<
     SymbolTarget,
