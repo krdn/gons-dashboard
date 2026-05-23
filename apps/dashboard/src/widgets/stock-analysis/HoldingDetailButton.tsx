@@ -10,6 +10,7 @@ import type {
 } from "@/entities/stock-analysis/client";
 import { ConsensusBadge } from "@/entities/stock-analysis/client";
 import { StockDetailModal } from "./StockDetailModal";
+import { formatChange } from "./HoldingDetailButton.utils";
 
 interface Props {
   holding: PortfolioHolding;
@@ -18,13 +19,6 @@ interface Props {
   snapshot: MarketSnapshot;
   dailyOHLC: Array<{ date: string; close: number; volume: number }>;
   variant: "hero" | "row";
-}
-
-function formatChange(curr: number, avgCost: number) {
-  const pct = ((curr - avgCost) / avgCost) * 100;
-  const sign = pct >= 0 ? "+" : "";
-  const color = pct >= 0 ? "text-emerald-700" : "text-rose-700";
-  return { pct, label: `${sign}${pct.toFixed(1)}%`, color };
 }
 
 const VERDICT_LABEL: Record<Consensus["verdict"], string> = {
@@ -42,7 +36,10 @@ export function HoldingDetailButton({
   variant,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const change = formatChange(snapshot.price, Number(holding.avgCost));
+  const change = formatChange(
+    snapshot.price,
+    holding.avgCost == null ? null : Number(holding.avgCost),
+  );
 
   if (variant === "hero") {
     return (
