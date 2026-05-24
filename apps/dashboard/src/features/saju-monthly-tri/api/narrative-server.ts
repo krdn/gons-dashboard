@@ -206,10 +206,17 @@ export async function getOrBuildMonthlyNarrative(
   // Hotfix #3 (v0.3.1.1): ZodError 발생 시 1회 재시도 (lifetime/yearly 패턴 미러).
   const systemPrompt = SCHOOL_PROMPTS[school];
 
+  const schoolSpecificExample: Record<NarrativeSchool, string> = {
+    ko: '{"joohuFocus":"...","shinsalNotes":["..."]}',
+    "cn-ziping": '{"gyeokgukRationale":"...","yongshinAnalysis":"..."}',
+    "cn-mangpai": '{"eventTimings":[{"period":"초순","event":"..."},{"period":"중순","event":"..."},{"period":"하순","event":"..."}]}',
+    jp: '{"palaceMap":[{"palace":"...","note":"..."},{"palace":"...","note":"..."},{"palace":"...","note":"..."}]}',
+  };
+
   const baseUserContent = `${targetYear}년 ${targetMonth}월 월운 분석:\n${JSON.stringify(frame, null, 2)}
 
 위 ${targetYear}년 ${targetMonth}월 월운을 다음 JSON 스키마로만 답하세요. 마크다운 헤더, 펜스, prose 설명, 인사말 모두 금지. '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력:
-{"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["..."]},"schoolSpecific":{...학파별 필드...},"citations":["출처1","출처2"]}`;
+{"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["주의1","주의2"]},"schoolSpecific":${schoolSpecificExample[school]},"citations":["출처1","출처2"]}`;
 
   const parsed = await callMonthlyLlmAndParseWithRetry(school, systemPrompt, baseUserContent, modelId);
 

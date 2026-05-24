@@ -7,7 +7,7 @@
 //   prompt_version, algorithm_version) 의 일부.
 // - 프롬프트 또는 출력 스키마 변경 시 bump → 자동 캐시 무효화.
 // v=1: 신규 시작.
-export const PROMPT_VERSION = 1;
+export const PROMPT_VERSION = 2;
 
 import type { NarrativeSchool } from "@/shared/lib/db/schema";
 export type { NarrativeSchool };

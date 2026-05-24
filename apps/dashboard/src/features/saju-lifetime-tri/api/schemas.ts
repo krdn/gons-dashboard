@@ -77,17 +77,29 @@ const zipingSpecificSchema = z.object({
   yongshinAnalysis: z.string().min(40),
 }) satisfies z.ZodType<SchoolSpecificZiping>;
 
+const normalizeEventTiming = (v: unknown): unknown => {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return v;
+  const obj = v as Record<string, unknown>;
+  if (!obj.period && (obj.time || obj.timing || obj.timeSlot)) {
+    return { ...obj, period: obj.time ?? obj.timing ?? obj.timeSlot };
+  }
+  return v;
+};
+
 const mangpaiSpecificSchema = z.object({
   eventTimings: z
     .array(
-      z.object({
-        period: z.string().min(1),
-        event: z.string().min(1),
-      }),
+      z.preprocess(
+        normalizeEventTiming,
+        z.object({
+          period: z.string().min(1),
+          event: z.string().min(1),
+        }),
+      ),
     )
     .min(3)
     .max(8),
-}) satisfies z.ZodType<SchoolSpecificMangpai>;
+}) satisfies z.ZodType<SchoolSpecificMangpai, z.ZodTypeDef, unknown>;
 
 const jpSpecificSchema = z.object({
   palaceMap: z

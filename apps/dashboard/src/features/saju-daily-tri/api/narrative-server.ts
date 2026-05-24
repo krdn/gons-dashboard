@@ -121,7 +121,7 @@ async function callDailyLlmAndParseWithRetry(
       lastErr = err;
       if (err instanceof ZodError) {
         console.error(
-          `[saju-daily-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+          `[saju-daily-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length} text_head=${JSON.stringify(text.slice(0, 500))}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
         );
         if (attempt === 2) throw err;
       } else {
@@ -183,10 +183,17 @@ export async function getOrBuildDailyNarrative(
 
   const systemPrompt = SCHOOL_PROMPTS[school];
 
+  const schoolSpecificExample: Record<NarrativeSchool, string> = {
+    ko: '{"joohuFocus":"...","shinsalNotes":["..."]}',
+    "cn-ziping": '{"gyeokgukRationale":"...","yongshinAnalysis":"..."}',
+    "cn-mangpai": '{"eventTimings":[{"period":"오전","event":"..."},{"period":"정오","event":"..."},{"period":"오후","event":"..."}]}',
+    jp: '{"palaceMap":[{"palace":"...","note":"..."},{"palace":"...","note":"..."},{"palace":"...","note":"..."}]}',
+  };
+
   const baseUserContent = `${forDate} 일운 분석:\n${JSON.stringify(frame, null, 2)}
 
 위 ${forDate} 일운을 다음 JSON 스키마로만 답하세요. 마크다운 헤더, 펜스, prose 설명, 인사말 모두 금지. '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력:
-{"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["..."]},"schoolSpecific":{...학파별 필드...},"citations":["출처1","출처2"]}`;
+{"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["주의1","주의2"]},"schoolSpecific":${schoolSpecificExample[school]},"citations":["출처1","출처2"]}`;
 
   const parsed = await callDailyLlmAndParseWithRetry(
     school,
