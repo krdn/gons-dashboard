@@ -49,7 +49,7 @@ export async function StockAnalysisCard() {
       ),
     ),
     Promise.all(
-      symbols.map((s) => fetchYahooDailyOHLC(s, "1y").catch(() => [])),
+      symbols.map((s) => fetchYahooDailyOHLC(s, "1y")),
     ),
   ]);
   const quoteBySymbol = Object.fromEntries(quotes.map((q) => [q.symbol, q]));

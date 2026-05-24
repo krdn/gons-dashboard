@@ -123,18 +123,22 @@ export async function fetchYahooDailyOHLC(
     "5y": 60,
   };
   start.setMonth(start.getMonth() - months[range]);
-  const result = (await yf.chart(symbol, {
-    period1: start,
-    period2: now,
-    interval: "1d",
-  })) as ChartResultArray;
-  return result.quotes
-    .map((q: ChartResultArrayQuote) => ({
-      date: q.date.toISOString().slice(0, 10),
-      close: q.close ?? 0,
-      volume: q.volume ?? 0,
-    }))
-    .filter((row: { close: number }) => row.close > 0);
+  try {
+    const result = (await yf.chart(symbol, {
+      period1: start,
+      period2: now,
+      interval: "1d",
+    })) as ChartResultArray;
+    return result.quotes
+      .map((q: ChartResultArrayQuote) => ({
+        date: q.date.toISOString().slice(0, 10),
+        close: q.close ?? 0,
+        volume: q.volume ?? 0,
+      }))
+      .filter((row: { close: number }) => row.close > 0);
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchYahooSearch(
