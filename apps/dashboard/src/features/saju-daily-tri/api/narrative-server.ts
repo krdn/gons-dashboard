@@ -15,7 +15,8 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { ALGORITHM_VERSION, type DailyLiteFrame } from "@gons/saju";
-import { anthropic } from "@/shared/lib/llm/anthropic";
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
 import {
   sajuDailyNarrative,
@@ -34,39 +35,6 @@ const MAX_NARRATIVE_TOKENS = 4096;
 export type { NarrativeSchool } from "./prompts";
 
 // monthly narrative-server.ts 와 동일 동작. cross-feature import 는 FSD boundary 위반 — 의도적 복제.
-export function extractJsonObject(text: string): string {
-  const start = text.indexOf("{");
-  if (start === -1) {
-    throw new Error("no JSON object found in LLM response");
-  }
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (inString) {
-      if (escape) {
-        escape = false;
-      } else if (ch === "\\") {
-        escape = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-    if (ch === '"') {
-      inString = true;
-    } else if (ch === "{") {
-      depth++;
-    } else if (ch === "}") {
-      depth--;
-      if (depth === 0) {
-        return text.slice(start, i + 1);
-      }
-    }
-  }
-  throw new Error("unbalanced JSON object in LLM response");
-}
 
 export interface DailyNarrativeResult {
   school: NarrativeSchool;
@@ -95,38 +63,28 @@ async function callDailyLlmAndParseWithRetry(
         ? baseUserContent
         : `${baseUserContent}\n\n[중요 — 재시도] 이전 응답이 schema 검증에 실패했습니다. 모든 sections 필드를 충분한 분량으로 채우고, schoolSpecific 의 모든 필드를 빠짐없이 작성하세요. 출력은 JSON 본문만.\n\n검증 실패 상세: ${lastErr instanceof ZodError ? lastErr.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(lastErr)}`;
 
-    let response;
     try {
-      response = await anthropic.messages.create({
-        model: modelId,
-        max_tokens: MAX_NARRATIVE_TOKENS,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userContent }],
-      });
-    } catch (err) {
-      console.error(
-        `[saju-daily-narrative] LLM_CALL_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+      const { object } = await analyzeStructured(
+        userContent,
+        SCHOOL_SCHEMAS[school] as import("zod").ZodType<NarrativeOutput>,
+        {
+          ...gatewayDefaults,
+          model: modelId,
+          systemPrompt,
+          maxOutputTokens: MAX_NARRATIVE_TOKENS,
+        },
       );
-      throw err;
-    }
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    const text = textBlock ? textBlock.text : "";
-    const stopReason = response.stop_reason;
-
-    try {
-      const json = JSON.parse(extractJsonObject(text));
-      return SCHOOL_SCHEMAS[school].parse(json) as NarrativeOutput;
+      return object as NarrativeOutput;
     } catch (err) {
       lastErr = err;
       if (err instanceof ZodError) {
         console.error(
-          `[saju-daily-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length} text_head=${JSON.stringify(text.slice(0, 500))}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+          `[saju-daily-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
         );
         if (attempt === 2) throw err;
       } else {
         console.error(
-          `[saju-daily-narrative] JSON_PARSE_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length} text_head=${JSON.stringify(text.slice(0, 200))}: ${err instanceof Error ? err.message : String(err)}`,
+          `[saju-daily-narrative] LLM_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
         );
         throw err;
       }

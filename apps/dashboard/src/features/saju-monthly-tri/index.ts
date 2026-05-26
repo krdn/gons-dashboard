@@ -14,7 +14,6 @@ export {
 } from "./api/monthly-server";
 export {
   getOrBuildMonthlyNarrative,
-  extractJsonObject,
   type NarrativeSchool,
   type MonthlyNarrativeResult,
 } from "./api/narrative-server";

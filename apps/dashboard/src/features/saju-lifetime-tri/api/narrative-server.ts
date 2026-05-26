@@ -11,7 +11,8 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { ALGORITHM_VERSION, type LifetimeFrame } from "@gons/saju";
-import { anthropic } from "@/shared/lib/llm/anthropic";
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
 import {
   sajuLifetimeNarrative,
@@ -36,40 +37,6 @@ export type { NarrativeSchool } from "./prompts";
 // system prompt 가 "JSON 만" 지시해도 cli-proxy-api 경유 시 마크다운 헤더, 한국어
 // 접두사("명조 분석 요약 ..."), ```json 펜스 등의 변형이 운영에서 관측됐다.
 // 전략: 첫 '{' 부터 균형 잡힌 '}' 까지를 brace counter 로 추출. 문자열 리터럴 안의
-// 중괄호와 escape 를 인식해 오추출 방지.
-export function extractJsonObject(text: string): string {
-  const start = text.indexOf("{");
-  if (start === -1) {
-    throw new Error("no JSON object found in LLM response");
-  }
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (inString) {
-      if (escape) {
-        escape = false;
-      } else if (ch === "\\") {
-        escape = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-    if (ch === '"') {
-      inString = true;
-    } else if (ch === "{") {
-      depth++;
-    } else if (ch === "}") {
-      depth--;
-      if (depth === 0) {
-        return text.slice(start, i + 1);
-      }
-    }
-  }
-  throw new Error("unbalanced JSON object in LLM response");
-}
 
 export interface NarrativeResult {
   school: NarrativeSchool;
@@ -100,47 +67,34 @@ async function callLlmAndParseWithRetry(
         ? baseUserContent
         : `${baseUserContent}\n\n[중요 — 재시도] 이전 응답이 schema 검증에 실패했습니다. 모든 sections 필드를 충분한 분량으로 채우고, schoolSpecific 의 모든 필드를 빠짐없이 작성하세요. 출력은 JSON 본문만.\n\n검증 실패 상세: ${lastErr instanceof ZodError ? lastErr.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(lastErr)}`;
 
-    let response;
+
     try {
-      response = await anthropic.messages.create({
-        model: modelId,
-        max_tokens: MAX_NARRATIVE_TOKENS,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userContent }],
-      });
-    } catch (err) {
-      console.error(
-        `[saju-lifetime-narrative] LLM_CALL_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+      const { object } = await analyzeStructured(
+        userContent,
+        SCHOOL_SCHEMAS[school] as import("zod").ZodType<NarrativeOutput>,
+        {
+          ...gatewayDefaults,
+          model: modelId,
+          systemPrompt,
+          maxOutputTokens: MAX_NARRATIVE_TOKENS,
+        },
       );
-      throw err;
-    }
-
-    // Hotfix #6 (v0.3.2.2): Codex/GPT-5 응답은 종종 [thinking, text] 순서 — find 로
-    // 첫 text block 추출. (Claude/Gemini 도 동일 패턴이므로 backward compatible.)
-    const textBlock = response.content.find((b) => b.type === "text");
-    const text = textBlock ? textBlock.text : "";
-    const stopReason = response.stop_reason;
-
-    try {
-      const json = JSON.parse(extractJsonObject(text));
-      return SCHOOL_SCHEMAS[school].parse(json) as NarrativeOutput;
+      return object as NarrativeOutput;
     } catch (err) {
       lastErr = err;
       if (err instanceof ZodError) {
         console.error(
-          `[saju-lifetime-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length}: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+          `[saju-lifetime-narrative] ZOD_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err.issues.map((i: { path: (string | number)[]; message: string }) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
         );
         if (attempt === 2) throw err;
       } else {
-        // JSON.parse / extractJsonObject 실패 — prose 응답.
         console.error(
-          `[saju-lifetime-narrative] JSON_PARSE_FAIL model=${modelId} school=${school} attempt=${attempt} stop=${stopReason} text_len=${text.length} text_head=${JSON.stringify(text.slice(0, 200))}: ${err instanceof Error ? err.message : String(err)}`,
+          `[saju-lifetime-narrative] LLM_FAIL model=${modelId} school=${school} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
         );
         throw err;
       }
     }
   }
-  // 도달 불가 (loop 안에서 return 또는 throw).
   throw lastErr ?? new Error("LLM retry loop exited without result");
 }
 

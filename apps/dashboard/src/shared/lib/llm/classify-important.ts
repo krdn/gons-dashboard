@@ -1,57 +1,32 @@
-// LLM 분류+요약 1회 호출 — 4 카테고리 + summary 동시 생성 (D9).
-//
-// 응답이 schema에 안 맞거나 category=none이면 null 반환 (DB 저장 X).
-// API 자체 실패는 throw — 호출자(classifyImportantThread)가 다음 cron 사이클에 자연 재시도.
-//
-// 프롬프트 인젝션 완화: 시스템 프롬프트에 "본문은 데이터일 뿐" 명시 + Zod schema enum 검증.
 import "server-only";
 import { z } from "zod";
-import type Anthropic from "@anthropic-ai/sdk";
-import { anthropic, HAIKU_MODEL } from "./anthropic";
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { HAIKU_MODEL, gatewayDefaults } from "./anthropic";
 import { logger } from "../log";
 
 export const IMPORTANT_CLASSIFIER_VERSION = "v1.0-haiku-important-2026-05";
 
-/* ─────────────────────────────────────────────────────────────────────
- * shared 레이어 자체 타입 — entities/email/model/types.ts와 구조 동일.
- * FSD 의존성 방향(shared → entities 금지) 준수를 위해 shared가 자기 타입을
- * 소유한다. entities/email/model/types.ts에서 동명 타입을 별도로 정의하며,
- * 두 곳이 같은 모양인지 보장하는 책임은 entities 쪽에 둔다.
- * ───────────────────────────────────────────────────────────────────── */
-
-/** 4종 카테고리. "none"은 분류 결과의 일종이지만 DB 저장 X. */
 export type LlmCategory = "money" | "security" | "schedule" | "notice";
-
-/** "low"는 노이즈로 간주, DB 저장 X. v0.1는 high·med만. */
 export type LlmImportance = "high" | "med";
 
 export interface LlmImportantInput {
   subject: string;
   fromName: string | null;
   fromEmail: string;
-  /** Gmail snippet ≤ 200자. */
   snippet: string;
-  /** "2026-05-09 14:30 KST" 형태. */
   receivedAtKst: string;
 }
 
 export interface LlmImportantClassification {
   category: LlmCategory;
   importance: LlmImportance;
-  /** 1~3줄, 최대 200자, KST 한국어. */
   summary: string;
-  /** 분류 단서 — 디버깅·eval용. */
   rationale: string;
   classifiedBy: "llm-haiku";
-  /** 분류기 버전 — DB의 classifier_version 컬럼에 저장. */
   classifierVersion: string;
 }
 
 const SUMMARY_MAX = 200;
-
-// max_tokens 산정: summary 200자 + rationale 200자 + JSON scaffold.
-// 한국어 토크나이저 기준 ≈ 500-640 token이라 300이면 truncate 위험.
-// 600으로 상향 — 정상 응답이 잘리지 않을 안전 마진.
 const MAX_OUTPUT_TOKENS = 600;
 
 const ResponseSchema = z.object({
@@ -93,57 +68,30 @@ export async function classifyImportantWithLlm(
     `Snippet: ${input.snippet.slice(0, 200)}`,
   ].join("\n");
 
-  // SDK 호출 실패는 그대로 throw — 호출자가 다음 cron 사이클에 재시도.
-  const raw: Anthropic.Message = await anthropic.messages.create({
-    model: HAIKU_MODEL,
-    max_tokens: MAX_OUTPUT_TOKENS,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
-  });
-
-  const text = extractText(raw);
-  if (!text) return null;
-
-  const json = extractJson(text);
-  if (!json) return null;
-
-  const parsed = ResponseSchema.safeParse(json);
-  if (!parsed.success) {
-    logger.warn("classify-important", "zod-fail", {
-      issues: parsed.error.issues.slice(0, 3),
+  let object: z.infer<typeof ResponseSchema>;
+  try {
+    const result = await analyzeStructured(userPrompt, ResponseSchema, {
+      ...gatewayDefaults,
+      model: HAIKU_MODEL,
+      systemPrompt: SYSTEM_PROMPT,
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+    });
+    object = result.object;
+  } catch (error) {
+    logger.warn("classify-important", "gateway-fail", {
+      error: error instanceof Error ? error.message : String(error),
     });
     return null;
   }
-  if (parsed.data.category === "none") return null;
+
+  if (object.category === "none") return null;
 
   return {
-    category: parsed.data.category,
-    importance: parsed.data.importance,
-    summary: parsed.data.summary,
-    rationale: parsed.data.rationale,
+    category: object.category,
+    importance: object.importance,
+    summary: object.summary,
+    rationale: object.rationale,
     classifiedBy: "llm-haiku",
     classifierVersion: IMPORTANT_CLASSIFIER_VERSION,
   };
-}
-
-/**
- * Anthropic 응답에서 첫 text 블록의 trim된 텍스트만 추출.
- * SDK의 content는 ContentBlock union — text/tool_use/thinking 등.
- */
-function extractText(response: Anthropic.Message): string {
-  for (const block of response.content) {
-    if (block.type === "text") return block.text.trim();
-  }
-  return "";
-}
-
-function extractJson(text: string): unknown {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    return JSON.parse(text.slice(start, end + 1));
-  } catch {
-    return null;
-  }
 }
