@@ -6,7 +6,7 @@ import { z } from "zod";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles } from "@/shared/lib/db/schema";
-import { revalidateSajuChart } from "@/features/saju-reading/api/revalidateSajuChart";
+import { revalidateSajuChart } from "@/entities/saju-chart";
 import {
   FortuneProfileInput,
   type FortuneProfileActionResult,

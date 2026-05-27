@@ -19,7 +19,7 @@ import {
   users,
 } from "@/shared/lib/db/schema";
 import { generateChart } from "@/features/saju-reading/api/generateChart";
-import { revalidateSajuChart } from "@/features/saju-reading/api/revalidateSajuChart";
+import { revalidateSajuChart } from "@/entities/saju-chart";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000099991";
 const TEST_PROFILE_ID = "00000000-0000-0000-0000-000000099992";

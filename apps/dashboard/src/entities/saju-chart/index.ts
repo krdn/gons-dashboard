@@ -1,3 +1,4 @@
+export { revalidateSajuChart } from "./api/revalidateSajuChart";
 export { getSajuChartByProfile } from "./api/getSajuChartByProfile";
 export type { SajuChartWithReadings } from "./api/getSajuChartByProfile";
 export { getTodayDailyFortune } from "./api/getTodayDailyFortune";
