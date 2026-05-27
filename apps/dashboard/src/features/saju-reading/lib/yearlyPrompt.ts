@@ -1,4 +1,4 @@
-import type { SajuChart, Pillar, TenGod, MonthPillar } from "@gons/saju";
+import type { SajuChart, Pillar, TenGod, MonthPillar } from "@krdn/saju";
 
 // 프롬프트 내용이 의미 있게 바뀔 때마다 -v2, -v3 으로 올린다.
 // 캐시-리딩 모듈이 (model, promptVersion) 키로 옛 응답을 stale 처리.

@@ -8,7 +8,7 @@
 //   - agreement=low    → ⚠ 경고 (amber-700, notes 노출)
 //
 // 디자인 토큰: --color-hairline / --color-surface-2 (lifetime/yearly 와 동일).
-import type { TriNationMonthly } from "@gons/saju";
+import type { TriNationMonthly } from "@krdn/saju";
 
 interface Props {
   triNation: TriNationMonthly;

@@ -11,7 +11,7 @@
 //   - targetYear 는 헤더에 함께 표시 (어느 해의 합의인지 명시)
 //
 // 디자인 토큰: --color-hairline / --color-surface-2 (lifetime 위젯 sub-block 토큰과 일치).
-import type { TriNationYearly } from "@gons/saju";
+import type { TriNationYearly } from "@krdn/saju";
 
 interface Props {
   triNation: TriNationYearly;

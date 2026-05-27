@@ -15,10 +15,9 @@
 //  - sajuMonthlyNarrative 컬럼에 prompt_version + school_specific_jsonb 추가
 //  - MAX_NARRATIVE_TOKENS 4096 → 4096 (분량 800~1200자 = yearly 1200~1600 의 2/3)
 import "server-only";
-import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
-import { ALGORITHM_VERSION, type MonthlyFrame } from "@gons/saju";
+import { ALGORITHM_VERSION, computeFrameHash, type MonthlyFrame } from "@krdn/saju";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
@@ -109,9 +108,7 @@ export async function getOrBuildMonthlyNarrative(
   modelId: string,
 ): Promise<MonthlyNarrativeResult> {
   // frame_hash — MonthlyFrame JSON 직렬화 후 sha256.
-  const frameHash = createHash("sha256")
-    .update(JSON.stringify(frame))
-    .digest("hex");
+  const frameHash = computeFrameHash(frame);
 
   // 1) 캐시 조회 — promptVersion 필터로 v1 row 제외.
   const cached = await db.query.sajuMonthlyNarrative.findFirst({

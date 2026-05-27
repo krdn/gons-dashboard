@@ -8,7 +8,7 @@ import {
   type SajuChart,
   type Stem,
   type Branch,
-} from "@gons/saju";
+} from "@krdn/saju";
 import { sajuDailyFortunes } from "@/shared/lib/db/schema";
 import type { SajuChartRow, SajuDailyFortuneRow } from "@/entities/saju-chart";
 import { cachedReading } from "../lib/cachedReading";
@@ -25,7 +25,7 @@ export interface GenerateDailyFortuneResult {
   cached: boolean;
 }
 
-/** DB chart row → @gons/saju SajuChart. jsonb 필드 narrow. */
+/** DB chart row → @krdn/saju SajuChart. jsonb 필드 narrow. */
 function chartRowToChart(row: SajuChartRow): SajuChart {
   return {
     pillars: {

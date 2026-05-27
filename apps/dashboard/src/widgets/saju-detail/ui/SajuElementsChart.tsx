@@ -1,5 +1,5 @@
-import type { ElementCount, Element } from "@gons/saju";
-import { ELEMENT_KO } from "@gons/saju";
+import type { ElementCount, Element } from "@krdn/saju";
+import { ELEMENT_KO } from "@krdn/saju";
 
 const ELEMENTS: Element[] = ["wood", "fire", "earth", "metal", "water"];
 const MAX_COUNT = 8;

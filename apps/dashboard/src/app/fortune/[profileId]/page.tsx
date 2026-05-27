@@ -36,7 +36,7 @@ import type {
   Stem,
   Branch,
   SajuChart,
-} from "@gons/saju";
+} from "@krdn/saju";
 
 export const dynamic = "force-dynamic";
 

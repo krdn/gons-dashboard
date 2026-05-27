@@ -6,7 +6,7 @@ import {
   tenGodsForPillar,
   type SajuChart,
   type Stem,
-} from "@gons/saju";
+} from "@krdn/saju";
 import { sajuYearlyReadings } from "@/shared/lib/db/schema";
 import { cachedMarkdownReading } from "../lib/cachedReading";
 import { buildYearlyPrompt } from "../lib/yearlyPrompt";

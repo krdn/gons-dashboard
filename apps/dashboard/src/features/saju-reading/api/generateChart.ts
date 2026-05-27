@@ -1,5 +1,5 @@
 import "server-only";
-import { computeSajuChart, type SajuChart, type ComputeSajuInput } from "@gons/saju";
+import { computeSajuChart, type SajuChart, type ComputeSajuInput } from "@krdn/saju";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { sajuCharts } from "@/shared/lib/db/schema";

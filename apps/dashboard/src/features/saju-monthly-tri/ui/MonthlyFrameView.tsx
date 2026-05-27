@@ -12,7 +12,7 @@
 //
 // state lift-up (yearly 와 동일): narrative 캐시/AbortController/카운트다운은 부모(TriMonthlyTabs).
 
-import type { MonthlyFrame, Yongshin } from "@gons/saju";
+import type { MonthlyFrame, Yongshin } from "@krdn/saju";
 import type {
   MonthlyNarrativeSections,
   NarrativeSchool,

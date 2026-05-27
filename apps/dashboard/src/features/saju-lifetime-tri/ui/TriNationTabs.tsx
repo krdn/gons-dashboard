@@ -16,7 +16,7 @@
 // - 429 retryAt 카운트다운 — 학파별 retryAt + nowMs state, useEffect 안의 setInterval 로 갱신
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { TriNationLifetime } from "@gons/saju";
+import type { TriNationLifetime } from "@krdn/saju";
 import type {
   LifetimeNarrativeSections,
   SchoolSpecific,

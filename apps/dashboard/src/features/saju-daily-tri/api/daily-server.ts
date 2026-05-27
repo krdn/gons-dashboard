@@ -16,7 +16,7 @@ import {
   ALGORITHM_VERSION,
   buildTriNationDailyLiteFromBirth,
   type TriNationDailyLite,
-} from "@gons/saju";
+} from "@krdn/saju";
 import { db } from "@/shared/lib/db/client";
 import { sajuDailyTri } from "@/shared/lib/db/schema";
 import {

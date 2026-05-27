@@ -11,7 +11,7 @@ import {
   type MajorFortune,
   type Stem,
   type Branch,
-} from "@gons/saju";
+} from "@krdn/saju";
 import { splitMajorFortuneBody } from "./splitMajorFortuneBody";
 
 export interface SajuMajorFortuneTimelineClientProps {

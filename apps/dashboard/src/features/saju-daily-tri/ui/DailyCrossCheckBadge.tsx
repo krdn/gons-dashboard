@@ -3,7 +3,7 @@
 // monthly 의 MonthlyCrossCheckBadge 와 달리 TriNationDailyLite 는
 // crossCheck 객체가 없고 overallVibe ("auspicious"/"inauspicious"/"neutral") 만 있음.
 // 디자인 토큰: --color-hairline / --color-surface-2.
-import type { TriNationDailyLite } from "@gons/saju";
+import type { TriNationDailyLite } from "@krdn/saju";
 
 interface Props {
   triNation: TriNationDailyLite;

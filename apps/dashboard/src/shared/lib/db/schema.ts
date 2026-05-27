@@ -23,7 +23,7 @@ import {
   customType,
   check,
 } from "drizzle-orm/pg-core";
-import type { TriNationLifetime, TriNationYearly, TriNationMonthly, TriNationDailyLite } from "@gons/saju";
+import type { TriNationLifetime, TriNationYearly, TriNationMonthly, TriNationDailyLite } from "@krdn/saju";
 
 /* =========================================================================
  * Auth.js v5 표준 테이블 (DrizzleAdapter 사양)
@@ -561,92 +561,34 @@ export const sajuLifetimeTri = pgTable(
   ],
 );
 
-/**
- * sajuLifetimeNarrative / sajuYearlyNarrative sectionsJsonb 의 $type.
- *
- * features/saju-lifetime-tri/api/narrative-server.ts 에서 LLM 출력의 sections 를
- * 그대로 컬럼에 직렬화한다. shared 가 features 를 import 하면 FSD 의존성 방향
- * (features → shared) 을 깨므로 type 정의를 schema 쪽에 둔다.
- *
- * v0.2 에서 lifetime 전용 필드(keyTerms, cautions)가 추가됐으므로 두 타입으로 분리:
- *  - LifetimeNarrativeSections — 7필드 (v0.2 확장형)
- *  - YearlyNarrativeSections  — 5필드 (기존 그대로)
- */
-export interface NarrativeKeyTerm {
-  term: string;
-  gloss: string;
-}
+// narrative 타입 — @krdn/saju 패키지에서 import + re-export.
+// DB 테이블의 $type<...>() 참조가 로컬 identifier 를 사용하므로 import 필수.
+import type {
+  NarrativeSchool as _NarrativeSchool,
+  NarrativeKeyTerm as _NarrativeKeyTerm,
+  LifetimeNarrativeSections as _LifetimeNarrativeSections,
+  YearlyNarrativeSections as _YearlyNarrativeSections,
+  MonthlyNarrativeSections as _MonthlyNarrativeSections,
+  SchoolSpecificKo as _SchoolSpecificKo,
+  SchoolSpecificZiping as _SchoolSpecificZiping,
+  SchoolSpecificMangpai as _SchoolSpecificMangpai,
+  SchoolSpecificJp as _SchoolSpecificJp,
+  SchoolSpecific as _SchoolSpecific,
+} from "@krdn/saju";
 
-/** lifetime 전용 — v0.2 에서 keyTerms + cautions 추가 */
-export interface LifetimeNarrativeSections {
-  personality: string;
-  career: string;
-  relationship: string;
-  health: string;
-  daeunSummary: string;
-  keyTerms: NarrativeKeyTerm[];
-  cautions: string[];
-}
-
-/** yearly 전용 — v0.3.1 에서 keyTerms + cautions 추가 (lifetime v0.2 와 동일 구조). */
-export interface YearlyNarrativeSections {
-  personality: string;
-  career: string;
-  relationship: string;
-  health: string;
-  daeunSummary: string;
-  keyTerms: NarrativeKeyTerm[];
-  cautions: string[];
-}
-
-/**
- * v0.3 monthly 전용 — v0.3.1 에서 keyTerms + cautions 추가.
- *
- * yearly 와 같은 인터페이스를 재사용하지 않고 별도 선언한 이유: 향후 monthly-only 필드
- * (e.g. `keyTransitionWarnings`) 추가 시 yearly 와 독립 분기 가능.
- */
-export interface MonthlyNarrativeSections {
-  personality: string;
-  career: string;
-  relationship: string;
-  health: string;
-  daeunSummary: string;
-  keyTerms: NarrativeKeyTerm[];
-  cautions: string[];
-}
+export type NarrativeSchool = _NarrativeSchool;
+export type NarrativeKeyTerm = _NarrativeKeyTerm;
+export type LifetimeNarrativeSections = _LifetimeNarrativeSections;
+export type YearlyNarrativeSections = _YearlyNarrativeSections;
+export type MonthlyNarrativeSections = _MonthlyNarrativeSections;
+export type SchoolSpecificKo = _SchoolSpecificKo;
+export type SchoolSpecificZiping = _SchoolSpecificZiping;
+export type SchoolSpecificMangpai = _SchoolSpecificMangpai;
+export type SchoolSpecificJp = _SchoolSpecificJp;
+export type SchoolSpecific = _SchoolSpecific;
 
 /** @deprecated YearlyNarrativeSections 를 직접 사용하세요 (하위호환 alias) */
 export type NarrativeSections = YearlyNarrativeSections;
-
-/**
- * Tri-nation narrative 의 학파 union. v0.3.1 에서 shared 로 승격.
- *
- * lifetime/yearly/monthly 의 api/prompts.ts 와 shared/ui/saju-narrative 가 모두
- * 이 타입을 단일 source 로 사용한다. CHECK constraint 와 동일 4개 literal.
- */
-export type NarrativeSchool = "ko" | "cn-ziping" | "cn-mangpai" | "jp";
-
-// 학파별 schoolSpecific 의 union. v0.2 도입.
-// (서버에서 zod 검증을 통과한 값만 컬럼에 저장하므로 UI 는 학파에 따라 narrowing 가능)
-export type SchoolSpecificKo = {
-  joohuFocus: string;
-  shinsalNotes: string[];
-};
-export type SchoolSpecificZiping = {
-  gyeokgukRationale: string;
-  yongshinAnalysis: string;
-};
-export type SchoolSpecificMangpai = {
-  eventTimings: Array<{ period: string; event: string }>;
-};
-export type SchoolSpecificJp = {
-  palaceMap: Array<{ palace: string; note: string }>;
-};
-export type SchoolSpecific =
-  | SchoolSpecificKo
-  | SchoolSpecificZiping
-  | SchoolSpecificMangpai
-  | SchoolSpecificJp;
 
 export const sajuLifetimeNarrative = pgTable(
   "saju_lifetime_narrative",

@@ -11,7 +11,7 @@
 // render 중 Date.now() 금지 + useEffect body 동기 setState 금지.
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { TriNationDailyLite } from "@gons/saju";
+import type { TriNationDailyLite } from "@krdn/saju";
 import { DailyFrameView, type DailyNarrativePayload } from "./DailyFrameView";
 import { toUserMessage } from "../lib/errorMessage";
 import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";

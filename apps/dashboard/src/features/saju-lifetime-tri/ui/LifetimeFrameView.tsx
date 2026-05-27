@@ -2,7 +2,7 @@
 
 // LifetimeFrame 표시 + narrative 영역 (v0.2 — KeyTermsStrip / NarrativeSection ×5 /
 // SchoolSpecificCard / CitationsFootnote 조립).
-import type { LifetimeFrame } from "@gons/saju";
+import type { LifetimeFrame } from "@krdn/saju";
 import type {
   LifetimeNarrativeSections,
   NarrativeSchool,

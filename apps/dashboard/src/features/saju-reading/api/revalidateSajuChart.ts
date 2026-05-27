@@ -1,7 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
-import { hashProfile } from "@gons/saju";
-import type { ComputeSajuInput } from "@gons/saju";
+import { hashProfile } from "@krdn/saju";
+import type { ComputeSajuInput } from "@krdn/saju";
 import { db } from "@/shared/lib/db/client";
 import { sajuCharts } from "@/shared/lib/db/schema";
 

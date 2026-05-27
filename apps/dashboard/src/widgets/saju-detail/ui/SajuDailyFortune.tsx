@@ -1,4 +1,4 @@
-import type { DailyFortunePayload } from "@gons/saju";
+import type { DailyFortunePayload } from "@krdn/saju";
 
 const SCORE_DOTS = [1, 2, 3, 4, 5] as const;
 

@@ -11,10 +11,9 @@
 // v0.3 초기 plain-text 모델에서 v0.3.x richer 모델로 완전 재작성. 마이그레이션은
 // 기존 row 를 DELETE 하여 cache key 충돌 회피.
 import "server-only";
-import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
-import { ALGORITHM_VERSION, type DailyLiteFrame } from "@gons/saju";
+import { ALGORITHM_VERSION, computeFrameHash, type DailyLiteFrame } from "@krdn/saju";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
@@ -100,9 +99,7 @@ export async function getOrBuildDailyNarrative(
   frame: DailyLiteFrame,
   modelId: string,
 ): Promise<DailyNarrativeResult> {
-  const frameHash = createHash("sha256")
-    .update(JSON.stringify(frame))
-    .digest("hex");
+  const frameHash = computeFrameHash(frame);
 
   // 1) 캐시 조회 — promptVersion 필터로 마이그레이션 직후 새 row 부터 시작.
   const cached = await db.query.sajuDailyNarrative.findFirst({

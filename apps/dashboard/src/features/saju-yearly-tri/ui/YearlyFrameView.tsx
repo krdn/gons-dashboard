@@ -22,7 +22,7 @@
 // v0.3.1 narrative richer: narrative 가 단순 문자열에서 구조화 payload 로 변경.
 // shared/ui/saju-narrative 의 4 컴포넌트로 lifetime 과 동일 패턴 렌더.
 
-import type { YearlyFrame, Yongshin } from "@gons/saju";
+import type { YearlyFrame, Yongshin } from "@krdn/saju";
 import type {
   NarrativeSchool,
   SchoolSpecific,

@@ -14,7 +14,7 @@
 // AbortController + LifetimeFrameView 사용 — 이 컴포넌트 사용 안 함.
 
 import { useEffect, useRef, useState } from "react";
-import type { LifetimeFrame } from "@gons/saju";
+import type { LifetimeFrame } from "@krdn/saju";
 import type {
   LifetimeNarrativeSections,
   SchoolSpecific,

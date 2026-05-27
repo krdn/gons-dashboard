@@ -12,7 +12,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { ALGORITHM_VERSION, buildTriNationLifetime, type TriNationLifetime } from "@gons/saju";
+import { ALGORITHM_VERSION, buildTriNationLifetime, type TriNationLifetime } from "@krdn/saju";
 import { db } from "@/shared/lib/db/client";
 import { sajuLifetimeTri } from "@/shared/lib/db/schema";
 import {

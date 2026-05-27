@@ -15,10 +15,9 @@
 //  - sajuYearlyNarrative 컬럼에 prompt_version + school_specific_jsonb 추가
 //  - MAX_NARRATIVE_TOKENS 4096 → 6144 (1200~1600자 본문)
 import "server-only";
-import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
-import { ALGORITHM_VERSION, type YearlyFrame } from "@gons/saju";
+import { ALGORITHM_VERSION, computeFrameHash, type YearlyFrame } from "@krdn/saju";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
@@ -109,9 +108,7 @@ export async function getOrBuildYearlyNarrative(
   // frame_hash — YearlyFrame 의 JSON 직렬화 후 sha256.
   //  - builder 가 고정 키 순서로 생성하므로 JSON.stringify 결정형.
   //  - frame 구조 변경 시 자동으로 모든 캐시가 무효화된다.
-  const frameHash = createHash("sha256")
-    .update(JSON.stringify(frame))
-    .digest("hex");
+  const frameHash = computeFrameHash(frame);
 
   // 1) 캐시 조회 — promptVersion 필터로 v1 row 제외.
   const cached = await db.query.sajuYearlyNarrative.findFirst({

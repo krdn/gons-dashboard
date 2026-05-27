@@ -14,7 +14,7 @@
 //  - ComposeView 는 netVerdict / yongShinDelta / currentDaeun 3행 (D6 권장)
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { TriNationYearly, YearlyFrame } from "@gons/saju";
+import type { TriNationYearly, YearlyFrame } from "@krdn/saju";
 import { YearlyFrameView, type YearlyNarrativePayload } from "./YearlyFrameView";
 import { toUserMessage } from "../lib/errorMessage";
 import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";

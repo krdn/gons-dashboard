@@ -10,7 +10,7 @@
 // 상태별 색상 정책:
 //   ✓ 통과 / ⓘ 정보 → --color-text-muted (정상은 침묵)
 //   ⚠ 경고          → text-amber-700 (red 까지는 아닌 코드베이스 표준 톤)
-import type { TriNationLifetime } from "@gons/saju";
+import type { TriNationLifetime } from "@krdn/saju";
 
 interface Props {
   triNation: TriNationLifetime;

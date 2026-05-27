@@ -2,7 +2,7 @@ import {
   STEM_KO, BRANCH_KO, TEN_GOD_KO,
   STEM_ELEMENT, BRANCH_ELEMENT,
   type Stem, type Branch, type Element, type TenGod, type TenGodAssignment,
-} from "@gons/saju";
+} from "@krdn/saju";
 import type { SajuChartRow } from "@/entities/saju-chart";
 
 interface CellProps {

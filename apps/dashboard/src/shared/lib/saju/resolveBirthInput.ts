@@ -18,7 +18,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import type { BirthInputResolved } from "@gons/saju";
+import type { BirthInputResolved } from "@krdn/saju";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles } from "@/shared/lib/db/schema";
 

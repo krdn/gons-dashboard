@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { searchCities, type CityInfo } from "@gons/saju";
+import { searchCities, type CityInfo } from "@krdn/saju";
 
 interface Props {
   value: CityInfo | null;

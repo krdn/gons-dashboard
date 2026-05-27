@@ -8,7 +8,7 @@
 //
 // state lift-up (monthly 와 동일): narrative 캐시/AbortController/카운트다운은 부모(TriDailyTabs).
 
-import type { DailyLiteFrame } from "@gons/saju";
+import type { DailyLiteFrame } from "@krdn/saju";
 import type {
   MonthlyNarrativeSections,
   NarrativeSchool,

@@ -1,5 +1,5 @@
-import type { Element, Strength } from "@gons/saju";
-import { ELEMENT_KO } from "@gons/saju";
+import type { Element, Strength } from "@krdn/saju";
+import { ELEMENT_KO } from "@krdn/saju";
 
 const STRENGTH_KO: Record<Strength, string> = {
   "신강": "신강",

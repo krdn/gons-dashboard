@@ -17,7 +17,7 @@ import {
   ALGORITHM_VERSION,
   buildTriNationYearlyFromBirth,
   type TriNationYearly,
-} from "@gons/saju";
+} from "@krdn/saju";
 import { db } from "@/shared/lib/db/client";
 import { sajuYearlyTri } from "@/shared/lib/db/schema";
 import {

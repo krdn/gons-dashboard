@@ -20,7 +20,7 @@ import { fortuneProfiles } from "@/shared/lib/db/schema";
 import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
 import { getOrBuildDaily } from "@/features/saju-daily-tri/api/daily-server";
 import { currentKstDate } from "@/shared/lib/saju/resolveBirthInput";
-import type { TriNationDailyLite } from "@gons/saju";
+import type { TriNationDailyLite } from "@krdn/saju";
 
 export const dynamic = "force-dynamic";
 

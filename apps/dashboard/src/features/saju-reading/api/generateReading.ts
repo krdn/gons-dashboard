@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
-import type { SajuChart } from "@gons/saju";
+import type { SajuChart } from "@krdn/saju";
 import { sajuReadings } from "@/shared/lib/db/schema";
 import type { ReadingSection } from "@/entities/saju-chart";
 import { cachedMarkdownReading } from "../lib/cachedReading";

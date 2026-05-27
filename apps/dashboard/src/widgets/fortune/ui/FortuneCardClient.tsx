@@ -6,7 +6,7 @@ import {
   RELATION_LABEL,
   type FortuneProfile,
 } from "@/entities/fortune-profile/model/types";
-import type { DailyFortunePayload } from "@gons/saju";
+import type { DailyFortunePayload } from "@krdn/saju";
 import { SajuDailyFortune } from "@/widgets/saju-detail/ui/SajuDailyFortune";
 
 interface FortuneByProfile {

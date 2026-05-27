@@ -11,7 +11,7 @@
 // render 중 Date.now() 금지 + useEffect body 동기 setState 금지 (memory `react-19-purity-set-state-in-effect`).
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { TriNationMonthly, MonthlyFrame } from "@gons/saju";
+import type { TriNationMonthly, MonthlyFrame } from "@krdn/saju";
 import { MonthlyFrameView, type MonthlyNarrativePayload } from "./MonthlyFrameView";
 import { toUserMessage } from "../lib/errorMessage";
 import type { SajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";

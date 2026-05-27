@@ -1,5 +1,5 @@
 import type { ReadingSection } from "@/entities/saju-chart";
-import type { SajuChart } from "@gons/saju";
+import type { SajuChart } from "@krdn/saju";
 
 export const SAJU_SYSTEM_PROMPT = [
   "당신은 명리학자입니다.",

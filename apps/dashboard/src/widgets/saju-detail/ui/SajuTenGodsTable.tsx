@@ -1,4 +1,4 @@
-import { TEN_GOD_KO, type TenGod, type TenGodAssignment } from "@gons/saju";
+import { TEN_GOD_KO, type TenGod, type TenGodAssignment } from "@krdn/saju";
 
 function Cell({ tg }: { tg: TenGod | null | "self" }) {
   if (tg === "self") return <td className="p-2 text-center text-xs text-[var(--color-text-subtle)]">─</td>;

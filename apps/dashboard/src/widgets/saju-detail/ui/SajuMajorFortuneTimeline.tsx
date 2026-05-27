@@ -1,4 +1,4 @@
-import type { MajorFortune, Stem } from "@gons/saju";
+import type { MajorFortune, Stem } from "@krdn/saju";
 import { SajuMajorFortuneTimelineClient } from "./SajuMajorFortuneTimelineClient";
 
 export interface SajuMajorFortuneTimelineProps {

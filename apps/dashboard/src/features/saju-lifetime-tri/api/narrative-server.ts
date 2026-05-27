@@ -7,10 +7,9 @@
 //  - LLM/JSON/zod 실패 모두 throw → route 에서 500 + console.error
 //  - 동시 cache miss / null schoolSpecific 자가 치유: onConflictDoUpdate
 import "server-only";
-import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
-import { ALGORITHM_VERSION, type LifetimeFrame } from "@gons/saju";
+import { ALGORITHM_VERSION, computeFrameHash, type LifetimeFrame } from "@krdn/saju";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
 import { db } from "@/shared/lib/db/client";
@@ -109,9 +108,7 @@ export async function getOrBuildNarrative(
   //  - frame 구조 변경 시 자동으로 모든 캐시가 무효화된다.
   //  - 향후 builder 가 비결정적 값(Map/Set/Date 등)을 주입하면 lifetime-server.ts 의
   //    inputHash 처럼 명시 정규화 (join("|")) 가 필요해진다.
-  const frameHash = createHash("sha256")
-    .update(JSON.stringify(frame))
-    .digest("hex");
+  const frameHash = computeFrameHash(frame);
 
   // 1) 캐시 조회
   const cached = await db.query.sajuLifetimeNarrative.findFirst({
