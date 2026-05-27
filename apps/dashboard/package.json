@@ -21,7 +21,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.36.3",
     "@auth/drizzle-adapter": "^1.7.4",
     "@gons/mcp-calendar": "workspace:*",
     "@gons/saju": "workspace:*",
