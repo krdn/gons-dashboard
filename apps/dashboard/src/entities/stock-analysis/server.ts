@@ -105,6 +105,13 @@ export async function upsertAnalysis(args: UpsertAnalysisArgs): Promise<void> {
 
 export type { AnalysisRun, RunStatus } from "./model/run-types";
 
+export {
+  resolvePersonaModels,
+  updatePersonaOverrides,
+  type PersonaModelMapping,
+  type ResolvedModel,
+} from "./api/persona-router";
+
 /**
  * 같은 (userId, symbol, persona) 에 in-flight (queued/running) run 존재하면 그 row 반환.
  * 없으면 새 row 'queued' 로 insert. UNIQUE 위반 시 catch → 기존 in-flight row 조회.

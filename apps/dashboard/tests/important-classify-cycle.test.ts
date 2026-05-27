@@ -24,9 +24,9 @@ vi.mock("@/shared/api/gmail/messages", () => ({
     return null;
   },
 }));
-vi.mock("@/shared/lib/llm/anthropic", () => ({
-  anthropic: { messages: { create: vi.fn() } },
-  HAIKU_MODEL: "claude-haiku-4-5",
+vi.mock("@krdn/llm-gateway/gateway", () => ({
+  analyzeStructured: vi.fn(),
+  normalizeUsage: vi.fn(),
 }));
 
 import { eq } from "drizzle-orm";
@@ -39,8 +39,10 @@ import {
 } from "@/shared/lib/db/schema";
 import { listHistorySince } from "@/shared/api/gmail/history";
 import { getMessage } from "@/shared/api/gmail/messages";
-import { anthropic } from "@/shared/lib/llm/anthropic";
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { syncInbox } from "@/features/gmail-sync/api/syncInbox";
+
+const mockAnalyze = analyzeStructured as ReturnType<typeof vi.fn>;
 
 let userId: string;
 
@@ -87,31 +89,21 @@ describe("syncInbox cycle", () => {
       },
     });
 
-    (anthropic.messages.create as ReturnType<typeof vi.fn>)
+    mockAnalyze
       .mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              needs_reply: false,
-              severity: "low",
-              reason: "공지",
-            }),
-          },
-        ],
+        object: { needs_reply: false, severity: "low", reason: "공지" },
+        usage: {},
+        finishReason: "stop",
       })
       .mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              category: "schedule",
-              importance: "med",
-              summary: "5/14 강남역 회의 일정 확정",
-              rationale: "일정 확정",
-            }),
-          },
-        ],
+        object: {
+          category: "schedule",
+          importance: "med",
+          summary: "5/14 강남역 회의 일정 확정",
+          rationale: "일정 확정",
+        },
+        usage: {},
+        finishReason: "stop",
       });
 
     const result = await syncInbox(userId);
@@ -138,7 +130,7 @@ describe("syncInbox cycle", () => {
       payload: { headers: [{ name: "From", value: "x@y.kr" }] },
     });
 
-    (anthropic.messages.create as ReturnType<typeof vi.fn>).mockRejectedValue(
+    mockAnalyze.mockRejectedValue(
       Object.assign(new Error("503"), { status: 503 }),
     );
 

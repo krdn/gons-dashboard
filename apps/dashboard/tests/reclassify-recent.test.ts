@@ -9,9 +9,9 @@
 // Anthropic mock, PG는 실제 DB (다른 통합 테스트와 동일).
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
-vi.mock("@/shared/lib/llm/anthropic", () => ({
-  anthropic: { messages: { create: vi.fn() } },
-  HAIKU_MODEL: "claude-haiku-4-5",
+vi.mock("@krdn/llm-gateway/gateway", () => ({
+  analyzeStructured: vi.fn(),
+  normalizeUsage: vi.fn(),
 }));
 
 import { and, eq } from "drizzle-orm";
@@ -22,8 +22,10 @@ import {
   importantEmails,
   replyNeeded,
 } from "@/shared/lib/db/schema";
-import { anthropic } from "@/shared/lib/llm/anthropic";
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { reclassifyRecent } from "@/features/gmail-sync/api/reclassifyRecent";
+
+const mockAnalyze = analyzeStructured as ReturnType<typeof vi.fn>;
 
 let userId: string;
 let recentThreadId: string;
@@ -69,17 +71,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  (anthropic.messages.create as ReturnType<typeof vi.fn>).mockReset();
+  mockAnalyze.mockReset();
   await db.delete(importantEmails).where(eq(importantEmails.userId, userId));
   await db.delete(replyNeeded).where(eq(replyNeeded.userId, userId));
 });
 
 function mockLlmReplies(...objs: unknown[]): void {
-  const fn = anthropic.messages.create as ReturnType<typeof vi.fn>;
   for (const obj of objs) {
-    fn.mockResolvedValueOnce({
-      content: [{ type: "text", text: JSON.stringify(obj) }],
-    });
+    mockAnalyze.mockResolvedValueOnce({ object: obj, usage: {}, finishReason: "stop" });
   }
 }
 

@@ -28,7 +28,7 @@
     "@gons/shared-google": "workspace:*",
     "@gons/shared-mcp-runtime": "workspace:*",
     "@gons/stock-analysis": "workspace:*",
-    "@krdn/llm-gateway": "github:krdn/llm-gateway#v3.0.0",
+    "@krdn/llm-gateway": "github:krdn/llm-gateway#v3.2.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@tanstack/react-query": "^5.62.7",
     "dotenv": "^17.4.2",

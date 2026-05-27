@@ -26,8 +26,10 @@ import {
   type Consensus,
   type MarketSnapshot,
 } from "@gons/stock-analysis";
-import { resolvePersonaModels } from "@/shared/lib/llm/persona-router";
-import { upsertAnalysis } from "@/entities/stock-analysis/server";
+import {
+  resolvePersonaModels,
+  upsertAnalysis,
+} from "@/entities/stock-analysis/server";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/server";
 import { env } from "@/shared/config/env";
 import { mergeSnapshot } from "./merge-snapshot";

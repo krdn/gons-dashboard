@@ -8,7 +8,7 @@ import { stockPersonaPreferences } from "@/shared/lib/db/schema";
 import {
   updatePersonaOverrides,
   type PersonaModelMapping,
-} from "@/shared/lib/llm/persona-router";
+} from "@/entities/stock-analysis/server";
 
 const ModelNameSchema = z.enum(["claude", "codex", "gemini"]);
 const PersonaOrConsensusSchema = z.enum([
