@@ -6,7 +6,8 @@
 # workspace packages의 package.json을 함께 복사해야 pnpm이 workspace symlink를
 # 생성한다. 누락 시 next build가 @gons/* import를 "module not found"로 실패.
 FROM node:24-alpine AS deps
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+RUN apk add --no-cache git && \
+    corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/dashboard/package.json ./apps/dashboard/
@@ -14,7 +15,12 @@ COPY packages/shared-google/package.json ./packages/shared-google/
 COPY packages/shared-mcp-runtime/package.json ./packages/shared-mcp-runtime/
 COPY packages/mcp-calendar/package.json ./packages/mcp-calendar/
 COPY packages/stock-analysis/package.json ./packages/stock-analysis/
-RUN pnpm install --frozen-lockfile --prod=false
+RUN --mount=type=secret,id=github_token \
+    if [ -s /run/secrets/github_token ]; then \
+      git config --global url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf "git@github.com:"; \
+    fi && \
+    pnpm install --frozen-lockfile --prod=false && \
+    rm -f ~/.gitconfig
 
 # ---- Stage 2: build ----
 FROM node:24-alpine AS builder

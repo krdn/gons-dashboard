@@ -42,6 +42,9 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Configure git for GitHub packages
+        run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "git@github.com:"
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -130,6 +133,8 @@ jobs:
             ghcr.io/krdn/gons-dashboard:sha-${{ github.sha }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push cron image
         uses: docker/build-push-action@v5
