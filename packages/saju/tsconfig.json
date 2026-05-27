@@ -1,6 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {},
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["library-eval/**/*", "node_modules", "**/*.tsbuildinfo"]
-}

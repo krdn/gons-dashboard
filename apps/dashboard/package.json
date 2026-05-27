@@ -23,7 +23,7 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.4",
     "@gons/mcp-calendar": "workspace:*",
-    "@gons/saju": "workspace:*",
+    "@krdn/saju": "github:krdn/saju#v1.0.0",
     "@gons/shared-google": "workspace:*",
     "@gons/shared-mcp-runtime": "workspace:*",
     "@gons/stock-analysis": "workspace:*",

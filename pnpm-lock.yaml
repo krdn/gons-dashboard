@@ -22,9 +22,6 @@ importers:
       '@gons/mcp-calendar':
         specifier: workspace:*
         version: link:../../packages/mcp-calendar
-      '@gons/saju':
-        specifier: workspace:*
-        version: link:../../packages/saju
       '@gons/shared-google':
         specifier: workspace:*
         version: link:../../packages/shared-google
@@ -37,6 +34,9 @@ importers:
       '@krdn/llm-gateway':
         specifier: github:krdn/llm-gateway#v3.2.0
         version: https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76)
+      '@krdn/saju':
+        specifier: github:krdn/saju#v1.0.0
+        version: git+https://git@github.com:krdn/saju.git#afb88b99d601918f27e736d9b14a5a57abc4aecc
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -162,31 +162,6 @@ importers:
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.21.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^4.1.5
-        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@20.19.40)(@vitest/ui@4.1.5)(jsdom@29.1.1)(vite@8.0.11(@types/node@20.19.40)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0))
-
-  packages/saju:
-    dependencies:
-      korean-lunar-calendar:
-        specifier: ^0.3.6
-        version: 0.3.6
-      lunar-javascript:
-        specifier: 1.7.7
-        version: 1.7.7
-      zod:
-        specifier: ^3.24.1
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^20
-        version: 20.19.40
-      tsx:
-        specifier: ^4.19.2
-        version: 4.21.0
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -1251,6 +1226,11 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       zod: ^3.24.0
+
+  '@krdn/saju@git+https://git@github.com:krdn/saju.git#afb88b99d601918f27e736d9b14a5a57abc4aecc':
+    resolution: {commit: afb88b99d601918f27e736d9b14a5a57abc4aecc, repo: git@github.com:krdn/saju.git, type: git}
+    version: 1.0.0
+    engines: {node: '>=20'}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -6882,6 +6862,12 @@ snapshots:
       - supports-color
       - tree-sitter
       - utf-8-validate
+
+  '@krdn/saju@git+https://git@github.com:krdn/saju.git#afb88b99d601918f27e736d9b14a5a57abc4aecc':
+    dependencies:
+      korean-lunar-calendar: 0.3.6
+      lunar-javascript: 1.7.7
+      zod: 3.25.76
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
