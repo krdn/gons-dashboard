@@ -25,7 +25,7 @@
 - **DB**: PostgreSQL 16 + Drizzle ORM
 - **인증**: NextAuth v5 + Drizzle adapter (Google OAuth)
 - **스타일링**: Tailwind CSS v4 (라이트 모드 고정)
-- **AI**: Anthropic SDK → Claude Code CLI Proxy
+- **AI**: `@krdn/llm-gateway` → Claude Code CLI Proxy (Claude / Codex / Gemini 단일 endpoint)
 
 ## Quick Start
 
@@ -58,6 +58,29 @@ pnpm update @krdn/llm-gateway
 ```
 
 > GitHub tarball 의존성 (`github:krdn/<repo>#<tag>`) 은 `package.json` 의 태그를 수동으로 변경한 뒤 `pnpm install` 실행. 자세한 절차는 `docs/RUNBOOK.md` 참조.
+
+## LLM Gateway
+
+모든 LLM 호출은 [`@krdn/llm-gateway`](https://github.com/krdn/llm-gateway) 로 통합. Anthropic SDK 직접 호출 대신 게이트웨이의 `analyzeStructured` / `analyzeText` API 를 통해 cli-proxy-api (`ANTHROPIC_BASE_URL`) 로 라우팅.
+
+```typescript
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
+
+const result = await analyzeStructured({
+  ...gatewayDefaults,
+  model: "claude-sonnet-4-6",
+  schema: MySchema,
+  prompt: "...",
+});
+```
+
+**주요 사용처**:
+- `features/saju-*-tri/api/narrative-server.ts` — 학파별 사주 narrative (Claude/Codex/Gemini 페르소나 라우팅)
+- `features/stock-analysis-server/api/llm-call.ts` — 페르소나 5명 종목 분석
+- `shared/lib/llm/classify-{important,thread}.ts` — Gmail 이메일 분류
+
+**모델 라우팅**: `model` 문자열로 cli-proxy-api 가 자동 분기 — Claude (`claude-*`), Codex (`gpt-5.3-codex`), Gemini (`gemini-2.5-pro`).
 
 ## 레포 레이아웃
 
