@@ -81,7 +81,7 @@ export async function classifyImportantWithLlm(
     logger.warn("classify-important", "gateway-fail", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return null;
+    throw error;
   }
 
   if (object.category === "none") return null;
