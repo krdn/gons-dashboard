@@ -59,14 +59,14 @@ describe("classifyImportantWithLlm", () => {
     expect(await classifyImportantWithLlm(baseInput)).toBeNull();
   });
 
-  it("gateway 에러 → null (catch 후 반환)", async () => {
+  it("gateway 에러 → throw (상위에서 catch)", async () => {
     mockGatewayThrow(new Error("503"));
-    expect(await classifyImportantWithLlm(baseInput)).toBeNull();
+    await expect(classifyImportantWithLlm(baseInput)).rejects.toThrow("503");
   });
 
-  it("gateway rate limit → null", async () => {
+  it("gateway rate limit → throw", async () => {
     mockGatewayThrow(Object.assign(new Error("429"), { status: 429 }));
-    expect(await classifyImportantWithLlm(baseInput)).toBeNull();
+    await expect(classifyImportantWithLlm(baseInput)).rejects.toThrow("429");
   });
 
   it("schema 통과 — 모든 카테고리", async () => {
