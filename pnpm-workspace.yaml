@@ -4,6 +4,7 @@ packages:
 
 onlyBuiltDependencies:
   - "@krdn/saju"
+  - "@krdn/tickerlens"
 
 ignoredBuiltDependencies:
   - sharp

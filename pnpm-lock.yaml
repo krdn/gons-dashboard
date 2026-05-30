@@ -36,7 +36,10 @@ importers:
         version: https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76)
       '@krdn/saju':
         specifier: github:krdn/saju#v1.2.2
-        version: https://codeload.github.com/krdn/saju/tar.gz/98d2178a8cec2baca0d39914d8c1f5dfb9aae26b
+        version: https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770
+      '@krdn/tickerlens':
+        specifier: github:krdn/tickerlens#v0.1.0
+        version: https://codeload.github.com/krdn/tickerlens/tar.gz/da22164a308eb48c03bd87fd6cb59cbe0c3c8c6f(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1227,10 +1230,18 @@ packages:
     peerDependencies:
       zod: ^3.24.0
 
-  '@krdn/saju@https://codeload.github.com/krdn/saju/tar.gz/98d2178a8cec2baca0d39914d8c1f5dfb9aae26b':
-    resolution: {tarball: https://codeload.github.com/krdn/saju/tar.gz/98d2178a8cec2baca0d39914d8c1f5dfb9aae26b}
-    version: 1.0.0
+  '@krdn/saju@https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770':
+    resolution: {tarball: https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770}
+    version: 1.2.2
     engines: {node: '>=20'}
+
+  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/da22164a308eb48c03bd87fd6cb59cbe0c3c8c6f':
+    resolution: {tarball: https://codeload.github.com/krdn/tickerlens/tar.gz/da22164a308eb48c03bd87fd6cb59cbe0c3c8c6f}
+    version: 0.1.0
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@krdn/llm-gateway': ^3.0.0
+      zod: ^3.24.0
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -5898,6 +5909,10 @@ packages:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
 
+  yahoo-finance2@2.14.0:
+    resolution: {integrity: sha512-N559NorNMCa8lNeDISzc1vhZpc07UkP2WBNSLOs9S6jvAsIMYKyfUh/Gjunfzue3yh/1F5Jut2OdxtmfQZpI5w==}
+    engines: {node: '>=20.0.0'}
+
   yahoo-finance2@3.14.1:
     resolution: {integrity: sha512-66bhnBMaxmtbrnFvhiiKqg4KhpUw5pazVF1QvRAElTOrBVDdLPcYdgEyCVz0PH1T/dYUuEddNrCmOus9DeUPkA==}
     engines: {node: '>=20.0.0'}
@@ -6863,11 +6878,19 @@ snapshots:
       - tree-sitter
       - utf-8-validate
 
-  '@krdn/saju@https://codeload.github.com/krdn/saju/tar.gz/98d2178a8cec2baca0d39914d8c1f5dfb9aae26b':
+  '@krdn/saju@https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770':
     dependencies:
       korean-lunar-calendar: 0.3.6
       lunar-javascript: 1.7.7
       zod: 3.25.76
+
+  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/da22164a308eb48c03bd87fd6cb59cbe0c3c8c6f(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@krdn/llm-gateway': https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76)
+      yahoo-finance2: 2.14.0
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - supports-color
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
@@ -8009,7 +8032,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
-      vitest: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@20.19.40)(@vitest/ui@4.1.5)(jsdom@29.1.1)(vite@8.0.11(@types/node@20.19.40)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0))
+      vitest: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@20.19.40)(@vitest/ui@4.1.5)(jsdom@29.1.1)(vite@8.0.11(@types/node@20.19.40)(esbuild@0.19.12)(jiti@2.7.0)(tsx@4.21.0))
 
   '@vitest/utils@4.1.5':
     dependencies:
@@ -8829,8 +8852,8 @@ snapshots:
       '@next/eslint-plugin-next': 16.2.6
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-react: 7.37.5(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.4(jiti@2.7.0))
@@ -8860,7 +8883,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -8871,18 +8894,18 @@ snapshots:
       tinyglobby: 0.2.16
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -8910,7 +8933,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -8921,7 +8944,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0))
       hasown: 2.0.3
       is-core-module: 2.16.2
       is-glob: 4.0.3
@@ -11946,6 +11969,14 @@ snapshots:
   xmlchars@2.2.0: {}
 
   y18n@5.0.8: {}
+
+  yahoo-finance2@2.14.0:
+    dependencies:
+      '@deno/shim-deno': 0.18.2
+      fetch-mock-cache: 2.3.1
+      tough-cookie: 5.1.2
+    transitivePeerDependencies:
+      - supports-color
 
   yahoo-finance2@3.14.1:
     dependencies:
