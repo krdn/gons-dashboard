@@ -16,7 +16,7 @@ export default async function StocksPage() {
       <div className="mb-8">
         <h1 className="text-[28px] font-bold tracking-tight md:text-display">주식 타임프레임 분석</h1>
         <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-          US 티커를 페르소나 × 장/중/단기 관점으로 분석합니다 (powered by tickerlens)
+          한국·미국 종목을 페르소나 × 장/중/단기 관점으로 분석합니다 (예: 삼성전자, AAPL · powered by tickerlens)
         </p>
       </div>
       <StocksView initialHistory={history} />

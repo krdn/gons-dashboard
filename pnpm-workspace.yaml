@@ -6,12 +6,6 @@ onlyBuiltDependencies:
   - "@krdn/saju"
   - "@krdn/tickerlens"
 
-# tickerlens 는 yahoo-finance2 v2 API(싱글톤 .quote/.quoteSummary/...)로 빌드됐는데
-# v2.14.0 에서 default export 가 클래스로 바뀌어(quote+autoc 만 노출) throw 한다.
-# tickerlens 가 검증된 2.13.3 으로 tickerlens 의존만 고정 (@gons/stock-analysis 의 v3.14.1 은 불변).
-overrides:
-  "@krdn/tickerlens>yahoo-finance2": "2.13.3"
-
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
