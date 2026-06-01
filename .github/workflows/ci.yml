@@ -150,3 +150,11 @@ jobs:
             ghcr.io/krdn/gons-dashboard-cron:sha-${{ github.sha }}
           cache-from: type=gha,scope=cron
           cache-to: type=gha,mode=max,scope=cron
+
+      # autopilot 추적용 기록 step — 푸시된 이미지 sha 를 step summary 에 남긴다.
+      # 온프렘이 이 sha 를 실제로 /signal/.autopilot-target 으로 받는 경로
+      # (GHA ssh 쓰기 vs health BUILD_SHA 노출) 는 Task 11 통합에서 확정한다.
+      - name: Record autopilot target sha
+        run: |
+          echo "Image pushed: sha-${{ github.sha }}"
+          echo "AUTOPILOT_TARGET=sha-${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
