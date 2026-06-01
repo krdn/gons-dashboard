@@ -3,7 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
   }
 }
