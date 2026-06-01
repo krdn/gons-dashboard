@@ -8,6 +8,7 @@
 // 작업 2: 매일 08:00 KST → /api/cron/morning-digest
 
 import cron from "node-cron";
+import { runDeployCycle } from "./autopilot/deploy-watcher.js";
 
 const APP_URL = process.env.APP_URL ?? "http://app:3020";
 const TOKEN = process.env.CRON_BEARER_TOKEN;
@@ -112,6 +113,18 @@ cron.schedule(
   },
   { timezone: TIMEZONE },
 );
+
+// autopilot — 5분 주기로 새 이미지 감지·배포·검증·롤백 (AUTOPILOT_DEPLOY=on 일 때만).
+if (process.env.AUTOPILOT_DEPLOY === "on") {
+  cron.schedule(
+    "*/5 * * * *",
+    () => {
+      void runDeployCycle();
+    },
+    { timezone: TIMEZONE },
+  );
+  console.log("[cron] autopilot deploy-watcher 등록 (*/5 * * * *)");
+}
 
 console.log(
   "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST",

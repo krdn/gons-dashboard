@@ -119,6 +119,20 @@ services:
       TZ: Asia/Seoul
       APP_URL: http://app:3020
       CRON_BEARER_TOKEN: ${CRON_BEARER_TOKEN}
+      # autopilot 무인 배포 (cron 안에서 app 재배포 — self-kill 회피)
+      AUTOPILOT_DEPLOY: ${AUTOPILOT_DEPLOY:-off}
+      AUTOPILOT_DOCKER_CONTEXT: default
+      AUTOPILOT_COMPOSE_PATH: /home/gon/projects/gon/gons-dashboard/docker-compose.yml
+      AUTOPILOT_ENV_PATH: /home/gon/projects/gon/gons-dashboard/.env
+      AUTOPILOT_TARGET_FILE: /signal/.autopilot-target
+      AUTOPILOT_ROLLEDBACK_FILE: /signal/.autopilot-rolledback
+    volumes:
+      # autopilot: 호스트 docker daemon 접근 (app 재배포·롤백용)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # compose/env 파일 접근 (절대경로 — Gotcha #8). ro 로 충분 (--env-file 읽기만).
+      - /home/gon/projects/gon/gons-dashboard:/home/gon/projects/gon/gons-dashboard:ro
+      # 신호 디렉토리: GHA 가 .autopilot-target 기록, watcher 가 .autopilot-rolledback 기록 (rw)
+      - /home/gon/projects/gon/gons-dashboard/.autopilot-signal:/signal
 
 volumes:
   gons_dashboard_pgdata:
