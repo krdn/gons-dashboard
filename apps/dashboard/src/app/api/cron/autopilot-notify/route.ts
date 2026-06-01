@@ -3,7 +3,7 @@
 // 호출자: apps/cron/autopilot/deploy-watcher.js notify() — Bearer 인증 + { title, message } POST.
 // 인증: verifyCronBearer (실패 시 401). 인가: env.ADMIN_EMAILS(CSV) 의 user 만 대상.
 import { NextResponse } from "next/server";
-import { inArray } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { users, pushSubscriptions } from "@/shared/lib/db/schema";
 import { verifyCronBearer } from "@/shared/lib/auth/cron";
@@ -38,10 +38,11 @@ export async function POST(request: Request) {
   }
 
   // 관리자 user id 조회 → 그들의 push 구독 조회.
+  // isAdmin.ts 와 동일하게 DB 쪽도 lower() 로 비교 (양쪽 소문자 → 대칭).
   const adminUsers = await db
     .select({ id: users.id })
     .from(users)
-    .where(inArray(users.email, adminEmails));
+    .where(inArray(sql`lower(${users.email})`, adminEmails));
   const ids = adminUsers.map((u) => u.id);
 
   if (ids.length === 0) {
