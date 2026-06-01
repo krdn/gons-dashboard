@@ -1,6 +1,6 @@
 // apps/cron/autopilot/lib.test.js
 import { describe, it, expect } from "vitest";
-import { parseHealthBody, shouldDeploy, buildDeployArgs, buildRollbackArgs } from "./lib.js";
+import { parseHealthBody, shouldDeploy, buildDeployArgs } from "./lib.js";
 
 describe("parseHealthBody", () => {
   it("status ok 면 healthy", () => {
@@ -32,16 +32,6 @@ describe("shouldDeploy", () => {
 describe("buildDeployArgs", () => {
   it("절대경로 -f / --env-file / --no-deps app 을 포함", () => {
     const a = buildDeployArgs("/abs/docker-compose.yml", "/abs/.env");
-    expect(a).toEqual([
-      "compose", "-f", "/abs/docker-compose.yml", "--env-file", "/abs/.env",
-      "up", "-d", "--no-deps", "app",
-    ]);
-  });
-});
-
-describe("buildRollbackArgs", () => {
-  it("롤백도 동일 구조 (env 로 APP_IMAGE_TAG 주입)", () => {
-    const a = buildRollbackArgs("/abs/docker-compose.yml", "/abs/.env");
     expect(a).toEqual([
       "compose", "-f", "/abs/docker-compose.yml", "--env-file", "/abs/.env",
       "up", "-d", "--no-deps", "app",

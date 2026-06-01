@@ -39,8 +39,3 @@ export function shouldDeploy(latestSha, runningSha, rolledBackSha) {
 export function buildDeployArgs(composePath, envPath) {
   return ["compose", "-f", composePath, "--env-file", envPath, "up", "-d", "--no-deps", "app"];
 }
-
-/** 롤백도 동일 구조 — 차이는 호출자가 주입하는 APP_IMAGE_TAG 값뿐. */
-export function buildRollbackArgs(composePath, envPath) {
-  return buildDeployArgs(composePath, envPath);
-}
