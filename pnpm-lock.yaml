@@ -38,8 +38,8 @@ importers:
         specifier: github:krdn/saju#v1.2.2
         version: https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770
       '@krdn/tickerlens':
-        specifier: github:krdn/tickerlens#v0.1.1
-        version: https://codeload.github.com/krdn/tickerlens/tar.gz/19531629d27d0e7821debe549c0e441e640f1f38(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
+        specifier: github:krdn/tickerlens#v0.1.2
+        version: https://codeload.github.com/krdn/tickerlens/tar.gz/63893c132fd89e6e91c1a2d8e1ba7c5446f87787(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1235,9 +1235,9 @@ packages:
     version: 1.2.2
     engines: {node: '>=20'}
 
-  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/19531629d27d0e7821debe549c0e441e640f1f38':
-    resolution: {tarball: https://codeload.github.com/krdn/tickerlens/tar.gz/19531629d27d0e7821debe549c0e441e640f1f38}
-    version: 0.1.0
+  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/63893c132fd89e6e91c1a2d8e1ba7c5446f87787':
+    resolution: {tarball: https://codeload.github.com/krdn/tickerlens/tar.gz/63893c132fd89e6e91c1a2d8e1ba7c5446f87787}
+    version: 0.1.2
     engines: {node: '>=20'}
     peerDependencies:
       '@krdn/llm-gateway': ^3.0.0
@@ -6880,7 +6880,7 @@ snapshots:
       lunar-javascript: 1.7.7
       zod: 3.25.76
 
-  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/19531629d27d0e7821debe549c0e441e640f1f38(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
+  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/63893c132fd89e6e91c1a2d8e1ba7c5446f87787(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@krdn/llm-gateway': https://codeload.github.com/krdn/llm-gateway/tar.gz/41911cd015aca1d7b9735f33902632ec078ada64(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76)
       yahoo-finance2: 3.14.1
