@@ -116,6 +116,29 @@ log(`선정: ${selected ? `${selected.title} (score=${selected.score.toFixed(2)}
 // 선정 결과 로그 골격 (shadow/autonomous 공통)
 const nowIso = args?.nowIso ?? "unknown-time";
 
+// 토론 디테일을 사람 검수용으로 보존 (shadow 모드의 존재 이유).
+// Workflow 는 파일시스템 접근 불가 — 영속화는 호출자가 이 반환값을 받아 한다.
+function debate(c) {
+  return {
+    title: c.title,
+    owner: c.owner,
+    score: c.score,
+    changeType: c.changeType,
+    dedupKey: c.dedupKey,
+    crossReview: (c.crossReview ?? []).map((r) => ({
+      challenge: r.challenge,
+      severity: r.severity,
+      wouldBlock: r.wouldBlock,
+    })),
+    verdicts: (c.verdicts ?? []).map((v) => ({
+      valueScore: v.valueScore,
+      safetyScore: v.safetyScore,
+      feasibilityScore: v.feasibilityScore,
+      reasoning: v.reasoning,
+    })),
+  };
+}
+
 const logEntry = {
   id: `autopilot-${isoWeek}`,
   date: nowIso,
@@ -124,6 +147,11 @@ const logEntry = {
   selected: selected
     ? { title: selected.title, owner: selected.owner, score: selected.score, changeType: selected.changeType }
     : null,
+  // 사람 검수용 전체 토론 로그 (선정 1건 + backlog top3 의 비판·평결·근거).
+  debate: {
+    selected: selected ? debate(selected) : null,
+    backlogTop3: backlog.slice(0, 3).map(debate),
+  },
   backlogTop3: backlog.slice(0, 3).map((b) => ({ title: b.title, score: b.score, dedupKey: b.dedupKey })),
 };
 
@@ -133,7 +161,8 @@ if (!selected) {
 
 // 보호경로/DB마이그레이션 후보는 PR 만 만들고 needs-human (무인 머지 금지)
 const needsHuman = selected.protectedPathTouch || selected.dbMigration;
-const slug = selected.dedupKey.replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40);
+const slug =
+  (selected.dedupKey ?? "").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40) || "candidate";
 const branch = `autopilot/${isoWeek}-${slug}`;
 
 // --- 구현 페이즈 ---
