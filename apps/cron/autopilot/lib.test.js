@@ -1,6 +1,12 @@
 // apps/cron/autopilot/lib.test.js
 import { describe, it, expect } from "vitest";
-import { parseHealthBody, shouldDeploy, buildDeployArgs } from "./lib.js";
+import {
+  parseHealthBody,
+  shouldDeploy,
+  buildDeployArgs,
+  parseRunningDigest,
+  buildImageRef,
+} from "./lib.js";
 
 describe("parseHealthBody", () => {
   it("status ok 면 healthy", () => {
@@ -36,5 +42,28 @@ describe("buildDeployArgs", () => {
       "compose", "-f", "/abs/docker-compose.yml", "--env-file", "/abs/.env",
       "up", "-d", "--no-deps", "app",
     ]);
+  });
+});
+
+describe("parseRunningDigest", () => {
+  // docker inspect --format '{{index .RepoDigests 0}}' 출력에서 digest 추출.
+  it("RepoDigest 문자열에서 sha256 digest 추출", () => {
+    expect(
+      parseRunningDigest("ghcr.io/krdn/gons-dashboard@sha256:891e8b44ddf0"),
+    ).toBe("sha256:891e8b44ddf0");
+  });
+  it("digest 없는 ref 면 null (RepoDigests 비어 빈 문자열)", () => {
+    expect(parseRunningDigest("")).toBe(null);
+  });
+  it("@sha256 없는 태그-only ref 면 null", () => {
+    expect(parseRunningDigest("ghcr.io/krdn/gons-dashboard:latest")).toBe(null);
+  });
+});
+
+describe("buildImageRef", () => {
+  it("repo@digest 형식의 이미지 ref 생성", () => {
+    expect(buildImageRef("ghcr.io/krdn/gons-dashboard", "sha256:892d")).toBe(
+      "ghcr.io/krdn/gons-dashboard@sha256:892d",
+    );
   });
 });
