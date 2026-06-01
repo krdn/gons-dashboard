@@ -209,7 +209,11 @@ const prInstruction =
   finalNeedsHuman
     ? `이 PR 은 보호경로/DB마이그레이션을 건드리므로 'needs-human' 라벨을 붙이고 머지하지 마라.`
     : mode === "autonomous"
-      ? `머지 전 'gh pr view --json mergeable' 로 충돌 확인. mergeable 이면 'gh pr merge --squash --delete-branch' 로 머지하라. 충돌이면 'needs-human' 라벨만 붙이고 머지 보류.`
+      ? `머지 전 두 가지를 모두 확인하라:\n` +
+        `  (a) 충돌: 'gh pr view --json mergeable' 가 MERGEABLE 인지.\n` +
+        `  (b) CI green: 'gh pr checks <PR번호> --watch' 로 모든 체크(lint-typecheck + 실 Postgres 대상 테스트 포함)가 통과하는지. 통합 테스트는 CI 의 postgres service 에서만 돈다 — 여기서 회귀를 잡는다.\n` +
+        `두 조건 모두 충족이면 'gh pr merge --squash --delete-branch' 로 머지하라.\n` +
+        `충돌이거나 CI 체크가 하나라도 실패/대기면 'needs-human' 라벨만 붙이고 머지 보류하라.`
       : `shadow 모드다. 머지하지 말고 PR 만 생성하라.`;
 
 const prResult = await agent(
