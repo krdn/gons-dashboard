@@ -52,7 +52,9 @@ services:
       retries: 5
 
   app:
-    image: ghcr.io/krdn/gons-dashboard:${APP_IMAGE_TAG:-latest}
+    # autopilot 무인 배포가 digest 직접 핀(@sha256:)으로 교체할 수 있도록 ref 전체를 변수화.
+    # 수동 배포 시엔 미설정 → 기본 :latest. compose 가 :${TAG} 형식이면 digest pin 불가하므로 ref 변수 필수.
+    image: ${APP_IMAGE_REF:-ghcr.io/krdn/gons-dashboard:latest}
     container_name: gons-dashboard-app
     restart: unless-stopped
     depends_on:
@@ -124,14 +126,16 @@ services:
       AUTOPILOT_DOCKER_CONTEXT: default
       AUTOPILOT_COMPOSE_PATH: /home/gon/projects/gon/gons-dashboard/docker-compose.yml
       AUTOPILOT_ENV_PATH: /home/gon/projects/gon/gons-dashboard/.env
-      AUTOPILOT_TARGET_FILE: /signal/.autopilot-target
       AUTOPILOT_ROLLEDBACK_FILE: /signal/.autopilot-rolledback
     volumes:
       # autopilot: 호스트 docker daemon 접근 (app 재배포·롤백용)
       - /var/run/docker.sock:/var/run/docker.sock
-      # compose/env 파일 접근 (절대경로 — Gotcha #8). ro 로 충분 (--env-file 읽기만).
+      # 레포 디렉토리는 ro (compose 파일 읽기 — Gotcha #8 절대경로).
       - /home/gon/projects/gon/gons-dashboard:/home/gon/projects/gon/gons-dashboard:ro
-      # 신호 디렉토리: GHA 가 .autopilot-target 기록, watcher 가 .autopilot-rolledback 기록 (rw)
+      # .env 단일 파일만 rw 로 nested override — 배포 영속화용 APP_IMAGE_REF in-place 갱신.
+      # 모든 compose up(watcher·수동·재부팅 복구)이 .env 를 자동으로 읽으므로 배포가 영속된다.
+      - /home/gon/projects/gon/gons-dashboard/.env:/home/gon/projects/gon/gons-dashboard/.env:rw
+      # 롤백 차단 digest 단일 소스 (rw).
       - /home/gon/projects/gon/gons-dashboard/.autopilot-signal:/signal
 
 volumes:
