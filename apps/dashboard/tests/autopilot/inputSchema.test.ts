@@ -36,4 +36,15 @@ describe("AutopilotCycleInput", () => {
     const r = AutopilotCycleInput.safeParse({ mode: "shadow", candidateCount: 0 });
     expect(r.success).toBe(false);
   });
+
+  it("KST offset 형식 date(+09:00)를 통과시킨다", () => {
+    const r = AutopilotCycleInput.safeParse({
+      id: "autopilot-2026-W23",
+      date: "2026-06-02T09:00:00+09:00",
+      mode: "shadow",
+      candidateCount: 1,
+      backlogTop3: [],
+    });
+    expect(r.success).toBe(true);
+  });
 });

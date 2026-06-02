@@ -40,7 +40,7 @@ const DebateEntry = z.object({
 
 export const AutopilotCycleInput = z.object({
   id: z.string().min(1),
-  date: z.string().datetime(),
+  date: z.string().datetime({ offset: true }),
   mode: z.string().min(1),
   deployFlag: z.enum(["on", "off"]).optional(),
   candidateCount: z.number().int().min(0),
