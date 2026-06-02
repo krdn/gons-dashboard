@@ -16,16 +16,16 @@ export function parseHealthBody(body) {
 }
 
 /**
- * 새 이미지 태그를 배포해야 하는가.
- * @param {string|null} latestSha   ghcr 의 최신 sha 태그 (예: "sha-abc123")
- * @param {string|null} runningSha 현재 떠있는 app 의 sha 태그
- * @param {string|null} rolledBackSha 직전에 롤백 처리한 sha (재배포 차단용)
+ * 새 이미지를 배포해야 하는가. digest 문자열 동등 비교 (running 과 다르고 롤백한 것 아니면 배포).
+ * @param {string|null} latestDigest   ghcr :latest 의 manifest digest (예: "sha256:892d...")
+ * @param {string|null} runningDigest 현재 떠있는 app 의 digest
+ * @param {string|null} rolledBackDigest 직전에 롤백 처리한 digest (재배포 차단용)
  * @returns {boolean}
  */
-export function shouldDeploy(latestSha, runningSha, rolledBackSha) {
-  if (!latestSha) return false;
-  if (latestSha === runningSha) return false;
-  if (latestSha === rolledBackSha) return false;
+export function shouldDeploy(latestDigest, runningDigest, rolledBackDigest) {
+  if (!latestDigest) return false;
+  if (latestDigest === runningDigest) return false;
+  if (latestDigest === rolledBackDigest) return false;
   return true;
 }
 

@@ -177,12 +177,15 @@ async function persistImageRef(digest) {
   }
   const next = upsertEnvKey(content, "APP_IMAGE_REF", buildImageRef(IMAGE_REPO, digest));
   try {
-    // writeFile 은 비원자적(truncate+재작성) — 쓰기 도중 죽으면 .env 손상 → 다음 compose up Zod 실패.
-    // 표준 temp+rename 은 :ro 디렉토리 + 단일파일 bind-mount inode 때문에 불가.
-    // 대안: read-back-validate-restore. 손상 탐지 시 in-memory 원본으로 자가복구.
+    // writeFile 은 비원자적(truncate+재작성) — 쓰기가 reject 되거나 부분 기록되면 .env 손상
+    // → 다음 compose up Zod 실패. 표준 temp+rename 은 :ro 디렉토리 + 단일파일 bind-mount inode 로 불가.
+    // 대안: write → read-back → 정확 일치 검증. 우리가 의도한 next 와 글자 그대로 같지 않으면
+    // (값 truncation 포함 모든 부분 손상) in-memory 원본으로 자가복구.
+    // 한계: 쓰기 직후 SIGKILL/OOM 으로 프로세스가 죽으면 이 검증 자체가 안 돌아 복구 불가
+    //   (그 경우 .env 가 손상된 채 남음 — 단일 작은 파일이라 부분쓰기 확률은 낮다).
     await writeFile(ENV_PATH, next, "utf8");
     const back = await readFile(ENV_PATH, "utf8");
-    if (!envKeysPreserved(content, back)) {
+    if (back !== next || !envKeysPreserved(content, back)) {
       await writeFile(ENV_PATH, content, "utf8"); // 원본 복구
       console.error("[autopilot] .env 쓰기 손상 감지 — 원본 복구함");
       await notify("autopilot 영속화 손상→복구", `${digest} .env 쓰기 손상 감지, 원본 복구. 재부팅 시 latest 복귀 위험.`);
