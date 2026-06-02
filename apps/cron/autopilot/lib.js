@@ -82,3 +82,27 @@ export function upsertEnvKey(envContent, key, value) {
   const sep = envContent.length === 0 || envContent.endsWith("\n") ? "" : "\n";
   return `${envContent}${sep}${line}\n`;
 }
+
+/**
+ * 갱신된 .env 가 원본의 모든 KEY= 를 보존하는지 검증 (비원자적 쓰기 손상 탐지).
+ * 원본의 좌변(KEY) 집합 ⊆ 갱신본의 좌변 집합이어야 한다. 하나라도 사라지면 손상.
+ * @param {string} original 쓰기 전 .env
+ * @param {string} written 다시 읽은 .env
+ * @returns {boolean} 온전하면 true
+ */
+export function envKeysPreserved(original, written) {
+  const keysOf = (s) =>
+    new Set(
+      s
+        .split("\n")
+        .map((l) => l.match(/^([A-Za-z_][A-Za-z0-9_]*)=/))
+        .filter(Boolean)
+        .map((m) => m[1]),
+    );
+  const origKeys = keysOf(original);
+  const writtenKeys = keysOf(written);
+  for (const k of origKeys) {
+    if (!writtenKeys.has(k)) return false;
+  }
+  return true;
+}

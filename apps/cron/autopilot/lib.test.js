@@ -7,6 +7,7 @@ import {
   parseRunningDigest,
   buildImageRef,
   upsertEnvKey,
+  envKeysPreserved,
 } from "./lib.js";
 
 describe("parseHealthBody", () => {
@@ -93,5 +94,25 @@ describe("upsertEnvKey", () => {
     const env = "APP_IMAGE_REF=old\n";
     const ref = "ghcr.io/krdn/gons-dashboard@sha256:892d84b9";
     expect(upsertEnvKey(env, "APP_IMAGE_REF", ref)).toBe(`APP_IMAGE_REF=${ref}\n`);
+  });
+});
+
+describe("envKeysPreserved", () => {
+  it("upsert 후에도 모든 키 보존되면 true", () => {
+    const orig = "FOO=1\nAPP_IMAGE_REF=old\nBAR=2\n";
+    const written = upsertEnvKey(orig, "APP_IMAGE_REF", "new");
+    expect(envKeysPreserved(orig, written)).toBe(true);
+  });
+  it("새 키 추가는 손상 아님 (원본 키 ⊆ 갱신본 키)", () => {
+    const orig = "FOO=1\n";
+    expect(envKeysPreserved(orig, "FOO=1\nAPP_IMAGE_REF=x\n")).toBe(true);
+  });
+  it("쓰기 도중 truncate 로 키가 잘리면 false (손상 탐지)", () => {
+    const orig = "FOO=1\nAPP_IMAGE_REF=old\nBAR=2\n";
+    const truncated = "FOO=1\nAPP_IMAGE_R"; // 중간에 끊김 — BAR/APP_IMAGE_REF 소실
+    expect(envKeysPreserved(orig, truncated)).toBe(false);
+  });
+  it("빈 파일로 잘리면 false", () => {
+    expect(envKeysPreserved("FOO=1\nBAR=2\n", "")).toBe(false);
   });
 });

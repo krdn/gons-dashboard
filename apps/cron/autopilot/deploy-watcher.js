@@ -19,6 +19,7 @@ import {
   parseRunningDigest,
   buildImageRef,
   upsertEnvKey,
+  envKeysPreserved,
 } from "./lib.js";
 
 const execFileAsync = promisify(execFile);
@@ -166,14 +167,34 @@ async function deployDigest(digest) {
  * (모든 compose up 이 .env 를 자동으로 읽으므로). 단일 키만 read-modify-write — 다른 줄 보존.
  */
 async function persistImageRef(digest) {
+  let content;
   try {
-    const content = await readFile(ENV_PATH, "utf8");
-    const next = upsertEnvKey(content, "APP_IMAGE_REF", buildImageRef(IMAGE_REPO, digest));
-    await writeFile(ENV_PATH, next, "utf8");
+    content = await readFile(ENV_PATH, "utf8");
   } catch (e) {
-    // 영속화 실패는 배포 자체를 무효화하지 않는다 (컨테이너는 이미 새 digest 로 떠있음).
-    // 단 재부팅 시 latest 로 되돌아갈 수 있으므로 알림으로 표면화.
-    console.error("[autopilot] .env APP_IMAGE_REF 영속화 실패", e);
+    console.error("[autopilot] .env 읽기 실패 — 영속화 건너뜀", e);
+    await notify("autopilot 영속화 경고", `${digest} 배포는 됐으나 .env 읽기 실패 — 재부팅 시 latest 복귀 위험.`);
+    return;
+  }
+  const next = upsertEnvKey(content, "APP_IMAGE_REF", buildImageRef(IMAGE_REPO, digest));
+  try {
+    // writeFile 은 비원자적(truncate+재작성) — 쓰기 도중 죽으면 .env 손상 → 다음 compose up Zod 실패.
+    // 표준 temp+rename 은 :ro 디렉토리 + 단일파일 bind-mount inode 때문에 불가.
+    // 대안: read-back-validate-restore. 손상 탐지 시 in-memory 원본으로 자가복구.
+    await writeFile(ENV_PATH, next, "utf8");
+    const back = await readFile(ENV_PATH, "utf8");
+    if (!envKeysPreserved(content, back)) {
+      await writeFile(ENV_PATH, content, "utf8"); // 원본 복구
+      console.error("[autopilot] .env 쓰기 손상 감지 — 원본 복구함");
+      await notify("autopilot 영속화 손상→복구", `${digest} .env 쓰기 손상 감지, 원본 복구. 재부팅 시 latest 복귀 위험.`);
+    }
+  } catch (e) {
+    // 쓰기/검증 자체가 throw — 원본 복구 시도 (배포 컨테이너는 이미 새 digest 로 떠있음).
+    console.error("[autopilot] .env 영속화 실패 — 원본 복구 시도", e);
+    try {
+      await writeFile(ENV_PATH, content, "utf8");
+    } catch (re) {
+      console.error("[autopilot] .env 원본 복구도 실패 — 수동 개입 필요", re);
+    }
     await notify("autopilot 영속화 경고", `${digest} 배포는 됐으나 .env 갱신 실패 — 재부팅 시 latest 복귀 위험.`);
   }
 }
