@@ -1,8 +1,6 @@
 // entities/autopilot-cycle — 순수 타입.
 // cycle.workflow.js 의 logEntry/debate() 반환 구조와 1:1.
 
-export type ChangeType = "deps" | "security" | "refactor" | "feature" | "ui" | "perf";
-
 export interface BacklogCandidate {
   title: string;
   score: number;
@@ -16,7 +14,7 @@ export interface DebateEntry {
   changeType: string;
   dedupKey: string;
   crossReview: { challenge: string; severity: "low" | "medium" | "high"; wouldBlock: boolean }[];
-  verdicts: { valueScore: number; safetyScore: number; feasibilityScore: number }[];
+  verdicts: { valueScore: number; safetyScore: number; feasibilityScore: number; reasoning: string }[];
 }
 
 export interface DebateLog {
