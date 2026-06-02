@@ -14,7 +14,7 @@ function rowToCycle(row: typeof autopilotCycles.$inferSelect): AutopilotCycle {
     isoWeek: row.id.replace(/^autopilot-/, ""),
     runAt: row.runAt,
     mode: row.mode,
-    deployFlag: (row.deployFlag as "on" | "off" | null) ?? null,
+    deployFlag: row.deployFlag as "on" | "off" | null,
     candidateCount: row.candidateCount,
     selectedTitle: row.selectedTitle,
     selectedScore: row.selectedScore,
@@ -35,5 +35,11 @@ export async function getCycles(limit = HISTORY_LIMIT): Promise<AutopilotCycle[]
     .from(autopilotCycles)
     .orderBy(desc(autopilotCycles.createdAt))
     .limit(limit)
-    .then((rows) => rows.map(rowToCycle), () => []);
+    .then(
+      (rows) => rows.map(rowToCycle),
+      (e) => {
+        console.error("[autopilot] getCycles failed:", e);
+        return [];
+      },
+    );
 }
