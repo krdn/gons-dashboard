@@ -18,6 +18,7 @@ import {
   buildDeployArgs,
   parseRunningDigest,
   buildImageRef,
+  upsertEnvKey,
 } from "./lib.js";
 
 const execFileAsync = promisify(execFile);
@@ -159,6 +160,24 @@ async function deployDigest(digest) {
   });
 }
 
+/**
+ * 배포 영속화: .env 의 APP_IMAGE_REF 를 in-place 갱신.
+ * 이래야 재부팅·수동 compose up 등 watcher 밖 경로에서도 app 이 같은 digest 로 뜬다
+ * (모든 compose up 이 .env 를 자동으로 읽으므로). 단일 키만 read-modify-write — 다른 줄 보존.
+ */
+async function persistImageRef(digest) {
+  try {
+    const content = await readFile(ENV_PATH, "utf8");
+    const next = upsertEnvKey(content, "APP_IMAGE_REF", buildImageRef(IMAGE_REPO, digest));
+    await writeFile(ENV_PATH, next, "utf8");
+  } catch (e) {
+    // 영속화 실패는 배포 자체를 무효화하지 않는다 (컨테이너는 이미 새 digest 로 떠있음).
+    // 단 재부팅 시 latest 로 되돌아갈 수 있으므로 알림으로 표면화.
+    console.error("[autopilot] .env APP_IMAGE_REF 영속화 실패", e);
+    await notify("autopilot 영속화 경고", `${digest} 배포는 됐으나 .env 갱신 실패 — 재부팅 시 latest 복귀 위험.`);
+  }
+}
+
 async function notify(title, message) {
   try {
     await fetch(`${APP_URL}/api/cron/autopilot-notify`, {
@@ -207,6 +226,7 @@ export async function runDeployCycle() {
       await deployDigest(latestDigest);
       const healthy = await checkHealth();
       if (healthy) {
+        await persistImageRef(latestDigest); // 재부팅/수동 up 에도 이 digest 유지
         await setRolledBackDigest(null);
         console.log(`[autopilot] 배포 성공 ${latestDigest}`);
         await notify("autopilot 배포 성공", `${latestDigest} 배포 완료 (health OK)`);
@@ -221,6 +241,7 @@ export async function runDeployCycle() {
         try {
           await deployDigest(goodDigest);
           const ok = await checkHealth();
+          if (ok) await persistImageRef(goodDigest); // 롤백 성공 시 .env 도 이전 digest 로 되돌림
           await notify(
             "autopilot 배포 실패 → 롤백",
             `${latestDigest} health 실패. ${goodDigest} 로 롤백 ${ok ? "성공" : "했으나 health 미확인"}.`,

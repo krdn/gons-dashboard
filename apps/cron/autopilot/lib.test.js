@@ -6,6 +6,7 @@ import {
   buildDeployArgs,
   parseRunningDigest,
   buildImageRef,
+  upsertEnvKey,
 } from "./lib.js";
 
 describe("parseHealthBody", () => {
@@ -65,5 +66,32 @@ describe("buildImageRef", () => {
     expect(buildImageRef("ghcr.io/krdn/gons-dashboard", "sha256:892d")).toBe(
       "ghcr.io/krdn/gons-dashboard@sha256:892d",
     );
+  });
+});
+
+describe("upsertEnvKey", () => {
+  it("기존 키를 in-place 갱신, 다른 줄 보존", () => {
+    const env = "FOO=1\nAPP_IMAGE_REF=old\nBAR=2\n";
+    expect(upsertEnvKey(env, "APP_IMAGE_REF", "new")).toBe("FOO=1\nAPP_IMAGE_REF=new\nBAR=2\n");
+  });
+  it("키 없으면 말미에 추가 (개행으로 끝나는 경우)", () => {
+    const env = "FOO=1\nBAR=2\n";
+    expect(upsertEnvKey(env, "APP_IMAGE_REF", "x")).toBe("FOO=1\nBAR=2\nAPP_IMAGE_REF=x\n");
+  });
+  it("키 없고 개행으로 안 끝나면 개행 추가 후 키", () => {
+    const env = "FOO=1\nBAR=2";
+    expect(upsertEnvKey(env, "APP_IMAGE_REF", "x")).toBe("FOO=1\nBAR=2\nAPP_IMAGE_REF=x\n");
+  });
+  it("다른 키의 값에 동일 prefix 가 있어도 정확히 그 키만 갱신", () => {
+    // APP_IMAGE_REF 와 APP_IMAGE_REF_FOO 가 공존해도 ^KEY=$ 앵커로 정확히 매칭
+    const env = "APP_IMAGE_REF=old\nAPP_IMAGE_REF_FOO=keep\n";
+    expect(upsertEnvKey(env, "APP_IMAGE_REF", "new")).toBe(
+      "APP_IMAGE_REF=new\nAPP_IMAGE_REF_FOO=keep\n",
+    );
+  });
+  it("digest 값에 특수문자(@:)가 있어도 그대로 보존", () => {
+    const env = "APP_IMAGE_REF=old\n";
+    const ref = "ghcr.io/krdn/gons-dashboard@sha256:892d84b9";
+    expect(upsertEnvKey(env, "APP_IMAGE_REF", ref)).toBe(`APP_IMAGE_REF=${ref}\n`);
   });
 });

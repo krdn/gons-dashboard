@@ -63,3 +63,22 @@ export function parseRunningDigest(repoDigest) {
 export function buildImageRef(imageRepo, digest) {
   return `${imageRepo}@${digest}`;
 }
+
+/**
+ * .env 내용에서 단일 키를 in-place 갱신(없으면 추가). 다른 모든 줄은 보존.
+ * 전체 재작성 금지 — 한 줄만 바꿔 prod env 손상(Zod 검증 실패 → 다운) 위험을 막는다.
+ * @param {string} envContent 원본 .env 전체 텍스트
+ * @param {string} key 예: "APP_IMAGE_REF"
+ * @param {string} value 예: "ghcr.io/krdn/gons-dashboard@sha256:892d..."
+ * @returns {string} 갱신된 .env 텍스트 (말미 개행 보존)
+ */
+export function upsertEnvKey(envContent, key, value) {
+  const line = `${key}=${value}`;
+  const keyRe = new RegExp(`^${key}=.*$`, "m");
+  if (keyRe.test(envContent)) {
+    return envContent.replace(keyRe, line);
+  }
+  // 키 없음 → 말미에 추가 (원본이 개행으로 끝나면 그 뒤, 아니면 개행 추가 후).
+  const sep = envContent.length === 0 || envContent.endsWith("\n") ? "" : "\n";
+  return `${envContent}${sep}${line}\n`;
+}
