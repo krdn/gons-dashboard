@@ -9,11 +9,8 @@ import type {
   ModelName,
   PersonaOrConsensus,
 } from "@/entities/stock-analysis/server";
-import {
-  fetchYahooQuotes,
-  fetchYahooDailyOHLC,
-  PERSONA_PROMPT_VERSION,
-} from "@gons/stock-analysis";
+import { fetchYahooQuotes, PERSONA_PROMPT_VERSION } from "@gons/stock-analysis";
+import { getCachedDailyOHLC } from "@/features/stock-analysis-server";
 import { SettingsButton } from "./SettingsButton";
 import { HoldingDetailButton } from "./HoldingDetailButton";
 import { AnalysisPendingPlaceholder } from "./AnalysisPendingPlaceholder";
@@ -49,7 +46,7 @@ export async function StockAnalysisCard() {
       ),
     ),
     Promise.all(
-      symbols.map((s) => fetchYahooDailyOHLC(s, "1y")),
+      symbols.map((s) => getCachedDailyOHLC(s, "1y")),
     ),
   ]);
   const quoteBySymbol = Object.fromEntries(quotes.map((q) => [q.symbol, q]));

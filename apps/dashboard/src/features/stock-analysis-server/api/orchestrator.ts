@@ -91,6 +91,9 @@ export async function analyzeStock(
   const [quotes, yahooFund, dailyOHLC, dartResult] = await Promise.all([
     fetchYahooQuotes([args.symbol]),
     fetchYahooFundamentals(args.symbol).catch(() => null),
+    // cron canonical 분석은 정산된 close 가 필요 (MA/RSI → flip 감지 → web-push).
+    // 6h 캐시(getCachedDailyOHLC) 를 타면 장중 미정산 봉이 EOD 분석을 오염시키고,
+    // cron 은 하루 2회라 캐시 이득도 없다. retry 는 fetchYahooDailyOHLC 내부에 있어 그대로 얻는다.
     fetchYahooDailyOHLC(args.symbol, "1y").catch(() => []),
     enableDart && krxCode
       ? fetchDartFinancials(krxCode, env.DART_OPENAPI_AUTH_KEY!).catch(

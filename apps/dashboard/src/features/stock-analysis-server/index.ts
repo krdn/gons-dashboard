@@ -15,3 +15,5 @@ export type {
 // client 호출자는 ./client entrypoint 사용.
 export { triggerAnalysis } from "./api/trigger";
 export type { TriggerResult } from "./api/trigger";
+
+export { getCachedDailyOHLC } from "./api/cached-daily-ohlc";

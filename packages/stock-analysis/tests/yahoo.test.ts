@@ -12,6 +12,9 @@ import {
 import { getYahooClient } from "../src/adapters/yahoo-finance2-client";
 import { isHangul, searchKrxSymbols } from "../src/adapters/krx-symbols";
 
+// retry backoff 를 0 으로 — 테스트가 실제 setTimeout 지연을 기다리지 않도록.
+process.env.STOCK_RETRY_BACKOFF_MS = "0";
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -149,6 +152,33 @@ describe("fetchYahooDailyOHLC", () => {
       { date: "2026-04-01", close: 180.0, volume: 50_000_000 },
       { date: "2026-04-03", close: 181.5, volume: 48_000_000 },
     ]);
+  });
+
+  it("chart() 가 1회 실패 후 성공하면 retry 로 결과 반환", async () => {
+    const yf = getYahooClient();
+    let calls = 0;
+    vi.spyOn(yf, "chart").mockImplementation((async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("transient 429");
+      return {
+        quotes: [
+          { date: new Date("2026-04-01"), close: 180.0, volume: 50_000_000 },
+        ],
+      };
+    }) as unknown as typeof yf.chart);
+    const r = await fetchYahooDailyOHLC("AAPL", "1mo");
+    expect(calls).toBe(2);
+    expect(r).toEqual([{ date: "2026-04-01", close: 180.0, volume: 50_000_000 }]);
+  });
+
+  it("chart() 가 3회 모두 실패하면 [] 반환 (graceful degrade)", async () => {
+    const yf = getYahooClient();
+    const spy = vi
+      .spyOn(yf, "chart")
+      .mockRejectedValue(new Error("persistent failure"));
+    const r = await fetchYahooDailyOHLC("AAPL", "1mo");
+    expect(r).toEqual([]);
+    expect(spy).toHaveBeenCalledTimes(3);
   });
 });
 
