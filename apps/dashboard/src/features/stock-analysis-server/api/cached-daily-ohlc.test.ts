@@ -65,4 +65,12 @@ describe("getCachedDailyOHLC", () => {
     expect(r).toEqual(SAMPLE);
     expect(mockFetch).toHaveBeenCalledWith("AAPL", "1y");
   });
+
+  it("손상된 캐시 값은 fail-open 으로 직접 fetch", async () => {
+    mockGet.mockResolvedValue("{not valid json");
+    mockFetch.mockResolvedValue(SAMPLE);
+    const r = await getCachedDailyOHLC("AAPL", "1y");
+    expect(r).toEqual(SAMPLE);
+    expect(mockFetch).toHaveBeenCalledWith("AAPL", "1y");
+  });
 });
