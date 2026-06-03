@@ -19,7 +19,6 @@ import {
   tallyVerdicts,
   fetchYahooQuotes,
   fetchYahooFundamentals,
-  fetchYahooDailyOHLC,
   fetchDartFinancials,
   type PersonaAnalysis,
   type PersonaKey,
@@ -34,6 +33,7 @@ import type { PortfolioHolding } from "@/entities/portfolio-holding/server";
 import { env } from "@/shared/config/env";
 import { mergeSnapshot } from "./merge-snapshot";
 import { callLlmAndParseWithRetry } from "./llm-call";
+import { getCachedDailyOHLC } from "./cached-daily-ohlc";
 
 const MINIMUM_SUCCESS = 3;
 const PERSONA_KEYS: PersonaKey[] = [
@@ -91,7 +91,7 @@ export async function analyzeStock(
   const [quotes, yahooFund, dailyOHLC, dartResult] = await Promise.all([
     fetchYahooQuotes([args.symbol]),
     fetchYahooFundamentals(args.symbol).catch(() => null),
-    fetchYahooDailyOHLC(args.symbol, "1y").catch(() => []),
+    getCachedDailyOHLC(args.symbol, "1y").catch(() => []),
     enableDart && krxCode
       ? fetchDartFinancials(krxCode, env.DART_OPENAPI_AUTH_KEY!).catch(
           () => null,
