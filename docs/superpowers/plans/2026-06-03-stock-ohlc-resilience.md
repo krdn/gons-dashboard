@@ -368,7 +368,9 @@ import { getCachedDailyOHLC } from "@/features/stock-analysis-server";
     ),
 ```
 
-- [ ] **Step 3: orchestrator 호출 교체**
+> **정정 (final 리뷰 후):** 아래 Step 3의 orchestrator 교체는 **실행하지 않았다.** final 통합 리뷰에서 orchestrator의 `dailyOHLC`가 flip 감지·web-push·canonical DB upsert에 쓰여 장중 미정산 봉 캐시가 EOD 분석을 오염시키고, cron은 하루 2회라 캐시 이득도 0임을 발견. retry는 `fetchYahooDailyOHLC` 내부에 있어 캐시 우회해도 유지되므로 orchestrator는 fresh fetch 그대로 둔다. **캐시는 StockAnalysisCard(Step 2)에만 적용.** (커밋 `1ef513b` 참조)
+
+- [ ] **Step 3: orchestrator 호출 교체 — ⚠️ 적용 안 함 (위 정정 참조)**
 
 `apps/dashboard/src/features/stock-analysis-server/api/orchestrator.ts`:
 

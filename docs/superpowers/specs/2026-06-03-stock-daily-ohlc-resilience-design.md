@@ -121,13 +121,14 @@ export async function getCachedDailyOHLC(
 }
 ```
 
-**호출처 교체** (2곳):
+**호출처 교체** (1곳만 — 구현 중 정정):
 
-- `apps/dashboard/src/widgets/stock-analysis/StockAnalysisCard.tsx:52`
-  `fetchYahooDailyOHLC(s, "1y")` → `getCachedDailyOHLC(s, "1y")`
-- `apps/dashboard/src/features/stock-analysis-server/api/orchestrator.ts:94`
-  `fetchYahooDailyOHLC(args.symbol, "1y").catch(() => [])` → `getCachedDailyOHLC(args.symbol, "1y").catch(() => [])`
-  (orchestrator의 바깥 `.catch(() => [])`는 유지 — fail-safe 이중 방어)
+- `apps/dashboard/src/widgets/stock-analysis/StockAnalysisCard.tsx`
+  `fetchYahooDailyOHLC(s, "1y")` → `getCachedDailyOHLC(s, "1y")`.
+  위젯의 `dailyOHLC`는 차트 **표시용**이고 분석은 DB 캐시(`getCachedAnalysis`)에서 오므로 6h stale은 cosmetic. 매 렌더 N종목 fan-out이라 캐시가 정확히 맞는 자리.
+
+- `apps/dashboard/src/features/stock-analysis-server/api/orchestrator.ts` — **캐시 적용 안 함 (fresh 유지)**.
+  당초 설계는 여기도 캐시 래퍼로 교체였으나, final 통합 리뷰에서 발견: orchestrator의 `dailyOHLC`는 `mergeSnapshot`→MA/RSI→**flip 감지·web-push·canonical DB upsert**에 쓰여, 장중 미정산 봉이 캐시되면 EOD 분석을 오염시킨다. cron은 하루 2회라 6h 캐시 이득도 0. retry는 `fetchYahooDailyOHLC` 내부(packages)에 있어 캐시를 우회해도 그대로 얻으므로, cron은 retry는 얻고 staleness는 피한다. → 기존 `fetchYahooDailyOHLC(args.symbol, "1y").catch(() => [])` 유지.
 
 **barrel export**: `features/stock-analysis-server`가 server.ts/client.ts seam을 쓴다면(Gotcha #7),
 `getCachedDailyOHLC`는 server-only 함수이므로 server entrypoint(`index.ts`)에서 export.
@@ -136,7 +137,7 @@ StockAnalysisCard는 이미 `"server-only"` 컴포넌트라 server entrypoint im
 ### 키·TTL 설계 근거
 
 - 키 `stock:ohlc:{symbol}:{range}` — symbol+range별 분리. 글로벌 캐시(holder 무관, OHLC는 사용자 공통).
-- TTL 6h — 일 2회 cron 분석 주기와 정합. 장중 당일봉이 약간 stale해도 차트 추세/MA 계산엔 무해.
+- TTL 6h — 위젯의 차트 표시는 장중 당일봉이 약간 stale해도 추세/표시에 무해. (cron canonical 분석은 캐시를 타지 않으므로 staleness 무관 — 위 참조.)
 
 ## 에러 처리
 
