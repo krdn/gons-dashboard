@@ -19,6 +19,7 @@ import {
   boolean,
   jsonb,
   numeric,
+  real,
   date,
   customType,
   check,
@@ -1072,3 +1073,35 @@ export const stockSymbolMigrations = pgTable(
     index("stock_symbol_migrations_detected_idx").on(t.detectedAt.desc()),
   ],
 );
+
+/* =========================================================================
+ * gons-autopilot — 주간 자율 업그레이드 사이클 이력
+ * 저장: POST /api/cron/autopilot-cycle (주간 에이전트가 Workflow 반환값 기록)
+ * 읽기: widgets/autopilot (RSC)
+ * id = "autopilot-<isoWeek>" 멱등 키. 주차별 index 불필요 (PK가 isoWeek).
+ * ========================================================================= */
+export const autopilotCycles = pgTable("autopilot_cycles", {
+  id: text("id").primaryKey(), // "autopilot-2026-W24"
+  runAt: timestamp("run_at", { withTimezone: true }).notNull(),
+  mode: text("mode").notNull(), // "shadow" | "autonomous"
+  deployFlag: text("deploy_flag"), // "on" | "off" | null — 저장 시점 cron의 AUTOPILOT_DEPLOY
+  candidateCount: integer("candidate_count").notNull(),
+
+  selectedTitle: text("selected_title"),
+  selectedScore: real("selected_score"),
+  selectedChangeType: text("selected_change_type"),
+  selectedOwner: text("selected_owner"),
+
+  prUrl: text("pr_url"),
+  merged: boolean("merged").notNull().default(false),
+  needsHuman: boolean("needs_human").notNull().default(false),
+  reason: text("reason"),
+
+  backlogTop3: jsonb("backlog_top3")
+    .$type<{ title: string; score: number; dedupKey: string }[]>()
+    .notNull()
+    .default([]),
+  debate: jsonb("debate"), // DebateLog — entity types에서 정제
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

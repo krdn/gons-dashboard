@@ -25,6 +25,7 @@ import {
   StockAnalysisCard,
   StockAnalysisSkeleton,
 } from "@/widgets/stock-analysis";
+import { AutopilotCard, AutopilotSkeleton } from "@/widgets/autopilot";
 import { CalendarCard, CalendarSkeleton } from "@/widgets/calendar";
 import { FortuneCard, FortuneSkeleton } from "@/widgets/fortune";
 
@@ -100,6 +101,9 @@ export default async function DashboardPage() {
           </Suspense>
           <Suspense fallback={<StockAnalysisSkeleton />}>
             <StockAnalysisCard />
+          </Suspense>
+          <Suspense fallback={<AutopilotSkeleton />}>
+            <AutopilotCard />
           </Suspense>
         </div>
 
