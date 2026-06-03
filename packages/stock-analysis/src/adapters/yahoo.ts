@@ -107,6 +107,36 @@ export async function fetchYahooFundamentals(
   };
 }
 
+// chart() 등 일시적 실패(429/네트워크 hiccup)를 짧은 backoff 로 흡수.
+// 일봉 fetch 는 멱등이라 status 분기 없이 모든 throw 를 재시도한다.
+// backoff base 는 테스트에서 STOCK_RETRY_BACKOFF_MS=0 으로 무력화 가능.
+function retryBackoffMs(): number {
+  const raw = process.env.STOCK_RETRY_BACKOFF_MS;
+  const parsed = raw != null ? Number(raw) : 300;
+  return Number.isFinite(parsed) ? parsed : 300;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) {
+        const base = retryBackoffMs() * 2 ** i; // 300, 600 (기본)
+        const jitter = base > 0 ? Math.floor(Math.random() * 100) : 0;
+        await delay(base + jitter);
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export async function fetchYahooDailyOHLC(
   symbol: string,
   range: "1mo" | "3mo" | "6mo" | "1y" | "5y" = "1y",
@@ -124,11 +154,13 @@ export async function fetchYahooDailyOHLC(
   };
   start.setMonth(start.getMonth() - months[range]);
   try {
-    const result = (await yf.chart(symbol, {
-      period1: start,
-      period2: now,
-      interval: "1d",
-    })) as ChartResultArray;
+    const result = (await withRetry(() =>
+      yf.chart(symbol, {
+        period1: start,
+        period2: now,
+        interval: "1d",
+      }),
+    )) as ChartResultArray;
     return result.quotes
       .map((q: ChartResultArrayQuote) => ({
         date: q.date.toISOString().slice(0, 10),
