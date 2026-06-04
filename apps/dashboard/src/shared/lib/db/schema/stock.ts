@@ -184,3 +184,18 @@ export const stockSymbolMigrations = pgTable(
     index("stock_symbol_migrations_detected_idx").on(t.detectedAt.desc()),
   ],
 );
+
+// 주식 타임프레임 분석 이력 (@krdn/tickerlens — 페르소나×타임프레임, 집계 없음)
+// 기존 stock_analysis_cache(페르소나×verdict+consensus)와 별개 도메인.
+export const stockTimeframeAnalyses = pgTable("stock_timeframe_analyses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  ticker: text("ticker").notNull(),
+  depth: text("depth").notNull(), // 'full' | 'lite'
+  asOf: timestamp("as_of").notNull(),
+  result: jsonb("result").notNull(), // tickerlens AnalysisResult 전체
+  costUsd: numeric("cost_usd"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
