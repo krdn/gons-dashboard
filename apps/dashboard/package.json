@@ -28,6 +28,7 @@
     "@gons/shared-mcp-runtime": "workspace:*",
     "@gons/stock-analysis": "workspace:*",
     "@krdn/llm-gateway": "github:krdn/llm-gateway#v3.2.0",
+    "@krdn/tickerlens": "github:krdn/tickerlens#v0.1.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@tanstack/react-query": "^5.62.7",
     "dotenv": "^17.4.2",

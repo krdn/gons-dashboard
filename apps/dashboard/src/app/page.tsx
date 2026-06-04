@@ -5,6 +5,7 @@
 // 좌(7) + 우(4) 비대칭 그리드. 좌에 EmailDigestCard, 우에 향후 위젯 placeholder.
 // 비로그인 상태면 /login으로 리다이렉트.
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth, signOut } from "@/shared/lib/auth";
@@ -105,6 +106,15 @@ export default async function DashboardPage() {
           <Suspense fallback={<AutopilotSkeleton />}>
             <AutopilotCard />
           </Suspense>
+          <Link
+            href="/stocks"
+            className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] px-5 py-4 transition-colors hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-2)]"
+          >
+            <h3 className="text-sm font-semibold">주식 타임프레임 분석</h3>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              US 티커 페르소나 × 장/중/단기 관점 분석 →
+            </p>
+          </Link>
         </div>
 
         <aside aria-label="우측 위젯" className="flex flex-col gap-4">
