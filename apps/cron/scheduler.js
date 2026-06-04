@@ -134,3 +134,24 @@ console.log(
 setTimeout(() => {
   void callCron("/api/cron/poll-gmail", "poll-gmail (startup)");
 }, 30_000);
+
+// 시작 직후 오늘 일진 catchup — 컨테이너가 00:01/00:05 KST 에 떠있지 않았던 날
+// (배포·재시작) 의 일진이 node-cron 미재생으로 영구 소실되는 것을 방지.
+// 두 엔드포인트 모두 chart_id+for_date unique index 로 row 는 안전(UPSERT/
+// onConflictDoNothing). tri 는 LLM 없는 순수 계산이라 완전 idempotent.
+// daily-fortunes 는 row 만 idempotent — 자정±수십초 재시작으로 정규 cron(00:01)
+// 과 이 catchup 이 cache-miss 창에서 겹치면 LLM spend 가 이중 기록될 수 있다
+// (좁은 창, 당일 예산 집계만 영향). app 미준비 시 catchup silent fail 과 함께
+// 후속 이슈로 health-guard 검토. 정규 스케줄(00:01/00:05) 의 stagger 미러.
+setTimeout(() => {
+  void callCron(
+    "/api/cron/generate-daily-fortunes",
+    "generate-daily-fortunes (startup)",
+  );
+}, 60_000);
+setTimeout(() => {
+  void callCron(
+    "/api/cron/generate-daily-tri-fortunes",
+    "generate-daily-tri-fortunes (startup)",
+  );
+}, 120_000);
