@@ -37,6 +37,21 @@ export interface CronHandlerDefinition<TTarget, TPayload> {
   perTarget: (target: TTarget) => Promise<TPayload>;
   /** 동시성. 기본 1 (순차). LLM cron 은 2~3, push 는 10 권장. */
   concurrency?: number;
+  /**
+   * Per-target transient 재시도. opt-in (미지정 시 재시도 없음 — 기존 동작).
+   * 알림 발송(digest/stock) cron 은 재시도 시 이중 발송이라 opt-in 으로 두고
+   * 멱등(idempotent) cron(일진 — chart_id+for_date unique index) 만 활성화한다.
+   * `shouldRetry` 로 재시도 불가 에러(예: BudgetExceededError)를 caller(app 레이어)
+   * 가 주입 — shared 는 도메인 무지 유지 (FSD: shared → features import 금지).
+   */
+  retry?: {
+    /** 총 시도 횟수 (재시도 포함). 1 이면 재시도 없음. */
+    maxAttempts: number;
+    /** 시도 간 지연(ms). transient blip 해소용 — 짧게(LLM 호출이 길어 cron 요청이 오래 열림). */
+    backoffMs: number;
+    /** true 면 재시도 / false 면 즉시 error 격리. 미지정 시 모든 에러 재시도. */
+    shouldRetry?: (err: unknown) => boolean;
+  };
   /** 글로벌 카운트 (target 단위 아닌 통계). envelope `extra` 슬롯. */
   extra?: () => Promise<Record<string, unknown>>;
 }
@@ -64,6 +79,30 @@ export interface CronEnvelope<TPayload> {
 function truncatedError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   return raw.length > ERROR_MAX_LEN ? raw.slice(0, ERROR_MAX_LEN) : raw;
+}
+
+type RetryPolicy = NonNullable<CronHandlerDefinition<unknown, unknown>["retry"]>;
+
+/**
+ * fn 을 retry 정책대로 시도. 마지막 시도 실패 또는 shouldRetry=false 면 throw.
+ * 재시도 사이에만 backoff (마지막 시도 후 대기 없음).
+ */
+async function runWithRetry<T>(fn: () => Promise<T>, retry: RetryPolicy): Promise<T> {
+  const maxAttempts = Math.max(1, Math.floor(retry.maxAttempts));
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const retryable = retry.shouldRetry ? retry.shouldRetry(err) : true;
+      if (!retryable || attempt === maxAttempts) throw err;
+      if (retry.backoffMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, retry.backoffMs));
+      }
+    }
+  }
+  throw lastError;
 }
 
 /** Concurrency 만큼 worker 풀로 fan-out. 순서 보존. */
@@ -120,7 +159,9 @@ export function createCronHandler<TTarget, TPayload>(
           ? { id, label, status: "ok" }
           : { id, status: "ok" };
         try {
-          const payload = await def.perTarget(target);
+          const payload = def.retry
+            ? await runWithRetry(() => def.perTarget(target), def.retry)
+            : await def.perTarget(target);
           return { ...base, payload };
         } catch (err) {
           return { ...base, status: "error", error: truncatedError(err) };

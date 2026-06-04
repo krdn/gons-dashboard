@@ -18,7 +18,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { fortuneProfiles } from "@/shared/lib/db/schema";
 import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
-import { getOrBuildDaily } from "@/features/saju-daily-tri/api/daily-server";
+import {
+  getOrBuildDaily,
+  ProfileNotFoundError,
+  DailyBuildError,
+} from "@/features/saju-daily-tri/api/daily-server";
 import { currentKstDate } from "@/shared/lib/saju/resolveBirthInput";
 import type { TriNationDailyLite } from "@krdn/saju";
 
@@ -57,5 +61,14 @@ export const POST = createCronHandler({
     };
   },
   concurrency: 2,
+  // transient 재시도 — frame 빌더는 LLM 없는 순수 계산 + onConflictDoNothing 이라
+  // 완전 멱등(비용 없음). 단 영구 입력 오류(프로필 없음 / calendar·gender 검증 실패)는
+  // 재시도해도 결과 불변이라 제외 — 무의미한 backoff 낭비 방지.
+  retry: {
+    maxAttempts: 2,
+    backoffMs: 2000,
+    shouldRetry: (err) =>
+      !(err instanceof ProfileNotFoundError) && !(err instanceof DailyBuildError),
+  },
   extra: async () => ({ forDate: currentKstDate() }),
 });
