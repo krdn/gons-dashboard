@@ -1,6 +1,6 @@
 // Email 위젯 설정 — 타입 + 기본값 + 순수 헬퍼.
 // client/server 양쪽에서 import 가능(순수 — DB·node 의존 없음).
-import type { Category, Severity, ImportantImportance } from "@/entities/email/model/types";
+import type { Category, Severity, ImportantImportance } from "@krdn/email";
 
 export interface EmailSettings {
   replyNeededLimit: number;
