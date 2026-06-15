@@ -21,9 +21,11 @@ function stripHtml(html: string): string {
     .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
+    // &amp; 는 마지막에 디코드 — 먼저 풀면 &amp;lt; 같은 이중 인코딩이
+    // &lt;→< 로 잘못 이중 디코드됨
+    .replace(/&amp;/g, "&")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
