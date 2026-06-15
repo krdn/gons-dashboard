@@ -32,6 +32,9 @@ export interface ClassifyLoopParams {
   signalsMap?: Map<string, MailingListSignals>;
   // SQL-level 캡 — 안전 한도. reclassifyRecent에서만 의미.
   maxThreads?: number;
+  /** LLM 분류 on/off(설정 반영). 미지정 시 둘 다 true. */
+  llmReplyEnabled?: boolean;
+  llmImportantEnabled?: boolean;
 }
 
 /**
@@ -43,7 +46,15 @@ export interface ClassifyLoopParams {
 export async function classifyThreadsLoop(
   params: ClassifyLoopParams,
 ): Promise<ClassifyLoopResult> {
-  const { userId, ownerEmail, since, signalsMap, maxThreads } = params;
+  const {
+    userId,
+    ownerEmail,
+    since,
+    signalsMap,
+    maxThreads,
+    llmReplyEnabled = true,
+    llmImportantEnabled = true,
+  } = params;
 
   const baseQuery = db
     .select({
@@ -90,6 +101,7 @@ export async function classifyThreadsLoop(
       userId,
       threadId: t.id,
       input,
+      useLlm: llmReplyEnabled,
     });
 
     const signals = signalsMap?.get(t.gmailThreadId) ?? {
@@ -110,6 +122,7 @@ export async function classifyThreadsLoop(
           receivedAtKst: formatKst(t.lastReceivedAt),
         },
         signals,
+        useLlm: llmImportantEnabled,
       });
       importantOutcomes[impOutcome.kind] =
         (importantOutcomes[impOutcome.kind] ?? 0) + 1;
