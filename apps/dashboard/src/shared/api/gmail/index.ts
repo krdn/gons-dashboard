@@ -18,9 +18,16 @@ export {
   GmailRateLimitError,
   GmailServerError,
   GmailClientError,
+  GmailScopeError,
   isRetryable,
 } from "./errors";
 export { extractMailingListSignals } from "./headers";
 export type { MailingListSignals } from "./headers";
 export { modifyThread } from "./modify";
 export type { ModifyOptions, ModifyResponse } from "./modify";
+export { getThread } from "./threads";
+export type { GmailThread, ThreadMessage } from "./threads";
+export { extractBodyText } from "./mime";
+export type { GmailPayload } from "./mime";
+export { createDraft, buildRfc822 } from "./drafts";
+export type { DraftParams, CreateDraftResult } from "./drafts";
