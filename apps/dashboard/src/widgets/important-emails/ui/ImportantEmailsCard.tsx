@@ -11,7 +11,7 @@ export async function ImportantEmailsCard() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const items = await getImportantEmails(session.user.id, 10);
+  const items = await getImportantEmails(session.user.id, { limit: 10 });
 
   return (
     <section

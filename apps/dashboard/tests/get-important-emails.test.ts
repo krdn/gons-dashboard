@@ -91,7 +91,7 @@ describe("getImportantEmails", () => {
       receivedAt: new Date(),
     });
     await seedImportant({ threadId: t, importance: "high", classifiedAt: new Date() });
-    const result = await getImportantEmails(userId, 10);
+    const result = await getImportantEmails(userId, { limit: 10 });
     expect(result).toHaveLength(1);
     expect(result[0].importance).toBe("high");
   });
@@ -104,7 +104,7 @@ describe("getImportantEmails", () => {
     await seedImportant({ threadId: t, importance: "high", classifiedAt: new Date() });
     await seedReplyNeeded({ threadId: t });
 
-    expect(await getImportantEmails(userId, 10)).toHaveLength(0);
+    expect(await getImportantEmails(userId, { limit: 10 })).toHaveLength(0);
   });
 
   it("D6 — reply_needed.repliedAt SET 후 important에 등장", async () => {
@@ -115,7 +115,7 @@ describe("getImportantEmails", () => {
     await seedImportant({ threadId: t, importance: "high", classifiedAt: new Date() });
     await seedReplyNeeded({ threadId: t, repliedAt: new Date() });
 
-    expect(await getImportantEmails(userId, 10)).toHaveLength(1);
+    expect(await getImportantEmails(userId, { limit: 10 })).toHaveLength(1);
   });
 
   it("D6 — reply_needed.dismissedAt SET 후 important에 등장", async () => {
@@ -126,7 +126,7 @@ describe("getImportantEmails", () => {
     await seedImportant({ threadId: t, importance: "high", classifiedAt: new Date() });
     await seedReplyNeeded({ threadId: t, dismissedAt: new Date() });
 
-    expect(await getImportantEmails(userId, 10)).toHaveLength(1);
+    expect(await getImportantEmails(userId, { limit: 10 })).toHaveLength(1);
   });
 
   it("read_at·archived_at SET 행은 제외", async () => {
@@ -152,7 +152,7 @@ describe("getImportantEmails", () => {
       .set({ archivedAt: new Date() })
       .where(eq(importantEmails.threadId, t2));
 
-    expect(await getImportantEmails(userId, 10)).toHaveLength(0);
+    expect(await getImportantEmails(userId, { limit: 10 })).toHaveLength(0);
   });
 
   it("7일 윈도 — 8일 전 분류 행 제외", async () => {
@@ -165,7 +165,7 @@ describe("getImportantEmails", () => {
     const t2 = await seedThread({ gmailThreadId: "gt8", receivedAt: recent });
     await seedImportant({ threadId: t2, importance: "high", classifiedAt: recent });
 
-    const result = await getImportantEmails(userId, 10);
+    const result = await getImportantEmails(userId, { limit: 10 });
     expect(result).toHaveLength(1);
     expect(result[0].gmailThreadId).toBe("gt8");
   });
@@ -183,7 +183,7 @@ describe("getImportantEmails", () => {
     const t3 = await seedThread({ gmailThreadId: "gtC", receivedAt: now });
     await seedImportant({ threadId: t3, importance: "high", classifiedAt: now });
 
-    const result = await getImportantEmails(userId, 10);
+    const result = await getImportantEmails(userId, { limit: 10 });
     expect(result.map((r) => r.gmailThreadId)).toEqual(["gtC", "gtB", "gtA"]);
   });
 
@@ -199,7 +199,7 @@ describe("getImportantEmails", () => {
         classifiedAt: new Date(Date.now() - i * 1000),
       });
     }
-    const result = await getImportantEmails(userId, 10);
+    const result = await getImportantEmails(userId, { limit: 10 });
     expect(result).toHaveLength(10);
   });
 });
