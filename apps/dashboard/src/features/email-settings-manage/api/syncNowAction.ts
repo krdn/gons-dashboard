@@ -5,8 +5,8 @@ import { auth } from "@/shared/lib/auth";
 import { syncInbox } from "@/features/gmail-sync";
 
 export type SyncNowResult =
-  | { ok: true; classified: number; skipped: number; reauth: boolean }
-  | { ok: false; code: "UNAUTHORIZED" | "ERROR"; message?: string };
+  | { ok: true; classified: number; skipped: number }
+  | { ok: false; code: "UNAUTHORIZED" | "REAUTH_REQUIRED" | "ERROR"; message?: string };
 
 export async function syncNowAction(): Promise<SyncNowResult> {
   const session = await auth();
@@ -14,12 +14,14 @@ export async function syncNowAction(): Promise<SyncNowResult> {
 
   try {
     const result = await syncInbox(session.user.id);
+    if (result.kind === "reauth-required") {
+      return { ok: false, code: "REAUTH_REQUIRED", message: "재로그인이 필요합니다" };
+    }
     revalidatePath("/");
     return {
       ok: true,
       classified: result.classifiedCount ?? 0,
       skipped: result.skippedCount ?? 0,
-      reauth: result.kind === "reauth-required",
     };
   } catch (err) {
     return {
