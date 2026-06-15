@@ -17,7 +17,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
-import type { Category } from "@/entities/email/model/types";
+import type { Category } from "@krdn/email";
 
 export const emailThreads = pgTable(
   "email_threads",
