@@ -4,7 +4,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { emailSettings } from "@/shared/lib/db/schema";
-import type { Category, Severity, ImportantImportance } from "@krdn/email";
+import type { Severity, ImportantImportance } from "@krdn/email";
 import {
   EMAIL_SETTINGS_DEFAULTS,
   type EmailSettings,
@@ -17,7 +17,7 @@ export async function getEmailSettings(userId: string): Promise<EmailSettings> {
     .where(eq(emailSettings.userId, userId))
     .limit(1);
 
-  if (!row) return EMAIL_SETTINGS_DEFAULTS;
+  if (!row) return { ...EMAIL_SETTINGS_DEFAULTS };
 
   return {
     replyNeededLimit: row.replyNeededLimit,
@@ -25,7 +25,7 @@ export async function getEmailSettings(userId: string): Promise<EmailSettings> {
     windowDays: row.windowDays,
     replySeverityThreshold: row.replySeverityThreshold as Severity,
     importantThreshold: row.importantThreshold as ImportantImportance,
-    categories: row.categories as Category[],
+    categories: row.categories,
     llmReplyEnabled: row.llmReplyEnabled,
     llmImportantEnabled: row.llmImportantEnabled,
     syncIntervalMinutes: row.syncIntervalMinutes,
