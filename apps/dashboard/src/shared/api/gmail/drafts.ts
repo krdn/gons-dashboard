@@ -30,8 +30,15 @@ export interface CreateDraftResult {
   draftId: string;
 }
 
+// 헤더 인젝션 방지 — CR/LF 제거 (inbound 데이터가 헤더 값으로 들어오므로).
+function sanitizeHeader(v: string): string {
+  return v.replace(/[\r\n]/g, "");
+}
+
 function encodeSubject(subject: string): string {
-  const re = /^re:/i.test(subject) ? subject : `Re: ${subject}`;
+  // CRLF 는 헤더 인젝션 통로 — ASCII guard 경로도 통과시키므로 맨 앞에서 제거.
+  const clean = subject.replace(/[\r\n]/g, " ");
+  const re = /^re:/i.test(clean) ? clean : `Re: ${clean}`;
   // ASCII만 있으면 그대로, 비ASCII 포함 시 encoded-word.
   if (/^[\x00-\x7F]*$/.test(re)) return re;
   const b64 = Buffer.from(re, "utf-8").toString("base64");
@@ -48,15 +55,16 @@ function toBase64Url(raw: string): string {
 
 export function buildRfc822(params: DraftParams): string {
   const headers = [
-    `To: ${params.toEmail}`,
+    `To: ${sanitizeHeader(params.toEmail)}`,
     `Subject: ${encodeSubject(params.subject)}`,
-    `In-Reply-To: ${params.inReplyTo}`,
-    `References: ${params.references}`,
+    `In-Reply-To: ${sanitizeHeader(params.inReplyTo)}`,
+    `References: ${sanitizeHeader(params.references)}`,
     'Content-Type: text/plain; charset="UTF-8"',
     "Content-Transfer-Encoding: 8bit",
     "MIME-Version: 1.0",
   ];
-  return headers.join("\r\n") + "\r\n\r\n" + params.body;
+  // RFC822 는 줄 끝이 CRLF — textarea 입력 body 의 LF-only 를 정규화.
+  return headers.join("\r\n") + "\r\n\r\n" + params.body.replace(/\r?\n/g, "\r\n");
 }
 
 export async function createDraft(

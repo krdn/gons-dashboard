@@ -33,6 +33,14 @@ describe("buildRfc822", () => {
     const raw = buildRfc822({ ...base, subject: "한글 제목" });
     expect(raw).toContain("=?UTF-8?B?");
   });
+
+  it("헤더 인젝션 방지 — toEmail/inReplyTo의 CRLF 제거", () => {
+    const raw = buildRfc822({ ...base, toEmail: "evil@x.com\r\nBcc: victim@x.com" });
+    // 핵심 보안 속성: Bcc 가 독립된 헤더 줄(\r\nBcc:)로 주입되지 않을 것.
+    // (값 안에 'Bcc:' 문자열이 섞이는 건 무해 — 줄바꿈만 제거되면 헤더가 아니다.)
+    expect(raw).not.toContain("\r\nBcc:");
+    expect(raw).toContain("To: evil@x.comBcc: victim@x.com");
+  });
 });
 
 describe("createDraft", () => {
