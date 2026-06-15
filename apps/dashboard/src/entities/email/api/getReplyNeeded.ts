@@ -7,7 +7,7 @@
 // "오늘"의 정의: KST 자정 기준. classified_at은 timestamptz로 저장되어
 // AT TIME ZONE 'Asia/Seoul'로 변환 후 비교.
 import "server-only";
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { replyNeeded, emailThreads } from "@/shared/lib/db/schema";
 
@@ -54,6 +54,13 @@ export async function getReplyNeeded(
   const windowDays = opts?.windowDays ?? 7;
   const severityThreshold = opts?.severityThreshold ?? "low"; // low = 필터 없음
 
+  // 임계값 이상(rank ≤) severity만 SQL에서 필터 — LIMIT이 필터 이후에 적용되도록.
+  // (post-query filter는 LIMIT으로 잘린 행을 다시 버려 truncation 버그를 유발.)
+  const thresholdRank = SEVERITY_RANK[severityThreshold];
+  const allowedSeverities = (["high", "med", "low"] as const).filter(
+    (s) => SEVERITY_RANK[s] <= thresholdRank,
+  );
+
   const rows = await db
     .select({
       threadId: replyNeeded.threadId,
@@ -80,6 +87,8 @@ export async function getReplyNeeded(
           replyNeeded.classifiedAt,
           sql`(NOW() AT TIME ZONE 'Asia/Seoul' - (${windowDays} || ' days')::interval)::timestamp`,
         ),
+        // severity 임계값 — WHERE에서 필터해 LIMIT이 필터 이후 적용되게.
+        inArray(replyNeeded.severity, allowedSeverities),
       ),
     )
     .orderBy(
@@ -88,11 +97,8 @@ export async function getReplyNeeded(
     )
     .limit(limit);
 
-  const thresholdRank = SEVERITY_RANK[severityThreshold];
-  return rows
-    .map((r) => ({
-      ...r,
-      severity: r.severity as ReplyNeededItem["severity"],
-    }))
-    .filter((r) => SEVERITY_RANK[r.severity] <= thresholdRank);
+  return rows.map((r) => ({
+    ...r,
+    severity: r.severity as ReplyNeededItem["severity"],
+  }));
 }
