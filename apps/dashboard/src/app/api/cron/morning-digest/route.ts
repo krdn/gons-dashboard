@@ -22,7 +22,7 @@ export const POST = createCronHandler({
   getId: (u) => u.id,
   getLabel: (u) => u.email,
   perTarget: async (u) => {
-    const items = await getReplyNeeded(u.id, 5);
+    const items = await getReplyNeeded(u.id, { limit: 5 });
     if (items.length === 0) {
       // 빈 디지스트는 알림 보내지 않음 — 매일 빈 알림은 노이즈.
       return { itemCount: 0, sent: 0, expired: 0, errors: 0 };

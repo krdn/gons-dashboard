@@ -15,7 +15,7 @@ export async function EmailDigestCard() {
     return null;
   }
 
-  const items = await getReplyNeeded(session.user.id, 5);
+  const items = await getReplyNeeded(session.user.id, { limit: 5 });
 
   return (
     <section

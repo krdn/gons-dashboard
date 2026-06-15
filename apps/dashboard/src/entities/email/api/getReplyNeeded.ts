@@ -25,19 +25,34 @@ export interface ReplyNeededItem {
   classifiedBy: string;
 }
 
+export interface GetReplyNeededOpts {
+  limit?: number;
+  windowDays?: number;
+  severityThreshold?: "high" | "med" | "low";
+}
+
+// severity 순위: high(0) < med(1) < low(2). 낮을수록 긴급.
+const SEVERITY_RANK: Record<"high" | "med" | "low", number> = {
+  high: 0,
+  med: 1,
+  low: 2,
+};
+
 /**
- * 사용자의 "오늘" reply_needed TOP N (severity DESC, classified_at DESC).
+ * 사용자의 reply_needed TOP N (severity DESC, classified_at DESC).
+ * limit/window/severity 임계값은 호출자(위젯·cron)가 email_settings에서 읽어 주입.
+ * 미지정 시 기존 기본값(limit 5, window 7, threshold low=필터 없음)으로 동작.
  *
  * @param userId 사용자 UUID
- * @param limit 기본 5 (메인 디지스트), 더 보고 싶으면 페이지에서 추가 호출.
+ * @param opts limit/windowDays/severityThreshold (설정 주입). FSD entities→entities 회피.
  */
 export async function getReplyNeeded(
   userId: string,
-  limit = 5,
+  opts?: GetReplyNeededOpts,
 ): Promise<ReplyNeededItem[]> {
-  // KST 오늘 자정. timestamp without timezone으로 비교.
-  // (classified_at도 timestamp without timezone, KST 가정 — TZ=Asia/Seoul ENV 강제)
-  const todayKstStart = sql<Date>`(NOW() AT TIME ZONE 'Asia/Seoul')::date`;
+  const limit = opts?.limit ?? 5;
+  const windowDays = opts?.windowDays ?? 7;
+  const severityThreshold = opts?.severityThreshold ?? "low"; // low = 필터 없음
 
   const rows = await db
     .select({
@@ -60,12 +75,10 @@ export async function getReplyNeeded(
         eq(replyNeeded.userId, userId),
         isNull(replyNeeded.repliedAt),
         isNull(replyNeeded.dismissedAt),
-        // 분류된 지 오래된 것은 제외 — "오늘 분류" 또는 "최근 7일" 정책.
-        // 너무 빡빡하면 빈 화면, 너무 느슨하면 오래된 메일이 끼어듦.
-        // v0.1: 최근 7일 (todayKst - 7).
+        // 설정 윈도우(windowDays) — KST 기준.
         gte(
           replyNeeded.classifiedAt,
-          sql`(NOW() AT TIME ZONE 'Asia/Seoul' - INTERVAL '7 days')::timestamp`,
+          sql`(NOW() AT TIME ZONE 'Asia/Seoul' - (${windowDays} || ' days')::interval)::timestamp`,
         ),
       ),
     )
@@ -75,11 +88,11 @@ export async function getReplyNeeded(
     )
     .limit(limit);
 
-  // todayKstStart는 SQL fragment 비교용 보조 — 위 쿼리에서 직접 안 씀.
-  void todayKstStart;
-
-  return rows.map((r) => ({
-    ...r,
-    severity: r.severity as ReplyNeededItem["severity"],
-  }));
+  const thresholdRank = SEVERITY_RANK[severityThreshold];
+  return rows
+    .map((r) => ({
+      ...r,
+      severity: r.severity as ReplyNeededItem["severity"],
+    }))
+    .filter((r) => SEVERITY_RANK[r.severity] <= thresholdRank);
 }
