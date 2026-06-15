@@ -20,6 +20,7 @@ import {
   importantEmails,
 } from "@/shared/lib/db/schema";
 import { logger } from "@/shared/lib/log";
+import { getEmailSettings } from "@/entities/email-settings";
 import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
 
 export interface ReclassifyRecentParams {
@@ -82,11 +83,15 @@ export async function reclassifyRecent(
     forcedDeleted = deleted.length;
   }
 
+  const settings = await getEmailSettings(userId);
+
   const result = await classifyThreadsLoop({
     userId,
     ownerEmail: user.email,
     since,
     maxThreads: MAX_THREADS,
+    llmReplyEnabled: settings.llmReplyEnabled,
+    llmImportantEnabled: settings.llmImportantEnabled,
   });
 
   // 재분류는 본질적으로 진단/검증 — 항상 outcome 분포 로깅.

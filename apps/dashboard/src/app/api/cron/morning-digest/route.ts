@@ -70,7 +70,11 @@ export const POST = createCronHandler({
       return { kind: "skipped-not-due" };
     }
 
-    const items = await getReplyNeeded(u.id, { limit: 5 }); // 다이제스트는 5건 고정.
+    const items = await getReplyNeeded(u.id, {
+      limit: 5, // 다이제스트는 5건 고정.
+      windowDays: settings.windowDays,
+      severityThreshold: settings.replySeverityThreshold,
+    });
     if (items.length === 0) {
       // 빈 디지스트는 알림 보내지 않음 — 매일 빈 알림은 노이즈.
       // 단 발송 기록은 남겨 하루 종일 재평가하지 않음.
