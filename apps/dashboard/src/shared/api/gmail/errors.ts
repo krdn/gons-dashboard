@@ -50,6 +50,13 @@ export class GmailServerError extends GmailError {
   }
 }
 
+export class GmailScopeError extends GmailError {
+  constructor(message = "Gmail 쓰기 권한이 부족합니다 — 재로그인이 필요합니다") {
+    super(message, 403, "ACCESS_TOKEN_SCOPE_INSUFFICIENT");
+    this.name = "GmailScopeError";
+  }
+}
+
 export class GmailClientError extends GmailError {
   constructor(status: number, message: string, googleReason?: string) {
     super(message, status, googleReason);
@@ -91,6 +98,9 @@ export async function classifyGmailError(response: Response): Promise<GmailError
 
   if (status === 429) return new GmailRateLimitError(message);
   if (status >= 500) return new GmailServerError(status, message);
+  if (status === 403 && reason === "ACCESS_TOKEN_SCOPE_INSUFFICIENT") {
+    return new GmailScopeError(message);
+  }
   if (reason === "invalid_grant") return new InvalidGrantError(message);
 
   return new GmailClientError(status, message, reason ?? undefined);
