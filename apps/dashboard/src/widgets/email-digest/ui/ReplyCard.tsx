@@ -10,7 +10,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import {
   markAsReplied,
   dismissThread,
@@ -36,6 +36,8 @@ export function ReplyCard({ item }: ReplyCardProps) {
   const [error, setError] = useState<string | null>(null);
   // 인라인 답장 초안 편집기 토글 상태
   const [isComposing, setIsComposing] = useState(false);
+  // aria-controls 연결용 고유 id (카드마다 고유)
+  const composerId = useId();
 
   const runAction = (action: () => Promise<void>) => {
     startTransition(async () => {
@@ -110,7 +112,9 @@ export function ReplyCard({ item }: ReplyCardProps) {
         ) : null}
         {/* 인라인 답장 초안 편집기 — "답장하기" 토글 시 펼침 */}
         {isComposing ? (
-          <ReplyComposer threadId={item.threadId} onClose={() => setIsComposing(false)} />
+          <div id={composerId}>
+            <ReplyComposer threadId={item.threadId} onClose={() => setIsComposing(false)} />
+          </div>
         ) : null}
       </div>
 
@@ -119,6 +123,7 @@ export function ReplyCard({ item }: ReplyCardProps) {
           type="button"
           onClick={() => setIsComposing((v) => !v)}
           aria-expanded={isComposing}
+          aria-controls={composerId}
           className="rounded-md bg-[var(--color-text)] px-3 py-1.5 text-xs font-medium text-[var(--color-surface)] transition-colors hover:bg-[oklch(15%_0.01_264)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           답장하기 {isComposing ? "▴" : "▾"}
