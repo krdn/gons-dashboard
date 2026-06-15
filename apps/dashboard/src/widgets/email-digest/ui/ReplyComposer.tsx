@@ -2,7 +2,7 @@
 
 // 답장 인라인 편집기.
 // 마운트 → generateReplyDraft → textarea 편집 → Gmail 초안 저장 / 다시 생성 / 취소.
-// 상태 머신: loading → editing(meta) | error(message) | saved(gmailThreadId).
+// 상태 머신: loading → editing(meta) | error(message) | saved.
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import {
@@ -17,7 +17,7 @@ type Status =
   | { phase: "loading" }
   | { phase: "editing"; meta: SaveDraftMeta }
   | { phase: "error"; message: string }
-  | { phase: "saved"; gmailThreadId: string };
+  | { phase: "saved" };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ export function ReplyComposer({ threadId, onClose }: ReplyComposerProps) {
       saveReplyDraft(threadId, body, meta).then(
         (result) => {
           if (result.kind === "ok") {
-            setStatus({ phase: "saved", gmailThreadId: meta.gmailThreadId });
+            setStatus({ phase: "saved" });
           } else if (result.kind === "scope-required") {
             setStatus({
               phase: "error",
