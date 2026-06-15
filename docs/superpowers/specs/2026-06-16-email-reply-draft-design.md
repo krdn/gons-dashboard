@@ -52,15 +52,18 @@ Gmail에서 한다.
 generateReplyDraft(threadId)  ← Server Action
   1. auth + 소유권 확인 (session.user.id)
   2. accessToken 확보 (기존 gmail-sync 토큰 패턴 재사용)
-  3. 스레드 마지막 inbound 메시지 id 조회
-       (threads.get → messages 중 From이 ownerEmail이 아닌 마지막 메시지.
-        전부 본인 발신이면 가장 마지막 메시지로 폴백)
-  4. getMessageBody(token, msgId)  ← 신규
-       format=full → MIME walk → 본문 텍스트 추출
-       + Message-ID, From, Subject, References 헤더
+  3. getThread(token, gmailThreadId, format=full)  ← 신규
+       thread의 messages 중 From이 ownerEmail이 아닌 마지막 메시지 선택
+       (전부 본인 발신이면 가장 마지막 메시지로 폴백)
+       → 한 번의 호출로 inbound 메시지 선택 + 본문 payload + 헤더 모두 확보
+         (getMessageBody 별도 호출 불필요 — N+1 회피)
+  4. extractBody(payload)  ← mime.ts. 본문 텍스트 추출
+       + 헤더에서 Message-ID, From, Reply-To, Subject, References 파싱
   5. classify 결과(severity/reason)와 함께 LLM 호출
   6. draftReply(input)  ← 신규 LLM 유틸 → { body }
   7. 반환: { draftBody, replyMeta }  (실패 시 discriminated union)
+       replyMeta = { gmailThreadId, toEmail, subject, inReplyTo, references }
+       → saveReplyDraft가 스레딩에 사용 (Gmail 3조건)
         │
         ▼ (사용자가 textarea에서 수정)
 saveReplyDraft(threadId, editedBody)  ← Server Action
@@ -79,9 +82,10 @@ saveReplyDraft(threadId, editedBody)  ← Server Action
 
 | 파일 | 책임 | 의존 |
 |---|---|---|
-| `messages.ts` (수정) | `getMessageBody(token, msgId)` 추가 — `format=full`, 헤더(Message-ID/From/Subject/References) 반환 | 기존 fetchWithRetry |
+| `threads.ts` (신규) | `getThread(token, gmailThreadId)` — `threads.get` format=full. messages 배열(payload+헤더) 반환. inbound 메시지 선택은 호출자(Server Action) | 기존 fetchWithRetry |
 | `mime.ts` (신규, 순수) | Gmail payload 트리 → 본문 텍스트. multipart/alternative 재귀, base64url 디코드, text/plain 우선·없으면 HTML strip, 인용부(`>`, `On … wrote:`) 절단 | 없음 |
-| `drafts.ts` (신규) | `createDraft(token, rfc822)` — RFC822 빌드(In-Reply-To/References/To/`Subject: Re:`), base64url 인코딩, `drafts.create` POST, 403 SCOPE 명시 감지 | classifyGmailError |
+| `drafts.ts` (신규) | `createDraft(token, params)` — RFC822 빌드. **Gmail 스레딩 3조건 필수**: ① message 리소스에 `threadId` 명시 ② `In-Reply-To`+`References` 헤더(RFC 2822) ③ `Subject`가 원본과 일치(`Re:` 접두). 한글 안전: body `Content-Type: text/plain; charset="UTF-8"` + Subject MIME encoded-word(`=?UTF-8?B?…?=`). base64url 인코딩 후 `drafts.create` POST. 403 SCOPE 명시 감지 | classifyGmailError |
+| `errors.ts` (수정) | `GmailScopeError`(403, `ACCESS_TOKEN_SCOPE_INSUFFICIENT`) 추가 + classifyGmailError에서 분기 | 없음 |
 
 ### LLM 레이어 (`shared/lib/llm/`)
 
@@ -127,7 +131,7 @@ Gotcha #7 (server/client seam) 준수:
 |---|---|---|
 | `mime.ts` | 순수 단위 | multipart/alternative, base64url, HTML-only, 인용부 절단, 빈 payload |
 | `draft-reply.ts` | 단위(LLM mock) | 정상 초안, 광고 메일 → 빈/거절 초안, LLM 에러 |
-| `drafts.ts` | 단위 | RFC822 헤더(In-Reply-To/References) 정확성, base64url 인코딩 |
+| `drafts.ts` | 단위 | RFC822 3조건(threadId 전달·In-Reply-To/References·Subject 일치), **한글 Subject(encoded-word)·한글 body(UTF-8 charset)**, base64url 인코딩 |
 | Server Actions | 통합 | 인증/소유권, 폴백 경로 |
 
 **검증** (Gotcha #7): `pnpm typecheck && pnpm lint` + `cd apps/dashboard && pnpm build`
