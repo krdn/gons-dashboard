@@ -30,7 +30,6 @@ export type GenerateReplyResult =
         references: string;
       };
     }
-  | { kind: "fetch-failed" }
   | { kind: "llm-unavailable" }
   | { kind: "scope-required" };
 
@@ -127,7 +126,7 @@ function pickInbound(
   for (let i = messages.length - 1; i >= 0; i--) {
     const from =
       findHeader(messages[i].payload?.headers, "From") ?? "";
-    if (!extractEmail(from).toLowerCase().includes(owner)) return messages[i];
+    if (extractEmail(from).toLowerCase() !== owner) return messages[i];
   }
   return messages[messages.length - 1];
 }

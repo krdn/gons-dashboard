@@ -57,12 +57,19 @@ export function buildRfc822(params: DraftParams): string {
   const headers = [
     `To: ${sanitizeHeader(params.toEmail)}`,
     `Subject: ${encodeSubject(params.subject)}`,
-    `In-Reply-To: ${sanitizeHeader(params.inReplyTo)}`,
-    `References: ${sanitizeHeader(params.references)}`,
+  ];
+  // 빈 값이면 헤더 줄 자체를 생략 (빈 In-Reply-To/References 행 방지).
+  if (params.inReplyTo) {
+    headers.push(`In-Reply-To: ${sanitizeHeader(params.inReplyTo)}`);
+  }
+  if (params.references) {
+    headers.push(`References: ${sanitizeHeader(params.references)}`);
+  }
+  headers.push(
     'Content-Type: text/plain; charset="UTF-8"',
     "Content-Transfer-Encoding: 8bit",
     "MIME-Version: 1.0",
-  ];
+  );
   // RFC822 는 줄 끝이 CRLF — textarea 입력 body 의 LF-only 를 정규화.
   return headers.join("\r\n") + "\r\n\r\n" + params.body.replace(/\r?\n/g, "\r\n");
 }
