@@ -45,22 +45,26 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
 
   function onSubmit(formData: FormData) {
     setError(null);
-    startTransition(() => {
-      updateEmailSettings(formData).then((result) => {
+    startTransition(async () => {
+      try {
+        const result = await updateEmailSettings(formData);
         if (!result.ok) {
           setError(result.message ?? result.code);
           return;
         }
         router.refresh();
         onDone();
-      });
+      } catch {
+        setError("네트워크 오류 — 다시 시도해주세요");
+      }
     });
   }
 
   function onSyncNow() {
     setActionMsg("동기화 중…");
-    startActionTransition(() => {
-      syncNowAction().then((r) => {
+    startActionTransition(async () => {
+      try {
+        const r = await syncNowAction();
         if (!r.ok) {
           setActionMsg(
             r.code === "REAUTH_REQUIRED"
@@ -71,21 +75,26 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
         }
         setActionMsg(`동기화 완료 — ${r.classified}건 분류`);
         router.refresh();
-      });
+      } catch {
+        setActionMsg("네트워크 오류 — 다시 시도해주세요");
+      }
     });
   }
 
   function onReclassify() {
     setActionMsg("재분류 중…");
-    startActionTransition(() => {
-      reclassifyAction().then((r) => {
+    startActionTransition(async () => {
+      try {
+        const r = await reclassifyAction();
         if (!r.ok) {
           setActionMsg(r.message ?? "재분류 실패");
           return;
         }
         setActionMsg(`재분류 완료 — ${r.classified}건 분류`);
         router.refresh();
-      });
+      } catch {
+        setActionMsg("네트워크 오류 — 다시 시도해주세요");
+      }
     });
   }
 
@@ -267,7 +276,10 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
             재분류
           </button>
           {actionMsg && (
-            <span className="text-xs text-[var(--color-text-muted)]">
+            <span
+              role="status"
+              className="text-xs text-[var(--color-text-muted)]"
+            >
               {actionMsg}
             </span>
           )}
