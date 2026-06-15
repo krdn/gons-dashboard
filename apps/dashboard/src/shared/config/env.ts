@@ -28,11 +28,15 @@ const schema = z.object({
   ANTHROPIC_BASE_URL: z.string().url(),
   ANTHROPIC_API_KEY: z.string().min(1),
 
-  // 사주 상세 읽기 — features/saju-reading (spec §7)
-  SAJU_LLM_MODEL: z.string().default("claude-opus-4-7"),
-  // 사주 narrative 모델 선택 (v0.3.2) — 3종 백엔드별 모델 ID
+  // 사주 상세 읽기 — features/saju-reading (spec §7, 2026-06-14)
+  // resolveClaudeModel() 로 런타임 선택, 실패 시 이 env 값으로 폴백.
+  // (claude-opus-latest 는 프록시 정적 핀이므로 stale — concrete version 유지)
+  SAJU_LLM_MODEL: z.string().default("claude-opus-4-8"),
+  // 사주 narrative 모델 선택 (v0.3.2, 2026-06-14) — 3종 백엔드별 모델 ID
   // 프록시(ANTHROPIC_BASE_URL=:8317)가 model 문자열을 보고 Claude/Codex/Gemini로 라우팅.
-  SAJU_LLM_MODEL_CLAUDE: z.string().default("claude-opus-4-7"),
+  // claude: resolveClaudeModel() 로 /v1/models 에서 최신 안정 opus 자동 선택.
+  // 조회 실패 시 이 env 값으로 폴백 (캐시하지 않음 → 다음 호출 재시도).
+  SAJU_LLM_MODEL_CLAUDE: z.string().default("claude-opus-4-8"),
   // Codex: 프록시 model list 에 정확한 ID 는 "gpt-5.3-codex" (운영 검증 2026-05-20).
   // "gpt-5-codex" 는 502 "unknown provider" — spec §8 가설이 깨진 case.
   SAJU_LLM_MODEL_CODEX: z.string().default("gpt-5.3-codex"),

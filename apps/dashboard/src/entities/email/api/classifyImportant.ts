@@ -34,6 +34,8 @@ export interface ClassifyImportantParams {
   threadId: string;
   input: ImportantInput;
   signals: MailingListSignals;
+  /** false면 important LLM 분류 생략(설정 llmImportantEnabled=false). 기본 true. */
+  useLlm?: boolean;
 }
 
 export async function classifyImportantThread(
@@ -66,7 +68,12 @@ export async function classifyImportantThread(
     }
   }
 
-  // 3. LLM 분류.
+  // 3. LLM 분류. important는 LLM 전용 — 끄면 기존 skipped-llm-error kind로 skip.
+  const useLlm = params.useLlm ?? true;
+  if (!useLlm) {
+    return { kind: "skipped-llm-error" };
+  }
+
   let result: Awaited<ReturnType<typeof classifyImportantWithLlm>>;
   try {
     result = await classifyImportantWithLlm(input);

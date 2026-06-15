@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/shared/lib/auth";
 import { checkRateLimit, type RateLimitKeyPrefix } from "@/shared/lib/llm/rateLimit";
 import {
-  SAJU_MODEL_REGISTRY,
+  getSajuModelRegistry,
   parseSajuModelKey,
 } from "@/shared/lib/llm/saju-model-registry";
 import { ProfileNotFoundError } from "@/shared/lib/saju/resolveBirthInput";
@@ -87,7 +87,8 @@ export function createNarrativeHandler<P>(
 
     try {
       const modelKey = parseSajuModelKey(searchParams.get("model"));
-      const modelId = SAJU_MODEL_REGISTRY[modelKey].id;
+      const registry = await getSajuModelRegistry();
+      const modelId = registry[modelKey].id;
       const result = await config.buildAndNarrate({
         profileId,
         userId: session.user.id,

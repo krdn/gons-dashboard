@@ -45,18 +45,18 @@ async function callCron(path, label) {
   }
 }
 
-// 매시간 정각 — Gmail polling.
+// 15분마다 — Gmail polling. 사용자별 동기화 주기는 app 레이어가 isSyncDue로 판정.
 cron.schedule(
-  "0 * * * *",
+  "*/15 * * * *",
   () => {
     void callCron("/api/cron/poll-gmail", "poll-gmail");
   },
   { timezone: TIMEZONE },
 );
 
-// 매일 08:00 KST — Morning digest 알림.
+// 15분마다 — Morning digest. 사용자별 발송 시각은 app 레이어가 isDigestDue로 판정.
 cron.schedule(
-  "0 8 * * *",
+  "*/15 * * * *",
   () => {
     void callCron("/api/cron/morning-digest", "morning-digest");
   },
@@ -127,7 +127,7 @@ if (process.env.AUTOPILOT_DEPLOY === "on") {
 }
 
 console.log(
-  "[cron] 스케줄 등록 완료. polling=0 * * * *, digest=0 8 * * * KST, daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST",
+  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST",
 );
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.

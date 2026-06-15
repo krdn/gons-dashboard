@@ -9,6 +9,7 @@
 "use server";
 
 import "server-only";
+import { parseFromHeader } from "@krdn/email";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { emailThreads, users } from "@/shared/lib/db/schema";
@@ -24,6 +25,7 @@ import {
   type MailingListSignals,
 } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
+import { getEmailSettings } from "@/entities/email-settings";
 import { fullRescan } from "../lib/full-rescan";
 import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
 
@@ -230,6 +232,7 @@ async function classifyAffectedThreads(
   ownerEmail: string,
   signalsMap: Map<string, MailingListSignals> = new Map(),
 ): Promise<{ classified: number; skipped: number }> {
+  const settings = await getEmailSettings(userId);
   // 24h 윈도우. 본인 1명·일~수백통 규모에서 충분.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const result = await classifyThreadsLoop({
@@ -237,6 +240,8 @@ async function classifyAffectedThreads(
     ownerEmail,
     since,
     signalsMap,
+    llmReplyEnabled: settings.llmReplyEnabled,
+    llmImportantEnabled: settings.llmImportantEnabled,
   });
 
   if (result.importantConsidered > 0) {
@@ -248,11 +253,4 @@ async function classifyAffectedThreads(
   }
 
   return { classified: result.classified, skipped: result.skipped };
-}
-
-function parseFromHeader(raw?: string): { name?: string; email?: string } {
-  if (!raw) return {};
-  const match = raw.match(/^\s*(?:"?([^"<]+?)"?\s+)?<?([^<>\s]+@[^<>\s]+)>?\s*$/);
-  if (!match) return { email: undefined, name: undefined };
-  return { name: match[1]?.trim(), email: match[2]?.toLowerCase() };
 }

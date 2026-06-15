@@ -1,5 +1,6 @@
 import "server-only";
 import { env } from "@/shared/config/env";
+import { resolveClaudeModel } from "@/shared/lib/llm/resolve-claude-model";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { stockPersonaPreferences } from "@/shared/lib/db/schema";
@@ -20,17 +21,13 @@ export interface ResolvedModel {
   id: string;
 }
 
-const MODEL_ID_BY_NAME: Record<ModelName, string> = {
-  claude: env.SAJU_LLM_MODEL_CLAUDE,
-  codex: env.SAJU_LLM_MODEL_CODEX,
-  gemini: env.SAJU_LLM_MODEL_GEMINI,
-};
-
 /**
  * 사용자별 페르소나 → 모델 매핑 해석.
  * 1. user override 로드 (없으면 빈 객체)
  * 2. DEFAULT_PERSONA_MODELS 와 머지 (override 가 우선)
  * 3. 각 ModelName 을 실제 proxy 모델 ID 로 매핑
+ *    - claude: resolveClaudeModel() 로 런타임 선택
+ *    - codex/gemini: 정적 env 값 사용
  */
 export async function resolvePersonaModels(
   userId: string,
@@ -41,6 +38,13 @@ export async function resolvePersonaModels(
     .where(eq(stockPersonaPreferences.userId, userId))
     .limit(1);
   const overrides = (rows[0]?.overrides ?? {}) as Partial<PersonaModelMapping>;
+
+  const claudeModelId = await resolveClaudeModel();
+  const modelIdByName: Record<ModelName, string> = {
+    claude: claudeModelId,
+    codex: env.SAJU_LLM_MODEL_CODEX,
+    gemini: env.SAJU_LLM_MODEL_GEMINI,
+  };
 
   const resolved = {} as Record<PersonaOrConsensus, ResolvedModel>;
   const personas: PersonaOrConsensus[] = [
@@ -53,7 +57,7 @@ export async function resolvePersonaModels(
   ];
   for (const p of personas) {
     const name = overrides[p] ?? DEFAULT_PERSONA_MODELS[p];
-    resolved[p] = { name, id: MODEL_ID_BY_NAME[name] };
+    resolved[p] = { name, id: modelIdByName[name] };
   }
   return resolved;
 }

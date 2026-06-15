@@ -24,6 +24,8 @@ export interface ClassifyThreadParams {
   userId: string;
   threadId: string;
   input: ThreadInput;
+  /** false면 LLM 호출 생략, deterministic 결과만 사용(설정 llmReplyEnabled=false). 기본 true. */
+  useLlm?: boolean;
 }
 
 export type ClassifyThreadOutcome =
@@ -62,7 +64,11 @@ export async function classifyThread(
     subject: input.subject,
     snippet: input.snippet,
   };
-  const llmResult = await classifyWithLLM(llmInput);
+  const useLlm = params.useLlm ?? true;
+  // useLlm=false면 LLM 호출 생략 — 기존 llm-unavailable 경로(deterministic fallback)로 라우팅.
+  const llmResult = useLlm
+    ? await classifyWithLLM(llmInput)
+    : ({ kind: "llm-unavailable", error: "llm-disabled-by-settings" } as const);
 
   if (llmResult.kind === "no-reply") {
     await db.delete(replyNeeded).where(eq(replyNeeded.threadId, threadId));
