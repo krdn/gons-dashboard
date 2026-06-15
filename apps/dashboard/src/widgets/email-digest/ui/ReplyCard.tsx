@@ -2,7 +2,7 @@
 // 와이어프레임의 article.reply 시각 결정 그대로.
 //
 // 액션 3종:
-//   - "답장하기": Gmail 스레드를 새 탭으로 열기 (primary, 진짜 답장 작성용).
+//   - "답장하기": 인라인 ReplyComposer 토글 (primary, LLM 초안 생성 + Gmail 전송).
 //   - "답장 완료": markAsReplied Server Action → 위젯에서 제거 (이미 답장한 메일 표시).
 //   - "무시": dismissThread Server Action → 24시간 숨김.
 //
@@ -10,7 +10,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import {
   markAsReplied,
   dismissThread,
@@ -18,6 +18,7 @@ import {
 import type { ReplyNeededItem } from "@/entities/email/api/getReplyNeeded";
 import { SenderAvatar } from "./SenderAvatar";
 import { ReplyBadges } from "./ReplyBadges";
+import { ReplyComposer } from "./ReplyComposer";
 import {
   formatRelativeKst,
   senderInitials,
@@ -33,6 +34,10 @@ export function ReplyCard({ item }: ReplyCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isHidden, setIsHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 인라인 답장 초안 편집기 토글 상태
+  const [isComposing, setIsComposing] = useState(false);
+  // aria-controls 연결용 고유 id (카드마다 고유)
+  const composerId = useId();
 
   const runAction = (action: () => Promise<void>) => {
     startTransition(async () => {
@@ -105,17 +110,24 @@ export function ReplyCard({ item }: ReplyCardProps) {
             {error}
           </p>
         ) : null}
+        {/* 인라인 답장 초안 편집기 — "답장하기" 토글 시 펼침 */}
+        {isComposing ? (
+          <div id={composerId}>
+            <ReplyComposer threadId={item.threadId} onClose={() => setIsComposing(false)} />
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2 self-center max-md:col-span-2 max-md:mt-2 max-md:justify-end max-md:border-t max-md:border-[var(--color-hairline)] max-md:pt-2">
-        <a
-          href={`https://mail.google.com/mail/u/0/#inbox/${item.gmailThreadId}`}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={() => setIsComposing((v) => !v)}
+          aria-expanded={isComposing}
+          aria-controls={composerId}
           className="rounded-md bg-[var(--color-text)] px-3 py-1.5 text-xs font-medium text-[var(--color-surface)] transition-colors hover:bg-[oklch(15%_0.01_264)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
-          답장하기 ↗
-        </a>
+          답장하기 {isComposing ? "▴" : "▾"}
+        </button>
         <button
           type="button"
           onClick={handleReplied}
