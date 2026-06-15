@@ -4,7 +4,7 @@
 // 마운트 → generateReplyDraft → textarea 편집 → Gmail 초안 저장 / 다시 생성 / 취소.
 // 상태 머신: loading → editing(meta) | error(message) | saved(gmailThreadId).
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import {
   generateReplyDraft,
   saveReplyDraft,
@@ -23,25 +23,30 @@ type Status =
 
 interface ReplyComposerProps {
   threadId: string;
-  onSaved: () => void;
+  onClose: () => void;
 }
 
 // ── 컴포넌트 ──────────────────────────────────────────────────────────────────
 
-export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
+export function ReplyComposer({ threadId, onClose }: ReplyComposerProps) {
   const [status, setStatus] = useState<Status>({ phase: "loading" });
   const [body, setBody] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // unmount race 방지용 cancelled 플래그.
-  const cancelledRef = useRef(false);
+  // 여러 composer 동시 펼침 시 DOM id 충돌 방지 (aria-labelledby 연결용).
+  const labelId = useId();
+
+  // stale 응답 무시용 request token (증가 카운터).
+  // 재생성·재마운트로 새 요청이 시작되면 이전 응답은 id 불일치로 버려진다.
+  const requestIdRef = useRef(0);
 
   // 초안 생성 공통 함수 (마운트 + 다시 생성 공유).
   // ※ 동기 setState 없음 — .then 콜백에서만 상태 갱신 (set-state-in-effect 룰 준수).
   function runGenerate() {
+    const id = ++requestIdRef.current;
     generateReplyDraft(threadId).then(
       (result) => {
-        if (cancelledRef.current) return;
+        if (id !== requestIdRef.current) return; // stale 응답 무시
         if (result.kind === "ok") {
           setBody(result.body);
           setStatus({ phase: "editing", meta: result.meta });
@@ -59,7 +64,7 @@ export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
         }
       },
       () => {
-        if (cancelledRef.current) return;
+        if (id !== requestIdRef.current) return; // stale 응답 무시
         setStatus({
           phase: "error",
           message: "초안 생성 중 오류가 발생했습니다.",
@@ -69,12 +74,9 @@ export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
   }
 
   // 마운트 시 초안 생성.
+  // ※ cleanup 불필요 — token 불일치로 stale 응답 무시, unmount 후 setState는 no-op.
   useEffect(() => {
-    cancelledRef.current = false;
     runGenerate();
-    return () => {
-      cancelledRef.current = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
@@ -140,6 +142,13 @@ export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
         >
           초안함 열기
         </a>
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-3 rounded-md px-2 py-1 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+        >
+          닫기
+        </button>
       </div>
     );
   }
@@ -166,8 +175,11 @@ export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
 
   return (
     <div className={containerCls}>
-      {/* 라벨 */}
-      <p className="mb-2 font-medium text-[var(--color-text-muted)]">
+      {/* 라벨 — textarea와 aria-labelledby로 연결 (WCAG 1.3.1) */}
+      <p
+        id={labelId}
+        className="mb-2 font-medium text-[var(--color-text-muted)]"
+      >
         ✦ AI 초안 · 수정 가능
       </p>
 
@@ -176,6 +188,7 @@ export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={6}
+        aria-labelledby={labelId}
         className="w-full resize-y rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
       />
 
@@ -199,7 +212,7 @@ export function ReplyComposer({ threadId, onSaved }: ReplyComposerProps) {
         </button>
         <button
           type="button"
-          onClick={onSaved}
+          onClick={onClose}
           disabled={isPending}
           className="rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] disabled:pointer-events-none disabled:opacity-40"
         >
