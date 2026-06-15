@@ -9,10 +9,15 @@ import {
   text,
   timestamp,
   uuid,
+  integer,
+  boolean,
+  jsonb,
+  date,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
+import type { Category } from "@krdn/email";
 
 export const emailThreads = pgTable(
   "email_threads",
@@ -108,4 +113,43 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+/* Email 위젯 사용자 설정 — entities/email-settings.
+ * user당 1행(userId PK). row 없으면 코드의 EMAIL_SETTINGS_DEFAULTS 사용.
+ * 모든 default는 현재 하드코딩 값과 동일 — 미설정 사용자 동작 불변. */
+export const emailSettings = pgTable("email_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  // 조회 시점 설정 (저장 즉시 위젯 반영)
+  replyNeededLimit: integer("reply_needed_limit").notNull().default(5),
+  importantLimit: integer("important_limit").notNull().default(10),
+  windowDays: integer("window_days").notNull().default(7),
+
+  // 알림 임계값
+  replySeverityThreshold: text("reply_severity_threshold")
+    .notNull()
+    .default("med"), // 'high' | 'med' | 'low'
+  importantThreshold: text("important_threshold").notNull().default("med"), // 'high' | 'med'
+
+  // important 카테고리 필터 (보여줄 카테고리)
+  categories: jsonb("categories")
+    .$type<Category[]>()
+    .notNull()
+    .default(["money", "security", "schedule", "notice"]),
+
+  // LLM 분류 on/off
+  llmReplyEnabled: boolean("llm_reply_enabled").notNull().default(true),
+  llmImportantEnabled: boolean("llm_important_enabled").notNull().default(true),
+
+  // 동기화 주기 / 다이제스트 (cron이 실행 시점에 읽음)
+  syncIntervalMinutes: integer("sync_interval_minutes").notNull().default(60),
+  digestEnabled: boolean("digest_enabled").notNull().default(true),
+  digestHourKst: integer("digest_hour_kst").notNull().default(8), // 0-23
+  lastDigestSentDate: date("last_digest_sent_date"), // 'YYYY-MM-DD' KST, due 멱등성
+
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
