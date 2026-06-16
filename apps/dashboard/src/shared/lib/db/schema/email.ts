@@ -150,6 +150,8 @@ export const emailSettings = pgTable("email_settings", {
   digestHourKst: integer("digest_hour_kst").notNull().default(8), // 0-23
   lastDigestSentDate: date("last_digest_sent_date"), // 'YYYY-MM-DD' KST, due 멱등성
 
+  replyLanguage: text("reply_language").notNull().default("auto"), // 'auto'|'ko'|'en'|'ja'|'zh'
+
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
