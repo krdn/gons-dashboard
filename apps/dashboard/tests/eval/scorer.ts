@@ -46,8 +46,8 @@ export function macroF1<T extends string>(
   cases: MultiClassCase<T>[],
   classes: readonly T[],
 ): number {
-  if (cases.length === 0) return 0;
-  if (classes.length === 0) return 0;
+  if (cases.length === 0) return 0; // 데이터 없음 — 불필요한 binaryMetrics 호출 방지
+  if (classes.length === 0) return 0; // 분모 0 — 0/0 NaN 가드
   const perClassF1 = classes.map((cls) => {
     const binary = cases.map((c) => ({
       predicted: c.predicted === cls,

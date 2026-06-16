@@ -14,16 +14,16 @@ const fixtures = ImportantFixtureArraySchema.parse(
 describe("Layer 1 — mailing-list 컷", () => {
   it("isMailingList exact-match — 전수 일치", () => {
     const cases = fixtures.map((f) => ({
+      id: f.id,
       predicted: isMailingList(f.signals, f.input.snippet),
       expected: f.expect.isMailingList,
     }));
-    const acc = accuracy(cases);
+    const acc = accuracy(
+      cases.map((c) => ({ predicted: c.predicted, expected: c.expected })),
+    );
     console.log(`[eval] mailing-list 컷 accuracy=${acc.toFixed(3)}`);
-    for (const f of fixtures) {
-      expect(
-        isMailingList(f.signals, f.input.snippet),
-        `${f.id} mailing-list 컷 회귀`,
-      ).toBe(f.expect.isMailingList);
+    for (const c of cases) {
+      expect(c.predicted, `${c.id} mailing-list 컷 회귀`).toBe(c.expected);
     }
   });
 });

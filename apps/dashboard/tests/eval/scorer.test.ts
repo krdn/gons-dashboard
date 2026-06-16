@@ -78,6 +78,10 @@ describe("macroF1", () => {
       macroF1([], ["money", "security", "schedule", "notice", "none"]),
     ).toBe(0);
   });
+
+  it("classes=[] → 0 (0/0 NaN 가드)", () => {
+    expect(macroF1([{ predicted: "money", expected: "money" }], [])).toBe(0);
+  });
 });
 
 describe("accuracy", () => {

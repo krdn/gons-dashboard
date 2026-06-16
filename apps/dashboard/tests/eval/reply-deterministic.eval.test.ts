@@ -44,15 +44,18 @@ describe("Layer 1 — deterministic 답장 recall", () => {
     if (thresholds.replyDeterministic.recall !== null) {
       expect(m.recall).toBeGreaterThanOrEqual(thresholds.replyDeterministic.recall);
     } else {
-      expect(m.recall).toBeGreaterThanOrEqual(0); // placeholder — 항상 통과
+      expect(m.recall, "recall=0 — 분류기 전멸 회귀").toBeGreaterThan(0); // 베이스라인 전: 전멸만 잡음
     }
   });
 
   it("severity exact-match — deterministic이 잡은 needsReply 케이스", () => {
+    let checked = 0;
     for (const f of fixtures.filter((x) => x.expect.needsReply && x.expect.severity)) {
       const result = classifyDeterministic(toThreadInput(f));
       if (result === null) continue; // B 케이스: 못 잡는 게 정상, severity 비교 제외
       expect(result.severity, `${f.id} severity 회귀`).toBe(f.expect.severity);
+      checked++;
     }
+    expect(checked, "severity 검증이 한 건도 발동하지 않음 — fixture 점검").toBeGreaterThan(0);
   });
 });
