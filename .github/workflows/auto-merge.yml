@@ -18,6 +18,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         # 'gh pr merge --auto'는 GitHub native auto-merge 를 켤 뿐 직접 머지하지 않는다.
         # 실제 머지는 GitHub 이 CI green 시 수행 → main push 가 docker-build 워크플로를 정상 트리거.
-        run: gh pr merge --auto --squash "$PR_NUMBER"
+        # --repo: checkout 없이 API 로만 동작 (git 저장소 컨텍스트 불요).
+        run: gh pr merge --auto --squash --repo "$REPO" "$PR_NUMBER"
