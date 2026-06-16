@@ -151,6 +151,7 @@ export const emailSettings = pgTable("email_settings", {
   lastDigestSentDate: date("last_digest_sent_date"), // 'YYYY-MM-DD' KST, due 멱등성
 
   replyLanguage: text("reply_language").notNull().default("auto"), // 'auto'|'ko'|'en'|'ja'|'zh'
+  replyModel: text("reply_model").notNull().default("gemini"), // 'gemini'|'codex'|'claude'
 
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
