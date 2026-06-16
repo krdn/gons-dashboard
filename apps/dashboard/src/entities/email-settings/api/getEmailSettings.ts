@@ -33,6 +33,7 @@ export const getEmailSettings = cache(
       syncIntervalMinutes: row.syncIntervalMinutes,
       digestEnabled: row.digestEnabled,
       digestHourKst: row.digestHourKst,
+      replyLanguage: EMAIL_SETTINGS_DEFAULTS.replyLanguage,
     };
   },
 );

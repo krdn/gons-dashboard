@@ -83,3 +83,6 @@ docker-compose.override.yml
 ruvector.db
 agentdb.rvf
 agentdb.rvf.lock
+
+# graphify 산출물 (대용량, 로컬 전용)
+graphify-out/
