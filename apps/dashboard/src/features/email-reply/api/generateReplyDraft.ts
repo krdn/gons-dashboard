@@ -16,19 +16,31 @@ import {
   GmailScopeError,
   type ThreadMessage,
 } from "@/shared/api/gmail";
-import { draftReply } from "@/shared/lib/llm/draft-reply";
+import { draftReply, isRefusalDraft } from "@/shared/lib/llm/draft-reply";
+import { resolveReplyModelId } from "@/shared/lib/llm/reply-model-registry";
 import { getEmailSettings } from "@/entities/email-settings";
+
+export type ReplyTone = "polite" | "concise" | "friendly";
+export type ReplyLength = "short" | "medium" | "long";
+
+export interface ToneDraft {
+  tone: ReplyTone;
+  body: string;
+  /** isRefusalDraft 감지 시 true → UI 발송/저장 차단. */
+  refusal: boolean;
+}
 
 export type GenerateReplyResult =
   | {
       kind: "ok";
-      body: string;
+      drafts: ToneDraft[];
       meta: {
         gmailThreadId: string;
         toEmail: string;
         subject: string;
         inReplyTo: string;
         references: string;
+        originalBody: string;
       };
     }
   | { kind: "llm-unavailable" }
@@ -36,6 +48,7 @@ export type GenerateReplyResult =
 
 export async function generateReplyDraft(
   threadId: string,
+  length: ReplyLength = "medium",
 ): Promise<GenerateReplyResult> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -90,32 +103,47 @@ export async function generateReplyDraft(
   const fromHeader = findHeader(headers, "From");
   const toEmail = replyTo ?? fromHeader ?? row.fromEmail ?? "";
 
-  // 5. 사용자 설정에서 답장 언어 조회.
+  // 5. 사용자 설정 (언어 + 모델).
   const settings = await getEmailSettings(userId);
+  const modelId = await resolveReplyModelId(settings.replyModel);
 
-  // 6. LLM 초안.
-  const result = await draftReply({
-    fromEmail: row.fromEmail ?? "",
-    fromName: row.fromName ?? undefined,
-    subject: row.subject ?? "",
-    bodyText,
-    severity: row.severity as "high" | "med" | "low",
-    language: settings.replyLanguage,
+  // 6. 톤 3개 병렬 LLM 초안 (길이는 모달 선택값).
+  const tones: ReplyTone[] = ["polite", "concise", "friendly"];
+  const results = await Promise.all(
+    tones.map((tone) =>
+      draftReply({
+        fromEmail: row.fromEmail ?? "",
+        fromName: row.fromName ?? undefined,
+        subject: row.subject ?? "",
+        bodyText,
+        severity: row.severity as "high" | "med" | "low",
+        language: settings.replyLanguage,
+        tone,
+        length,
+        modelId,
+      }).then((r) => ({ tone, result: r })),
+    ),
+  );
+
+  // 전부 실패면 llm-unavailable.
+  const oks = results.filter((r) => r.result.kind === "ok");
+  if (oks.length === 0) return { kind: "llm-unavailable" };
+
+  const drafts: ToneDraft[] = oks.map((r) => {
+    const body = (r.result as { kind: "ok"; body: string }).body;
+    return { tone: r.tone, body, refusal: isRefusalDraft(body) };
   });
-
-  if (result.kind === "llm-unavailable") return { kind: "llm-unavailable" };
 
   return {
     kind: "ok",
-    body: result.body,
+    drafts,
     meta: {
       gmailThreadId: row.gmailThreadId,
       toEmail: extractEmail(toEmail) || (row.fromEmail ?? ""),
       subject: row.subject ?? "",
       inReplyTo: messageId,
-      references: existingRefs
-        ? `${existingRefs} ${messageId}`.trim()
-        : messageId,
+      references: existingRefs ? `${existingRefs} ${messageId}`.trim() : messageId,
+      originalBody: bodyText,
     },
   };
 }
