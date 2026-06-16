@@ -11,6 +11,7 @@ import {
   type EmailSettings,
   type ReplyLanguage,
 } from "../model/types";
+import type { ReplyModelKey } from "../model/replyModel";
 
 export const getEmailSettings = cache(
   async (userId: string): Promise<EmailSettings> => {
@@ -35,6 +36,7 @@ export const getEmailSettings = cache(
       digestEnabled: row.digestEnabled,
       digestHourKst: row.digestHourKst,
       replyLanguage: row.replyLanguage as ReplyLanguage,
+      replyModel: row.replyModel as ReplyModelKey,
     };
   },
 );
