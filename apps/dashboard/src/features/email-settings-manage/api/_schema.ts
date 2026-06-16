@@ -29,6 +29,7 @@ export const EmailSettingsInput = z.object({
     }),
   digestEnabled: checkbox,
   digestHourKst: intIn(0, 23),
+  replyLanguage: z.enum(["auto", "ko", "en", "ja", "zh"]).default("auto"),
 });
 
 export type EmailSettingsInputT = z.infer<typeof EmailSettingsInput>;
