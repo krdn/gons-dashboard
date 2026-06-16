@@ -17,6 +17,7 @@ import {
   type ThreadMessage,
 } from "@/shared/api/gmail";
 import { draftReply } from "@/shared/lib/llm/draft-reply";
+import { getEmailSettings } from "@/entities/email-settings";
 
 export type GenerateReplyResult =
   | {
@@ -89,13 +90,17 @@ export async function generateReplyDraft(
   const fromHeader = findHeader(headers, "From");
   const toEmail = replyTo ?? fromHeader ?? row.fromEmail ?? "";
 
-  // 5. LLM 초안.
+  // 5. 사용자 설정에서 답장 언어 조회.
+  const settings = await getEmailSettings(userId);
+
+  // 6. LLM 초안.
   const result = await draftReply({
     fromEmail: row.fromEmail ?? "",
     fromName: row.fromName ?? undefined,
     subject: row.subject ?? "",
     bodyText,
     severity: row.severity as "high" | "med" | "low",
+    language: settings.replyLanguage,
   });
 
   if (result.kind === "llm-unavailable") return { kind: "llm-unavailable" };
