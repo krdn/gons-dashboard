@@ -8,10 +8,10 @@ export function EmailDigestEmpty() {
       className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-6 py-12"
     >
       <h3 className="mb-3 text-h1 font-bold tracking-tight text-[var(--color-text)]">
-        오늘 답장할 메일이 없습니다.
+        답장할 메일이 없습니다.
       </h3>
       <p className="mb-0 text-sm text-[var(--color-text-muted)]">
-        지난 24시간 받은 메일을 살펴봤지만, 누군가가 당신을 기다리는 메일은
+        최근 받은 메일을 살펴봤지만, 누군가가 당신을 기다리는 메일은
         없었어요.
         <br />
         산뜻한 아침입니다.
