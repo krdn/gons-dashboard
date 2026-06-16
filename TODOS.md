@@ -16,15 +16,22 @@
 - **Depends on**: 외부 webhook 도입 계획 (예: Slack/Discord 알림)
 - **Where to start**: `shared/api/auth/hmac.ts` 신설, `app/api/cron/*/route.ts`의 `verifyBearer` → `verifyHmac` 교체
 
-### 2. Eval CI 자동 회귀 검증
+### 2. Eval CI 자동 회귀 검증 ✅ 구현됨 (2026-06-17)
 
-- **What**: GitHub Actions에서 LLM 분류기 프롬프트/모델 변경 시 자동 회귀 테스트 실행 (precision/recall 임계치 pass/fail 게이트)
-- **Why**: v0.1의 30일 dogfooding으로 `(분류 결과, 사용자 행동)` 페어가 자동 누적됨. 그 데이터를 자연 레이블링 데이터셋으로 사용. 프롬프트·모델 수정 시 회귀 자동 차단.
-- **Pros**: 프롬프트 튜닝의 안전망, 모델 업그레이드 시 회귀 자동 차단
-- **Cons**: 1-2일 구현 (eval 스크립트 + GitHub Actions 워크플로우)
-- **Context**: v0.1의 `reply_needed` 테이블에 `classifier_version`, `user_action`, `user_action_at` 컬럼이 있어 데이터는 자동 수집된다. v0.2는 이 데이터를 읽어 precision/recall 계산 → CI에서 임계치 비교만 하면 됨.
-- **Depends on**: v0.1 30일 dogfooding 완료 (충분한 레이블링 데이터셋 누적)
-- **Where to start**: `scripts/eval/run-eval.ts`, `.github/workflows/eval.yml` (PR이 `shared/lib/llm/**` 또는 `entities/email/lib/deterministic-classifier.ts` 수정 시 트리거)
+- **상태**: 구현 완료. 설계는 `docs/superpowers/specs/2026-06-17-email-classification-eval-design.md`, 구현은 `apps/dashboard/tests/eval/`.
+- **설계 진화**: 당초 "운영 `user_action` 자연 레이블링" 구상이었으나, ① 개인정보 커밋 불가 ② 분류기가 거른 메일은 행이 없어 FN(recall) 측정 불가 ③ 중요 트랙은 read/archive 신호가 약함 — 이유로 **합성 fixture 기반**으로 전환. 2계층: Layer 1(매 PR, deterministic recall + severity 스냅샷 + mailing-list 컷, `pnpm test` 포함) / Layer 2(on-prem 수동 `pnpm eval:llm`, 실제 Haiku precision/recall/F1 리포트). GHA는 cli-proxy 내부망 접근 불가라 LLM 정확도는 CI가 아닌 on-prem 측정.
+- **베이스라인 (2026-06-16 측정, `apps/dashboard/tests/eval/reports/`)**:
+  - deterministic recall = **0.529** — 정규식 prefilter가 답장 필요 메일의 ~47%(암시적 표현 = B 케이스)를 놓침. **상한을 만드는 건 Haiku가 아니라 정규식 prefilter**임을 실측 (모델 업그레이드 논의 시 핵심 근거).
+  - 중요 트랙 categoryMacroF1 = **0.853**, importanceAccuracy = **0.765** (Haiku 건강).
+- **임계치** (`thresholds.json`): deterministic recall 0.45, 중요 categoryMacroF1 0.75 / importanceAccuracy 0.65. reply LLM 트랙은 **미보정(null)** — 아래 발견 때문.
+
+#### 2-a. 베이스라인이 잡은 발견 — 영어 메일 답장 분류가 reason 40자 제한에 걸림 (별도 PR 필요)
+
+- **What**: 영어 메일에서 Haiku가 영어 `reason`을 생성하면 40자(`classify-thread.ts`의 `LlmResponseSchema reason.max(40)`)를 초과 → Zod 거부 → `classifyWithLLM`이 `llm-unavailable` 반환. `classifyThread.ts`는 이때 deterministic fallback으로 flag를 유지한다.
+- **Production 영향**: 영어 junk 메일이 deterministic 패턴(긴급/질문 키워드)을 통과하면, LLM이 걸러줘야 할 것을 reason 길이 거부로 못 걸러 **fallback으로 잘못 flag(FP)** 된다. 영어 사용자에게 답장 트랙 정확도 저하.
+- **Why 별도 PR**: 이건 production 분류 동작 변경(40자 한도 완화 또는 reason 언어 강제 등)이라 자체 brainstorm/리뷰 필요. eval에서 고칠 범위 아님.
+- **eval 측 follow-up (소규모)**: `run-llm-eval.ts`가 현재 `llm-unavailable`을 skip하는데, production은 deterministic fallback로 flag 유지 → eval이 prefilter-pass 스레드의 `llm-unavailable`을 `predicted:true`로 매핑하면 production을 더 정확히 미러. (지금은 reply LLM 트랙 메트릭이 이 skip으로 오염돼 임계치를 null로 둠.)
+- **의의**: eval 시스템의 첫 실제 캐치 — run 1회에 production 결함 발견. 시스템이 의도대로 작동.
 
 ### 3. Production OAuth publish (refresh token 7일 만료 제거)
 

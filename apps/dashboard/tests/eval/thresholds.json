@@ -1,5 +1,6 @@
 {
-  "replyDeterministic": { "recall": null },
+  "_comment": "베이스라인 측정(2026-06-16 reports/) 기반. 측정값 - 마진. replyLlm은 미보정(null) — 영어 reason 40자 초과 → Zod 거부 → deterministic fallback로 답장 트랙 LLM 메트릭 오염(별도 발견, docs/agents/domain.md 또는 후속 PR). reply 회귀 신호는 Layer 1 deterministic recall이 담당.",
+  "replyDeterministic": { "recall": 0.45 },
   "replyLlm": { "precision": null, "recall": null },
-  "importantLlm": { "categoryMacroF1": null, "importanceAccuracy": null }
+  "importantLlm": { "categoryMacroF1": 0.75, "importanceAccuracy": 0.65 }
 }
