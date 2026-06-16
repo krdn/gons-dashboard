@@ -31,3 +31,5 @@ export { extractBodyText } from "./mime";
 export type { GmailPayload } from "./mime";
 export { createDraft, buildRfc822 } from "./drafts";
 export type { DraftParams, CreateDraftResult } from "./drafts";
+export { sendDraft } from "./send";
+export type { SendDraftResult } from "./send";
