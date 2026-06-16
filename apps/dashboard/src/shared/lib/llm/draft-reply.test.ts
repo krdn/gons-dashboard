@@ -9,6 +9,7 @@ import {
   draftReply,
   languageInstruction,
   isRefusalDraft,
+  toneInstruction,
 } from "./draft-reply";
 
 const mockAnalyze = vi.mocked(analyzeStructured);
@@ -67,6 +68,9 @@ describe("draftReply", () => {
       bodyText: "참여 가능한지 알려주세요.",
       severity: "med",
       language: "auto",
+      tone: "polite",
+      length: "medium",
+      modelId: "test-model",
     });
     expect(result.kind).toBe("ok");
     if (result.kind === "ok") expect(result.body).toContain("회신");
@@ -80,7 +84,44 @@ describe("draftReply", () => {
       bodyText: "y",
       severity: "low",
       language: "auto",
+      tone: "polite",
+      length: "medium",
+      modelId: "test-model",
     });
     expect(result.kind).toBe("llm-unavailable");
+  });
+});
+
+describe("toneInstruction", () => {
+  it("polite → 정중", () => {
+    expect(toneInstruction("polite", "medium")).toContain("정중");
+  });
+  it("concise → 간결 + 짧게", () => {
+    const r = toneInstruction("concise", "short");
+    expect(r).toContain("간결");
+    expect(r).toContain("짧");
+  });
+  it("friendly → 친근", () => {
+    expect(toneInstruction("friendly", "long")).toContain("친근");
+  });
+});
+
+describe("draftReply with tone/model", () => {
+  it("modelId를 analyzeStructured에 전달", async () => {
+    mockAnalyze.mockResolvedValueOnce({
+      object: { body: "안녕하세요." },
+    } as never);
+    await draftReply({
+      fromEmail: "a@b.com",
+      subject: "test",
+      bodyText: "내용",
+      severity: "med",
+      language: "ko",
+      tone: "polite",
+      length: "medium",
+      modelId: "gemini-2.5-pro",
+    });
+    const call = mockAnalyze.mock.calls.at(-1)!;
+    expect((call[2] as { model: string }).model).toBe("gemini-2.5-pro");
   });
 });

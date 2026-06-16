@@ -3,7 +3,7 @@
 import "server-only";
 import { z } from "zod";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
-import { HAIKU_MODEL, gatewayDefaults } from "./anthropic";
+import { gatewayDefaults } from "./anthropic";
 
 const MAX_BODY_BYTES = 5 * 1024;
 
@@ -15,6 +15,10 @@ export interface DraftReplyInput {
   bodyText: string;
   severity: "high" | "med" | "low";
   language: "auto" | "ko" | "en" | "ja" | "zh";
+  tone: "polite" | "concise" | "friendly";
+  length: "short" | "medium" | "long";
+  /** reply-model-registry 가 해석한 실제 모델 ID. */
+  modelId: string;
 }
 
 const ResponseSchema = z.object({
@@ -72,6 +76,26 @@ export function languageInstruction(
   }
 }
 
+// 톤·길이 지시문. tone=문체, length=분량.
+export function toneInstruction(
+  tone: "polite" | "concise" | "friendly",
+  length: "short" | "medium" | "long",
+): string {
+  const toneText =
+    tone === "polite"
+      ? "정중하고 격식 있는 문체로 작성합니다."
+      : tone === "concise"
+        ? "간결하고 사무적인 문체로 작성합니다."
+        : "친근하고 부드러운 문체로 작성합니다.";
+  const lengthText =
+    length === "short"
+      ? "분량은 짧게 (2~3문장)."
+      : length === "long"
+        ? "분량은 충분히 (6문장 이상, 필요한 세부 포함)."
+        : "분량은 보통 (4~5문장).";
+  return `${toneText} ${lengthText}`;
+}
+
 export async function draftReply(
   input: DraftReplyInput,
 ): Promise<DraftReplyResult> {
@@ -88,12 +112,12 @@ export async function draftReply(
     "위 메일에 대한 답장 본문을 JSON으로 작성하세요.",
   ].join("\n");
 
-  const systemPrompt = `${SYSTEM_PROMPT}\n\n${languageInstruction(input.language)}`;
+  const systemPrompt = `${SYSTEM_PROMPT}\n\n${languageInstruction(input.language)}\n${toneInstruction(input.tone, input.length)}`;
 
   try {
     const { object } = await analyzeStructured(userPrompt, ResponseSchema, {
       ...gatewayDefaults,
-      model: HAIKU_MODEL,
+      model: input.modelId,
       systemPrompt,
       maxOutputTokens: 1000,
     });
