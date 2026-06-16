@@ -331,3 +331,11 @@ OAuth refresh token은 `apps/dashboard`의 `accounts` 테이블에만 존재 (pg
 - typecheck: `pnpm typecheck`
 - lint: `pnpm lint`
 - test: `TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test` (로컬 DB 미기동 시 통합 13개 ECONNREFUSED — Gotcha #2 참조)
+
+## 이메일 분류 정확도 평가 (eval)
+
+분류기(답장 필요 / 중요) 정확도 회귀를 잡는 2계층 시스템 (`apps/dashboard/tests/eval/`). 설계: `docs/superpowers/specs/2026-06-17-email-classification-eval-design.md`.
+
+- **Layer 1 (매 PR, 자동)**: deterministic recall + severity 스냅샷 + mailing-list 컷 회귀. `pnpm test`에 포함 (별도 명령 불필요). LLM 미호출이라 결정적.
+- **Layer 2 (on-prem 수동)**: `pnpm --filter @gons/dashboard eval:llm` — 실제 Haiku 호출로 precision/recall/F1 측정 + `tests/eval/reports/<date>.json` 리포트. **cli-proxy 내부망(`ANTHROPIC_BASE_URL`) 접근 필요**, GHA에서는 못 돈다. PR 차단 안 함(리포트만).
+- 임계치: `tests/eval/thresholds.json` (베이스라인 측정 후 확정 — 현재 placeholder).
