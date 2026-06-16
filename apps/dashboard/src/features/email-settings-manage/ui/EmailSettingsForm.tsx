@@ -181,6 +181,22 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
             </select>
           </label>
         </div>
+        <div className="mt-3">
+          <label className="block">
+            <span className={labelCls}>답장 언어</span>
+            <select
+              name="replyLanguage"
+              defaultValue={s.replyLanguage}
+              className={inputCls}
+            >
+              <option value="auto">자동 (원문 언어)</option>
+              <option value="ko">한국어</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="zh">中文</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* 중요 필터 */}
