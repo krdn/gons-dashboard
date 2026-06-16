@@ -8,7 +8,7 @@
 - **도메인 (현재)**:
   - **Email 분석** — Gmail 폴링 → LLM 분류(important/reply-needed) → 위젯 표시·푸시
   - **Server Infra Monitor** — 등록된 Docker host들의 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그)
-  - **Saju (사주)** — `packages/saju` 빌더 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
+  - **Saju (사주)** — 외부 빌더 `@krdn/saju` (github:krdn/saju) 소비 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
   - **Stock Analysis (증권 종목)** — `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 (Phase 1~8 진행 중)
   - **Calendar / Tiger Reading / Fortune Profile** — `packages/mcp-calendar` 외 보조 위젯
 - **확장 방향**: 할 일, 노트 등 도메인을 점진 추가
@@ -64,11 +64,14 @@ gons-dashboard/
 │   ├── dashboard/   # Next.js 앱 (@gons/dashboard)
 │   └── cron/        # node-cron 컨테이너 (@gons/cron) — 매시간 /api/cron/* 호출
 └── packages/        # 도메인 라이브러리 + MCP 서버
-    ├── saju/                # @gons/saju — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
     ├── stock-analysis/      # @gons/stock-analysis — 페르소나 + consensus + adapter
     ├── mcp-calendar/        # @gons/mcp-calendar — Google Calendar MCP 서버
     ├── shared-google/       # @gons/shared-google — Google API 공통 (token mediator client)
     └── shared-mcp-runtime/  # @gons/shared-mcp-runtime — MCP stdio + in-process 공통
+
+# 외부 GitHub 패키지 (dashboard 의존, 로컬 packages/ 아님):
+#   @krdn/saju       (github:krdn/saju#v1.2.2)       — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
+#   @krdn/tickerlens (github:krdn/tickerlens#v0.1.3) — stock 타임프레임 adapter
 ```
 
 신규 도메인/MCP 추가 패턴은 아래 "MCP 도구 호출 정책" 섹션 참조.
@@ -282,7 +285,7 @@ export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_K
 - `gpt-5.3-codex` → Codex CLI auth
 - `gemini-2.5-pro` → Gemini CLI auth
 
-`SAJU_LLM_MODEL_CLAUDE/CODEX/GEMINI` 가 페르소나/학파별로 분기. saju v0.3.2 의 [`persona-router.ts`](apps/dashboard/src/shared/lib/llm/persona-router.ts) 가 모델 선택, stock-analysis Phase 3 의 [`shared/lib/llm/persona-router.ts`](apps/dashboard/src/shared/lib/llm/persona-router.ts) 가 페르소나별 override 적용.
+`SAJU_LLM_MODEL_CLAUDE/CODEX/GEMINI` 가 페르소나/학파별로 분기. saju 는 [`shared/lib/llm/saju-model-registry.ts`](apps/dashboard/src/shared/lib/llm/saju-model-registry.ts) + `features/saju-model-picker` 가 모델 선택, stock-analysis 는 [`entities/stock-analysis/api/persona-router.ts`](apps/dashboard/src/entities/stock-analysis/api/persona-router.ts) 가 페르소나별 override 적용.
 
 ### ⚠️ NextAuth Google OAuth 와 LLM Proxy 는 **완전히 별개**
 
