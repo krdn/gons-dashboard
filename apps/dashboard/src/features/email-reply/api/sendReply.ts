@@ -51,6 +51,8 @@ export async function sendReply(
       subject: meta.subject,
       inReplyTo: meta.inReplyTo,
       references: meta.references,
+      cc: meta.cc,
+      bcc: meta.bcc,
       body: editedBody,
     });
     const sent = await sendDraft(accessToken, draft.draftId);

@@ -18,6 +18,8 @@ export interface SaveDraftMeta {
   subject: string;
   inReplyTo: string;
   references: string;
+  cc?: string;
+  bcc?: string;
 }
 
 export type SaveReplyResult =
@@ -55,6 +57,8 @@ export async function saveReplyDraft(
       subject: meta.subject,
       inReplyTo: meta.inReplyTo,
       references: meta.references,
+      cc: meta.cc,
+      bcc: meta.bcc,
       body: editedBody,
     });
     return { kind: "ok", draftId: result.draftId };

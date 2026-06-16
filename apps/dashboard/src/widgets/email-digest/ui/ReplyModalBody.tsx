@@ -125,15 +125,15 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
     runGenerate();
   }
 
-  function buildMeta(meta: Meta): Meta {
-    // To/제목은 사용자 편집값 반영. CC/BCC는 buildRfc822 확장(Task 15-후속) — 현재 meta 그대로.
-    return { ...meta, toEmail, subject };
+  function metaWithFields(meta: Meta) {
+    // To/제목/CC/BCC 는 사용자 편집값 반영. 빈 문자열은 undefined 로 → 빈 헤더 생략.
+    return { ...meta, toEmail, subject, cc: cc || undefined, bcc: bcc || undefined };
   }
 
   function handleSave(meta: Meta) {
     const body = bodies[activeTone];
     startTransition(() =>
-      saveReplyDraft(threadId, body, buildMeta(meta)).then(
+      saveReplyDraft(threadId, body, metaWithFields(meta)).then(
         (result) => {
           if (result.kind === "ok") setStatus({ phase: "saved" });
           else if (result.kind === "scope-required")
@@ -148,7 +148,7 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
   function handleSend(meta: Meta) {
     const body = bodies[activeTone];
     startTransition(() =>
-      sendReply(threadId, body, buildMeta(meta)).then(
+      sendReply(threadId, body, metaWithFields(meta)).then(
         (result) => {
           setConfirmOpen(false);
           if (result.kind === "ok") {
