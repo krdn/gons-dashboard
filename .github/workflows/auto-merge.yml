@@ -1,0 +1,23 @@
+name: Auto-merge
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    # draft 제외 + fork 제외 (본인 non-draft PR 만)
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Enable native auto-merge
+        # PR 번호는 정수지만 SAFE 패턴(env 경유)으로 전달.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        # 'gh pr merge --auto'는 GitHub native auto-merge 를 켤 뿐 직접 머지하지 않는다.
+        # 실제 머지는 GitHub 이 CI green 시 수행 → main push 가 docker-build 워크플로를 정상 트리거.
+        run: gh pr merge --auto --squash "$PR_NUMBER"

@@ -1,0 +1,16 @@
+name: PR Labeler
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      # pull_request_target: fork PR 에도 라벨 권한 부여. labeler 는 PR 코드를 실행하지
+      # 않고 base 컨텍스트의 .github/labeler.yml 만 사용하므로 안전.
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: true

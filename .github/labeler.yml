@@ -1,0 +1,38 @@
+# PR 파일경로 → 도메인 라벨 자동 부여 (actions/labeler@v5 형식)
+# 설계: docs/superpowers/specs/2026-06-17-pr-automation-design.md §4.1
+email:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/dashboard/src/**/email*/**"
+          - "apps/dashboard/src/**/*email*"
+saju:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/saju/**"
+          - "apps/dashboard/src/**/saju*/**"
+stock:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/stock-analysis/**"
+          - "apps/dashboard/src/**/stock*/**"
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/dashboard/src/**/docker/**"
+          - "apps/dashboard/src/**/container*/**"
+          - "apps/dashboard/src/**/host*/**"
+          - "docker-compose.yml"
+mcp:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/mcp-*/**"
+          - "packages/shared-*/**"
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "**/*.md"
