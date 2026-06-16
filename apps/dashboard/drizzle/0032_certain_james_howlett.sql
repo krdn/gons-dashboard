@@ -1,0 +1,1 @@
+ALTER TABLE "email_settings" ADD COLUMN "reply_model" text DEFAULT 'gemini' NOT NULL;

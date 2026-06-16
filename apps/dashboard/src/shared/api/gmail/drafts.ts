@@ -19,6 +19,10 @@ export interface DraftParams {
   references: string;
   /** 사용자가 편집한 답장 본문. */
   body: string;
+  /** 참조 — 빈 값이면 헤더 생략. */
+  cc?: string;
+  /** 숨은참조 — 빈 값이면 헤더 생략. */
+  bcc?: string;
 }
 
 const CreateDraftResponseSchema = z.object({
@@ -58,6 +62,12 @@ export function buildRfc822(params: DraftParams): string {
     `To: ${sanitizeHeader(params.toEmail)}`,
     `Subject: ${encodeSubject(params.subject)}`,
   ];
+  if (params.cc) {
+    headers.push(`Cc: ${sanitizeHeader(params.cc)}`);
+  }
+  if (params.bcc) {
+    headers.push(`Bcc: ${sanitizeHeader(params.bcc)}`);
+  }
   // 빈 값이면 헤더 줄 자체를 생략 (빈 In-Reply-To/References 행 방지).
   if (params.inReplyTo) {
     headers.push(`In-Reply-To: ${sanitizeHeader(params.inReplyTo)}`);

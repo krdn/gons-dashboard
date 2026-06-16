@@ -1,6 +1,7 @@
 // Email 위젯 설정 — 타입 + 기본값 + 순수 헬퍼.
 // client/server 양쪽에서 import 가능(순수 — DB·node 의존 없음).
 import type { Category, Severity, ImportantImportance } from "@krdn/email";
+import type { ReplyModelKey } from "./replyModel";
 
 export const REPLY_LANGUAGES = ["auto", "ko", "en", "ja", "zh"] as const;
 export type ReplyLanguage = (typeof REPLY_LANGUAGES)[number];
@@ -18,6 +19,7 @@ export interface EmailSettings {
   digestEnabled: boolean;
   digestHourKst: number;
   replyLanguage: ReplyLanguage;
+  replyModel: ReplyModelKey;
 }
 
 // 현재 하드코딩 값과 동일 — 미설정 사용자 동작 불변(spec 불변식).
@@ -34,6 +36,7 @@ export const EMAIL_SETTINGS_DEFAULTS: EmailSettings = {
   digestEnabled: true,
   digestHourKst: 8,
   replyLanguage: "auto",
+  replyModel: "gemini",
 };
 
 // severity 순위: high(0) < med(1) < low(2). 낮은 rank가 더 긴급.

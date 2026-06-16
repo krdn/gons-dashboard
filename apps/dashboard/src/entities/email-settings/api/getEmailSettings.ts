@@ -11,6 +11,7 @@ import {
   type EmailSettings,
   type ReplyLanguage,
 } from "../model/types";
+import { parseReplyModelKey } from "../model/replyModel";
 
 export const getEmailSettings = cache(
   async (userId: string): Promise<EmailSettings> => {
@@ -35,6 +36,8 @@ export const getEmailSettings = cache(
       digestEnabled: row.digestEnabled,
       digestHourKst: row.digestHourKst,
       replyLanguage: row.replyLanguage as ReplyLanguage,
+      // 안전한 파싱 — stale/invalid DB 값이 REPLY_MODEL_META 룩업을 throw 시키지 않도록 폴백.
+      replyModel: parseReplyModelKey(row.replyModel),
     };
   },
 );

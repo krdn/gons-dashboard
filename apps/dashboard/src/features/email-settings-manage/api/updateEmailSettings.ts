@@ -29,6 +29,7 @@ export async function updateEmailSettings(
     digestEnabled: formData.get("digestEnabled"),
     digestHourKst: formData.get("digestHourKst"),
     replyLanguage: formData.get("replyLanguage"),
+    replyModel: formData.get("replyModel"),
   };
 
   const parsed = EmailSettingsInput.safeParse(raw);

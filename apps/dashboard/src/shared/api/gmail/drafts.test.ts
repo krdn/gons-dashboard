@@ -41,6 +41,34 @@ describe("buildRfc822", () => {
     expect(raw).not.toContain("\r\nBcc:");
     expect(raw).toContain("To: evil@x.comBcc: victim@x.com");
   });
+
+  it("cc/bcc 있으면 Cc/Bcc 헤더 추가, 없으면 생략", () => {
+    const withCc = buildRfc822({
+      gmailThreadId: "t", toEmail: "a@b.com", subject: "s",
+      inReplyTo: "", references: "", body: "본문", cc: "c@d.com", bcc: "e@f.com",
+    });
+    expect(withCc).toContain("Cc: c@d.com");
+    expect(withCc).toContain("Bcc: e@f.com");
+
+    const without = buildRfc822({
+      gmailThreadId: "t", toEmail: "a@b.com", subject: "s",
+      inReplyTo: "", references: "", body: "본문",
+    });
+    expect(without).not.toContain("Cc:");
+    expect(without).not.toContain("Bcc:");
+  });
+
+  it("cc/bcc CRLF 인젝션 제거", () => {
+    const raw = buildRfc822({
+      gmailThreadId: "t", toEmail: "a@b.com", subject: "s",
+      inReplyTo: "", references: "", body: "본문",
+      cc: "c@d.com\r\nBcc: evil@x.com",
+    });
+    // 핵심 보안 속성: 주입된 CRLF 가 독립 헤더 줄(\r\nBcc:)을 만들지 않을 것.
+    // sanitize 가 줄바꿈만 제거 → 'Bcc:' 는 Cc 값 안으로 inline 흡수(무해).
+    expect(raw).not.toContain("\r\nBcc:");
+    expect(raw).toContain("Cc: c@d.comBcc: evil@x.com");
+  });
 });
 
 describe("createDraft", () => {

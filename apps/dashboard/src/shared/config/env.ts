@@ -41,6 +41,10 @@ const schema = z.object({
   // "gpt-5-codex" 는 502 "unknown provider" — spec §8 가설이 깨진 case.
   SAJU_LLM_MODEL_CODEX: z.string().default("gpt-5.3-codex"),
   SAJU_LLM_MODEL_GEMINI: z.string().default("gemini-2.5-pro"),
+  // 답장 초안 모델 (spec 2026-06-16) — saju 와 분리된 자체 변수 (도메인 결합 회피).
+  // claude 키는 resolveClaudeModel() 런타임 해석이라 env 불필요.
+  REPLY_LLM_MODEL_GEMINI: z.string().default("gemini-2.5-pro"),
+  REPLY_LLM_MODEL_CODEX: z.string().default("gpt-5.3-codex"),
   SAJU_LLM_DAILY_BUDGET_KRW: z.coerce.number().int().positive().default(1000),
   SAJU_LLM_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
 

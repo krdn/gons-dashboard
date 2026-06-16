@@ -6,6 +6,10 @@ import {
   EMAIL_SETTINGS_DEFAULTS,
   type EmailSettings,
 } from "@/entities/email-settings/client";
+import {
+  REPLY_MODEL_KEYS,
+  REPLY_MODEL_META,
+} from "@/entities/email-settings/model/replyModel";
 import { updateEmailSettings } from "../api/updateEmailSettings";
 import { syncNowAction } from "../api/syncNowAction";
 import { reclassifyAction } from "../api/reclassifyAction";
@@ -195,6 +199,26 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
               <option value="ja">日本語</option>
               <option value="zh">中文</option>
             </select>
+          </label>
+        </div>
+        <div className="mt-3">
+          <label className="block">
+            <span className={labelCls}>답장 초안 모델</span>
+            <select
+              name="replyModel"
+              defaultValue={s.replyModel}
+              className={inputCls}
+            >
+              {REPLY_MODEL_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {REPLY_MODEL_META[k].label}
+                  {REPLY_MODEL_META[k].recommended ? " ⭐ 권장" : ""}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-[var(--color-text-muted)]">
+              {REPLY_MODEL_META[s.replyModel].description}
+            </span>
           </label>
         </div>
       </div>

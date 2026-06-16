@@ -61,4 +61,25 @@ describe("EmailSettingsInput", () => {
       expect(r.success && r.data.replyLanguage).toBe("auto");
     });
   });
+
+  describe("replyModel 검증", () => {
+    const base = {
+      replyNeededLimit: "5", importantLimit: "10", windowDays: "7",
+      replySeverityThreshold: "med", importantThreshold: "med",
+      categories: ["money"], syncIntervalMinutes: "60", digestHourKst: "8",
+      replyLanguage: "auto",
+    };
+    it("유효한 replyModel 통과", () => {
+      const r = EmailSettingsInput.safeParse({ ...base, replyModel: "codex" });
+      expect(r.success).toBe(true);
+    });
+    it("미지정 시 gemini 기본값", () => {
+      const r = EmailSettingsInput.safeParse(base);
+      expect(r.success && r.data.replyModel).toBe("gemini");
+    });
+    it("잘못된 값 거부", () => {
+      const r = EmailSettingsInput.safeParse({ ...base, replyModel: "gpt4" });
+      expect(r.success).toBe(false);
+    });
+  });
 });
