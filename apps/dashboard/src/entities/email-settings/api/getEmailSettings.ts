@@ -9,6 +9,7 @@ import type { Severity, ImportantImportance } from "@krdn/email";
 import {
   EMAIL_SETTINGS_DEFAULTS,
   type EmailSettings,
+  type ReplyLanguage,
 } from "../model/types";
 
 export const getEmailSettings = cache(
@@ -33,7 +34,7 @@ export const getEmailSettings = cache(
       syncIntervalMinutes: row.syncIntervalMinutes,
       digestEnabled: row.digestEnabled,
       digestHourKst: row.digestHourKst,
-      replyLanguage: EMAIL_SETTINGS_DEFAULTS.replyLanguage,
+      replyLanguage: row.replyLanguage as ReplyLanguage,
     };
   },
 );
