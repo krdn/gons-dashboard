@@ -44,4 +44,21 @@ describe("EmailSettingsInput", () => {
   it("빈 카테고리 배열 허용(모두 끔)", () => {
     expect(EmailSettingsInput.safeParse({ ...valid, categories: [] }).success).toBe(true);
   });
+
+  describe("EmailSettingsInput replyLanguage", () => {
+    it("유효한 replyLanguage 통과", () => {
+      const r = EmailSettingsInput.safeParse({ ...valid, replyLanguage: "en" });
+      expect(r.success).toBe(true);
+    });
+
+    it("잘못된 replyLanguage 거부", () => {
+      const r = EmailSettingsInput.safeParse({ ...valid, replyLanguage: "fr" });
+      expect(r.success).toBe(false);
+    });
+
+    it("미지정 시 auto 기본값", () => {
+      const r = EmailSettingsInput.safeParse(valid);
+      expect(r.success && r.data.replyLanguage).toBe("auto");
+    });
+  });
 });
