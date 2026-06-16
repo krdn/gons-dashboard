@@ -163,20 +163,43 @@ jobs:
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository
     steps:
+      # GitHub App 토큰으로 enable — 머지 커밋이 App identity 라야 docker-build 트리거됨 (§5.3).
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Enable native auto-merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
-        # 'gh pr merge --auto'는 GitHub native auto-merge를 켤 뿐 직접 머지하지 않는다.
-        # 실제 머지는 GitHub이 CI green 시 수행 → main push가 docker-build 워크플로를 정상 트리거.
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh pr merge --auto --squash --repo "$REPO" "$PR_NUMBER"
+        # 'gh pr merge --auto'는 native auto-merge 를 켤 뿐 직접 머지하지 않는다. 실제 머지는
+        # GitHub 이 CI green 시 수행. --repo: checkout 없이 API 동작.
 ```
 
-### 5.3 트리거 함정 (핵심)
+필요한 레포 secret (사용자가 GitHub UI 에서 1회 설정):
+- GitHub App 생성 (Settings → Developer settings → GitHub Apps): 권한 `Contents: Read & write`,
+  `Pull requests: Read & write`. 레포에 설치.
+- `APP_ID` (App 의 숫자 ID), `APP_PRIVATE_KEY` (발급한 .pem 전체) 를 레포 secret 으로 등록.
 
-워크플로가 `GITHUB_TOKEN`으로 **직접** 머지하면, 그 push는 docker-build 워크플로를
-**트리거하지 않는다** (GitHub의 토큰-루프 방지). 그러면 PR은 머지되는데 이미지가 안 빌드된다.
-→ `gh pr merge --auto`로 **native auto-merge를 켜기만** 하고, 실제 머지는 GitHub이 수행하게 한다.
-native 머지는 GitHub 계정 attribution이라 push 워크플로가 정상 발동.
+### 5.3 트리거 함정 (핵심 — 실측으로 확정)
+
+**관찰**: GITHUB_TOKEN 으로 native auto-merge 를 enable 했더니 PR 은 머지됐으나(`mergedBy:
+github-actions[bot]`), 머지 커밋(`45e7fef`)에 대한 main push 워크플로가 **0개** 생성됨 —
+docker-build 안 돎. 반면 사람이 직접 push 한 main 커밋은 정상 트리거됨.
+
+**원인**: GitHub 의 재귀 방지 규칙 — **GITHUB_TOKEN 으로 수행된 행동의 결과 이벤트(push 포함)는
+워크플로를 트리거하지 않는다.** auto-merge 를 *enable 한 주체*가 GITHUB_TOKEN 이면 머지 커밋도
+bot attribution → push 억제. ("native 머지면 GitHub attribution 이라 트리거된다"는 처음 가정은
+실측으로 반증됨.)
+
+**해결**: auto-merge enable 을 **GitHub App 토큰**(또는 PAT)으로 수행 → 머지 커밋이 App identity
+attribution → main push 가 CI(docker-build) 정상 트리거. dependabot/renovate auto-merge 표준 패턴.
+`workflow_run` 트리거는 대안이 못 됨 — 머지 커밋 SHA 를 못 보고 PR-head SHA 에서만 발동하므로
+deploy 가 찾는 `sha-<merge-commit>` 이미지를 못 만든다.
 
 ## 6. 에러 처리 / 엣지
 
