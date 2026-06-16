@@ -47,6 +47,7 @@ export function macroF1<T extends string>(
   classes: readonly T[],
 ): number {
   if (cases.length === 0) return 0;
+  if (classes.length === 0) return 0;
   const perClassF1 = classes.map((cls) => {
     const binary = cases.map((c) => ({
       predicted: c.predicted === cls,
@@ -58,7 +59,9 @@ export function macroF1<T extends string>(
 }
 
 /** exact-match accuracy — predicted === expected 비율. */
-export function accuracy<T>(cases: { predicted: T; expected: T }[]): number {
+export function accuracy<T extends string | boolean>(
+  cases: { predicted: T; expected: T }[],
+): number {
   if (cases.length === 0) return 0;
   const correct = cases.filter((c) => c.predicted === c.expected).length;
   return correct / cases.length;

@@ -33,6 +33,17 @@ describe("binaryMetrics", () => {
     expect(m.recall).toBe(0);
     expect(m.f1).toBe(0);
   });
+
+  it("빈 배열 → 카운트·메트릭 모두 0 (NaN 가드)", () => {
+    const m = binaryMetrics([]);
+    expect(m.tp).toBe(0);
+    expect(m.fp).toBe(0);
+    expect(m.fn).toBe(0);
+    expect(m.tn).toBe(0);
+    expect(m.precision).toBe(0);
+    expect(m.recall).toBe(0);
+    expect(m.f1).toBe(0);
+  });
 });
 
 describe("macroF1", () => {
@@ -49,7 +60,9 @@ describe("macroF1", () => {
     expect(f1).toBe(1);
   });
 
-  it("한 클래스 전부 오분류 → macroF1 < 1", () => {
+  it("한 클래스 전부 오분류 → macroF1 정확값 pin", () => {
+    // money: P=0.5 R=1 → F1=0.6667 / security: F1=0 / 나머지 3 클래스: F1=0
+    // macroF1 = (0.6667+0+0+0+0)/5 = 0.13333
     const f1 = macroF1(
       [
         { predicted: "money", expected: "money" },
@@ -57,8 +70,13 @@ describe("macroF1", () => {
       ],
       ["money", "security", "schedule", "notice", "none"],
     );
-    expect(f1).toBeLessThan(1);
-    expect(f1).toBeGreaterThan(0);
+    expect(f1).toBeCloseTo(0.1333, 3);
+  });
+
+  it("빈 배열 → 0 (NaN 가드)", () => {
+    expect(
+      macroF1([], ["money", "security", "schedule", "notice", "none"]),
+    ).toBe(0);
   });
 });
 
@@ -70,5 +88,9 @@ describe("accuracy", () => {
       { predicted: "high", expected: "med" },
     ]);
     expect(acc).toBeCloseTo(0.6667, 3);
+  });
+
+  it("빈 배열 → 0 (0 나눗셈 방어)", () => {
+    expect(accuracy([])).toBe(0);
   });
 });
