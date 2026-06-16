@@ -15,13 +15,15 @@
 ## 작업 순서 개요
 
 1. **Task 1–3**: 모델 레지스트리 + env (순수 메타 → server 레지스트리 → env)
-2. **Task 4–5**: `draftReply` 톤·모델 파라미터화 + 거절 패턴 감지
+2. **Task 4–5**: `draftReply` 톤·길이·모델 파라미터화 + 거절 패턴 감지
 3. **Task 6–7**: DB 컬럼 `reply_model` + entity 설정 매핑
 4. **Task 8–9**: 설정 schema/update/form UI
 5. **Task 10**: `sendDraft` gmail 함수
-6. **Task 11–12**: `generateReplyDraft` 톤 3개 병렬 + `sendReply` Server Action
-7. **Task 13–16**: 모달 UI (컨테이너·본문·발송확인·ReplyCard 연결)
+6. **Task 11–12**: `generateReplyDraft` 톤 3개 병렬(길이 인자) + `sendReply` Server Action
+7. **Task 13–16**: 모달 UI (컨테이너·본문·발송확인·ReplyCard 연결, 길이 selector 포함)
 8. **Task 17**: 빌드 검증 + 인라인 컴포넌트 제거 확인
+
+> **길이(length) 처리**: `draftReply`는 length 파라미터 보유(Task 5). `generateReplyDraft(threadId, length)`로 모달이 선택한 길이를 전달(Task 11). 모달에 길이 selector(짧게/보통/길게) — 변경 시 전체 재생성(Task 14).
 
 각 Task는 독립 커밋. **DB 통합 테스트는 `TEST_DATABASE_URL` 필요** (Gotcha #2). 명령은 `apps/dashboard`에서 실행 (`cd apps/dashboard`).
 
@@ -847,9 +849,9 @@ git commit -m "feat(gmail): sendDraft — drafts.send (gmail.modify scope)"
 
 ---
 
-## Task 11: generateReplyDraft 톤 3개 병렬 생성
+## Task 11: generateReplyDraft 톤 3개 병렬 생성 (길이 인자)
 
-기존 단일 초안 → 톤 3개 병렬. 반환 타입 변경. 모델은 settings.replyModel 라우팅.
+기존 단일 초안 → 톤 3개 병렬. 반환 타입 변경. 모델은 settings.replyModel 라우팅. **length 파라미터 추가** (모달 selector 값).
 
 **Files:**
 - Modify: `apps/dashboard/src/features/email-reply/api/generateReplyDraft.ts`
@@ -871,6 +873,7 @@ import { resolveReplyModelId } from "@/shared/lib/llm/reply-model-registry";
 
 ```typescript
 export type ReplyTone = "polite" | "concise" | "friendly";
+export type ReplyLength = "short" | "medium" | "long";
 
 export interface ToneDraft {
   tone: ReplyTone;
@@ -898,6 +901,15 @@ export type GenerateReplyResult =
 
 - [ ] **Step 3: 본문 — 톤 3개 병렬 호출로 교체**
 
+함수 시그니처에 length 파라미터 추가 (기본값 medium — 인자 없는 기존 호출 호환):
+
+```typescript
+export async function generateReplyDraft(
+  threadId: string,
+  length: ReplyLength = "medium",
+): Promise<GenerateReplyResult> {
+```
+
 기존 `// 5. 사용자 설정에서 답장 언어 조회` 부터 함수 끝(`return { kind: "ok", ... }`)까지를 다음으로 교체:
 
 ```typescript
@@ -905,7 +917,7 @@ export type GenerateReplyResult =
   const settings = await getEmailSettings(userId);
   const modelId = await resolveReplyModelId(settings.replyModel);
 
-  // 6. 톤 3개 병렬 LLM 초안.
+  // 6. 톤 3개 병렬 LLM 초안 (길이는 모달 선택값).
   const tones: ReplyTone[] = ["polite", "concise", "friendly"];
   const results = await Promise.all(
     tones.map((tone) =>
@@ -917,7 +929,7 @@ export type GenerateReplyResult =
         severity: row.severity as "high" | "med" | "low",
         language: settings.replyLanguage,
         tone,
-        length: "medium",
+        length,
         modelId,
       }).then((r) => ({ tone, result: r })),
     ),
@@ -948,20 +960,45 @@ export type GenerateReplyResult =
 
 > 주의: 기존 `import { draftReply }`와 `import { getEmailSettings }`가 중복 import되지 않게 Step 1에서 draftReply import 줄을 교체(추가가 아니라 수정). getEmailSettings는 기존 줄 유지.
 
-- [ ] **Step 4: typecheck**
+- [ ] **Step 4: barrel에 신규 타입 export**
+
+`apps/dashboard/src/features/email-reply/client.ts`의 `export type { GenerateReplyResult } ...` 줄을 다음으로 교체(타입 추가):
+
+```typescript
+export { generateReplyDraft } from "./api/generateReplyDraft";
+export type {
+  GenerateReplyResult,
+  ReplyTone,
+  ReplyLength,
+  ToneDraft,
+} from "./api/generateReplyDraft";
+```
+
+`apps/dashboard/src/features/email-reply/index.ts`도 동일하게 타입 export 추가:
+
+```typescript
+export type {
+  GenerateReplyResult,
+  ReplyTone,
+  ReplyLength,
+  ToneDraft,
+} from "./api/generateReplyDraft";
+```
+
+- [ ] **Step 5: typecheck**
 
 Run: `cd apps/dashboard && pnpm typecheck`
-Expected: FAIL — saveReplyDraft/ReplyComposer가 옛 `body`/`meta` 형태 참조 (Task 12·13에서 해소). **generateReplyDraft.ts 자체 타입 에러는 없어야 함.**
+Expected: FAIL — saveReplyDraft/ReplyComposer가 옛 `body`/`meta` 형태 참조 (Task 12·13·16에서 해소). **generateReplyDraft.ts·client.ts 자체 타입 에러는 없어야 함.**
 
 generateReplyDraft.ts만 타입 확인:
 Run: `cd apps/dashboard && npx tsc --noEmit 2>&1 | grep generateReplyDraft || echo "generateReplyDraft clean"`
 Expected: `generateReplyDraft clean`
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 6: 커밋**
 
 ```bash
-git add apps/dashboard/src/features/email-reply/api/generateReplyDraft.ts
-git commit -m "feat(email-reply): generateReplyDraft 톤 3개 병렬 + 모델 라우팅 + refusal 플래그"
+git add apps/dashboard/src/features/email-reply/api/generateReplyDraft.ts apps/dashboard/src/features/email-reply/client.ts apps/dashboard/src/features/email-reply/index.ts
+git commit -m "feat(email-reply): generateReplyDraft 톤 3개 병렬 + 길이 인자 + 모델 라우팅 + refusal 플래그"
 ```
 
 ---
@@ -1228,11 +1265,18 @@ import {
 import type {
   GenerateReplyResult,
   ReplyTone,
+  ReplyLength,
 } from "@/features/email-reply/client";
 import { SendConfirmDialog } from "./SendConfirmDialog";
 
 type OkResult = Extract<GenerateReplyResult, { kind: "ok" }>;
 type Meta = OkResult["meta"];
+
+const LENGTH_LABEL: Record<ReplyLength, string> = {
+  short: "짧게",
+  medium: "보통",
+  long: "길게",
+};
 
 type Status =
   | { phase: "loading" }
@@ -1268,6 +1312,9 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
   });
   const [activeTone, setActiveTone] = useState<ReplyTone>("polite");
   const [availableTones, setAvailableTones] = useState<ReplyTone[]>([]);
+  // 길이 selector — 변경 시 전체 재생성. ref로 최신값 읽어 stale closure 회피.
+  const [length, setLength] = useState<ReplyLength>("medium");
+  const lengthRef = useRef<ReplyLength>("medium");
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -1281,7 +1328,7 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
 
   function runGenerate() {
     const id = ++requestIdRef.current;
-    generateReplyDraft(threadId).then(
+    generateReplyDraft(threadId, lengthRef.current).then(
       (result) => {
         if (id !== requestIdRef.current) return;
         if (result.kind === "ok") {
@@ -1319,6 +1366,14 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
   }, [threadId]);
 
   function handleRegenerate() {
+    setStatus({ phase: "loading" });
+    runGenerate();
+  }
+
+  // 길이 변경 — ref 즉시 갱신 후 전체 재생성 (3개 톤 모두 새 길이로).
+  function handleLengthChange(next: ReplyLength) {
+    lengthRef.current = next;
+    setLength(next);
     setStatus({ phase: "loading" });
     runGenerate();
   }
@@ -1424,6 +1479,30 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
           {originalBody || "(본문 없음)"}
         </div>
       )}
+
+      {/* 길이 selector — 변경 시 전체 재생성 */}
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-xs text-[var(--color-text-muted)]">길이</span>
+        <div className="flex gap-1">
+          {(["short", "medium", "long"] as ReplyLength[]).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => handleLengthChange(l)}
+              disabled={isPending}
+              aria-pressed={length === l}
+              className={[
+                "rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40",
+                length === l
+                  ? "bg-[var(--color-accent)] text-[var(--color-surface)]"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]",
+              ].join(" ")}
+            >
+              {LENGTH_LABEL[l]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 톤 탭 */}
       <div role="tablist" className="mb-2 flex gap-1">
@@ -1884,4 +1963,5 @@ git commit -m "fix(email-reply): build seam 보정"
 - **Spec 커버리지**: §3 파일맵→Task 1~16, §5 품질→Task 3·4·5·11, §6 모델설정→Task 1·2·3·6·7·8·9, §4 발송→Task 10·12·13·14, §7 보안(소유권/sanitize)→Task 12·15, §10 테스트→각 Task TDD. 모달 a11y(§9)→Task 13·16(role/ESC/포커스). ✅
 - **Placeholder**: drizzle `XXXX_*.sql`는 자동 생성 번호(의도적). 그 외 없음.
 - **타입 일관성**: `ReplyModelKey`·`ToneDraft`·`ReplyTone`·`SaveDraftMeta`(cc/bcc)·`Meta` 시그니처 Task 간 일치. `resolveReplyModelId`·`isRefusalDraft`·`toneInstruction`·`sendDraft`·`sendReply` 이름 고정.
-- **알려진 한계**: 톤 일부 실패 시 "성공 탭만 표시"는 generateReplyDraft가 성공분만 drafts에 담아 자연 충족(Task 11). 톤별 길이 개별 selector는 범위에서 medium 고정(설계 §4.2의 length selector는 후속 — 현 계획은 톤 3개 고정 length=medium). 이는 spec 대비 축소이나 핵심(톤 비교)은 충족.
+- **길이 selector**: 모달에 짧게/보통/길게 selector 추가(Task 14). 변경 시 `generateReplyDraft(threadId, length)`로 전체 재생성(Task 11·14). `lengthRef`로 stale closure 회피. spec §4.2 충족.
+- **알려진 한계**: 톤 일부 실패 시 "성공 탭만 표시"는 generateReplyDraft가 성공분만 drafts에 담아 자연 충족(Task 11). 길이는 톤 3개 공통 적용(톤별 개별 길이는 범위 밖 — 불필요한 복잡도).
