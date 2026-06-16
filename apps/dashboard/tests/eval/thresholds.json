@@ -1,0 +1,5 @@
+{
+  "replyDeterministic": { "recall": null },
+  "replyLlm": { "precision": null, "recall": null },
+  "importantLlm": { "categoryMacroF1": null, "importanceAccuracy": null }
+}

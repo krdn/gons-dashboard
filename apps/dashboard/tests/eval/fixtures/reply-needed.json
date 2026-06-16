@@ -29,7 +29,7 @@
   { "id": "r-A-review-request-ko", "kind": "A",
     "input": { "subject": "검토 부탁드립니다", "snippet": "제안서 초안 첨부합니다 답변 주시면 감사하겠습니다",
       "lastSenderEmail": "partner@vendor.co.kr", "ownerEmail": "me@x.com", "lastSenderIsOwner": false },
-    "expect": { "needsReply": true, "severity": "med" } },
+    "expect": { "needsReply": true, "severity": "high" } },
   { "id": "r-A-question-en", "kind": "A",
     "input": { "subject": "Quick question about the API contract", "snippet": "Could you let me know which auth scheme we settled on?",
       "lastSenderEmail": "dev@global.com", "lastSenderName": "Sam", "ownerEmail": "me@x.com",
