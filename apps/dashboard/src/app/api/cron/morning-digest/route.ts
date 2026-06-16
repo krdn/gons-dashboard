@@ -91,7 +91,7 @@ export const POST = createCronHandler({
       .from(pushSubscriptions)
       .where(eq(pushSubscriptions.userId, u.id));
 
-    const title = `오늘 답장 필요 ${items.length}건`;
+    const title = `답장 필요 ${items.length}건`;
     const top = items[0];
     const body =
       items.length === 1

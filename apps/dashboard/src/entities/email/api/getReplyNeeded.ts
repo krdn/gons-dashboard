@@ -1,11 +1,13 @@
 // 답장 필요 read API — entities/email
 // 다른 위젯·feature가 자유롭게 import (FSD 의존 방향에서 entities는 widgets/features 양쪽에서 import 가능).
 //
-// 메인 쿼리: replied_at IS NULL AND dismissed_at IS NULL AND classified_at >= today_kst
+// 메인 쿼리: replied_at IS NULL AND dismissed_at IS NULL
+//            AND classified_at >= (NOW(KST) - windowDays)
 // 인덱스: reply_needed_open_idx (partial index, eng review D10)
 //
-// "오늘"의 정의: KST 자정 기준. classified_at은 timestamptz로 저장되어
-// AT TIME ZONE 'Asia/Seoul'로 변환 후 비교.
+// 윈도우 정의: "오늘"이 아니라 최근 windowDays일(기본 7) rolling window. classified_at은
+// timestamptz로 저장되어 AT TIME ZONE 'Asia/Seoul'로 변환 후 windowDays 인터벌과 비교.
+// (위젯 라벨도 "답장 필요"로 표기 — 누적 미답장 목록이지 당일 분류분이 아님.)
 import "server-only";
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";

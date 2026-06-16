@@ -34,9 +34,12 @@ export async function EmailDigestCard() {
           id="reply-needed-heading"
           className="flex items-baseline gap-2 text-base font-semibold tracking-tight text-[var(--color-text)]"
         >
-          <span>오늘 답장 필요</span>
+          <span>답장 필요</span>
           <span className="font-mono text-xs font-medium tabular-nums text-[var(--color-text-muted)]">
             {items.length}
+          </span>
+          <span className="text-xs font-normal text-[var(--color-text-muted)]">
+            최근 {settings.windowDays}일
           </span>
         </h2>
         <EmailSettingsDialog initial={settings} />
