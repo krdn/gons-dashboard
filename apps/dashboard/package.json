@@ -18,7 +18,8 @@
     "db:cleanup-projects": "tsx --conditions=react-server src/scripts/cleanup-projects.ts",
     "tiger:bootstrap": "tsx --conditions=react-server src/scripts/tiger-bootstrap.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval:llm": "tsx --conditions=react-server tests/eval/run-llm-eval.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.4",

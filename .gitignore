@@ -86,3 +86,6 @@ agentdb.rvf.lock
 
 # graphify 산출물 (대용량, 로컬 전용)
 graphify-out/
+
+# eval Layer 2 리포트 (로컬 전용)
+apps/dashboard/tests/eval/reports/
