@@ -122,12 +122,13 @@ CI에 없다**. 스키마 직접 단위 테스트가 진짜 회귀 가드다.
 
 순수 safeParse라 게이트웨이·DB·LLM 의존 없이 `pnpm test`(CI)에서 돈다.
 
-### 4-3. `fixtures/reply-needed.json` — 영어 메일 케이스 추가
+### 4-3. `fixtures/reply-needed.json` — 영어 케이스 (이미 존재, 변경 불필요)
 
-영어 발신·영어 본문 케이스를 추가한다(`needsReply:true` 1건, `needsReply:false`
-1건 권장). Layer 2(`pnpm eval:llm`)에서 영어 분류가 정상 집계되는지 경험적으로
-드러내고, 향후 영어 트랙 회귀의 fixture 신호가 된다. 기존 fixture 스키마
-(`ReplyFixtureArraySchema`, `fixtures.test.ts`가 Zod 검증)를 그대로 따른다.
+기존 fixture에 영어 케이스가 이미 충분히 있다(A: `r-A-deadline-en`,
+`r-A-approval-en`, `r-A-question-en` / B: `r-B-implicit-en`, `r-B-soft-en`,
+`r-B-vague-en` / C: `r-C-promo-action-en`, `r-C-webinar-en`, `r-C-promo-question-en`).
+**fixture 추가는 불필요하다.** 이 영어 케이스들이 max(80) 수정 후 Layer 2
+(`pnpm eval:llm`)에서 skip 없이 정상 집계되는지 확인하는 게 4-4의 일부다.
 
 ### 4-4. `thresholds.json` — replyLlm 임계치 보정 (Layer 2 run 이후)
 
