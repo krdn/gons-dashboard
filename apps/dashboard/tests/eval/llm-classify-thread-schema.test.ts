@@ -18,13 +18,13 @@ describe("LlmResponseSchema reason 길이", () => {
     expect(result.success).toBe(true);
   });
 
-  it("81자 reason은 거부한다 (한도 상한 고정)", () => {
-    const reason = "x".repeat(81);
+  it("80자 초과 긴 reason도 수용한다 (verdict가 reason 길이에 무효화되지 않음)", () => {
+    const reason = "x".repeat(200);
     const result = LlmResponseSchema.safeParse({
       needs_reply: false,
       severity: "low",
       reason,
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });

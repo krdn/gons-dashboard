@@ -26,14 +26,13 @@ export interface LlmImportantClassification {
   classifierVersion: string;
 }
 
-const SUMMARY_MAX = 200;
 const MAX_OUTPUT_TOKENS = 600;
 
-const ResponseSchema = z.object({
+export const ResponseSchema = z.object({
   category: z.enum(["money", "security", "schedule", "notice", "none"]),
   importance: z.enum(["high", "med"]),
-  summary: z.string().max(SUMMARY_MAX),
-  rationale: z.string().max(200),
+  summary: z.string(),
+  rationale: z.string(),
 });
 
 const SYSTEM_PROMPT = `너는 한국어 이메일 분류기다. 사용자에게 "정보로서 중요한" 메일을 골라낸다.

@@ -36,12 +36,12 @@ export function ReplyBadges({ severity, reason }: ReplyBadgesProps) {
           {severityLabel}
         </span>
       )}
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-2 py-0.5 text-tiny font-medium text-[var(--color-text-muted)]">
+      <span className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-full border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-2 py-0.5 text-tiny font-medium text-[var(--color-text-muted)]">
         <span
           aria-hidden="true"
-          className="h-1.5 w-1.5 rounded-full bg-current opacity-55"
+          className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-55"
         />
-        {reason}
+        <span className="truncate">{reason}</span>
       </span>
     </div>
   );
