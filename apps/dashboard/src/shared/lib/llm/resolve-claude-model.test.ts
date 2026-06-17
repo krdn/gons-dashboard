@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { resolveClaudeModel } from "./resolve-claude-model";
 
 // 주의: resolveClaudeModel은 모듈 레벨 메모리 캐시를 사용한다.

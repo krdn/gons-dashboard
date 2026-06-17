@@ -11,6 +11,8 @@ import { env } from "@/shared/config/env";
 // 텍스트를 파싱해 structured 출력을 만든다. native structured output이 아니라는 점만 유의.
 export function buildTickerlensModelConfig(): ModelConfigAdapter {
   return {
+    // moduleName 무시 — 16개 모듈 전부 단일 provider/model로 처리 (위 주석 참조)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async resolve(_moduleName: string) {
       return {
         provider: "claude-cli" as const, // AIProvider 리터럴로 좁힘
