@@ -22,10 +22,13 @@ export const LLM_CLASSIFIER_VERSION = "v1.0-haiku-2026-05";
 
 const MAX_BODY_BYTES = 5 * 1024;
 
-const LlmResponseSchema = z.object({
+// reason.max(80): 영어 reason(평균 50~70자)이 40자 제한에 걸려 Zod 거부 →
+// deterministic fallback FP 되던 버그 수정. 프롬프트는 한국어 40자 유지(UI 일관성),
+// 스키마는 영어/긴 reason 안전망. export는 직접 단위 테스트(스키마 회귀 가드)용.
+export const LlmResponseSchema = z.object({
   needs_reply: z.boolean(),
   severity: z.enum(["high", "med", "low"]),
-  reason: z.string().min(1).max(40),
+  reason: z.string().min(1).max(80),
 });
 
 const SYSTEM_PROMPT = `당신은 이메일 답장 필요 여부를 판단하는 분류기입니다.
