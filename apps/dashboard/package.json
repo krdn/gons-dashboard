@@ -19,7 +19,7 @@
     "tiger:bootstrap": "tsx --conditions=react-server src/scripts/tiger-bootstrap.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval:llm": "tsx --conditions=react-server tests/eval/run-llm-eval.ts"
+    "eval:llm": "tsx --conditions=react-server --conditions=import tests/eval/run-llm-eval.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.4",

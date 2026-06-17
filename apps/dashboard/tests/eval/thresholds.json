@@ -1,5 +1,5 @@
 {
-  "_comment": "베이스라인 측정(2026-06-16 reports/) 기반. 측정값 - 마진. replyLlm은 미보정(null) — 영어 reason 40자 초과 → Zod 거부 → deterministic fallback로 답장 트랙 LLM 메트릭 오염(별도 발견, docs/agents/domain.md 또는 후속 PR). reply 회귀 신호는 Layer 1 deterministic recall이 담당.",
+  "_comment": "베이스라인 측정 기반(최신 reports/2026-06-17.json). 측정값 - 마진. replyLlm은 미보정(null) — reply 트랙은 deterministic prefilter가 키워드 없는 B(암시적) 케이스를 LLM 전에 걸러 recall 천장이 구조적으로 낮음(2026-06-17 run: recall=0.333, precision=1.0, fn=10 대부분이 prefilter-gated B). 이 천장은 Haiku가 아니라 prefilter가 만들어 LLM 정확도로 박으면 오도됨. reply 회귀 신호는 Layer 1 deterministic recall이 담당. (영어 reason 40자 거부 버그는 PR #144에서 max(80)으로 해소.)",
   "replyDeterministic": { "recall": 0.45 },
   "replyLlm": { "precision": null, "recall": null },
   "importantLlm": { "categoryMacroF1": 0.75, "importanceAccuracy": 0.65 }
