@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
-import { HAIKU_MODEL, gatewayDefaults } from "./anthropic";
+import { HAIKU_MODEL, gatewayDefaults, logLlmSpend } from "./anthropic";
 
 export type LlmSeverity = "high" | "med" | "low";
 
@@ -65,12 +65,14 @@ export async function classifyWithLLM(
   ].join("\n");
 
   try {
-    const { object } = await analyzeStructured(userPrompt, LlmResponseSchema, {
+    const { object, usage } = await analyzeStructured(userPrompt, LlmResponseSchema, {
       ...gatewayDefaults,
       model: HAIKU_MODEL,
       systemPrompt: SYSTEM_PROMPT,
       maxOutputTokens: 200,
     });
+
+    logLlmSpend("reply-classify", HAIKU_MODEL, usage);
 
     if (!object.needs_reply) return { kind: "no-reply" };
 

@@ -3,7 +3,7 @@
 import "server-only";
 import { z } from "zod";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
-import { gatewayDefaults } from "./anthropic";
+import { gatewayDefaults, logLlmSpend } from "./anthropic";
 
 const MAX_BODY_BYTES = 5 * 1024;
 
@@ -115,12 +115,16 @@ export async function draftReply(
   const systemPrompt = `${SYSTEM_PROMPT}\n\n${languageInstruction(input.language)}\n${toneInstruction(input.tone, input.length)}`;
 
   try {
-    const { object } = await analyzeStructured(userPrompt, ResponseSchema, {
+    const { object, usage } = await analyzeStructured(userPrompt, ResponseSchema, {
       ...gatewayDefaults,
       model: input.modelId,
       systemPrompt,
       maxOutputTokens: 1000,
     });
+
+    // draft는 가변 모델(gemini/opus/codex)이라 model 필드로 구분.
+    logLlmSpend("reply-draft", input.modelId, usage);
+
     return { kind: "ok", body: object.body };
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown";
