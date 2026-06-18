@@ -19,6 +19,7 @@ import {
 import { draftReply, isRefusalDraft } from "@/shared/lib/llm/draft-reply";
 import { resolveReplyModelId } from "@/shared/lib/llm/reply-model-registry";
 import { getEmailSettings } from "@/entities/email-settings";
+import { logger } from "@/shared/lib/log";
 
 export type ReplyTone = "polite" | "concise" | "friendly";
 export type ReplyLength = "short" | "medium" | "long";
@@ -88,7 +89,12 @@ export async function generateReplyDraft(
     if (inbound?.payload) bodyText = extractBodyText(inbound.payload);
   } catch (error) {
     if (error instanceof GmailScopeError) return { kind: "scope-required" };
-    // fetch 실패 → snippet 폴백으로 진행 (초안은 생성).
+    // fetch 실패 → snippet 폴백으로 진행 (초안은 생성). silent swallow 방지 위해 기록 —
+    // 초안 품질이 저하되므로(본문 없이 snippet 기반) 운영에서 빈도 추적 필요.
+    logger.warn("email/generateReplyDraft", "thread-fetch-failed-snippet-fallback", {
+      threadId,
+      message: error instanceof Error ? error.message : String(error),
+    });
     bodyText = "";
   }
 
