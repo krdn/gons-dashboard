@@ -15,6 +15,29 @@ export interface FlipDetection {
   toVerdict: Verdict;
 }
 
+/** flip 판정 입력 — DB 행에서 추출한 두 시점의 verdict + promptVersion. */
+export interface VerdictComparison {
+  symbol: string;
+  yesterday: { verdict: Verdict; promptVersion: string };
+  today: { verdict: Verdict; promptVersion: string };
+}
+
+/**
+ * 순수 flip 판정 — DB 결합 없이 두 시점 비교만.
+ *  - promptVersion 불일치 → null (비교 무의미)
+ *  - verdict 동일 → null (flip 아님)
+ *  - 다르면 FlipDetection
+ */
+export function compareVerdicts(input: VerdictComparison): FlipDetection | null {
+  if (input.today.promptVersion !== input.yesterday.promptVersion) return null;
+  if (input.today.verdict === input.yesterday.verdict) return null;
+  return {
+    symbol: input.symbol,
+    fromVerdict: input.yesterday.verdict,
+    toVerdict: input.today.verdict,
+  };
+}
+
 export async function detectConsensusFlip(args: {
   symbol: string;
   yesterdayDate: string; // 'YYYY-MM-DD'
@@ -40,16 +63,16 @@ export async function detectConsensusFlip(args: {
   );
 
   if (!todayRow || !yesterdayRow) return null;
-  if (todayRow.promptVersion !== yesterdayRow.promptVersion) return null;
 
-  const todayVerdict = (todayRow.consensus as Consensus).verdict;
-  const yesterdayVerdict = (yesterdayRow.consensus as Consensus).verdict;
-
-  if (todayVerdict === yesterdayVerdict) return null;
-
-  return {
+  return compareVerdicts({
     symbol: args.symbol,
-    fromVerdict: yesterdayVerdict,
-    toVerdict: todayVerdict,
-  };
+    yesterday: {
+      verdict: (yesterdayRow.consensus as Consensus).verdict,
+      promptVersion: yesterdayRow.promptVersion,
+    },
+    today: {
+      verdict: (todayRow.consensus as Consensus).verdict,
+      promptVersion: todayRow.promptVersion,
+    },
+  });
 }
