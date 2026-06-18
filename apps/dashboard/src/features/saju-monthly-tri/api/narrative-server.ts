@@ -18,8 +18,11 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { ALGORITHM_VERSION, computeFrameHash, type MonthlyFrame } from "@krdn/saju";
-import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { analyzeStructured, normalizeUsage } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults } from "@/shared/lib/llm/anthropic";
+import { computeKrw } from "@/shared/lib/llm/pricing";
+import { assertSajuBudgetOk, logSajuSpend } from "@/features/saju-reading/lib/budget";
+import { env } from "@/shared/config/env";
 import { db } from "@/shared/lib/db/client";
 import {
   sajuMonthlyNarrative,
@@ -61,7 +64,7 @@ async function callMonthlyLlmAndParseWithRetry(
   systemPrompt: string,
   baseUserContent: string,
   modelId: string,
-): Promise<NarrativeOutput> {
+): Promise<{ output: NarrativeOutput; krw: number; inputTokens: number; outputTokens: number }> {
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const userContent =
@@ -70,7 +73,7 @@ async function callMonthlyLlmAndParseWithRetry(
         : `${baseUserContent}\n\n[중요 — 재시도] 이전 응답이 schema 검증에 실패했습니다. 모든 sections 필드를 충분한 분량으로 채우고, schoolSpecific 의 모든 필드를 빠짐없이 작성하세요. 출력은 JSON 본문만.\n\n검증 실패 상세: ${lastErr instanceof ZodError ? lastErr.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(lastErr)}`;
 
     try {
-      const { object } = await analyzeStructured(
+      const { object, usage } = await analyzeStructured(
         userContent,
         SCHOOL_SCHEMAS[school] as import("zod").ZodType<NarrativeOutput>,
         {
@@ -80,7 +83,13 @@ async function callMonthlyLlmAndParseWithRetry(
           maxOutputTokens: MAX_NARRATIVE_TOKENS,
         },
       );
-      return object as NarrativeOutput;
+      const { inputTokens, outputTokens } = normalizeUsage(usage);
+      return {
+        output: object as NarrativeOutput,
+        krw: computeKrw(modelId, inputTokens, outputTokens),
+        inputTokens,
+        outputTokens,
+      };
     } catch (err) {
       lastErr = err;
       if (err instanceof ZodError) {
@@ -154,7 +163,10 @@ export async function getOrBuildMonthlyNarrative(
     }
   }
 
-  // 2) miss → LLM 호출. cli-proxy-api system prompt JSON 무효화 회피 (yearly/lifetime 과 동일).
+  // 2) 예산 가드 (cache miss 확정 후, LLM 호출 전, build 당 1회)
+  await assertSajuBudgetOk(env.SAJU_LLM_DAILY_BUDGET_KRW);
+
+  // 3) miss → LLM 호출. cli-proxy-api system prompt JSON 무효화 회피 (yearly/lifetime 과 동일).
   // Hotfix #3 (v0.3.1.1): ZodError 발생 시 1회 재시도 (lifetime/yearly 패턴 미러).
   const systemPrompt = SCHOOL_PROMPTS[school];
 
@@ -170,9 +182,13 @@ export async function getOrBuildMonthlyNarrative(
 위 ${targetYear}년 ${targetMonth}월 월운을 다음 JSON 스키마로만 답하세요. 마크다운 헤더, 펜스, prose 설명, 인사말 모두 금지. '{' 로 시작해서 '}' 로 끝나는 JSON 본문만 출력:
 {"narrativeText":"800~1200자 3문단","sections":{"personality":"...","career":"...","relationship":"...","health":"...","daeunSummary":"...","keyTerms":[{"term":"...","gloss":"..."}],"cautions":["주의1","주의2"]},"schoolSpecific":${schoolSpecificExample[school]},"citations":["출처1","출처2"]}`;
 
-  const parsed = await callMonthlyLlmAndParseWithRetry(school, systemPrompt, baseUserContent, modelId);
+  const { output: parsed, krw, inputTokens, outputTokens } =
+    await callMonthlyLlmAndParseWithRetry(school, systemPrompt, baseUserContent, modelId);
 
-  // 3) 캐시 저장 — onConflictDoUpdate 로 자가 치유 (yearly 와 동일 패턴).
+  // spend 기록 (validate 성공 후에만 — "validated outputs only")
+  await logSajuSpend({ model: modelId, inputTokens, outputTokens, krw });
+
+  // 4) 캐시 저장 — onConflictDoUpdate 로 자가 치유 (yearly 와 동일 패턴).
   await db
     .insert(sajuMonthlyNarrative)
     .values({
