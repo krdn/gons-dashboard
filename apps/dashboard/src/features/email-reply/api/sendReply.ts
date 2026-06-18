@@ -13,7 +13,9 @@ import {
   createDraft,
   sendDraft,
   GmailScopeError,
+  GmailError,
 } from "@/shared/api/gmail";
+import { logger } from "@/shared/lib/log";
 import type { SaveDraftMeta } from "./saveReplyDraft";
 
 export type SendReplyResult =
@@ -58,7 +60,19 @@ export async function sendReply(
     const sent = await sendDraft(accessToken, draft.draftId);
     return { kind: "ok", sentMessageId: sent.sentMessageId };
   } catch (error) {
-    if (error instanceof GmailScopeError) return { kind: "scope-required" };
+    if (error instanceof GmailScopeError) {
+      logger.warn("email/sendReply", "scope-required", { userId, threadId });
+      return { kind: "scope-required" };
+    }
+    // silent swallow 방지 — Gmail 에러 종류(reason/status)를 구조화 기록.
+    // 반환 유니온은 불변(UI 가 generic 처리라 새 kind 가 무의미) — 관찰성만 보강.
+    logger.error("email/sendReply", "send-failed", {
+      userId,
+      threadId,
+      reason: error instanceof GmailError ? error.googleReason : undefined,
+      status: error instanceof GmailError ? error.status : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return { kind: "send-failed" };
   }
 }
