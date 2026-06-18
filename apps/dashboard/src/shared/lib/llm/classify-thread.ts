@@ -1,7 +1,8 @@
 import "server-only";
 import { z } from "zod";
-import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { analyzeStructured, normalizeUsage } from "@krdn/llm-gateway/gateway";
 import { HAIKU_MODEL, gatewayDefaults } from "./anthropic";
+import { logger } from "../log";
 
 export type LlmSeverity = "high" | "med" | "low";
 
@@ -65,11 +66,20 @@ export async function classifyWithLLM(
   ].join("\n");
 
   try {
-    const { object } = await analyzeStructured(userPrompt, LlmResponseSchema, {
+    const { object, usage } = await analyzeStructured(userPrompt, LlmResponseSchema, {
       ...gatewayDefaults,
       model: HAIKU_MODEL,
       systemPrompt: SYSTEM_PROMPT,
       maxOutputTokens: 200,
+    });
+
+    // 비용 관측 — 호출당 토큰 1줄. 일 합산은 docker logs | jq (예산 게이트는 YAGNI).
+    const { inputTokens, outputTokens } = normalizeUsage(usage);
+    logger.info("email-llm", "spend", {
+      scope: "reply-classify",
+      model: HAIKU_MODEL,
+      inputTokens,
+      outputTokens,
     });
 
     if (!object.needs_reply) return { kind: "no-reply" };

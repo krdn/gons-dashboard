@@ -147,6 +147,15 @@ export async function classifyThreadsLoop(
       outcome.kind === "user-replied"
     ) {
       classified += 1;
+      // reply LLM 강등 관측 — fallback은 게이트웨이 down 등으로 deterministic으로
+      // 떨어진 것. classified 카운트에 묻히면 게이트웨이 전면 장애가 무징후라
+      // 호출당 1줄 warn으로 노출 (important 트랙 importantOutcomes와 대칭).
+      if (outcome.kind === "fallback") {
+        logger.warn("gmail/classifyThreadsLoop", "reply-llm-degraded", {
+          threadId: t.id,
+          reason: outcome.reason,
+        });
+      }
     } else {
       skipped += 1;
     }

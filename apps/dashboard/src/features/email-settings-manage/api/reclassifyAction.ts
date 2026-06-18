@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { reclassifyRecent } from "@/features/gmail-sync";
+import { logger } from "@/shared/lib/log";
 
 export type ReclassifyActionResult =
   | { ok: true; classified: number; skipped: number; threadsInWindow: number }
@@ -29,6 +30,11 @@ export async function reclassifyAction(): Promise<ReclassifyActionResult> {
       threadsInWindow: result.threadsInWindow ?? 0,
     };
   } catch (err) {
+    // #150이 markAsRead/archiveThread엔 넣었으나 이 수동 트리거는 누락된 비대칭 보완.
+    logger.error("email/reclassifyAction", "action-failed", {
+      userId: session.user.id,
+      message: err instanceof Error ? err.message : String(err),
+    });
     return {
       ok: false,
       code: "ERROR",

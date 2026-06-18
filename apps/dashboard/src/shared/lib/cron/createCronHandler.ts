@@ -21,6 +21,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { verifyCronBearer } from "@/shared/lib/auth/cron";
+import { logger } from "@/shared/lib/log";
 
 const ERROR_MAX_LEN = 200;
 
@@ -164,6 +165,13 @@ export function createCronHandler<TTarget, TPayload>(
             : await def.perTarget(target);
           return { ...base, payload };
         } catch (err) {
+          // envelope는 HTTP 200이라 cron 컨테이너 로그엔 'OK 200'만 남고 개별 target
+          // 에러는 2000자 절단 body에 묻힌다. target별 1줄 warn으로 jq 집계 가능하게.
+          logger.warn(`cron/${def.name}`, "target-failed", {
+            id,
+            ...(label != null ? { label } : {}),
+            error: truncatedError(err),
+          });
           return { ...base, status: "error", error: truncatedError(err) };
         }
       },
@@ -185,6 +193,9 @@ export function createCronHandler<TTarget, TPayload>(
       results,
       ...(extra !== undefined ? { extra } : {}),
     };
+    if (failed > 0) {
+      logger.warn(def.name, "partial-failure", { total: results.length, failed });
+    }
     return NextResponse.json(envelope);
   };
 }

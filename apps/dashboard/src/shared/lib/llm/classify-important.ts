@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { analyzeStructured, normalizeUsage } from "@krdn/llm-gateway/gateway";
 import { HAIKU_MODEL, gatewayDefaults } from "./anthropic";
 import { logger } from "../log";
 
@@ -76,6 +76,14 @@ export async function classifyImportantWithLlm(
       maxOutputTokens: MAX_OUTPUT_TOKENS,
     });
     object = result.object;
+    // 비용 관측 — 호출당 토큰 1줄 (예산 게이트는 YAGNI, 일 합산은 jq).
+    const { inputTokens, outputTokens } = normalizeUsage(result.usage);
+    logger.info("email-llm", "spend", {
+      scope: "important-classify",
+      model: HAIKU_MODEL,
+      inputTokens,
+      outputTokens,
+    });
   } catch (error) {
     logger.warn("classify-important", "gateway-fail", {
       error: error instanceof Error ? error.message : String(error),

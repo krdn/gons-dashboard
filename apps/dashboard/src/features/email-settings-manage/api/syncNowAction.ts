@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { syncInbox } from "@/features/gmail-sync";
+import { logger } from "@/shared/lib/log";
 
 export type SyncNowResult =
   | { ok: true; classified: number; skipped: number }
@@ -24,6 +25,11 @@ export async function syncNowAction(): Promise<SyncNowResult> {
       skipped: result.skippedCount ?? 0,
     };
   } catch (err) {
+    // #150이 markAsRead/archiveThread엔 넣었으나 이 수동 트리거는 누락된 비대칭 보완.
+    logger.error("email/syncNowAction", "action-failed", {
+      userId: session.user.id,
+      message: err instanceof Error ? err.message : String(err),
+    });
     return {
       ok: false,
       code: "ERROR",
