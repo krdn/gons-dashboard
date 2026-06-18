@@ -21,6 +21,7 @@ import {
   HistoryStaleError,
   InvalidGrantError,
   extractMailingListSignals,
+  isSkippableMessageError,
   type MessageDetail,
 } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
@@ -164,7 +165,23 @@ async function fetchAndUpsertThreads(
   const latestPerThread = new Map<string, MessageDetail>();
 
   for (const ref of refs) {
-    const msg = await getMessage(accessToken, ref.id);
+    let msg: MessageDetail;
+    try {
+      msg = await getMessage(accessToken, ref.id);
+    } catch (err) {
+      // 단일 메시지 영구 실패(404 삭제 등)는 그 메시지만 skip하고 계속.
+      // 그래야 historyId가 정상 전진해 poison 메시지로 인한 다중일 stall을 막는다.
+      // 계정 단위 실패(invalid_grant 등)는 전파 — 토큰 만료를 삼키면 안 된다.
+      if (isSkippableMessageError(err)) {
+        logger.warn("gmail/syncInbox", "message-fetch-skipped", {
+          userId,
+          messageId: ref.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+        continue;
+      }
+      throw err;
+    }
     const existing = latestPerThread.get(ref.threadId);
     const existingTs = existing?.internalDate
       ? Number(existing.internalDate)
