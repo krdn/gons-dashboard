@@ -12,6 +12,7 @@
 // v0.2 yearly/route.ts 와의 차이: month 쿼리 파싱·검증 단계 추가.
 import { NextResponse } from "next/server";
 import { auth } from "@/shared/lib/auth";
+import { logger } from "@/shared/lib/log";
 import {
   getOrBuildMonthly,
   MonthlyBuildError,
@@ -79,7 +80,9 @@ export async function GET(
     if (err instanceof MonthlyBuildError) {
       return NextResponse.json({ error: err.message }, { status: 422 });
     }
-    console.error("[saju/monthly] internal error:", err);
+    logger.error("saju/monthly", "internal-error", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

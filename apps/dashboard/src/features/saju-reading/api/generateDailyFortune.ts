@@ -10,6 +10,7 @@ import {
   type Branch,
 } from "@krdn/saju";
 import { sajuDailyFortunes } from "@/shared/lib/db/schema";
+import { logger } from "@/shared/lib/log";
 import type { SajuChartRow, SajuDailyFortuneRow } from "@/entities/saju-chart";
 import { cachedReading } from "../lib/cachedReading";
 import { BudgetExceededError } from "../lib/budget";
@@ -105,9 +106,14 @@ export async function generateDailyFortune(
   } catch (firstError) {
     // 예산 초과는 재시도해도 무의미 — 그대로 위로.
     if (firstError instanceof BudgetExceededError) throw firstError;
-    console.warn(
-      `[saju.daily] first attempt failed for ${input.chartRow.id} ${input.forDate}: ${(firstError as Error).message?.slice(0, 200)}`,
-    );
+    logger.warn("saju/generateDailyFortune", "first-attempt-failed", {
+      chartId: input.chartRow.id,
+      forDate: input.forDate,
+      message:
+        firstError instanceof Error
+          ? firstError.message.slice(0, 200)
+          : String(firstError),
+    });
     const { cached } = await runOnce(true);
     return { row: null, cached };
   }

@@ -12,6 +12,7 @@
 // v0.1 lifetime/route.ts 와의 차이: year 쿼리 파싱·검증 단계만 추가.
 import { NextResponse } from "next/server";
 import { auth } from "@/shared/lib/auth";
+import { logger } from "@/shared/lib/log";
 import {
   getOrBuildYearly,
   YearlyBuildError,
@@ -56,7 +57,9 @@ export async function GET(
     if (err instanceof YearlyBuildError) {
       return NextResponse.json({ error: err.message }, { status: 422 });
     }
-    console.error("[saju/yearly] internal error:", err);
+    logger.error("saju/yearly", "internal-error", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
