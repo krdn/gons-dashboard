@@ -2,7 +2,16 @@
 
 // 발송 2단계 확인 — 받는사람·제목·본문 미리보기 후 최종 발송.
 // 외부로 나가는 비가역 액션이라 명시적 확인 게이트 (spec §4.3).
-import { useId } from "react";
+// ESC 라우팅은 부모(ReplyModal)가 confirmOpen 가드로 처리. 여기선 focus trap만
+// (부모 패널이 inert 로 격리된 동안 포커스를 이 다이얼로그 안에 가둠).
+//
+// ⚠️ createPortal 로 document.body 에 렌더하는 이유: 호출부가 ReplyModal 의
+// inert 패널 DOM 자손이라, portal 없이 그대로 두면 inert 가 이 다이얼로그까지
+// 비활성화해 발송/취소 버튼이 클릭·포커스 불가가 된다(inert 는 DOM 조상 기준).
+// state·핸들러는 ReplyModalBody 에 남고 DOM 노드만 body 로 탈출.
+import { useId, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 interface SendConfirmDialogProps {
   toEmail: string;
@@ -28,7 +37,11 @@ export function SendConfirmDialog({
   onCancel,
 }: SendConfirmDialogProps) {
   const titleId = useId();
-  return (
+  const panelRef = useRef<HTMLDivElement>(null);
+  // 부모 패널이 inert 인 동안 포커스를 이 다이얼로그 안에 가둠 + 닫힐 때 복원.
+  useFocusTrap(panelRef);
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
@@ -37,7 +50,9 @@ export function SendConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-elev)]"
+        ref={panelRef}
+        tabIndex={-1}
+        className="w-full max-w-md rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-elev)] focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <p id={titleId} className="mb-3 text-sm font-semibold text-[var(--color-text)]">
@@ -82,6 +97,7 @@ export function SendConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -3,7 +3,14 @@
 // 모달 내용 — 톤 3개 탭(편집 독립 보존) + 필드 + 저장/발송.
 // 상태: loading → editing → saved | sent | error.
 // refusal 탭은 저장·발송 차단 (CLI 정체성 거절 안전망).
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import {
   generateReplyDraft,
   saveReplyDraft,
@@ -42,9 +49,21 @@ interface ReplyModalBodyProps {
   threadId: string;
   onClose: () => void;
   onSent: () => void;
+  // confirmOpen 은 부모(ReplyModal)가 소유 — ESC 라우팅·focus trap 양보 때문.
+  confirmOpen: boolean;
+  onConfirmOpenChange: (open: boolean) => void;
+  // 부모의 ESC·배경클릭이 호출할 "닫기 시도" 핸들러 등록 — dirty면 게이트.
+  registerRequestClose: (fn: () => void) => void;
 }
 
-export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProps) {
+export function ReplyModalBody({
+  threadId,
+  onClose,
+  onSent,
+  confirmOpen,
+  onConfirmOpenChange,
+  registerRequestClose,
+}: ReplyModalBodyProps) {
   const [status, setStatus] = useState<Status>({ phase: "loading" });
   // 톤별 본문 (탭 독립 편집 보존)
   const [bodies, setBodies] = useState<Record<ReplyTone, string>>({
@@ -68,10 +87,22 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
   const [subject, setSubject] = useState("");
   const [showOriginal, setShowOriginal] = useState(false);
   const [originalBody, setOriginalBody] = useState("");
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const labelId = useId();
+  const tablistId = useId();
   const requestIdRef = useRef(0);
+  // 사용자가 본문/필드를 손댔는지 — 닫기 시 변경사항 소실 confirm 게이트용.
+  // AI 초안은 생성 직후 항상 non-empty 라 "non-empty=dirty"는 틀림. 명시 플래그.
+  const [edited, setEdited] = useState(false);
+
+  const setConfirmOpen = onConfirmOpenChange;
+
+  // 닫기 시도 — dirty면 폐기 confirm 게이트. 취소 버튼·부모(ESC·배경클릭) 공유.
+  function requestClose() {
+    if (edited && !window.confirm("작성 중인 답장이 사라집니다. 닫을까요?")) return;
+    onClose();
+  }
+  // 부모 ref 에 최신 closure(edited 최신값 캡처) 등록 — 렌더 중 ref 갱신은 허용 패턴.
+  registerRequestClose(requestClose);
 
   function runGenerate() {
     const id = ++requestIdRef.current;
@@ -125,6 +156,30 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
     runGenerate();
   }
 
+  // 톤 탭 좌우 화살표 roving — WAI-ARIA tabs 키보드 패턴.
+  function handleToneKeyDown(
+    e: ReactKeyboardEvent<HTMLButtonElement>,
+    current: ReplyTone,
+  ) {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const idx = availableTones.indexOf(current);
+    if (idx === -1) return;
+    const delta = e.key === "ArrowRight" ? 1 : -1;
+    const next =
+      availableTones[(idx + delta + availableTones.length) % availableTones.length];
+    setActiveTone(next);
+    document.getElementById(`${tablistId}-tab-${next}`)?.focus();
+  }
+
+  // 필드 setter 를 감싸 편집 시 dirty 플래그를 세움.
+  function editField(setter: (v: string) => void) {
+    return (v: string) => {
+      setEdited(true);
+      setter(v);
+    };
+  }
+
   function metaWithFields(meta: Meta) {
     // To/제목/CC/BCC 는 사용자 편집값 반영. 빈 문자열은 undefined 로 → 빈 헤더 생략.
     return { ...meta, toEmail, subject, cc: cc || undefined, bcc: bcc || undefined };
@@ -135,7 +190,10 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
     startTransition(() =>
       saveReplyDraft(threadId, body, metaWithFields(meta)).then(
         (result) => {
-          if (result.kind === "ok") setStatus({ phase: "saved" });
+          if (result.kind === "ok") {
+            setEdited(false);
+            setStatus({ phase: "saved" });
+          }
           else if (result.kind === "scope-required")
             setStatus({ phase: "error", message: "Gmail 쓰기 권한이 없습니다. 재로그인 해주세요." });
           else setStatus({ phase: "error", message: "초안 저장에 실패했습니다." });
@@ -152,6 +210,7 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
         (result) => {
           setConfirmOpen(false);
           if (result.kind === "ok") {
+            setEdited(false);
             setStatus({ phase: "sent" });
             onSent();
           } else if (result.kind === "scope-required")
@@ -205,12 +264,12 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
 
   return (
     <div className="text-sm">
-      {/* 필드 */}
+      {/* 필드 — 편집 시 dirty 플래그 세움(닫기 confirm 게이트용). */}
       <div className="mb-3 space-y-2">
-        <Field label="받는사람" value={toEmail} onChange={setToEmail} />
-        <Field label="참조 (CC)" value={cc} onChange={setCc} placeholder="선택" />
-        <Field label="숨은참조 (BCC)" value={bcc} onChange={setBcc} placeholder="선택" />
-        <Field label="제목" value={subject} onChange={setSubject} />
+        <Field label="받는사람" value={toEmail} onChange={editField(setToEmail)} />
+        <Field label="참조 (CC)" value={cc} onChange={editField(setCc)} placeholder="선택" />
+        <Field label="숨은참조 (BCC)" value={bcc} onChange={editField(setBcc)} placeholder="선택" />
+        <Field label="제목" value={subject} onChange={editField(setSubject)} />
       </div>
 
       {/* 원본 본문 토글 */}
@@ -251,15 +310,19 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
         </div>
       </div>
 
-      {/* 톤 탭 */}
-      <div role="tablist" className="mb-2 flex gap-1">
+      {/* 톤 탭 — WAI-ARIA tabs 패턴(roving tabindex + 화살표 키). */}
+      <div role="tablist" aria-label="답장 톤" className="mb-2 flex gap-1">
         {availableTones.map((t) => (
           <button
             key={t}
+            id={`${tablistId}-tab-${t}`}
             role="tab"
             aria-selected={activeTone === t}
+            aria-controls={`${tablistId}-panel`}
+            tabIndex={activeTone === t ? 0 : -1}
             type="button"
             onClick={() => setActiveTone(t)}
+            onKeyDown={(e) => handleToneKeyDown(e, t)}
             className={[
               "rounded-md px-3 py-1 text-xs font-medium transition-colors",
               activeTone === t
@@ -273,12 +336,16 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
         ))}
       </div>
 
-      <p id={labelId} className="sr-only">답장 본문 ({TONE_LABEL[activeTone]})</p>
       <textarea
+        id={`${tablistId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${tablistId}-tab-${activeTone}`}
         value={bodies[activeTone]}
-        onChange={(e) => setBodies((b) => ({ ...b, [activeTone]: e.target.value }))}
+        onChange={(e) => {
+          setEdited(true);
+          setBodies((b) => ({ ...b, [activeTone]: e.target.value }));
+        }}
         rows={8}
-        aria-labelledby={labelId}
         className="w-full resize-y rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
       />
 
@@ -316,7 +383,7 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
         </button>
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           disabled={isPending}
           className="rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] disabled:opacity-40"
         >
