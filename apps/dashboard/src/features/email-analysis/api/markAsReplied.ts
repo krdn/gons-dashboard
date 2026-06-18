@@ -14,46 +14,68 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { replyNeeded } from "@/shared/lib/db/schema";
+import { logger } from "@/shared/lib/log";
 import { ROUTE_DASHBOARD } from "@/shared/config/routes";
+import type { ActionResult } from "./markAsRead";
 
-export async function markAsReplied(threadId: string): Promise<void> {
+export async function markAsReplied(threadId: string): Promise<ActionResult> {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const userId = session.user.id;
 
-  await db
-    .update(replyNeeded)
-    .set({
-      repliedAt: new Date(),
-      userAction: "replied",
-      userActionAt: new Date(),
-    })
-    .where(
-      and(
-        eq(replyNeeded.threadId, threadId),
-        eq(replyNeeded.userId, session.user.id),
-      ),
-    );
+  try {
+    await db
+      .update(replyNeeded)
+      .set({
+        repliedAt: new Date(),
+        userAction: "replied",
+        userActionAt: new Date(),
+      })
+      .where(
+        and(eq(replyNeeded.threadId, threadId), eq(replyNeeded.userId, userId)),
+      );
+  } catch (err) {
+    logger.error("markAsReplied", "db-update-failed", {
+      sessionUserId: userId,
+      threadId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return { ok: false, reason: "db-error" };
+  }
 
   revalidatePath(ROUTE_DASHBOARD);
+  return { ok: true };
 }
 
-export async function unmarkReplied(threadId: string): Promise<void> {
+export async function unmarkReplied(threadId: string): Promise<ActionResult> {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) {
+    return { ok: false, reason: "unauthorized" };
+  }
+  const userId = session.user.id;
 
-  await db
-    .update(replyNeeded)
-    .set({
-      repliedAt: null,
-      userAction: "none",
-      userActionAt: new Date(),
-    })
-    .where(
-      and(
-        eq(replyNeeded.threadId, threadId),
-        eq(replyNeeded.userId, session.user.id),
-      ),
-    );
+  try {
+    await db
+      .update(replyNeeded)
+      .set({
+        repliedAt: null,
+        userAction: "none",
+        userActionAt: new Date(),
+      })
+      .where(
+        and(eq(replyNeeded.threadId, threadId), eq(replyNeeded.userId, userId)),
+      );
+  } catch (err) {
+    logger.error("unmarkReplied", "db-update-failed", {
+      sessionUserId: userId,
+      threadId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return { ok: false, reason: "db-error" };
+  }
 
   revalidatePath(ROUTE_DASHBOARD);
+  return { ok: true };
 }
