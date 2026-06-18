@@ -104,6 +104,14 @@ export async function generateReplyDraft(
   // 4. 답장 헤더 메타 구성.
   const headers = inbound?.payload?.headers;
   const messageId = findHeader(headers, "Message-ID") ?? "";
+  // Message-ID 가 비면 In-Reply-To/References 헤더가 생략돼(drafts.ts) 답장이
+  // 원 스레드에 안 붙고 새 스레드로 분리될 수 있다. 빈도 추적용 경고.
+  if (!messageId) {
+    logger.warn("email/generateReplyDraft", "missing-message-id-threading-degraded", {
+      threadId,
+      hadInbound: inbound !== null,
+    });
+  }
   const existingRefs = findHeader(headers, "References") ?? "";
   const replyTo = findHeader(headers, "Reply-To");
   const fromHeader = findHeader(headers, "From");

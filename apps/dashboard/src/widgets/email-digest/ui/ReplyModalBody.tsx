@@ -93,6 +93,8 @@ export function ReplyModalBody({
   // 사용자가 본문/필드를 손댔는지 — 닫기 시 변경사항 소실 confirm 게이트용.
   // AI 초안은 생성 직후 항상 non-empty 라 "non-empty=dirty"는 틀림. 명시 플래그.
   const [edited, setEdited] = useState(false);
+  // 수신자 형식 오류 — editing 화면 유지하며 인라인 표시(오타라 본문 보존).
+  const [fieldError, setFieldError] = useState<"to" | "cc" | "bcc" | null>(null);
 
   const setConfirmOpen = onConfirmOpenChange;
 
@@ -126,6 +128,7 @@ export function ReplyModalBody({
           setOriginalBody(result.meta.originalBody);
           // 새 AI 초안으로 본문 교체 — 사용자 편집 아님. dirty 리셋(닫기 거짓 경고 방지).
           setEdited(false);
+          setFieldError(null); // 재생성 시 toEmail 이 valid 값으로 복원되므로 에러도 클리어.
           setStatus({ phase: "editing", meta: result.meta });
         } else if (result.kind === "scope-required") {
           setStatus({ phase: "error", message: "Gmail 쓰기 권한이 없습니다. 재로그인 해주세요." });
@@ -174,13 +177,20 @@ export function ReplyModalBody({
     document.getElementById(`${tablistId}-tab-${next}`)?.focus();
   }
 
-  // 필드 setter 를 감싸 편집 시 dirty 플래그를 세움.
+  // 필드 setter 를 감싸 편집 시 dirty 플래그 + 수신자 에러 클리어.
   function editField(setter: (v: string) => void) {
     return (v: string) => {
       setEdited(true);
+      setFieldError(null);
       setter(v);
     };
   }
+
+  const FIELD_LABEL: Record<"to" | "cc" | "bcc", string> = {
+    to: "받는사람",
+    cc: "참조 (CC)",
+    bcc: "숨은참조 (BCC)",
+  };
 
   function metaWithFields(meta: Meta) {
     // To/제목/CC/BCC 는 사용자 편집값 반영. 빈 문자열은 undefined 로 → 빈 헤더 생략.
@@ -195,8 +205,10 @@ export function ReplyModalBody({
           if (result.kind === "ok") {
             setEdited(false);
             setStatus({ phase: "saved" });
-          }
-          else if (result.kind === "scope-required")
+          } else if (result.kind === "invalid-recipient") {
+            // 오타라 editing 유지 + 인라인 표시(본문 보존).
+            setFieldError(result.field);
+          } else if (result.kind === "scope-required")
             setStatus({ phase: "error", message: "Gmail 쓰기 권한이 없습니다. 재로그인 해주세요." });
           else setStatus({ phase: "error", message: "초안 저장에 실패했습니다." });
         },
@@ -215,6 +227,9 @@ export function ReplyModalBody({
             setEdited(false);
             setStatus({ phase: "sent" });
             onSent();
+          } else if (result.kind === "invalid-recipient") {
+            // confirm 닫고 editing 유지 + 인라인 표시(오타 수정 유도, 본문 보존).
+            setFieldError(result.field);
           } else if (result.kind === "scope-required")
             setStatus({ phase: "error", message: "Gmail 쓰기 권한이 없습니다. 재로그인 해주세요." });
           else setStatus({ phase: "error", message: "발송에 실패했습니다. 다시 시도하세요." });
@@ -273,6 +288,12 @@ export function ReplyModalBody({
         <Field label="숨은참조 (BCC)" value={bcc} onChange={editField(setBcc)} placeholder="선택" />
         <Field label="제목" value={subject} onChange={editField(setSubject)} />
       </div>
+
+      {fieldError && (
+        <p role="alert" className="mb-2 text-xs text-[var(--color-severity-high)]">
+          {FIELD_LABEL[fieldError]} 이메일 형식을 확인하세요.
+        </p>
+      )}
 
       {/* 원본 본문 토글 */}
       <button
