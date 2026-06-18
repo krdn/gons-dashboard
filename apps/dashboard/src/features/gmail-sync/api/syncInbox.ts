@@ -22,7 +22,6 @@ import {
   InvalidGrantError,
   extractMailingListSignals,
   type MessageDetail,
-  type MailingListSignals,
 } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
 import { getEmailSettings } from "@/entities/email-settings";
@@ -78,10 +77,8 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
   if (!lastHistoryId) {
     const rescan = await fullRescan(accessToken, userId);
     await persistHistoryId(userId, rescan.newHistoryId);
-    // fullRescan은 시그널 Map을 반환하지 않으므로 빈 Map 전달.
-    // 첫 sync 메일들은 다음 cron 사이클에서 important 분류가 자연 채워짐
-    // (last_received_at > classified_at 트리거).
-    const counts = await classifyAffectedThreads(userId, ownerEmail, new Map());
+    // 메일링 신호는 fullRescan이 행에 영속화하고 classifyThreadsLoop가 직접 읽는다.
+    const counts = await classifyAffectedThreads(userId, ownerEmail);
     return {
       kind: "ok-first-sync",
       newHistoryId: rescan.newHistoryId,
@@ -103,7 +100,7 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
       // history_id 폐기 → full rescan fallback.
       const rescan = await fullRescan(accessToken, userId);
       await persistHistoryId(userId, rescan.newHistoryId);
-      const counts = await classifyAffectedThreads(userId, ownerEmail, new Map());
+      const counts = await classifyAffectedThreads(userId, ownerEmail);
       return {
         kind: "ok-full-rescan",
         newHistoryId: rescan.newHistoryId,
@@ -127,8 +124,8 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
     };
   }
 
-  // 6. 메시지 fetch + 스레드 단위 그룹핑.
-  const { count: affected, signalsByGmailThread } = await fetchAndUpsertThreads(
+  // 6. 메시지 fetch + 스레드 단위 그룹핑 (메일링 신호는 행에 영속화됨).
+  const { count: affected } = await fetchAndUpsertThreads(
     accessToken,
     userId,
     newRefs,
@@ -136,11 +133,8 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
   await persistHistoryId(userId, newHistoryId);
 
   // 7. 영향받은 스레드 분류 (reply_needed + important).
-  const counts = await classifyAffectedThreads(
-    userId,
-    ownerEmail,
-    signalsByGmailThread,
-  );
+  // 메일링 신호는 classifyThreadsLoop가 email_threads 행에서 직접 읽는다.
+  const counts = await classifyAffectedThreads(userId, ownerEmail);
 
   return {
     kind: "ok-incremental",
@@ -165,10 +159,7 @@ async function fetchAndUpsertThreads(
   accessToken: string,
   userId: string,
   refs: { id: string; threadId: string }[],
-): Promise<{
-  count: number;
-  signalsByGmailThread: Map<string, MailingListSignals>;
-}> {
+): Promise<{ count: number }> {
   // 같은 스레드의 가장 최근 메시지 1개만 보관.
   const latestPerThread = new Map<string, MessageDetail>();
 
@@ -184,13 +175,10 @@ async function fetchAndUpsertThreads(
     }
   }
 
-  const signalsByGmailThread = new Map<string, MailingListSignals>();
   for (const [gmailThreadId, msg] of latestPerThread) {
-    // important 분류용 메일링 시그널 채집.
-    signalsByGmailThread.set(
-      gmailThreadId,
-      extractMailingListSignals(msg.payload?.headers),
-    );
+    // important 분류용 메일링 시그널 채집 → 같은 행에 영속화.
+    // sync/reclassify 두 경로가 이 행을 읽어 prefilter wiring 결함을 막는다.
+    const signals = extractMailingListSignals(msg.payload?.headers);
 
     const from = findHeader(msg.payload?.headers, "From");
     const subject = findHeader(msg.payload?.headers, "Subject");
@@ -210,6 +198,9 @@ async function fetchAndUpsertThreads(
         lastSenderName: name ?? null,
         lastReceivedAt: receivedAt,
         snippet: msg.snippet,
+        hasListUnsubscribe: signals.hasListUnsubscribe,
+        hasListId: signals.hasListId,
+        precedence: signals.precedence,
       })
       .onConflictDoUpdate({
         target: [emailThreads.userId, emailThreads.gmailThreadId],
@@ -219,18 +210,21 @@ async function fetchAndUpsertThreads(
           lastSenderName: name ?? null,
           lastReceivedAt: receivedAt,
           snippet: msg.snippet,
+          // 새 메시지 도착 시 신호도 최신 헤더로 갱신 (값/conflict 양쪽 동기 필수).
+          hasListUnsubscribe: signals.hasListUnsubscribe,
+          hasListId: signals.hasListId,
+          precedence: signals.precedence,
           updatedAt: sql`NOW()`,
         },
       });
   }
 
-  return { count: latestPerThread.size, signalsByGmailThread };
+  return { count: latestPerThread.size };
 }
 
 async function classifyAffectedThreads(
   userId: string,
   ownerEmail: string,
-  signalsMap: Map<string, MailingListSignals> = new Map(),
 ): Promise<{ classified: number; skipped: number }> {
   const settings = await getEmailSettings(userId);
   // 24h 윈도우. 본인 1명·일~수백통 규모에서 충분.
@@ -239,7 +233,6 @@ async function classifyAffectedThreads(
     userId,
     ownerEmail,
     since,
-    signalsMap,
     llmReplyEnabled: settings.llmReplyEnabled,
     llmImportantEnabled: settings.llmImportantEnabled,
   });

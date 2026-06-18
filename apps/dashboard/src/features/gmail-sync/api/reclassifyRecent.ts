@@ -21,6 +21,12 @@ import {
 } from "@/shared/lib/db/schema";
 import { logger } from "@/shared/lib/log";
 import { getEmailSettings } from "@/entities/email-settings";
+import {
+  getValidAccessToken,
+  getThread,
+  extractMailingListSignals,
+  isSignalRowUnpopulated,
+} from "@/shared/api/gmail";
 import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
 
 export interface ReclassifyRecentParams {
@@ -35,6 +41,7 @@ export interface ReclassifyRecentResult {
   windowFrom?: string;
   threadsInWindow?: number;
   forcedDeleted?: number;
+  signalsBackfilled?: number;
   classified?: number;
   skipped?: number;
   importantOutcomes?: Record<string, number>;
@@ -58,7 +65,13 @@ export async function reclassifyRecent(
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
   const windowThreads = await db
-    .select({ id: emailThreads.id })
+    .select({
+      id: emailThreads.id,
+      gmailThreadId: emailThreads.gmailThreadId,
+      hasListUnsubscribe: emailThreads.hasListUnsubscribe,
+      hasListId: emailThreads.hasListId,
+      precedence: emailThreads.precedence,
+    })
     .from(emailThreads)
     .where(
       and(
@@ -67,6 +80,11 @@ export async function reclassifyRecent(
       ),
     )
     .limit(MAX_THREADS);
+
+  // 메일링 신호가 미채집(NULL)인 행을 Gmail에서 lazy 재채집해 영속화.
+  // 마이그레이션 이전에 sync된 행은 신호가 없어 메일링리스트 컷이 우회되므로,
+  // reclassify가 대상 행의 신호를 한 번 채워야 prefilter가 그 행에도 적용된다.
+  const backfilled = await backfillMissingSignals(userId, windowThreads);
 
   let forcedDeleted = 0;
   if (force && windowThreads.length > 0) {
@@ -101,6 +119,7 @@ export async function reclassifyRecent(
     hoursBack,
     force,
     forcedDeleted,
+    signalsBackfilled: backfilled,
     threadsInWindow: windowThreads.length,
     importantOutcomes: result.importantOutcomes,
   });
@@ -111,9 +130,71 @@ export async function reclassifyRecent(
     windowFrom: since.toISOString(),
     threadsInWindow: windowThreads.length,
     forcedDeleted,
+    signalsBackfilled: backfilled,
     classified: result.classified,
     skipped: result.skipped,
     importantOutcomes: result.importantOutcomes,
     importantConsidered: result.importantConsidered,
   };
+}
+
+/**
+ * 신호 컬럼이 미채집(전부 NULL)인 행을 Gmail에서 재채집해 영속화.
+ * getThread(format=full)는 metadata 화이트리스트 제약 없이 모든 헤더를 받으므로
+ * List-Unsubscribe/List-ID/Precedence를 확실히 확보한다.
+ * 개별 thread fetch 실패는 skip(다음 reclassify·sync가 재시도) — 전체를 죽이지 않는다.
+ *
+ * @returns 실제로 신호를 채운 행 수
+ */
+async function backfillMissingSignals(
+  userId: string,
+  rows: {
+    id: string;
+    gmailThreadId: string;
+    hasListUnsubscribe: boolean | null;
+    hasListId: boolean | null;
+    precedence: string | null;
+  }[],
+): Promise<number> {
+  const stale = rows.filter((r) =>
+    isSignalRowUnpopulated({
+      hasListUnsubscribe: r.hasListUnsubscribe,
+      hasListId: r.hasListId,
+      precedence: r.precedence,
+      fromHeader: null,
+    }),
+  );
+  if (stale.length === 0) return 0;
+
+  let accessToken: string;
+  try {
+    accessToken = (await getValidAccessToken(userId)).accessToken;
+  } catch {
+    // 토큰 확보 실패 시 backfill skip — 재분류 자체는 (빈 신호로) 진행.
+    return 0;
+  }
+
+  let filled = 0;
+  for (const row of stale) {
+    try {
+      const thread = await getThread(accessToken, row.gmailThreadId);
+      const last = thread.messages.at(-1);
+      const signals = extractMailingListSignals(last?.payload?.headers);
+      await db
+        .update(emailThreads)
+        .set({
+          hasListUnsubscribe: signals.hasListUnsubscribe,
+          hasListId: signals.hasListId,
+          precedence: signals.precedence,
+        })
+        .where(eq(emailThreads.id, row.id));
+      filled += 1;
+    } catch (err) {
+      logger.warn("reclassifyRecent", "signal-backfill-failed", {
+        threadId: row.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return filled;
 }
