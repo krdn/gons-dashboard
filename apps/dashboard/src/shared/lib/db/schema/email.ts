@@ -32,6 +32,12 @@ export const emailThreads = pgTable(
     lastSenderName: text("last_sender_name"),
     lastReceivedAt: timestamp("last_received_at", { mode: "date" }),
     snippet: text("snippet"),
+    // 메일링리스트 1차 컷(unsubscribe-filter) 신호 — sync 시점에 헤더에서 채집해 영속화.
+    // sync/reclassify 두 경로가 동일 출처(이 행)를 읽어 prefilter wiring 결함을 막는다.
+    // NULL = 신호 미채집(마이그레이션 이전 행 또는 헤더 누락) → reclassify가 lazy 재채집.
+    hasListUnsubscribe: boolean("has_list_unsubscribe"),
+    hasListId: boolean("has_list_id"),
+    precedence: text("precedence"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },

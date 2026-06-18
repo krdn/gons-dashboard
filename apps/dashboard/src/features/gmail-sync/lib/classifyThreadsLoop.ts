@@ -17,7 +17,7 @@ import {
   classifyImportantThread,
   type ThreadInput,
 } from "@/entities/email";
-import type { MailingListSignals } from "@/shared/api/gmail";
+import { rowToSignals } from "@/shared/api/gmail";
 
 export interface ClassifyLoopResult {
   classified: number;
@@ -30,7 +30,6 @@ export interface ClassifyLoopParams {
   userId: string;
   ownerEmail: string;
   since: Date;
-  signalsMap?: Map<string, MailingListSignals>;
   // SQL-level 캡 — 안전 한도. reclassifyRecent에서만 의미.
   maxThreads?: number;
   /** LLM 분류 on/off(설정 반영). 미지정 시 둘 다 true. */
@@ -51,7 +50,6 @@ export async function classifyThreadsLoop(
     userId,
     ownerEmail,
     since,
-    signalsMap,
     maxThreads,
     llmReplyEnabled = true,
     llmImportantEnabled = true,
@@ -66,6 +64,10 @@ export async function classifyThreadsLoop(
       lastSenderName: emailThreads.lastSenderName,
       snippet: emailThreads.snippet,
       lastReceivedAt: emailThreads.lastReceivedAt,
+      // 영속화된 메일링리스트 신호 — sync/reclassify 동일 출처.
+      hasListUnsubscribe: emailThreads.hasListUnsubscribe,
+      hasListId: emailThreads.hasListId,
+      precedence: emailThreads.precedence,
     })
     .from(emailThreads)
     .where(
@@ -105,12 +107,14 @@ export async function classifyThreadsLoop(
       useLlm: llmReplyEnabled,
     });
 
-    const signals = signalsMap?.get(t.gmailThreadId) ?? {
-      hasListUnsubscribe: false,
-      hasListId: false,
-      precedence: null,
-      fromHeader: null,
-    };
+    // 행에 영속화된 신호를 직접 사용 — sync/reclassify 양쪽 동일 출처.
+    // (reclassifyRecent가 사전에 NULL 신호 행을 lazy 재채집해 채워둠.)
+    const signals = rowToSignals({
+      hasListUnsubscribe: t.hasListUnsubscribe,
+      hasListId: t.hasListId,
+      precedence: t.precedence,
+      fromHeader: (t.lastSenderEmail ?? "").toLowerCase() || null,
+    });
     try {
       const impOutcome = await classifyImportantThread({
         userId,

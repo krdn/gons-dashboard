@@ -101,6 +101,12 @@ export async function getMessage(
   params.append("metadataHeaders", "Subject");
   params.append("metadataHeaders", "Date");
   params.append("metadataHeaders", "Reply-To");
+  // 메일링리스트 1차 컷(unsubscribe-filter)이 의존하는 신호 헤더.
+  // 빠지면 extractMailingListSignals가 항상 false → 선필터 3/4 규칙이 죽고
+  // 표준 뉴스레터가 전부 LLM 분류기로 넘어간다.
+  params.append("metadataHeaders", "List-Unsubscribe");
+  params.append("metadataHeaders", "List-ID");
+  params.append("metadataHeaders", "Precedence");
 
   const response = await fetchWithRetry(
     `${API}/messages/${encodeURIComponent(messageId)}?${params.toString()}`,

@@ -34,3 +34,34 @@ export function extractMailingListSignals(
     fromHeader: from,
   };
 }
+
+/** email_threads 행에 영속화된 신호 컬럼. NULL = 미채집(마이그레이션 이전/헤더 누락). */
+export interface PersistedSignalRow {
+  hasListUnsubscribe: boolean | null;
+  hasListId: boolean | null;
+  precedence: string | null;
+  fromHeader: string | null;
+}
+
+/** 신호 컬럼이 한 번도 채집되지 않은(전부 NULL) 행인지. reclassify가 lazy 재채집할지 판정. */
+export function isSignalRowUnpopulated(row: PersistedSignalRow): boolean {
+  return (
+    row.hasListUnsubscribe === null &&
+    row.hasListId === null &&
+    row.precedence === null
+  );
+}
+
+/**
+ * DB 영속화 신호 행 → MailingListSignals.
+ * 순수 함수(DB·fetch 무관) — 단위 테스트 가능한 seam.
+ * NULL boolean은 false로 좁힘(미채집 = 신호 없음으로 안전 측 처리).
+ */
+export function rowToSignals(row: PersistedSignalRow): MailingListSignals {
+  return {
+    hasListUnsubscribe: row.hasListUnsubscribe === true,
+    hasListId: row.hasListId === true,
+    precedence: row.precedence,
+    fromHeader: row.fromHeader,
+  };
+}

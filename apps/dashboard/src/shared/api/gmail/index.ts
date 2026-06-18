@@ -21,8 +21,12 @@ export {
   GmailScopeError,
   isRetryable,
 } from "./errors";
-export { extractMailingListSignals } from "./headers";
-export type { MailingListSignals } from "./headers";
+export {
+  extractMailingListSignals,
+  rowToSignals,
+  isSignalRowUnpopulated,
+} from "./headers";
+export type { MailingListSignals, PersistedSignalRow } from "./headers";
 export { modifyThread } from "./modify";
 export type { ModifyOptions, ModifyResponse } from "./modify";
 export { getThread } from "./threads";

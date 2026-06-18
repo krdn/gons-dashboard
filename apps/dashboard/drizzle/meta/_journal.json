@@ -232,6 +232,13 @@
       "when": 1781597026396,
       "tag": "0032_certain_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781767731156,
+      "tag": "0033_majestic_abomination",
+      "breakpoints": true
     }
   ]
 }

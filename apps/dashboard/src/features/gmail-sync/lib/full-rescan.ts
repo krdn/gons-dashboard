@@ -14,6 +14,8 @@ import {
   getMessage,
   findHeader,
   getCurrentHistoryId,
+  extractMailingListSignals,
+  type MailingListSignals,
 } from "@/shared/api/gmail";
 
 export interface FullRescanResult {
@@ -49,6 +51,7 @@ export async function fullRescan(
       subject?: string;
       receivedAt?: Date;
       snippet: string;
+      signals: MailingListSignals;
     }
   >();
 
@@ -77,6 +80,8 @@ export async function fullRescan(
         subject,
         receivedAt,
         snippet: msg.snippet,
+        // 메일링 신호를 행에 영속화 (sync 경로와 동일).
+        signals: extractMailingListSignals(msg.payload?.headers),
       });
     }
   }
@@ -94,6 +99,9 @@ export async function fullRescan(
         lastSenderName: name ?? null,
         lastReceivedAt: info.receivedAt ?? null,
         snippet: info.snippet,
+        hasListUnsubscribe: info.signals.hasListUnsubscribe,
+        hasListId: info.signals.hasListId,
+        precedence: info.signals.precedence,
       })
       .onConflictDoUpdate({
         target: [emailThreads.userId, emailThreads.gmailThreadId],
@@ -103,6 +111,9 @@ export async function fullRescan(
           lastSenderName: name ?? null,
           lastReceivedAt: info.receivedAt ?? null,
           snippet: info.snippet,
+          hasListUnsubscribe: info.signals.hasListUnsubscribe,
+          hasListId: info.signals.hasListId,
+          precedence: info.signals.precedence,
           updatedAt: sql`NOW()`,
         },
       });
