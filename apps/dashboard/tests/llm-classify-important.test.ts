@@ -4,7 +4,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@krdn/llm-gateway/gateway", () => ({
   analyzeStructured: vi.fn(),
-  normalizeUsage: vi.fn(),
+  normalizeUsage: (u?: Record<string, unknown> | null) => ({
+    inputTokens: Number((u && (u.inputTokens ?? u.promptTokens)) ?? 0),
+    outputTokens: Number((u && (u.outputTokens ?? u.completionTokens)) ?? 0),
+    totalTokens: 0,
+  }),
 }));
 
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";

@@ -2,9 +2,8 @@
 // 광고/공지/답장 불필요 메일이면 짧은 정중 거절 또는 빈 초안을 생성한다.
 import "server-only";
 import { z } from "zod";
-import { analyzeStructured, normalizeUsage } from "@krdn/llm-gateway/gateway";
-import { gatewayDefaults } from "./anthropic";
-import { logger } from "../log";
+import { analyzeStructured } from "@krdn/llm-gateway/gateway";
+import { gatewayDefaults, logLlmSpend } from "./anthropic";
 
 const MAX_BODY_BYTES = 5 * 1024;
 
@@ -123,15 +122,8 @@ export async function draftReply(
       maxOutputTokens: 1000,
     });
 
-    // 비용 관측 — 호출당 토큰 1줄. draft는 가변 모델(gemini/opus/codex)이라
-    // model 필드로 구분; 일 합산·krw 환산은 jq로 (인라인 pricing은 YAGNI).
-    const { inputTokens, outputTokens } = normalizeUsage(usage);
-    logger.info("email-llm", "spend", {
-      scope: "reply-draft",
-      model: input.modelId,
-      inputTokens,
-      outputTokens,
-    });
+    // draft는 가변 모델(gemini/opus/codex)이라 model 필드로 구분.
+    logLlmSpend("reply-draft", input.modelId, usage);
 
     return { kind: "ok", body: object.body };
   } catch (error) {
