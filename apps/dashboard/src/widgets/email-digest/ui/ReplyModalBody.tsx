@@ -329,6 +329,8 @@ export function ReplyModalBody({ threadId, onClose, onSent }: ReplyModalBodyProp
           toEmail={toEmail}
           subject={subject}
           body={bodies[activeTone]}
+          cc={cc}
+          bcc={bcc}
           isSending={isPending}
           onConfirm={() => handleSend(meta)}
           onCancel={() => setConfirmOpen(false)}
