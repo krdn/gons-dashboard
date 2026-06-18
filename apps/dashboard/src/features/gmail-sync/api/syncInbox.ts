@@ -28,6 +28,7 @@ import { logger } from "@/shared/lib/log";
 import { getEmailSettings } from "@/entities/email-settings";
 import { fullRescan } from "../lib/full-rescan";
 import { classifyThreadsLoop } from "../lib/classifyThreadsLoop";
+import { classifyLookbackMs, type SyncContext } from "../lib/classify-window";
 
 export interface SyncResult {
   kind:
@@ -79,7 +80,8 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
     const rescan = await fullRescan(accessToken, userId);
     await persistHistoryId(userId, rescan.newHistoryId);
     // 메일링 신호는 fullRescan이 행에 영속화하고 classifyThreadsLoop가 직접 읽는다.
-    const counts = await classifyAffectedThreads(userId, ownerEmail);
+    // rescan이 7일치를 적재하므로 분류도 7일 — 24h만 보면 24h~7d 누락(감사 #5).
+    const counts = await classifyAffectedThreads(userId, ownerEmail, "first-sync");
     return {
       kind: "ok-first-sync",
       newHistoryId: rescan.newHistoryId,
@@ -101,7 +103,12 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
       // history_id 폐기 → full rescan fallback.
       const rescan = await fullRescan(accessToken, userId);
       await persistHistoryId(userId, rescan.newHistoryId);
-      const counts = await classifyAffectedThreads(userId, ownerEmail);
+      // stale fallback도 7일치를 재적재 — 분류 윈도우 동일하게 7일(감사 #5).
+      const counts = await classifyAffectedThreads(
+        userId,
+        ownerEmail,
+        "full-rescan",
+      );
       return {
         kind: "ok-full-rescan",
         newHistoryId: rescan.newHistoryId,
@@ -135,7 +142,8 @@ export async function syncInbox(userId: string): Promise<SyncResult> {
 
   // 7. 영향받은 스레드 분류 (reply_needed + important).
   // 메일링 신호는 classifyThreadsLoop가 email_threads 행에서 직접 읽는다.
-  const counts = await classifyAffectedThreads(userId, ownerEmail);
+  // incremental은 매 cron 도는 핫패스라 24h 윈도우로 가둔다(감사 #5: rescan만 7일).
+  const counts = await classifyAffectedThreads(userId, ownerEmail, "incremental");
 
   return {
     kind: "ok-incremental",
@@ -242,10 +250,12 @@ async function fetchAndUpsertThreads(
 async function classifyAffectedThreads(
   userId: string,
   ownerEmail: string,
+  context: SyncContext,
 ): Promise<{ classified: number; skipped: number }> {
   const settings = await getEmailSettings(userId);
-  // 24h 윈도우. 본인 1명·일~수백통 규모에서 충분.
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // rescan 경로는 적재 윈도우(7일)를, incremental은 핫패스라 24h를 분류한다.
+  // 분류는 저장형 INSERT라 윈도우 밖 스레드는 row가 영영 안 생긴다(감사 #5).
+  const since = new Date(Date.now() - classifyLookbackMs(context));
   const result = await classifyThreadsLoop({
     userId,
     ownerEmail,

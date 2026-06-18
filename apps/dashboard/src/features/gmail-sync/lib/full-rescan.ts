@@ -19,6 +19,7 @@ import {
   type MailingListSignals,
 } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
+import { RESCAN_LOOKBACK_DAYS } from "./classify-window";
 
 export interface FullRescanResult {
   newHistoryId: string;
@@ -40,8 +41,12 @@ export async function fullRescan(
   accessToken: string,
   userId: string,
 ): Promise<FullRescanResult> {
-  // 1. 최근 7일 메시지 ref 모두 — sent 제외 (내가 보낸 건 분류 대상 아님).
-  const refs = await listMessages(accessToken, "newer_than:7d -in:sent");
+  // 1. 최근 N일 메시지 ref 모두 — sent 제외 (내가 보낸 건 분류 대상 아님).
+  // 적재 윈도우와 분류 윈도우는 RESCAN_LOOKBACK_DAYS 단일 출처에서 파생(감사 #5 drift 방지).
+  const refs = await listMessages(
+    accessToken,
+    `newer_than:${RESCAN_LOOKBACK_DAYS}d -in:sent`,
+  );
 
   // 2. 각 메시지의 헤더 + snippet fetch.
   // 스레드 단위로 그룹핑하여 마지막 메시지만 DB에 반영.
