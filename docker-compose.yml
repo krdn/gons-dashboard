@@ -96,6 +96,10 @@ services:
       # optional — 키 없거나 STOCK_FUNDAMENTALS_SOURCES=off 면 어댑터 silent skip
       DART_OPENAPI_AUTH_KEY: ${DART_OPENAPI_AUTH_KEY:-}
       STOCK_FUNDAMENTALS_SOURCES: ${STOCK_FUNDAMENTALS_SOURCES:-yahoo+dart}
+      # Saju LLM 일일 예산 가드 (PR #148) — tri narrative 4종 + cachedReading 공용 풀.
+      # .env 미설정 시에도 20000 보장(belt-and-suspenders) — 옛 기본값 1000 은
+      # 실측(일일 peak ~5000원) 대비 비현실적이라 정상 사용/cron 을 조기 트립시킴.
+      SAJU_LLM_DAILY_BUDGET_KRW: ${SAJU_LLM_DAILY_BUDGET_KRW:-20000}
     ports:
       - "3020:3020"
     volumes:
