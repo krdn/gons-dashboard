@@ -11,6 +11,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
+import { logger } from "@/shared/lib/log";
 import { portfolioHoldings } from "@/shared/lib/db/schema";
 import { startRun, updateRun } from "@/entities/stock-analysis/server";
 import type { AssetClass } from "@/shared/lib/stock/types";
@@ -138,7 +139,7 @@ async function runAnalysis(
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[triggerAnalysis] runId=${runId} failed:`, msg);
+    logger.error("stock/trigger", "run-failed", { runId, message: msg });
     await updateRun(runId, { status: "failed", errorMessage: msg }).catch(
       () => {
         // updateRun 자체가 실패한 경우 (DB 다운 등) — 더 할 수 있는 것 없음.

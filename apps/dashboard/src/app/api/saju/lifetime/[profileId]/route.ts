@@ -8,6 +8,7 @@
 //   * 그 외                  → 500 + console.error (generic INTERNAL_ERROR)
 import { NextResponse } from "next/server";
 import { auth } from "@/shared/lib/auth";
+import { logger } from "@/shared/lib/log";
 import {
   getOrBuildLifetime,
   LifetimeBuildError,
@@ -34,7 +35,9 @@ export async function GET(
     if (err instanceof LifetimeBuildError) {
       return NextResponse.json({ error: err.message }, { status: 422 });
     }
-    console.error("[saju/lifetime] internal error:", err);
+    logger.error("saju/lifetime", "internal-error", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

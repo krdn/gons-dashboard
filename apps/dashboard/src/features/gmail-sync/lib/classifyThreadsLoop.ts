@@ -10,6 +10,7 @@
 import "server-only";
 import { and, eq, gte } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
+import { logger } from "@/shared/lib/log";
 import { emailThreads } from "@/shared/lib/db/schema";
 import {
   classifyThread,
@@ -128,7 +129,7 @@ export async function classifyThreadsLoop(
         (importantOutcomes[impOutcome.kind] ?? 0) + 1;
       importantConsidered += 1;
     } catch (err) {
-      console.warn("[classifyThreadsLoop] important-classify-failed", {
+      logger.warn("gmail/classifyThreadsLoop", "important-classify-failed", {
         threadId: t.id,
         message: err instanceof Error ? err.message : String(err),
       });

@@ -21,6 +21,7 @@ import { hosts } from "@/shared/lib/db/schema";
 import { runDocker } from "@/shared/lib/docker";
 import { routeServerDetail } from "@/shared/config/routes";
 import { env } from "@/shared/config/env";
+import { logger } from "@/shared/lib/log";
 import { isAdmin } from "../lib/isAdmin";
 import { insertAuditLog } from "./insertAuditLog";
 
@@ -106,11 +107,11 @@ export async function runAction(
     });
   } catch (auditErr) {
     // audit insert 실패는 docker 결과를 가려선 안 됨 — 운영자에게는 stderr로 알림.
-    console.error("[container-actions] audit log insert failed", {
+    logger.error("container-actions", "audit-log-insert-failed", {
       action,
       containerId: input.containerId,
       dockerOk: dockerErr == null,
-      auditErr: auditErr instanceof Error ? auditErr.message : String(auditErr),
+      message: auditErr instanceof Error ? auditErr.message : String(auditErr),
     });
   }
 

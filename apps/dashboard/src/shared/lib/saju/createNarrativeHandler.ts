@@ -16,6 +16,7 @@ import {
   parseSajuModelKey,
 } from "@/shared/lib/llm/saju-model-registry";
 import { ProfileNotFoundError } from "@/shared/lib/saju/resolveBirthInput";
+import { logger } from "@/shared/lib/log";
 
 const SCHOOL_FRAME_KEY = {
   ko: "ko",
@@ -108,7 +109,9 @@ export function createNarrativeHandler<P>(
       if (err instanceof config.buildErrorClass) {
         return NextResponse.json({ error: err.message }, { status: 422 });
       }
-      console.error(`[saju/${config.name}/narrative] LLM error:`, err);
+      logger.error(`saju/${config.name}/narrative`, "internal-error", {
+        message: err instanceof Error ? err.message : String(err),
+      });
       return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
     }
   };
