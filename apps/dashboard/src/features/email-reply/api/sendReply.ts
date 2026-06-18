@@ -18,11 +18,14 @@ import {
 } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
 import { ROUTE_DASHBOARD } from "@/shared/config/routes";
+import { isRefusalDraft } from "@/shared/lib/llm/draft-reply";
+import { validateRecipients, type RecipientField } from "../lib/validateRecipients";
 import type { SaveDraftMeta } from "./saveReplyDraft";
 
 export type SendReplyResult =
   | { kind: "ok"; sentMessageId: string }
   | { kind: "scope-required" }
+  | { kind: "invalid-recipient"; field: RecipientField }
   | { kind: "send-failed" };
 
 export async function sendReply(
@@ -45,6 +48,20 @@ export async function sendReply(
   if (owned.length === 0) throw new Error("Thread not found");
   // gmailThreadId 는 DB 값을 신뢰 (meta 위변조 방지).
   const gmailThreadId = owned[0].gmailThreadId;
+
+  // 비가역 발송 직전 입력 검증 (createDraft/sendDraft 전).
+  // 1. 수신자 형식 — 실사용자 오타가 Gmail 400 으로 늦게 드러나는 것 방지.
+  const recipients = validateRecipients(meta);
+  if (!recipients.ok) {
+    return { kind: "invalid-recipient", field: recipients.field };
+  }
+  // 2. refusal 서버 재검증 (defense-in-depth) — client 게이트는 생성시점 플래그
+  //    기반이라 직접 RPC bypass 가능. editedBody 를 직접 재검사(더 정확).
+  //    공격자 전용 경로라 전용 kind 없이 send-failed 재사용 + 로깅.
+  if (isRefusalDraft(editedBody)) {
+    logger.warn("email/sendReply", "refusal-blocked-server", { userId, threadId });
+    return { kind: "send-failed" };
+  }
 
   const { accessToken } = await getValidAccessToken(userId);
 
