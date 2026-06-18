@@ -21,7 +21,31 @@ describe("computeKrw", () => {
     expect(krw).toBe(124200);
   });
 
-  it("알 수 없는 모델은 opus 단가로 폴백한다 (기본 모델이 opus)", () => {
+  it("gemini 정확 매칭으로 환산한다", () => {
+    // gemini-2.5-pro (1.25 + 10) USD = 11.25 USD = 15525 KRW
+    const krw = computeKrw("gemini-2.5-pro", 1_000_000, 1_000_000);
+    expect(krw).toBe(15525);
+  });
+
+  it("codex 정확 매칭으로 환산한다", () => {
+    // gpt-5.3-codex (1.25 + 10) USD = 11.25 USD = 15525 KRW
+    const krw = computeKrw("gpt-5.3-codex", 1_000_000, 1_000_000);
+    expect(krw).toBe(15525);
+  });
+
+  it("gemini prefix 폴백으로 환산한다 (버전 변형)", () => {
+    const exact = computeKrw("gemini-2.5-pro", 300_000, 100_000);
+    const variant = computeKrw("gemini-3.0-flash", 300_000, 100_000);
+    expect(variant).toBe(exact);
+  });
+
+  it("codex prefix 폴백으로 환산한다 (gpt-/codex 변형)", () => {
+    const exact = computeKrw("gpt-5.3-codex", 300_000, 100_000);
+    const variant = computeKrw("gpt-6-codex", 300_000, 100_000);
+    expect(variant).toBe(exact);
+  });
+
+  it("알 수 없는 모델은 opus 단가로 폴백한다 (가장 비싼 단가로 보수적)", () => {
     const known = computeKrw("claude-opus-4-8", 500_000, 200_000);
     const unknown = computeKrw("some-future-model", 500_000, 200_000);
     expect(unknown).toBe(known);
