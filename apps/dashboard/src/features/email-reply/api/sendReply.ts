@@ -5,6 +5,7 @@
 
 import "server-only";
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { emailThreads, replyNeeded } from "@/shared/lib/db/schema";
@@ -16,6 +17,7 @@ import {
   GmailError,
 } from "@/shared/api/gmail";
 import { logger } from "@/shared/lib/log";
+import { ROUTE_DASHBOARD } from "@/shared/config/routes";
 import type { SaveDraftMeta } from "./saveReplyDraft";
 
 export type SendReplyResult =
@@ -58,6 +60,30 @@ export async function sendReply(
       body: editedBody,
     });
     const sent = await sendDraft(accessToken, draft.draftId);
+
+    // 여기서부터 발송은 이미 완료(비가역). repliedAt 기록은 부수 bookkeeping이므로
+    // 실패해도 결과를 send-failed로 뒤집으면 안 된다 — 그러면 사용자가 재발송해
+    // 수신자가 메일을 두 번 받는 비가역 사고가 난다. best-effort로 분리.
+    // 갱신해야 getReplyNeeded(repliedAt IS NULL)가 답장한 스레드를 재등장시키지 않는다.
+    // 소유권은 위에서 이미 검증 (markAsReplied 재호출 시 중복 auth/소유권 쿼리 회피).
+    try {
+      const now = new Date();
+      await db
+        .update(replyNeeded)
+        .set({ repliedAt: now, userAction: "replied", userActionAt: now })
+        .where(
+          and(eq(replyNeeded.threadId, threadId), eq(replyNeeded.userId, userId)),
+        );
+      revalidatePath(ROUTE_DASHBOARD);
+    } catch (dbErr) {
+      // 발송은 성공했으므로 ok 유지. 최악 = 위젯 재등장(수동 '답장 완료'로 복구).
+      logger.error("email/sendReply", "replied-update-failed-after-send", {
+        userId,
+        threadId,
+        message: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      });
+    }
+
     return { kind: "ok", sentMessageId: sent.sentMessageId };
   } catch (error) {
     if (error instanceof GmailScopeError) {
