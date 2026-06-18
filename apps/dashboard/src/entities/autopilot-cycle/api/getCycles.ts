@@ -4,6 +4,7 @@ import "server-only";
 import { db } from "@/shared/lib/db/client";
 import { autopilotCycles } from "@/shared/lib/db/schema";
 import { desc } from "drizzle-orm";
+import { logger } from "@/shared/lib/log";
 import type { AutopilotCycle } from "../model/types";
 
 const HISTORY_LIMIT = 8;
@@ -38,7 +39,9 @@ export async function getCycles(limit = HISTORY_LIMIT): Promise<AutopilotCycle[]
     .then(
       (rows) => rows.map(rowToCycle),
       (e) => {
-        console.error("[autopilot] getCycles failed:", e);
+        logger.error("autopilot/getCycles", "query-failed", {
+          message: e instanceof Error ? e.message : String(e),
+        });
         return [];
       },
     );

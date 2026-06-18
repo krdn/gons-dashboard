@@ -7,6 +7,7 @@
 
 import "server-only";
 import { env } from "@/shared/config/env";
+import { logger } from "@/shared/lib/log";
 
 interface CacheEntry {
   model: string;
@@ -61,9 +62,10 @@ export async function resolveClaudeModel(): Promise<string> {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      console.warn(
-        `[resolveClaudeModel] fetch failed: ${response.status} ${response.statusText}`,
-      );
+      logger.warn("llm/resolve-claude-model", "fetch-failed", {
+        status: response.status,
+        statusText: response.statusText,
+      });
       return env.SAJU_LLM_MODEL_CLAUDE;
     }
 
@@ -84,9 +86,7 @@ export async function resolveClaudeModel(): Promise<string> {
       .filter((x) => x !== null);
 
     if (matches.length === 0) {
-      console.warn(
-        `[resolveClaudeModel] no matching claude-opus-* models found. Using fallback.`,
-      );
+      logger.warn("llm/resolve-claude-model", "no-matching-models", {});
       return env.SAJU_LLM_MODEL_CLAUDE;
     }
 
@@ -105,9 +105,7 @@ export async function resolveClaudeModel(): Promise<string> {
   } catch (error) {
     const msg =
       error instanceof Error ? error.message : String(error);
-    console.warn(
-      `[resolveClaudeModel] exception: ${msg}. Using fallback.`,
-    );
+    logger.warn("llm/resolve-claude-model", "fetch-exception", { message: msg });
     return env.SAJU_LLM_MODEL_CLAUDE;
   }
 }

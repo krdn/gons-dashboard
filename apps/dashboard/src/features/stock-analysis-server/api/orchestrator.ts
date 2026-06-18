@@ -32,6 +32,7 @@ import {
 } from "@/entities/stock-analysis/server";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/server";
 import { env } from "@/shared/config/env";
+import { logger } from "@/shared/lib/log";
 import { mergeSnapshot } from "./merge-snapshot";
 import { callLlmAndParseWithRetry } from "./llm-call";
 
@@ -64,16 +65,7 @@ function logSnapshotSources(
   symbol: string,
   info: { yahoo: boolean; dart: boolean; source: string | undefined },
 ): void {
-  console.log(
-    JSON.stringify({
-      level: "info",
-      scope: "stock-analysis",
-      event: "snapshot-sources",
-      ts: new Date().toISOString(),
-      symbol,
-      ...info,
-    }),
-  );
+  logger.info("stock/orchestrator", "snapshot-sources", { symbol, ...info });
 }
 
 export async function analyzeStock(

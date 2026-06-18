@@ -17,6 +17,7 @@
 // 결정성: 분당 5회 카운터 — 60s 가 지나면 EXPIRE 만료로 키가 사라져 다음 호출이 다시 1로 시작.
 import "server-only";
 import { getRedisClient } from "@/shared/lib/redis/client";
+import { logger } from "@/shared/lib/log";
 
 const WINDOW_SECONDS = 60;
 const DEFAULT_LIMIT = 5;
@@ -54,7 +55,9 @@ export async function checkRateLimit(
     return { allowed: true };
   } catch (err) {
     // Redis 장애 시 fail-open — 가용성 우선. 모니터링 필요.
-    console.error("[saju/rateLimit] Redis error, failing open:", err);
+    logger.error("saju/rateLimit", "redis-error-fail-open", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     return { allowed: true };
   }
 }

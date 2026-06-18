@@ -1,6 +1,7 @@
 import "server-only";
 import { runDocker } from "./runDocker";
 import { parseContainer, type ContainerSummary } from "./parseContainer";
+import { logger } from "@/shared/lib/log";
 
 export type ListContainersInput = {
   context: string;
@@ -25,9 +26,9 @@ export async function listContainers(
       const raw = JSON.parse(line);
       out.push(parseContainer(raw, input.hostId));
     } catch (err) {
-      console.warn("[docker.listContainers] skipped malformed line", {
+      logger.warn("docker/listContainers", "skipped-malformed-line", {
         line: line.slice(0, 200),
-        err: err instanceof Error ? err.message : String(err),
+        message: err instanceof Error ? err.message : String(err),
       });
     }
   }
