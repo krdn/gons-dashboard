@@ -7,6 +7,7 @@
 // (50개+ 변경 시뮬레이션 테스트 필수, eng review §3 CRITICAL #2)
 import "server-only";
 import { z } from "zod";
+import { logger } from "@/shared/lib/log";
 import {
   classifyGmailError,
   isRetryable,
@@ -105,6 +106,17 @@ export async function listHistorySince(
     pageToken = parsed.nextPageToken;
     pages += 1;
   } while (pageToken && pages < maxPages);
+
+  // maxPages 상한에 pageToken 이 남은 채 도달 = 미fetch 페이지가 남았는데도
+  // head historyId 가 전진해 그 메시지들이 영영 미sync 된다(silent 데이터 손실).
+  // 본인 1명·시간당 수통 규모에선 미도달이라 latent — 절단을 관찰만 한다
+  // (head-advance 로직은 불변, 빈도 추적용 경고).
+  if (pageToken) {
+    logger.warn("gmail/history", "maxpages-truncated", {
+      maxPages,
+      fetchedRefs: newRefs.length,
+    });
+  }
 
   return { newMessageRefs: newRefs, newHistoryId: lastHistoryId };
 }

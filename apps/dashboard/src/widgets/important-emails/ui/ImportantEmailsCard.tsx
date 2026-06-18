@@ -40,7 +40,7 @@ export async function ImportantEmailsCard() {
       </div>
 
       {items.length === 0 ? (
-        <ImportantEmailsEmpty />
+        <ImportantEmailsEmpty windowDays={settings.windowDays} />
       ) : (
         <div role="list" className="flex flex-col gap-3">
           {items.map((item) => (
