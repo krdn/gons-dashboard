@@ -124,6 +124,8 @@ export function ReplyModalBody({
           setToEmail(result.meta.toEmail);
           setSubject(result.meta.subject);
           setOriginalBody(result.meta.originalBody);
+          // 새 AI 초안으로 본문 교체 — 사용자 편집 아님. dirty 리셋(닫기 거짓 경고 방지).
+          setEdited(false);
           setStatus({ phase: "editing", meta: result.meta });
         } else if (result.kind === "scope-required") {
           setStatus({ phase: "error", message: "Gmail 쓰기 권한이 없습니다. 재로그인 해주세요." });
@@ -336,18 +338,24 @@ export function ReplyModalBody({
         ))}
       </div>
 
-      <textarea
+      {/* tabpanel 은 컨테이너 — textarea 자체에 role 을 주면 textbox 시맨틱이
+          덮여 SR 이 "편집 필드"로 못 읽는다. textarea 는 aria-label 로 명명. */}
+      <div
         id={`${tablistId}-panel`}
         role="tabpanel"
         aria-labelledby={`${tablistId}-tab-${activeTone}`}
-        value={bodies[activeTone]}
-        onChange={(e) => {
-          setEdited(true);
-          setBodies((b) => ({ ...b, [activeTone]: e.target.value }));
-        }}
-        rows={8}
-        className="w-full resize-y rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-      />
+      >
+        <textarea
+          aria-label={`답장 본문 (${TONE_LABEL[activeTone]})`}
+          value={bodies[activeTone]}
+          onChange={(e) => {
+            setEdited(true);
+            setBodies((b) => ({ ...b, [activeTone]: e.target.value }));
+          }}
+          rows={8}
+          className="w-full resize-y rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+        />
+      </div>
 
       {currentRefusal && (
         <p role="status" className="mt-1 text-xs text-[var(--color-severity-high)]">
