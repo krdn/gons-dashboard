@@ -7,12 +7,14 @@ import {
   classifyGmailError,
   classifyTokenError,
   isRetryable,
+  isSkippableMessageError,
   GmailError,
   InvalidGrantError,
   HistoryStaleError,
   GmailRateLimitError,
   GmailServerError,
   GmailClientError,
+  GmailScopeError,
 } from "@/shared/api/gmail/errors";
 
 function makeJsonResponse(status: number, body: unknown): Response {
@@ -159,5 +161,42 @@ describe("isRetryable", () => {
 
   it("baseclass GmailError → false (구체적 케이스 아님)", () => {
     expect(isRetryable(new GmailError("?", 400))).toBe(false);
+  });
+});
+
+// #24 회귀 가드 — sync 루프가 단일 메시지 실패를 skip할지 전파할지.
+// poison 메시지(404 삭제 등)는 skip해 historyId 전진을 막지 않아야 stall이 안 생기고,
+// 계정 단위 실패(invalid_grant)는 전파해 토큰 만료를 silent하게 삼키지 않아야 한다.
+describe("isSkippableMessageError", () => {
+  it("GmailClientError(404 삭제된 메시지) → true (그 메시지만 skip)", () => {
+    expect(
+      isSkippableMessageError(new GmailClientError(404, "Not Found", "notFound")),
+    ).toBe(true);
+  });
+
+  it("GmailClientError(기타 4xx) → true", () => {
+    expect(isSkippableMessageError(new GmailClientError(400, "Bad Request"))).toBe(
+      true,
+    );
+  });
+
+  it("GmailServerError(일시 5xx, 재시도 소진) → true (사이클 전체 안 죽임)", () => {
+    expect(isSkippableMessageError(new GmailServerError(503, "unavailable"))).toBe(
+      true,
+    );
+  });
+
+  it("InvalidGrantError → false (계정 단위 — 전파해 reauth 처리)", () => {
+    expect(isSkippableMessageError(new InvalidGrantError())).toBe(false);
+  });
+
+  it("GmailScopeError → false (계정 단위 — 전파)", () => {
+    expect(isSkippableMessageError(new GmailScopeError())).toBe(false);
+  });
+
+  it("비-Gmail 에러(DB·예상외) → false (silent swallow 금지)", () => {
+    expect(isSkippableMessageError(new Error("db connection lost"))).toBe(false);
+    expect(isSkippableMessageError("문자열 에러")).toBe(false);
+    expect(isSkippableMessageError(null)).toBe(false);
   });
 });

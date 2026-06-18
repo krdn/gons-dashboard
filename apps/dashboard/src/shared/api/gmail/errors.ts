@@ -152,3 +152,27 @@ export function isRetryable(error: GmailError): boolean {
     error instanceof GmailRateLimitError || error instanceof GmailServerError
   );
 }
+
+/**
+ * sync 루프에서 단일 메시지 fetch 실패를 skip해도 되는지 판정.
+ *
+ * true  = 메시지 단위 영구 실패(404 삭제 등 4xx) → 그 메시지만 건너뛰고 루프 계속.
+ *         historyId가 정상 전진해 poison 메시지로 인한 다중일 stall을 방지.
+ * false = 계정 단위 실패(invalid_grant·scope 부족) 또는 비-Gmail 에러(DB·예상외)
+ *         → skip하면 토큰 만료를 silent하게 삼키므로 전파해야 한다.
+ *
+ * retryable(429/5xx)은 fetchWithRetry가 이미 소진 후 throw하므로 여기 도달 시
+ * skip 대상이 아니다(재시도 소진 = 일시적이지만 그 메시지 처리는 다음 사이클로).
+ * 단 GmailServerError는 일시적 서버 문제라 그 메시지만 skip하고 계속하는 게
+ * 사이클 전체를 죽이는 것보다 안전 — historyId는 전진시키되 다음 sync가 재포착.
+ */
+export function isSkippableMessageError(error: unknown): boolean {
+  // 계정 단위 영구 실패는 전파 (skip 금지).
+  if (error instanceof InvalidGrantError) return false;
+  if (error instanceof GmailScopeError) return false;
+  // 메시지 단위 4xx (404 삭제 포함) + 일시 서버 오류는 skip 가능.
+  if (error instanceof GmailClientError) return true;
+  if (error instanceof GmailServerError) return true;
+  // 그 외(비-Gmail 에러: DB·예상외)는 전파 — silent swallow 금지.
+  return false;
+}

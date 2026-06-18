@@ -15,8 +15,10 @@ import {
   findHeader,
   getCurrentHistoryId,
   extractMailingListSignals,
+  isSkippableMessageError,
   type MailingListSignals,
 } from "@/shared/api/gmail";
+import { logger } from "@/shared/lib/log";
 
 export interface FullRescanResult {
   newHistoryId: string;
@@ -56,7 +58,22 @@ export async function fullRescan(
   >();
 
   for (const ref of refs) {
-    const msg = await getMessage(accessToken, ref.id);
+    let msg;
+    try {
+      msg = await getMessage(accessToken, ref.id);
+    } catch (err) {
+      // 단일 메시지 실패(404 삭제 등)는 skip하고 계속 — full-rescan은 stall에서
+      // 빠져나오는 복구 경로라, poison 메시지로 전체 재스캔이 막히면 안 된다.
+      if (isSkippableMessageError(err)) {
+        logger.warn("gmail/fullRescan", "message-fetch-skipped", {
+          userId,
+          messageId: ref.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+        continue;
+      }
+      throw err;
+    }
     const from = findHeader(msg.payload?.headers, "From");
     const subject = findHeader(msg.payload?.headers, "Subject");
     const dateHeader = findHeader(msg.payload?.headers, "Date");

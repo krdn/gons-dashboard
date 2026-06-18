@@ -20,6 +20,7 @@ export {
   GmailClientError,
   GmailScopeError,
   isRetryable,
+  isSkippableMessageError,
 } from "./errors";
 export {
   extractMailingListSignals,
