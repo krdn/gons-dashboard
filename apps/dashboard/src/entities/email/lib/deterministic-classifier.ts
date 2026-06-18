@@ -42,7 +42,10 @@ const MED_PATTERNS: { pattern: RegExp; reason: string }[] = [
   { pattern: /\?(\s|$)/, reason: "질문 포함" }, // 본문 중간의 ?
   { pattern: /(어떻게|언제|왜|어디|무엇|뭐|누가|얼마)/, reason: "질문 포함" },
   { pattern: /(가능하신가요|가능할까요|어떠세요|어떨까요|괜찮으신가요)/, reason: "질문 포함" },
-  { pattern: /(부탁|요청|드립니다)/, reason: "요청 포함" },
+  // '드립니다' 단독 제외 — "감사/안내/보고/말씀드립니다" 등 답장 무관 정중
+  // 맺음말까지 med 후보로 끌어올려 Haiku 직행시키던 비용 누수. 회신 의도가
+  // 분명한 결합형("회신/검토 부탁드립니다")은 HIGH_PATTERNS 가 이미 잡는다.
+  { pattern: /(부탁|요청)/, reason: "요청 포함" },
   { pattern: /\b(could you|can you|would you|please confirm|let me know|please review)\b/i, reason: "요청 포함" },
 ];
 
