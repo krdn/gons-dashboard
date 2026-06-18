@@ -14,6 +14,7 @@ import { useState, useTransition } from "react";
 import {
   markAsReplied,
   dismissThread,
+  type ActionResult,
 } from "@/features/email-analysis";
 import type { ReplyNeededItem } from "@/entities/email/api/getReplyNeeded";
 import { SenderAvatar } from "./SenderAvatar";
@@ -29,6 +30,13 @@ interface ReplyCardProps {
   item: ReplyNeededItem;
 }
 
+// 서버 액션의 reason 코드 → 사용자 메시지. 미매핑 reason 은 fallback 으로 노출.
+// markAsReplied/dismissThread 는 DB-only 라 reason 은 unauthorized/db-error 뿐.
+const REASON_LABELS: Record<string, string> = {
+  unauthorized: "로그인이 만료되었습니다",
+  "db-error": "처리에 실패했습니다 — 잠시 후 다시 시도해주세요",
+};
+
 export function ReplyCard({ item }: ReplyCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -37,16 +45,16 @@ export function ReplyCard({ item }: ReplyCardProps) {
   // 답장 모달 열림 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const runAction = (action: () => Promise<void>) => {
+  const runAction = (action: () => Promise<ActionResult>) => {
     startTransition(async () => {
       setError(null);
       setIsHidden(true);
-      try {
-        await action();
-        router.refresh();
-      } catch {
+      const result = await action();
+      if (!result.ok) {
         setIsHidden(false);
-        setError("처리에 실패했습니다. 잠시 후 다시 시도하세요.");
+        setError(result.reason);
+      } else {
+        router.refresh();
       }
     });
   };
@@ -105,7 +113,7 @@ export function ReplyCard({ item }: ReplyCardProps) {
         <ReplyBadges severity={item.severity} reason={item.reason} />
         {error ? (
           <p className="mt-2 text-xs font-medium text-[var(--color-severity-high)]" role="status">
-            {error}
+            {REASON_LABELS[error] ?? `오류: ${error}`}
           </p>
         ) : null}
       </div>
