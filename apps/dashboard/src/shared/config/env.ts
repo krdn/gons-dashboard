@@ -84,10 +84,11 @@ const schema = z.object({
   // 운영 알림 (OAuth 만료 등)
   OPS_NOTIFY_EMAIL: z.string().email().optional(),
 
-  // Postgres at-rest 암호화 키 (refresh token)
+  // Postgres at-rest 암호화 키 — 현재 PlayMCP creds (playmcp_credentials.*_enc) 전용.
+  // Gmail accounts 토큰은 NextAuth DrizzleAdapter 가 평문 저장(미적용). 감사 #15.
   PG_ENCRYPTION_KEY: z
     .string()
-    .min(32, "openssl rand -hex 32 로 생성. PlayMCP 토큰 + (가능 시) Google refresh 토큰 암호화."),
+    .min(32, "openssl rand -hex 32 로 생성. PlayMCP creds 암호화 (Gmail accounts 토큰은 평문)."),
 
   // ─── PlayMCP 1FATE (호 상담 영역) ────────────────────────
   // PlayMCP 게이트웨이 OAuth 흐름 — spec §11 / plan 2026-05-15.

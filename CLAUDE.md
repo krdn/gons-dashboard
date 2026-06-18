@@ -232,7 +232,7 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | Cron | `CRON_BEARER_TOKEN` | ✓ |
 | Push | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | ✓ |
 | 운영 알림 | `OPS_NOTIFY_EMAIL` | ✓ (Zod email 검증) |
-| pgcrypto | `PG_ENCRYPTION_KEY` | ✓ (refresh token at-rest) |
+| pgcrypto | `PG_ENCRYPTION_KEY` | ✓ (PlayMCP creds at-rest — Gmail accounts 토큰은 평문, 위 "MCP 도구 호출 정책" 참조) |
 | Timezone | `TZ=Asia/Seoul` | ✓ (KST cron 정확성) |
 | Server Monitor | `DOCKER_DEFAULT_CONTEXT=home-server`, `DOCKER_CMD_TIMEOUT_MS=10000`, `ADMIN_EMAILS` | ✓ |
 | Saju LLM | `SAJU_LLM_MODEL`, `SAJU_LLM_TEMPERATURE`, `SAJU_LLM_DAILY_BUDGET_KRW` | ✓ (saju 도메인 활성 시) |
@@ -309,7 +309,9 @@ export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_K
 1. **In-process (대시보드 RSC)**: 위젯이 `import { makeXxxTool } from "@gons/mcp-xxx"` → 토큰은 같은 프로세스의 mediator 라우트(`/api/mcp/credentials/*`)에서 받아옴 (절대 URL — `NEXTAUTH_URL` 베이스).
 2. **Stdio (Claude Code)**: `packages/mcp-*/dist/cli.js`가 자식 프로세스로 spawn → `MCP_DASHBOARD_URL` 환경변수로 mediator HTTPS 호출.
 
-OAuth refresh token은 `apps/dashboard`의 `accounts` 테이블에만 존재 (pgcrypto). MCP 패키지는 절대 refresh token을 보지 못한다 — mediator가 발급하는 5분 access token만 사용.
+OAuth refresh token은 `apps/dashboard`의 `accounts` 테이블에만 존재. MCP 패키지는 절대 refresh token을 보지 못한다 — mediator가 발급하는 5분 access token만 사용.
+
+⚠️ **at-rest 암호화 현황**: `accounts`의 Google refresh/access/id token은 **평문 `text()` 저장** (NextAuth `@auth/drizzle-adapter` 표준 동작 — adapter 가 `linkAccount` 로 평문을 직접 INSERT). `PG_ENCRYPTION_KEY` + `encryptToken`/`decryptToken`(pgcrypto.ts)은 **PlayMCP creds (`playmcp_credentials.*_enc` bytea)에만** 적용되고 Gmail accounts 토큰에는 미적용. 따라서 accounts 토큰 기밀성은 DB 접근 통제(네트워크·OS 권한)에 의존한다. adapter 레벨 암호화는 NextAuth 비표준 작업이라 의도적으로 보류 — 감사 #15 (`docs/research/2026-06-18-email-widget-audit.md`).
 
 신규 도메인 MCP 추가 시: `packages/mcp-<domain>` + `packages/shared-<provider>` (이미 있으면 재사용) + dashboard에 `/api/mcp/credentials/<provider>` mediator. spec 패턴 — `docs/superpowers/specs/2026-05-12-hybrid-mcp-api-domains-design.md`.
 
