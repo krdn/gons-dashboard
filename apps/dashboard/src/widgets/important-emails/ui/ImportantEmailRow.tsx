@@ -18,7 +18,7 @@ import {
   formatRelativeKst,
 } from "@/shared/lib/email-format";
 import { CategoryBadge } from "./CategoryBadge";
-import type { ImportantEmailItem } from "@/entities/email/api/getImportantEmails";
+import type { ImportantEmailItem } from "@/entities/email/model/types";
 
 // 서버 액션의 reason 코드 → 사용자 메시지. 미매핑 reason 은 코드 그대로 노출.
 const REASON_LABELS: Record<string, string> = {

@@ -16,7 +16,7 @@ import {
   dismissThread,
   type ActionResult,
 } from "@/features/email-analysis";
-import type { ReplyNeededItem } from "@/entities/email/api/getReplyNeeded";
+import type { ReplyNeededItem } from "@/entities/email/model/types";
 import { SenderAvatar } from "./SenderAvatar";
 import { ReplyBadges } from "./ReplyBadges";
 import { ReplyModal } from "./ReplyModal";
