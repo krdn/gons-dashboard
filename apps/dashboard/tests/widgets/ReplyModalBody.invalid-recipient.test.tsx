@@ -11,6 +11,7 @@ const okMeta = {
   inReplyTo: "",
   references: "",
   gmailThreadId: "g1",
+  threadingDegraded: false,
 };
 
 const saveReplyDraft = vi.fn(async (..._args: unknown[]) => ({

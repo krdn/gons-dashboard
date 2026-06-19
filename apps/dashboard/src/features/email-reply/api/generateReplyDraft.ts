@@ -42,6 +42,9 @@ export type GenerateReplyResult =
         inReplyTo: string;
         references: string;
         originalBody: string;
+        /** Message-ID 부재로 In-Reply-To/References 가 생략돼 답장이 새 스레드로
+         *  분리될 수 있음 → 모달에서 사용자에게 경고. logger.warn 과 동일 조건. */
+        threadingDegraded: boolean;
       };
     }
   | { kind: "llm-unavailable" }
@@ -158,6 +161,7 @@ export async function generateReplyDraft(
       inReplyTo: messageId,
       references: existingRefs ? `${existingRefs} ${messageId}`.trim() : messageId,
       originalBody: bodyText,
+      threadingDegraded: !messageId,
     },
   };
 }
