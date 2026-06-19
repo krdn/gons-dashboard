@@ -10,7 +10,7 @@
 
 import type { NormalizedSearchResult } from "./normalized-types";
 
-export interface KrxEntry {
+interface KrxEntry {
   symbol: string; // Yahoo 심볼 (e.g. "005930.KS")
   ko: string; // 한글 종목명
   exchange: "KSE" | "KOSDAQ";
@@ -18,7 +18,7 @@ export interface KrxEntry {
 
 // KOSPI 대형주 + KOSDAQ 주요 종목. 약 50개.
 // 우선주(우)는 일부만 — 사용자 요청 시 추가.
-export const KRX_SYMBOLS: KrxEntry[] = [
+const KRX_SYMBOLS: KrxEntry[] = [
   // ─── KOSPI Top ───
   { symbol: "005930.KS", ko: "삼성전자", exchange: "KSE" },
   { symbol: "005935.KS", ko: "삼성전자우", exchange: "KSE" },
