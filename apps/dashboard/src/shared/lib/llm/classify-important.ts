@@ -4,10 +4,10 @@ import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { HAIKU_MODEL, gatewayDefaults, logLlmSpend } from "./anthropic";
 import { logger } from "../log";
 
-export const IMPORTANT_CLASSIFIER_VERSION = "v1.0-haiku-important-2026-05";
+const IMPORTANT_CLASSIFIER_VERSION = "v1.0-haiku-important-2026-05";
 
-export type LlmCategory = "money" | "security" | "schedule" | "notice";
-export type LlmImportance = "high" | "med";
+type LlmCategory = "money" | "security" | "schedule" | "notice";
+type LlmImportance = "high" | "med";
 
 export interface LlmImportantInput {
   subject: string;

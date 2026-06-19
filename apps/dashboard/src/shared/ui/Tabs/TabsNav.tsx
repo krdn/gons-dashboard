@@ -12,7 +12,7 @@ import { useRef, type KeyboardEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { panelId, tabId } from "./ids";
 
-export interface TabsNavTab {
+interface TabsNavTab {
   key: string;
   label: string;
 }

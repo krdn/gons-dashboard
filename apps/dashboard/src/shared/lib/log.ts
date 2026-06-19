@@ -59,5 +59,3 @@ export const logger = {
     emit("error", scope, event, context);
   },
 };
-
-export type Logger = typeof logger;

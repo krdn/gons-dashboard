@@ -23,7 +23,7 @@ function todayKstRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
-export async function getTodaySajuSpendKrw(): Promise<number> {
+async function getTodaySajuSpendKrw(): Promise<number> {
   const { start, end } = todayKstRange();
   const [row] = await db
     .select({ total: sql<string>`COALESCE(SUM(${llmSpendLog.krw}), 0)` })

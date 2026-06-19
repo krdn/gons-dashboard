@@ -1,6 +1,6 @@
 import type { AssetClass, Market } from "@/shared/lib/stock/types";
 
-export type PortfolioHoldingKind = "holding" | "watchlist";
+type PortfolioHoldingKind = "holding" | "watchlist";
 
 export interface PortfolioHolding {
   id: string;

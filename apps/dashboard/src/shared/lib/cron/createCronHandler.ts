@@ -57,7 +57,7 @@ export interface CronHandlerDefinition<TTarget, TPayload> {
   extra?: () => Promise<Record<string, unknown>>;
 }
 
-export interface CronResultItem<TPayload> {
+interface CronResultItem<TPayload> {
   id: string;
   label?: string;
   status: "ok" | "error";
@@ -65,7 +65,7 @@ export interface CronResultItem<TPayload> {
   error?: string;
 }
 
-export interface CronEnvelope<TPayload> {
+interface CronEnvelope<TPayload> {
   name: string;
   runAt: string;
   timezone: string;

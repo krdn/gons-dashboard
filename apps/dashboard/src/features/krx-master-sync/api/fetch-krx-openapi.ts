@@ -12,7 +12,7 @@ const ENDPOINTS = {
   KOSDAQ: "/sto/ksq_isu_base_info",
 } as const;
 
-export type KrxMarket = keyof typeof ENDPOINTS;
+type KrxMarket = keyof typeof ENDPOINTS;
 
 export interface FetchResult {
   // (item, market) 쌍 — sync 단계에서 시장구분 → Yahoo 심볼 매핑에 사용.

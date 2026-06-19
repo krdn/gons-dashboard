@@ -44,5 +44,3 @@ export type KrxStockItem = z.infer<typeof KrxStockItemSchema>;
 export const KrxStockResponseSchema = z.object({
   OutBlock_1: z.array(KrxStockItemSchema),
 });
-
-export type KrxStockResponse = z.infer<typeof KrxStockResponseSchema>;

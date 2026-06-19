@@ -1,7 +1,7 @@
 import type { ReadingSection } from "@/entities/saju-chart";
 import type { SajuChart } from "@krdn/saju";
 
-export const SAJU_SYSTEM_PROMPT = [
+const SAJU_SYSTEM_PROMPT = [
   "당신은 명리학자입니다.",
   "한자 + 한글 음을 병기하고, 추측·점성술 톤은 피하고,",
   "사주 구조에서 도출되는 결론만 제시합니다.",

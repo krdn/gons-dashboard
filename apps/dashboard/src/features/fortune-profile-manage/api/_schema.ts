@@ -37,8 +37,6 @@ export const FortuneProfileInput = z.object({
   birthCity: optionalText(50),
 });
 
-export type FortuneProfileInputT = z.infer<typeof FortuneProfileInput>;
-
 export type FortuneProfileActionResult =
   | { ok: true; id: string }
   | {

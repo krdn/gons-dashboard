@@ -31,10 +31,10 @@ import { callSajuLlm } from "./llm-client";
 import { assertSajuBudgetOk, logSajuSpend } from "./budget";
 
 /** raw body 를 도메인 데이터로 변환. throw → caller 가 잡음 (재시도 등). */
-export type Validator<TData> = (rawBody: string) => TData;
+type Validator<TData> = (rawBody: string) => TData;
 
 /** UPSERT row 매핑. (data, meta) → INSERT/UPDATE set 컬럼. caller-specific. */
-export type ToRow<TData> = (
+type ToRow<TData> = (
   data: TData,
   meta: { model: string; promptVersion: string },
 ) => Record<string, unknown>;

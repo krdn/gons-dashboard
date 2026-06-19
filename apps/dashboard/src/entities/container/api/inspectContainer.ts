@@ -5,7 +5,7 @@ import {
 } from "@/shared/lib/docker";
 import type { ContainerInspect } from "../model/types";
 
-export type InspectInput = {
+type InspectInput = {
   hostId: string;
   dockerContext: string;
   containerId: string;

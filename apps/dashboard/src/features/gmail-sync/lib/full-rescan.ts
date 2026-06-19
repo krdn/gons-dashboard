@@ -162,5 +162,3 @@ function parseFromHeader(
   if (!match) return { email: undefined, name: undefined };
   return { name: match[1]?.trim(), email: match[2]?.toLowerCase() };
 }
-
-export const __INTERNAL = { parseFromHeader };
