@@ -19,6 +19,7 @@ vi.mock("@/features/email-reply/client", () => ({
       inReplyTo: "",
       references: "",
       gmailThreadId: "g1",
+      threadingDegraded: false,
     },
   })),
   saveReplyDraft: vi.fn(),

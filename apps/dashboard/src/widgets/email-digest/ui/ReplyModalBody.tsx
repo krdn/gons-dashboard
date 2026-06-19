@@ -281,6 +281,18 @@ export function ReplyModalBody({
 
   return (
     <div className="text-sm">
+      {/* 원 메시지 Message-ID 부재 → In-Reply-To/References 생략으로 답장이
+          새 스레드로 분리될 수 있음. 발송은 가능하나 사용자에게 약화 고지. */}
+      {meta.threadingDegraded && (
+        <p
+          role="status"
+          className="mb-3 rounded-md border border-[var(--color-severity-med)] bg-[var(--color-surface-2)] px-3 py-2 text-xs text-[var(--color-text-muted)]"
+        >
+          ⚠ 원본 메시지 정보를 일부 못 받아 답장이 기존 대화에 안 붙고 새 메일로
+          분리될 수 있습니다. 내용은 정상 생성됐습니다.
+        </p>
+      )}
+
       {/* 필드 — 편집 시 dirty 플래그 세움(닫기 confirm 게이트용). */}
       <div className="mb-3 space-y-2">
         <Field label="받는사람" value={toEmail} onChange={editField(setToEmail)} />
