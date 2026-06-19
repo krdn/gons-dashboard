@@ -15,6 +15,7 @@ import {
   date,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import type { Category } from "@krdn/email";
@@ -76,6 +77,16 @@ export const replyNeeded = pgTable(
     index("reply_needed_open_idx")
       .on(t.severity, t.classifiedAt.desc())
       .where(sql`${t.repliedAt} IS NULL AND ${t.dismissedAt} IS NULL`),
+    // DB 레벨 무결성 — 코드 유니온(types.ts)과 1:1. 마이그레이션·수동 psql·향후 writer 방어.
+    check("reply_needed_severity_check", sql`${t.severity} IN ('high', 'med', 'low')`),
+    check(
+      "reply_needed_classified_by_check",
+      sql`${t.classifiedBy} IN ('deterministic', 'llm-haiku')`,
+    ),
+    check(
+      "reply_needed_user_action_check",
+      sql`${t.userAction} IN ('replied', 'dismissed', 'none')`,
+    ),
   ],
 );
 
@@ -106,6 +117,16 @@ export const importantEmails = pgTable(
     index("important_emails_open_idx")
       .on(t.userId, t.importance, t.classifiedAt.desc())
       .where(sql`${t.readAt} IS NULL AND ${t.archivedAt} IS NULL`),
+    // DB 레벨 무결성 — 코드 유니온(types.ts)과 1:1.
+    check(
+      "important_emails_category_check",
+      sql`${t.category} IN ('money', 'security', 'schedule', 'notice')`,
+    ),
+    check("important_emails_importance_check", sql`${t.importance} IN ('high', 'med')`),
+    check(
+      "important_emails_classified_by_check",
+      sql`${t.classifiedBy} IN ('deterministic', 'llm-haiku')`,
+    ),
   ],
 );
 
@@ -124,41 +145,63 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 /* Email 위젯 사용자 설정 — entities/email-settings.
  * user당 1행(userId PK). row 없으면 코드의 EMAIL_SETTINGS_DEFAULTS 사용.
  * 모든 default는 현재 하드코딩 값과 동일 — 미설정 사용자 동작 불변. */
-export const emailSettings = pgTable("email_settings", {
-  userId: uuid("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
+export const emailSettings = pgTable(
+  "email_settings",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
 
-  // 조회 시점 설정 (저장 즉시 위젯 반영)
-  replyNeededLimit: integer("reply_needed_limit").notNull().default(5),
-  importantLimit: integer("important_limit").notNull().default(10),
-  windowDays: integer("window_days").notNull().default(7),
+    // 조회 시점 설정 (저장 즉시 위젯 반영)
+    replyNeededLimit: integer("reply_needed_limit").notNull().default(5),
+    importantLimit: integer("important_limit").notNull().default(10),
+    windowDays: integer("window_days").notNull().default(7),
 
-  // 알림 임계값
-  replySeverityThreshold: text("reply_severity_threshold")
-    .notNull()
-    .default("med"), // 'high' | 'med' | 'low'
-  importantThreshold: text("important_threshold").notNull().default("med"), // 'high' | 'med'
+    // 알림 임계값
+    replySeverityThreshold: text("reply_severity_threshold")
+      .notNull()
+      .default("med"), // 'high' | 'med' | 'low'
+    importantThreshold: text("important_threshold").notNull().default("med"), // 'high' | 'med'
 
-  // important 카테고리 필터 (보여줄 카테고리)
-  categories: jsonb("categories")
-    .$type<Category[]>()
-    .notNull()
-    .default(["money", "security", "schedule", "notice"]),
+    // important 카테고리 필터 (보여줄 카테고리)
+    categories: jsonb("categories")
+      .$type<Category[]>()
+      .notNull()
+      .default(["money", "security", "schedule", "notice"]),
 
-  // LLM 분류 on/off
-  llmReplyEnabled: boolean("llm_reply_enabled").notNull().default(true),
-  llmImportantEnabled: boolean("llm_important_enabled").notNull().default(true),
+    // LLM 분류 on/off
+    llmReplyEnabled: boolean("llm_reply_enabled").notNull().default(true),
+    llmImportantEnabled: boolean("llm_important_enabled").notNull().default(true),
 
-  // 동기화 주기 / 다이제스트 (cron이 실행 시점에 읽음)
-  syncIntervalMinutes: integer("sync_interval_minutes").notNull().default(60),
-  digestEnabled: boolean("digest_enabled").notNull().default(true),
-  digestHourKst: integer("digest_hour_kst").notNull().default(8), // 0-23
-  lastDigestSentDate: date("last_digest_sent_date"), // 'YYYY-MM-DD' KST, due 멱등성
+    // 동기화 주기 / 다이제스트 (cron이 실행 시점에 읽음)
+    syncIntervalMinutes: integer("sync_interval_minutes").notNull().default(60),
+    digestEnabled: boolean("digest_enabled").notNull().default(true),
+    digestHourKst: integer("digest_hour_kst").notNull().default(8), // 0-23
+    lastDigestSentDate: date("last_digest_sent_date"), // 'YYYY-MM-DD' KST, due 멱등성
 
-  replyLanguage: text("reply_language").notNull().default("auto"), // 'auto'|'ko'|'en'|'ja'|'zh'
-  replyModel: text("reply_model").notNull().default("gemini"), // 'gemini'|'codex'|'claude'
+    replyLanguage: text("reply_language").notNull().default("auto"), // 'auto'|'ko'|'en'|'ja'|'zh'
+    replyModel: text("reply_model").notNull().default("gemini"), // 'gemini'|'codex'|'claude'
 
-  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-});
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    // DB 레벨 무결성 — Zod(_schema.ts)·entities/email-settings 유니온과 1:1.
+    check(
+      "email_settings_reply_severity_check",
+      sql`${t.replySeverityThreshold} IN ('high', 'med', 'low')`,
+    ),
+    check(
+      "email_settings_important_threshold_check",
+      sql`${t.importantThreshold} IN ('high', 'med')`,
+    ),
+    check(
+      "email_settings_reply_language_check",
+      sql`${t.replyLanguage} IN ('auto', 'ko', 'en', 'ja', 'zh')`,
+    ),
+    check(
+      "email_settings_reply_model_check",
+      sql`${t.replyModel} IN ('gemini', 'codex', 'claude')`,
+    ),
+  ],
+);
