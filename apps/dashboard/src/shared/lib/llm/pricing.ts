@@ -1,9 +1,8 @@
 // LLM 토큰 사용량 → KRW 환산 (순수 함수).
 //
-// saju 도메인의 여러 narrative 빌더가 analyzeStructured 의 usage(inputTokens/
-// outputTokens)를 logSajuSpend 의 krw 로 환산할 때 공유한다. saju-reading 의
-// llm-client.ts 에 동일 단가표가 private 으로 존재하지만(callSajuLlm 경로 전용),
-// 그 모듈은 analyzeText 래퍼라 결합도가 다르다 — 여기서는 순수 환산만 노출.
+// saju 도메인의 모든 LLM 비용 환산이 공유하는 단일 출처. tri narrative 빌더
+// (analyzeStructured 경로) 와 saju-reading 의 callSajuLlm (analyzeText 경로) 이
+// 모두 이 computeKrw 를 호출한다 — 단가표/환율을 한 곳에서만 관리.
 
 // USD per 1M tokens. tri narrative 는 사용자가 Claude/Codex/Gemini 중 선택하므로
 // 세 백엔드 단가를 모두 명시 (saju-model-registry: claude/codex/gemini).
