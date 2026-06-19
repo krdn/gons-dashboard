@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
-import { getFortuneProfile } from "@/entities/fortune-profile";
+import { getFortuneProfile } from "@/entities/fortune-profile/server";
 import {
   ensureChartAndReadings,
   generateYearlyReading,

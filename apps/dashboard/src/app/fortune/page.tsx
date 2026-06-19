@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { listFortuneProfiles } from "@/entities/fortune-profile";
+import { listFortuneProfiles } from "@/entities/fortune-profile/server";
 import { auth } from "@/shared/lib/auth";
 import { FortuneProfileList } from "@/widgets/fortune-profiles";
 

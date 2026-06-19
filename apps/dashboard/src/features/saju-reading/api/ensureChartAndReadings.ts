@@ -1,7 +1,7 @@
 import "server-only";
 import { generateChart } from "./generateChart";
 import { generateReading } from "./generateReading";
-import { getFortuneProfile } from "@/entities/fortune-profile";
+import { getFortuneProfile } from "@/entities/fortune-profile/server";
 import { READING_SECTIONS, type ReadingSection } from "@/entities/saju-chart";
 import type { SajuChartRow } from "@/entities/saju-chart";
 

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import {
   RELATION_LABEL,
   type FortuneProfile,
-} from "@/entities/fortune-profile/model/types";
+} from "@/entities/fortune-profile/client";
 import type { DailyFortunePayload } from "@krdn/saju";
 import { SajuDailyFortune } from "@/widgets/saju-detail/ui/SajuDailyFortune";
 

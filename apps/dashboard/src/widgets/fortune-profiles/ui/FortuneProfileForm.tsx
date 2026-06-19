@@ -5,7 +5,7 @@ import {
   RELATION_LABEL,
   RELATIONS,
   type FortuneProfile,
-} from "@/entities/fortune-profile/model/types";
+} from "@/entities/fortune-profile/client";
 import {
   createFortuneProfile,
   deleteFortuneProfile,

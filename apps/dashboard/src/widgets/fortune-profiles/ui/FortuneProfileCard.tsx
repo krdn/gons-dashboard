@@ -5,7 +5,7 @@ import { useState } from "react";
 import {
   RELATION_LABEL,
   type FortuneProfile,
-} from "@/entities/fortune-profile/model/types";
+} from "@/entities/fortune-profile/client";
 import { FortuneProfileForm } from "./FortuneProfileForm";
 
 export function FortuneProfileCard({ profile }: { profile: FortuneProfile }) {
