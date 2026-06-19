@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { TigerYearlyCard, TigerDailyCard } from "@/widgets/tiger-cards";
-import { TigerErrorPanel } from "@/entities/tiger-reading/ui/TigerErrorPanel";
+import { TigerErrorPanel } from "@/entities/tiger-reading";
 import type { PlayMCPYearlyResult, PlayMCPDailyResult } from "@/entities/tiger-reading";
 import { fetchYearlyAction, fetchDailyAction } from "./actions";
 

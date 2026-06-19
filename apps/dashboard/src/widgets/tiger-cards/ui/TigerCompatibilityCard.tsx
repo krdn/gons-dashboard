@@ -1,4 +1,4 @@
-import { TigerNarrative } from "@/entities/tiger-reading/ui/TigerNarrative";
+import { TigerNarrative } from "@/entities/tiger-reading";
 import type {
   PlayMCPCompatibilityResult,
   PlayMCPCompatibilityPerson,
