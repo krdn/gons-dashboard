@@ -5,7 +5,7 @@ import { db } from "@/shared/lib/db/client";
 import { playmcpProfiles } from "@/shared/lib/db/schema";
 import { analyzeProfile } from "@/features/tiger-consult";
 import { TigerAnalysisCard } from "@/widgets/tiger-cards";
-import { TigerErrorPanel } from "@/entities/tiger-reading/ui/TigerErrorPanel";
+import { TigerErrorPanel } from "@/entities/tiger-reading";
 import { isPlayMCPError } from "@/features/tiger-consult/lib/errors";
 import { LazyCards } from "./LazyCards";
 

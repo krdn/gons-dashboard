@@ -1,4 +1,4 @@
-import { TigerNarrative } from "@/entities/tiger-reading/ui/TigerNarrative";
+import { TigerNarrative } from "@/entities/tiger-reading";
 import type { PlayMCPAnalysisResult } from "@/entities/tiger-reading";
 
 interface Props { payload: PlayMCPAnalysisResult; }

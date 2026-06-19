@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { TigerCompatibilityCard } from "@/widgets/tiger-cards";
-import { TigerErrorPanel } from "@/entities/tiger-reading/ui/TigerErrorPanel";
+import { TigerErrorPanel } from "@/entities/tiger-reading";
 import type { PlayMCPCompatibilityResult } from "@/entities/tiger-reading";
 import { fetchCompatibilityAction } from "./actions";
 
