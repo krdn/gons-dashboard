@@ -1,5 +1,5 @@
 import "server-only";
-import { listFortuneProfiles } from "@/entities/fortune-profile";
+import { listFortuneProfiles } from "@/entities/fortune-profile/server";
 import { getTodayDailyFortunesForUser } from "@/entities/saju-chart";
 import { auth } from "@/shared/lib/auth";
 import { FortuneCardClient } from "./FortuneCardClient";

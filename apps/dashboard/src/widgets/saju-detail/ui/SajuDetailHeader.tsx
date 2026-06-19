@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { FortuneProfile } from "@/entities/fortune-profile";
-import { RELATION_LABEL } from "@/entities/fortune-profile";
+import type { FortuneProfile } from "@/entities/fortune-profile/server";
+import { RELATION_LABEL } from "@/entities/fortune-profile/server";
 
 export interface SajuDetailHeaderProps {
   profile: FortuneProfile;

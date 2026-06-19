@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FortuneProfile } from "@/entities/fortune-profile/model/types";
+import type { FortuneProfile } from "@/entities/fortune-profile/client";
 import { FortuneProfileCard } from "./FortuneProfileCard";
 import { FortuneProfileEmpty } from "./FortuneProfileEmpty";
 import { FortuneProfileForm } from "./FortuneProfileForm";

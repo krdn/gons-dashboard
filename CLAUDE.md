@@ -130,9 +130,15 @@ import { getProjects, type Project } from "@/entities/project/server";
 // client tree ("use client")
 import { ContainerRow, type ContainerSummary } from "@/entities/container/client";
 import { ProjectCard } from "@/entities/project/client";
+
+// fortune-profile 도 동일 패턴 (deepening 후보 6, PR #183)
+import { listFortuneProfiles } from "@/entities/fortune-profile/server"; // server 함수 (db 의존)
+import { RELATION_LABEL, type FortuneProfile } from "@/entities/fortune-profile/client"; // client 위젯
 ```
 
-다른 entity (email, host, digest, saju-chart, fortune-profile) 는 *server/client 혼재 통증이 드러나지 않은 상태* — 현재 `index.ts` 단일 barrel 유지. 새 entity 추가 시 혼재가 발생하면 같은 패턴 (`server.ts` + `client.ts`) 권장. Design spec: `docs/superpowers/specs/2026-05-15-entity-barrel-seam-deepening.md`.
+`fortune-profile` 은 server 함수 (`listFortuneProfiles`/`getFortuneProfile`, db 의존) 와 client 위젯이 쓰는 타입·상수 (`RELATION_LABEL`/`RELATIONS`) 가 한 barrel 에 혼재했고, client 위젯 4개가 그 통증을 *깊은 경로 우회* 로 손수 피하고 있어 같은 패턴으로 분리됨. UI 컴포넌트는 entity 안에 없어 `client.ts` 는 타입·상수만 노출.
+
+다른 entity (email, host, digest, saju-chart) 는 *server/client 혼재 통증이 드러나지 않은 상태* — 현재 `index.ts` 단일 barrel 유지. 새 entity 추가 시 혼재가 발생하면 같은 패턴 (`server.ts` + `client.ts`) 권장. Design spec: `docs/superpowers/specs/2026-05-15-entity-barrel-seam-deepening.md`.
 
 ### 2. 통합 테스트는 `TEST_DATABASE_URL` 필수
 
