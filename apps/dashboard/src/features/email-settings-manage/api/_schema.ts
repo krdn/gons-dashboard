@@ -33,8 +33,6 @@ export const EmailSettingsInput = z.object({
   replyModel: z.enum(["gemini", "codex", "claude"]).default("gemini"),
 });
 
-export type EmailSettingsInputT = z.infer<typeof EmailSettingsInput>;
-
 export type EmailSettingsActionResult =
   | { ok: true }
   | {

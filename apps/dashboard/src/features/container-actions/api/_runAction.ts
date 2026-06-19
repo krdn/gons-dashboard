@@ -25,7 +25,7 @@ import { logger } from "@/shared/lib/log";
 import { isAdmin } from "../lib/isAdmin";
 import { insertAuditLog } from "./insertAuditLog";
 
-export const ActionInput = z.object({
+const ActionInput = z.object({
   hostId: z.string().uuid(),
   // Docker container ID는 항상 hex (short=12, full=64). path traversal 방어.
   containerId: z.string().regex(/^[a-f0-9]{12,64}$/),
@@ -34,7 +34,7 @@ export const ActionInput = z.object({
 
 export type ActionInputT = z.infer<typeof ActionInput>;
 
-export type ActionErrorCode =
+type ActionErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "INVALID_INPUT"

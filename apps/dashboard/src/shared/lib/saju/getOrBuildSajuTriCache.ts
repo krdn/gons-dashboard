@@ -12,7 +12,7 @@ import {
   type ResolvedBirthContext,
 } from "@/shared/lib/saju/resolveBirthInput";
 
-export interface CacheHit<T> {
+interface CacheHit<T> {
   frameJsonb: T;
   computedAt: Date;
 }

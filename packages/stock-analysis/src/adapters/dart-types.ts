@@ -3,16 +3,8 @@
 
 import { z } from "zod";
 
-// 응답 상태 코드 (메시지 설명)
-export const DART_STATUS = {
-  OK: "000",
-  NO_DATA: "013",
-  RATE_LIMIT: "020",
-  KEY_SUSPENDED: "010",
-} as const;
-
 // 단일 계정 항목
-export const DartAccountItemSchema = z.object({
+const DartAccountItemSchema = z.object({
   rcept_no: z.string(),         // 접수번호 (14자리)
   reprt_code: z.string(),       // 보고서 코드 (11011/11012/11013/11014)
   bsns_year: z.string(),        // 사업연도 (4자리)
@@ -38,7 +30,6 @@ export const DartResponseSchema = z.object({
   message: z.string(),
   list: z.array(DartAccountItemSchema).optional(),
 });
-export type DartResponse = z.infer<typeof DartResponseSchema>;
 
 // 보고서 코드 (분기 → reprt_code 변환)
 export const REPORT_CODES = {

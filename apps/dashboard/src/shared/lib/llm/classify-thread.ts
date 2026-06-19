@@ -3,7 +3,7 @@ import { z } from "zod";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { HAIKU_MODEL, gatewayDefaults, logLlmSpend } from "./anthropic";
 
-export type LlmSeverity = "high" | "med" | "low";
+type LlmSeverity = "high" | "med" | "low";
 
 export interface LlmClassifyInput {
   fromEmail: string;
@@ -12,7 +12,7 @@ export interface LlmClassifyInput {
   snippet: string;
 }
 
-export interface LlmClassifyOutput {
+interface LlmClassifyOutput {
   severity: LlmSeverity;
   reason: string;
   classifiedBy: "llm-haiku";
