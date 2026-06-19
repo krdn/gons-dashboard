@@ -48,17 +48,24 @@ shallow 모듈을 deep하게 만들거나, 깊은 모듈의 4중 복제를 facto
   test-isolation + locality이지 depth 아님. Tabs의 구조적 차이(4 vs 5 탭)는 의도적 변이라 셸만 추출.
   "#164 회귀가 여기서 발생" 주장은 **거짓** — #164는 ReplyModalBody(이메일)였음.
 
-### 후보 3 — saju errorMessage 매퍼 4종 (MEDIUM, ⚠️ ADR 충돌)
+### 후보 3 — saju errorMessage 매퍼 4종 (✅ 해소 — Phase 3 노트 supersede, PR 미할당)
 
 - **발견**: #6
-- **Files**: `features/saju-{daily,monthly,yearly,lifetime}-tri/` 의 `toUserMessage`/PREFIX_MAP
-- **Problem**: 4개 슬라이스의 `toUserMessage()` prefix-match 함수가 byte-identical.
-- **⚠️ 기록된 결정과 충돌**: 후보 제목 자체가 **"의도적 복제 주석을 단"**. 후보 2의 검증자도 명시 반대 —
-  "per-slice divergence(INVALID_YEAR/MONTH/DATE)는 '의도적 복제' 원칙으로 보호, extraction must not centralize
-  mapping". 이 레포의 FSD-boundary 인라인 유니온 패턴과 같은 계열의 기록된 결정.
-- **해소(좁힌 범위)**: 통합 가능한 건 **prefix-match 함수 로직**(byte-identical)뿐. 코드→한국어 **맵 내용**
-  (슬라이스별로 다름)은 의도적 복제라 유지. clean win 아님 — 재검토 가치만.
-- **Benefits**: 함수만 추출 시 Locality(prefix-match 정책 + 테스트 1곳), 맵은 슬라이스 로컬 유지.
+- **Files**: `features/saju-{daily,monthly,yearly,lifetime}-tri/lib/errorMessage.ts`,
+  `shared/lib/saju/errorMessage.ts`(신설)
+- **Problem**: 4개 슬라이스의 `toUserMessage()` 함수 + `PREFIX_MAP` + 공통 EXACT 5키가 byte-identical 복제.
+  slice 고유 EXACT 키(INVALID_DATE/YEAR/MONTH)만 divergence.
+- **⚠️ 옛 결정과 충돌 → supersede**: 옛 monthly/yearly 주석이 두 이유로 의도적 복제 유지 —
+  (1) "에러 코드 집합 분기 가능성"(divergence), (2) "shared/lib 추출 시 의존성 결합"(coupling).
+  → **후보 1(#182, createNarrativeCache)이 4개 timeframe feature 가 `shared/lib/saju` 모듈에 의존하는
+  선례를 정착**시켜 location 정당성을 확립, 이유 (2)를 supersede. 이유 (1)은 설계가 그대로 존중 —
+  slice 고유 키는 caller 가 `sliceMap` 으로 주입해 로컬 유지(centralize 안 함).
+- **실증**: divergence 가 실제로 일어난 건 slice 고유 EXACT 키뿐. 함수·PREFIX·공통 5키는 안정적이라
+  ADR 의 fear 가 그 부분엔 발현되지 않았음.
+- **결과**: `shared/lib/saju/errorMessage.ts` 의 `toUserMessage(code, sliceMap?)` 가 정책·공통키·PREFIX·
+  fallback 소유. 4개 slice 는 자기 고유 키만 주입하는 thin wrapper(callsite 시그니처 `toUserMessage(code)` 보존).
+  stale 주석 4개 정정, shared 테스트 19개 + lifetime 위임 테스트 4개.
+- **Benefits**: Locality — prefix-match 정책·공통키·테스트 1곳. slice divergence 는 로컬 유지(ADR 존중).
 
 ### 후보 4 — krw 단가표·환산 경로 이중화 (HIGH)
 
