@@ -64,50 +64,58 @@ hash + orchestration + (여기선 추가로) LLM 정책 시퀀스만 소유. ⚠
 
 ## 2. 인터페이스 (grilling 확정)
 
-**위치**: `shared/lib/saju/createNarrativeCache.ts` (선례와 나란히, FSD shared 라 4 features import 가능)
+**위치**: `shared/lib/saju/createNarrativeCache.ts` (선례와 나란히)
 
-**제네릭**: `createNarrativeCache<Frame, Sections, Result>` — `createSajuTriCache<T,P>`와 동형 (DB I/O를 콜백 위임)
+**제네릭**: `createNarrativeCache<Frame, Extra, Sections, Result>` — `createSajuTriCache<T,P>`의 콜백 위임 패턴 미러.
 
-> **설계 정정 (advisor 차단 후)**: 초안은 `table` + `extraKeyCols: (extra)=>SQL[]` 로 cache I/O를 declarative하게
-> 받으려 했으나, monthly의 `extra={targetYear,targetMonth}`가 **네 곳**(WHERE / INSERT `.values()` / `onConflictDoUpdate`
-> target / result envelope)에 흘러야 하는데 `extraKeyCols`는 WHERE만 먹인다. conflict target은 SQL 조건이 아니라
-> 컬럼 참조(`table.targetYear`), INSERT는 키-값이 필요 — 한 슬롯이 세 형태를 못 댄다. 감사 후보 #9의 verifier도
-> *"외부 getOrBuild 스켈레톤은 캐시 테이블/where조건 차이로 per-adapter 정당화됨"* 이라 경고했었다. `createSajuTriCache`가
-> 바로 이 변이를 declarative `table`이 아니라 `findCached`/`insertCache` 콜백으로 우회했다 — 그 패턴을 정확히 미러한다.
+> **설계 진화 (구현 중 두 차례 정정 — advisor 차단 후 확정)**:
+> 1. 초안의 `table` + `extraKeyCols: (extra)=>SQL[]` 는 monthly의 `extra={targetYear,targetMonth}`가 **네 곳**(WHERE /
+>    INSERT `.values()` / `onConflictDoUpdate` target / result envelope)에 흘러야 하는데 WHERE만 먹여 기각. cache I/O를
+>    `findCached`/`insertCache`/`toResult` 콜백으로 통째 위임 (`createSajuTriCache` 패턴).
+> 2. budget(`assertSajuBudgetOk`/`logSajuSpend`)을 factory가 직접 import하려 했으나 **FSD 위반** — factory는 `shared`,
+>    budget은 `features/saju-reading`이라 `shared → features` 역의존. ESLint `boundaries/element-types`가 차단. 해소:
+>    budget도 `assertBudget`/`logSpend` 콜백으로 caller(features)가 주입. factory는 "언제 호출"만 소유 (`createSajuTriCache`가
+>    `BuildError`를 config로 주입받는 것과 동형).
+> 3. `buildUserContent`는 `(frame, school)`이 아니라 `ctx` 전체를 받는다 — 원본 prompt의 `${targetYear}년 세운 분석` 같은
+>    extra 참조를 재현하려면 `ctx.extra`가 필요. (yearly에서 한 번 targetYear를 빠뜨렸다 잡음.)
 
 ```ts
-interface NarrativeCacheConfig<Frame, Sections, Result> {
-  name: string;                                   // "lifetime" — 도메인 식별
+interface NarrativeCacheConfig<Frame, Extra, Sections, Result> {
   logTag: string;                                 // "saju-lifetime-narrative" — 운영 로그 grep 패턴 보존
-  schema: Record<NarrativeSchool, ZodType<...>>;  // SCHOOL_SCHEMAS
-  maxTokens: number;                              // 8192
-  buildUserContent: (frame: Frame, school: NarrativeSchool) => string;  // 분량·스키마·example 맵 전부 이 콜백 안
-
-  // cache I/O 위임 (DB-shape 변이를 caller가 흡수 — 테이블·추가 키·envelope 추가 필드)
-  findCached: (args: { profileId; school; frameHash; modelId }) =>
-    Promise<CachedNarrativeRow<Sections> | undefined>;     // 추가 키(year/month/forDate)는 caller가 closure로 WHERE에 박음
-  insertCache: (row: NarrativeRowToWrite<Sections>) => Promise<void>;  // INSERT values + onConflictDoUpdate target 전부 caller
-  toResult: (parsed, meta: { modelId; fromCache; generatedAt }) => Result;  // envelope 조립 (forDate/targetYear extra 필드 포함)
+  schema: Record<NarrativeSchool, ZodType<NarrativeOutputShape<Sections>, ZodTypeDef, unknown>>;
+  maxTokens: number;                              // 8192 / 6144 / 4096 / 4096
+  // budget/spend 주입 (FSD: factory=shared 는 features 의 budget 직접 import 불가)
+  assertBudget: () => Promise<void>;
+  logSpend: (input: { model; inputTokens; outputTokens; krw }) => Promise<void>;
+  // prompt — ctx 전체를 받아 frame·school·extra(targetYear/forDate...) 모두 접근
+  buildSystemPrompt: (school: NarrativeSchool) => string;
+  buildUserContent: (ctx: NarrativeCallContext<Frame, Extra>) => string;
+  // cache I/O 위임 — 모든 콜백이 매 호출 ctx 를 받아 ctx.extra 에서 추가 키를 꺼냄
+  findCached: (ctx: NarrativeCallContext<Frame, Extra>) => Promise<CachedNarrativeRow<Sections> | undefined>;
+  insertCache: (row: NarrativeRowToWrite<Frame, Extra, Sections>) => Promise<void>;  // INSERT + conflict target 전부 caller
+  toResult: (payload: NarrativeOutputShape<Sections>, meta: { ctx; modelId; ...; fromCache }) => Result;  // envelope 조립
 }
+// 반환 함수: (ctx: NarrativeCallContext<Frame, Extra>) => Promise<Result>
+// ctx = { profileId, school, frame, frameHash, modelId, promptVersion, algorithmVersion, extra }
 ```
 
-**factory가 소유 (정책 시퀀스, 192줄 복제 소멸)**: frameHash + null 자가치유 가드(sections·schoolSpecific 둘 다) +
-`assertSajuBudgetOk` + retry 루프(ZodError 1회) + `analyzeStructured`/`normalizeUsage`/`computeKrw` + `logSajuSpend`.
+**factory가 소유 (정책 시퀀스, narrative-server 4벌 약 730줄 → 1벌)**: frameHash 기반 cache 조회 + null 자가치유
+가드(sections·schoolSpecific 둘 다) + budget 호출 순서(budget→LLM→spend) + retry 루프(ZodError 1회) +
+`analyzeStructured`/`normalizeUsage`/`computeKrw`.
 
-**caller(4개 narrative-server)가 남기는 것**: config 한 객체 + 얇은 export wrapper. cache 쿼리(테이블·추가 키)·envelope
-조립은 콜백 안(테이블마다 정당하게 다름), retry/budget/spend 정책 시퀀스는 factory 안.
+**caller(4개 narrative-server)가 남기는 것**: config 한 객체 + 얇은 export wrapper(원본 시그니처 보존 — route 무수정).
+cache 쿼리·budget 모듈·envelope 조립·prompt는 콜백 안.
 
-### 2.1 grilling 결정 요약
+### 2.1 grilling + 구현 결정 요약
 
-1. **Seam 깊이 = 정책 시퀀스를 묻기** — factory는 retry/budget/spend/null가드/orchestration 소유. DB I/O는 콜백 위임
-   (`createSajuTriCache` 동형). "table을 declarative하게 받기"는 DB-shape 변이가 4곳에 흘러 컴포즈 불가라 기각.
+1. **Seam 깊이 = 정책 시퀀스를 묻기** — factory는 retry/budget순서/spend/null가드/orchestration 소유. DB I/O·budget
+   모듈·prompt는 콜백 위임. "table을 declarative하게 받기"는 DB-shape 변이가 4곳에 흘러 컴포즈 불가라 기각.
 2. **로그 태그 = logTag config 주입** — 운영 로그 grep 패턴(`[saju-*-narrative]`) 무회귀.
-3. **null 가드 = 둘 다 검사로 통일** — 변이점 제거, 4개 동일.
-4. **userContent = buildUserContent 콜백 하나** — prompt 텍스트(가장 자주 바뀜, PROMPT_VERSION)는 caller에,
-   factory는 prompt 포맷 미소유. prompt 변형 시 factory 무수정.
+3. **null 가드 = 둘 다 검사로 통일** — 변이점 제거, 4개 동일 (유일한 의도적 동작 변경).
+4. **userContent = buildUserContent(ctx) 콜백** — prompt 텍스트(가장 자주 바뀜)는 caller에, factory는 prompt 포맷 미소유.
 5. **factory 위치 = shared/lib/saju/** — frame/narrative/route factory 삼총사 한 디렉토리.
-6. **cache I/O = findCached/insertCache/toResult 콜백** — DB-shape 변이(테이블·추가 키 컬럼·envelope 추가 필드)를
-   caller가 흡수. factory는 `table`을 안 받음 (`createSajuTriCache`가 정확히 이 패턴).
+6. **cache I/O = findCached/insertCache/toResult 콜백** + **budget = assertBudget/logSpend 콜백** — DB-shape 변이와
+   FSD 역의존을 모두 caller 주입으로 흡수. factory는 `table`도 budget 모듈도 직접 안 받음.
 
 ## 3. 검증 (테스트가 어떻게 개선되나)
 
