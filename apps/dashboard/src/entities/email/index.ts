@@ -17,7 +17,7 @@ export {
   DETERMINISTIC_VERSION,
 } from "./lib/deterministic-classifier";
 export { getReplyNeeded } from "./api/getReplyNeeded";
-export type { ReplyNeededItem } from "./api/getReplyNeeded";
+export type { ReplyNeededItem } from "./model/types";
 export { classifyThread } from "./api/classifyThread";
 export type {
   ClassifyThreadParams,
@@ -29,4 +29,4 @@ export type {
   ClassifyImportantParams,
 } from "./api/classifyImportant";
 export { getImportantEmails } from "./api/getImportantEmails";
-export type { ImportantEmailItem } from "./api/getImportantEmails";
+export type { ImportantEmailItem } from "./model/types";

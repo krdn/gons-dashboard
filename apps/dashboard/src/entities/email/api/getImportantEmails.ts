@@ -16,20 +16,9 @@ import {
   emailThreads,
   replyNeeded,
 } from "@/shared/lib/db/schema";
-import type { Category, ImportantImportance } from "../model/types";
+import type { Category, ImportantImportance, ImportantEmailItem } from "../model/types";
 
-export interface ImportantEmailItem {
-  threadId: string;
-  gmailThreadId: string;
-  fromName: string | null;
-  fromEmail: string | null;
-  subject: string | null;
-  receivedAt: Date | null;
-  category: Category;
-  importance: ImportantImportance;
-  summary: string;
-  classifiedAt: Date;
-}
+export type { ImportantEmailItem };
 
 export interface GetImportantEmailsOpts {
   limit?: number;

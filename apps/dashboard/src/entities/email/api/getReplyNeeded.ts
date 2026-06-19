@@ -12,20 +12,9 @@ import "server-only";
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { replyNeeded, emailThreads } from "@/shared/lib/db/schema";
+import type { ReplyNeededItem } from "../model/types";
 
-export interface ReplyNeededItem {
-  threadId: string;
-  gmailThreadId: string;
-  fromName: string | null;
-  fromEmail: string | null;
-  subject: string | null;
-  snippet: string | null;
-  receivedAt: Date | null;
-  reason: string;
-  severity: "high" | "med" | "low";
-  classifiedAt: Date;
-  classifiedBy: string;
-}
+export type { ReplyNeededItem };
 
 export interface GetReplyNeededOpts {
   limit?: number;

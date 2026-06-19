@@ -68,3 +68,38 @@ export interface ImportantClassification {
   /** 분류기 버전 — DB의 classifier_version 컬럼에 저장. */
   classifierVersion: string;
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * read API 응답 shape — 위젯이 소비하는 행 타입.
+ * 정의는 model 에 두고(client-safe), api/*.ts 는 이 타입으로 쿼리 결과를 반환한다.
+ * (옛 구조: 타입이 server-only api 파일에 살아 client 위젯이 그 파일을 type-import 했음.)
+ * ───────────────────────────────────────────────────────────────────── */
+
+/** 답장 필요 목록의 한 행 (getReplyNeeded 반환). */
+export interface ReplyNeededItem {
+  threadId: string;
+  gmailThreadId: string;
+  fromName: string | null;
+  fromEmail: string | null;
+  subject: string | null;
+  snippet: string | null;
+  receivedAt: Date | null;
+  reason: string;
+  severity: "high" | "med" | "low";
+  classifiedAt: Date;
+  classifiedBy: string;
+}
+
+/** 중요 이메일 목록의 한 행 (getImportantEmails 반환). */
+export interface ImportantEmailItem {
+  threadId: string;
+  gmailThreadId: string;
+  fromName: string | null;
+  fromEmail: string | null;
+  subject: string | null;
+  receivedAt: Date | null;
+  category: Category;
+  importance: ImportantImportance;
+  summary: string;
+  classifiedAt: Date;
+}
