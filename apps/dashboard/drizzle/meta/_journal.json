@@ -239,6 +239,13 @@
       "when": 1781767731156,
       "tag": "0033_majestic_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781829888395,
+      "tag": "0034_windy_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

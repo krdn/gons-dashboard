@@ -126,7 +126,7 @@ describe("reclassifyRecent", () => {
       summary: "stale",
       rationale: "stale",
       classifierVersion: "stale-v0",
-      classifiedBy: "haiku",
+      classifiedBy: "llm-haiku",
       classifiedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h ago
     });
 
@@ -173,7 +173,7 @@ describe("reclassifyRecent", () => {
       summary: "preserved",
       rationale: "preserved",
       classifierVersion: "preserved-v0",
-      classifiedBy: "haiku",
+      classifiedBy: "llm-haiku",
       // 미래의 last_received_at (1h ago)보다 늦은 시점 → idempotent skip 보장.
       classifiedAt: new Date(),
     });
