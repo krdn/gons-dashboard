@@ -29,6 +29,7 @@ import {
 import { AutopilotCard, AutopilotSkeleton } from "@/widgets/autopilot";
 import { CalendarCard, CalendarSkeleton } from "@/widgets/calendar";
 import { FortuneCard, FortuneSkeleton } from "@/widgets/fortune";
+import { SupplementCheckerCard } from "@/widgets/supplement-checker";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +125,7 @@ export default async function DashboardPage() {
           <Suspense fallback={<CalendarSkeleton />}>
             <CalendarCard />
           </Suspense>
+          <SupplementCheckerCard />
           <div className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-5 py-5 text-[var(--color-text-subtle)]">
             <h3 className="mb-2 text-sm font-medium text-[var(--color-text-muted)]">
               Tasks
