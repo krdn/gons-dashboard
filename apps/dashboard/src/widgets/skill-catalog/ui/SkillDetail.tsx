@@ -68,7 +68,7 @@ export function SkillDetail({ meta }: { meta: SkillMeta | null }) {
         </p>
       )}
       {status === "error" && (
-        <p className="text-sm text-[var(--color-severity-high)]">
+        <p role="status" className="text-sm text-[var(--color-severity-high)]">
           본문을 불러오지 못했습니다. 새로고침으로 재시도하세요.
         </p>
       )}
