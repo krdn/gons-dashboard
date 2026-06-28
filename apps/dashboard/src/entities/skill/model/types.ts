@@ -8,6 +8,11 @@ export const SOURCE_LABEL: Record<SkillSource, string> = {
   personal: "개인 (.agents)",
 };
 
+// 미분류 fallback — categories.json 에 누락된 스킬에 부여 (snapshot 이 주입).
+// SOURCE_LABEL 패턴: slug 와 표시 label 분리.
+export const UNCATEGORIZED = "uncategorized";
+export const UNCATEGORIZED_LABEL = "기타";
+
 // 리스트(catalog.json)에 담기는 경량 메타데이터 — body 없음.
 export interface SkillMeta {
   name: string;
@@ -15,6 +20,7 @@ export interface SkillMeta {
   version: string | null;
   model: string | null;
   source: SkillSource;
+  category: string; // categories.json 의 slug (snapshot 빌드 시 주입). 미매핑 시 UNCATEGORIZED.
   filePath: string; // 원본 SKILL.md 경로 (~/ 축약, 표시용)
   bodyPath: string; // "/skill-catalog/<sanitized-name>.json" (fetch URL)
 }
@@ -35,3 +41,29 @@ export interface SkillTranslation {
 }
 
 export type SkillTranslations = Record<string, SkillTranslation>;
+
+// ── 카테고리 (구조 축, translations 와 분리) ──
+
+// categories.json (committed source — 사람이 편집) 의 항목.
+// snapshot 이 skills[] 를 역인덱싱해 각 meta.category 를 채운다.
+export interface SkillCategoryDef {
+  label: string; // 섹션 헤더에 표시할 한글 label
+  order: number; // 표시 순서 (의미 순서: 1=계획, 2=코드품질, …)
+  skills: string[]; // 이 카테고리에 속한 스킬 name 목록
+}
+export type SkillCategoryDefs = Record<string, SkillCategoryDef>;
+
+// UI 가 섹션 헤더·순서를 알기 위한 경량 메타 (label/order 만, skills 제외).
+// snapshot 이 catalog.json envelope 에 함께 담아 출력한다.
+export interface SkillCategoryMeta {
+  label: string;
+  order: number;
+}
+export type SkillCategoryMetaMap = Record<string, SkillCategoryMeta>;
+
+// catalog.json (generated) 의 형태 — SkillMeta[] 에서 envelope 로 전환.
+// skills: 경량 메타 배열, categories: slug → {label, order} 맵.
+export interface SkillCatalog {
+  skills: SkillMeta[];
+  categories: SkillCategoryMetaMap;
+}

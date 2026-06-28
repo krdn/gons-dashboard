@@ -44,17 +44,17 @@
 | order | slug | label | 개수 | 대표 스킬 |
 |-------|------|-------|------|----------|
 | 1 | `planning-spec` | 계획·스펙·요구사항 | 15 | spec, plan-*, grill-*, to-prd, triage |
-| 2 | `workflow-orchestration` | 워크플로·오케스트레이션 | 12 | gon:*, ship, write-a-skill, benchmark |
-| 3 | `platform-ecosystem` | 플랫폼·에코시스템 | 11 | port, framework, ios-*, codex, setup-* |
-| 4 | `code-quality` | 코드 품질·리뷰·테스트 | 10 | review, qa, tdd, diagnose, health |
-| 5 | `docs-knowledge` | 문서화·지식 | 9 | auto-doc, graphify, vault, make-pdf |
-| 6 | `design-ux` | 디자인·UI/UX | 7 | design-*, diagram, ios-design-review |
-| 7 | `deploy-ops` | 배포·운영·모니터링 | 7 | deploy-manager, land-and-deploy, canary |
-| 8 | `browser-automation` | 브라우저·웹 자동화 | 7 | browse, playwright-cli, scrape |
-| 9 | `session-context` | 세션·컨텍스트·메모리 | 6 | context-*, caveman, notify-important |
-| 10 | `security-safety` | 보안·안전 가드 | 5 | cso, careful, guard, freeze |
+| 2 | `code-quality` | 코드 품질·리뷰·테스트 | 10 | review, qa, tdd, diagnose, health |
+| 3 | `design-ux` | 디자인·UI/UX | 7 | design-*, diagram, ios-design-review |
+| 4 | `browser-automation` | 브라우저·웹 자동화 | 7 | browse, playwright-cli, scrape |
+| 5 | `deploy-ops` | 배포·운영·모니터링 | 7 | deploy-manager, land-and-deploy, canary |
+| 6 | `docs-knowledge` | 문서화·지식 | 9 | auto-doc, graphify, vault, make-pdf |
+| 7 | `workflow-orchestration` | 워크플로·오케스트레이션 | 12 | gon:*, ship, write-a-skill, benchmark |
+| 8 | `session-context` | 세션·컨텍스트·메모리 | 6 | context-*, caveman, notify-important |
+| 9 | `security-safety` | 보안·안전 가드 | 5 | cso, careful, guard, freeze |
+| 10 | `platform-ecosystem` | 플랫폼·에코시스템 | 11 | port, framework, ios-*, codex, setup-* |
 
-**order는 개수 내림차순** — 큰 그룹이 위에 와서 첫 화면에서 밀도 높은 콘텐츠를 먼저 보여준다. (단, 사용자가 의미 순서를 원하면 조정 가능 — §7 참조)
+**order는 의미 순서(개발 워크플로 흐름)** — 만들기(계획→코드→디자인) → 검증·실행(브라우저) → 출시(배포) → 기록(문서) → 자동화(워크플로) → 환경(세션) → 가드레일(보안) → 인프라(플랫폼). 작업 라이프사이클을 따라 위에서 아래로 읽힌다.
 
 전체 배정은 `categories.json`에 명시. 89개 = Σ개수 (15+12+11+10+9+7+7+7+6+5 = 89). ✅
 

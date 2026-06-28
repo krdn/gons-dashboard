@@ -1,803 +1,936 @@
-[
-  {
-    "name": "auto-doc",
-    "description": "자동 문서화 스킬. 코드 변경 시 문서 자동 업데이트, ADR 생성, 학습 내용 정리를 수행합니다. \"/doc\", \"문서화\", \"ADR 작성\" 등을 요청할 때 사용.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/auto-doc/SKILL.md",
-    "bodyPath": "/skill-catalog/auto-doc.json"
-  },
-  {
-    "name": "autoplan",
-    "description": "CEO·디자인·엔지니어링·DX 리뷰를 일괄 실행하고 6가지 의사결정 원칙으로 자동 판단하는 계획 검토 파이프라인. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/autoplan/SKILL.md",
-    "bodyPath": "/skill-catalog/autoplan.json"
-  },
-  {
-    "name": "benchmark",
-    "description": "페이지 로드 시간·Core Web Vitals·리소스 크기를 측정하고 PR마다 성능 회귀를 감지하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/benchmark/SKILL.md",
-    "bodyPath": "/skill-catalog/benchmark.json"
-  },
-  {
-    "name": "benchmark-models",
-    "description": "동일한 프롬프트를 Claude·GPT·Gemini에 동시 실행해 지연시간·토큰·비용을 비교하는 크로스 모델 benchmark. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/benchmark-models/SKILL.md",
-    "bodyPath": "/skill-catalog/benchmark-models.json"
-  },
-  {
-    "name": "browse",
-    "description": "QA 테스트와 사이트 dogfooding을 위한 빠른 헤드리스 브라우저 스킬. (gstack)",
-    "version": "1.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/browse/SKILL.md",
-    "bodyPath": "/skill-catalog/browse.json"
-  },
-  {
-    "name": "canary",
-    "description": "배포 후 라이브 앱을 지속 모니터링해 콘솔 에러·성능 회귀·페이지 오류를 감지하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/canary/SKILL.md",
-    "bodyPath": "/skill-catalog/canary.json"
-  },
-  {
-    "name": "careful",
-    "description": "파괴적 명령(rm -rf, DROP TABLE, force-push 등) 실행 전 경고를 표시하는 안전 가드레일 스킬. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/careful/SKILL.md",
-    "bodyPath": "/skill-catalog/careful.json"
-  },
-  {
-    "name": "caveman",
-    "description": "불필요한 수식어와 인사말을 제거해 토큰 사용량을 약 75% 줄이는 초압축 커뮤니케이션 모드.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/caveman/SKILL.md",
-    "bodyPath": "/skill-catalog/caveman.json"
-  },
-  {
-    "name": "codex",
-    "description": "OpenAI Codex CLI 래퍼 — 코드 리뷰·챌린지·자문 세 가지 모드. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/codex/SKILL.md",
-    "bodyPath": "/skill-catalog/codex.json"
-  },
-  {
-    "name": "context-manager",
-    "description": "세션 컨텍스트 저장/복원. \"컨텍스트 저장\", \"세션 복원\", \"/context\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": "haiku",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/context-manager/SKILL.md",
-    "bodyPath": "/skill-catalog/context-manager.json"
-  },
-  {
-    "name": "context-restore",
-    "description": "이전에 `/context-save`로 저장한 작업 컨텍스트를 복원합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/context-restore/SKILL.md",
-    "bodyPath": "/skill-catalog/context-restore.json"
-  },
-  {
-    "name": "context-save",
-    "description": "현재 작업 컨텍스트를 저장합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/context-save/SKILL.md",
-    "bodyPath": "/skill-catalog/context-save.json"
-  },
-  {
-    "name": "cso",
-    "description": "최고 보안 책임자(CSO) 모드 — 인프라 보안 감사를 수행합니다. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/cso/SKILL.md",
-    "bodyPath": "/skill-catalog/cso.json"
-  },
-  {
-    "name": "deploy-manager",
-    "description": "프로젝트 배포 관리 스킬. 단일/다중 프로젝트 배포, 환경별 배포, 롤백을 담당합니다. \"/deploy\", \"배포해줘\", \"롤백해줘\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/deploy-manager/SKILL.md",
-    "bodyPath": "/skill-catalog/deploy-manager.json"
-  },
-  {
-    "name": "design-consultation",
-    "description": "디자인 시스템 컨설팅 — 미학·타이포그래피·컬러·레이아웃·모션을 포함한 완전한 디자인 시스템을 제안하고 DESIGN.md를 생성합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/design-consultation/SKILL.md",
-    "bodyPath": "/skill-catalog/design-consultation.json"
-  },
-  {
-    "name": "design-html",
-    "description": "디자인 확정 단계 — Pretext 네이티브 방식으로 프로덕션 품질의 HTML/CSS를 생성합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/design-html/SKILL.md",
-    "bodyPath": "/skill-catalog/design-html.json"
-  },
-  {
-    "name": "design-review",
-    "description": "디자인 QA: 시각적 불일치, 간격 문제, 계층 구조, AI 남용 패턴, 느린 인터랙션을 찾아 수정. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/design-review/SKILL.md",
-    "bodyPath": "/skill-catalog/design-review.json"
-  },
-  {
-    "name": "design-shotgun",
-    "description": "다수의 AI 디자인 변형을 생성하고 비교 보드에서 피드백을 수집해 반복 개선. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/design-shotgun/SKILL.md",
-    "bodyPath": "/skill-catalog/design-shotgun.json"
-  },
-  {
-    "name": "devex-review",
-    "description": "실제 브라우저를 구동해 개발자 경험(DX)을 직접 테스트하고 스코어카드를 작성. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/devex-review/SKILL.md",
-    "bodyPath": "/skill-catalog/devex-review.json"
-  },
-  {
-    "name": "diagnose",
-    "description": "재현 → 최소화 → 가설 → 계측 → 수정 → 회귀 테스트로 이어지는 어려운 버그 진단 루프.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/diagnose/SKILL.md",
-    "bodyPath": "/skill-catalog/diagnose.json"
-  },
-  {
-    "name": "diagram",
-    "description": "영어 설명이나 mermaid 소스를 다이어그램 트리플(소스, .excalidraw 파일, SVG/PNG)로 변환. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/diagram/SKILL.md",
-    "bodyPath": "/skill-catalog/diagram.json"
-  },
-  {
-    "name": "document-generate",
-    "description": "Diataxis 프레임워크를 사용해 기능·모듈·프로젝트의 누락 문서를 처음부터 생성. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/document-generate/SKILL.md",
-    "bodyPath": "/skill-catalog/document-generate.json"
-  },
-  {
-    "name": "document-release",
-    "description": "배포 후 문서 동기화: README·ARCHITECTURE·CLAUDE.md를 diff에 맞춰 갱신하고 문서 부채를 리포트. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/document-release/SKILL.md",
-    "bodyPath": "/skill-catalog/document-release.json"
-  },
-  {
-    "name": "excalidraw-diagram",
-    "description": "정보를 단순 나열하는 것이 아니라 시각적 논증을 만드는 Excalidraw 다이어그램 JSON 파일 생성.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/excalidraw-diagram/SKILL.md",
-    "bodyPath": "/skill-catalog/excalidraw-diagram.json"
-  },
-  {
-    "name": "find-skills",
-    "description": "사용자가 특정 기능을 물어볼 때 설치 가능한 스킬을 검색하고 추천하는 스킬 탐색기.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/find-skills/SKILL.md",
-    "bodyPath": "/skill-catalog/find-skills.json"
-  },
-  {
-    "name": "framework-manager",
-    "description": "프레임워크 관리 스킬. 프레임워크 설치, 활성화/비활성화, 마이그레이션을 담당합니다. \"/framework\", \"프레임워크 관리\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/framework-manager/SKILL.md",
-    "bodyPath": "/skill-catalog/framework-manager.json"
-  },
-  {
-    "name": "freeze",
-    "description": "특정 디렉토리 밖 파일 편집을 세션 동안 차단하는 편집 범위 제한 스킬. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/freeze/SKILL.md",
-    "bodyPath": "/skill-catalog/freeze.json"
-  },
-  {
-    "name": "gon:autonomous",
-    "description": "gsd-autonomous Wrapper — blocker 시 GStack 페르소나(CEO/Designer/Engineer/Skeptic) 4-Agent 병렬 의사결정으로 자동 해소. 완전 무인 빌드 루프.",
-    "version": "0.2.2",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:autonomous/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-autonomous.json"
-  },
-  {
-    "name": "gon:dashboard",
-    "description": "프로젝트 살아있는 대시보드 생성·갱신. project-state.json(의도)과 코드 파생 데이터(KB·git·테스트)를 읽어 dashboard.html을 재생성. \"/gon:dashboard\", \"대시보드 갱신\", \"대시보드 열어줘\", \"프로젝트 현황\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:dashboard/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-dashboard.json"
-  },
-  {
-    "name": "gon:doc-graph",
-    "description": "문서·프로젝트 시각화 그래프 생성기. URL, PDF, 마크다운 문서 또는 프로젝트 디렉토리를 분석하여 구조화된 마크다운 정리본을 저장하고, 인터랙티브 HTML 시각화와 Excalidraw 다이어그램을 자동 생성. \"/gon:doc-graph\", \"문서 시각화\", \"그래프 생성\", \"프로젝트 분석\" 요청 시 사용.",
-    "version": "1.3.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:doc-graph/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-doc-graph.json"
-  },
-  {
-    "name": "gon:evolve",
-    "description": "재귀적 자기 개선 시스템. 코드베이스 전체(스킬, 훅, 에이전트, 동기화 시스템, 문서, 그리고 자기 자신)를 분석하고 개선안을 제안합니다. \"/gon:evolve\", \"진화\", \"자기 개선\", \"코드베이스 분석\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:evolve/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-evolve.json"
-  },
-  {
-    "name": "gon:maintain",
-    "description": "확장 시스템 자기 정비. Skills, Agents, Plugins, Hooks, Frameworks를 스캔하여 중복, 비활성, 고아 항목, 내장 기능 중복을 감지하고 정리를 제안합니다. \"/gon:maintain\", \"정비\", \"cleanup\", \"확장 정리\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:maintain/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-maintain.json"
-  },
-  {
-    "name": "gon:save-issue",
-    "description": "이슈 저장 스킬 (Save Issue). 작업 완료 후 커밋, 푸시, GitHub 이슈 등록을 자동화합니다. \"/gon:save-issue\", \"이슈 저장\", \"작업 저장\", \"커밋해줘\", \"커밋하고 푸시\", \"변경사항 저장\" 요청 시 사용.",
-    "version": "1.4.0",
-    "model": "haiku",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:save-issue/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-save-issue.json"
-  },
-  {
-    "name": "gon:todo",
-    "description": "지능형 TODO 자동 수집. 개발 중 발견된 버그, 아이디어, 기술 부채를 프로젝트별로 자동 감지·관리합니다. \"/gon:todo\", \"todo 추가\", \"할일 목록\" 요청 시 사용.",
-    "version": "1.0.0",
-    "model": "haiku",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gon:todo/SKILL.md",
-    "bodyPath": "/skill-catalog/gon-todo.json"
-  },
-  {
-    "name": "graphify",
-    "description": "코드베이스·문서·영상 등 임의의 입력을 지식 그래프(knowledge graph)로 변환하고 커뮤니티 감지·쿼리·경로 탐색 도구를 제공한다.",
-    "version": null,
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/graphify/SKILL.md",
-    "bodyPath": "/skill-catalog/graphify.json"
-  },
-  {
-    "name": "grill-me",
-    "description": "계획이나 설계를 집요하게 인터뷰하여 결정 트리의 각 분기를 해소하고 공유된 이해에 도달한다.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/grill-me/SKILL.md",
-    "bodyPath": "/skill-catalog/grill-me.json"
-  },
-  {
-    "name": "grill-with-docs",
-    "description": "기존 도메인 모델과 문서(CONTEXT.md, ADR)를 참조하며 계획을 집요하게 검증하고, 결정이 굳어지면 문서를 인라인으로 갱신한다.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/grill-with-docs/SKILL.md",
-    "bodyPath": "/skill-catalog/grill-with-docs.json"
-  },
-  {
-    "name": "gstack",
-    "description": "QA 테스트와 사이트 도그푸딩을 위한 빠른 헤드리스 브라우저 도구. (gstack)",
-    "version": "1.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/_gstack-command/SKILL.md",
-    "bodyPath": "/skill-catalog/gstack.json"
-  },
-  {
-    "name": "gstack-upgrade",
-    "description": "gstack을 최신 버전으로 업그레이드하고 변경 사항을 표시한다. (gstack)",
-    "version": "1.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/gstack-upgrade/SKILL.md",
-    "bodyPath": "/skill-catalog/gstack-upgrade.json"
-  },
-  {
-    "name": "guard",
-    "description": "파괴적 명령 경고 + 디렉터리 범위 편집 제한의 완전 안전 모드. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/guard/SKILL.md",
-    "bodyPath": "/skill-catalog/guard.json"
-  },
-  {
-    "name": "health",
-    "description": "코드베이스 품질 종합 점수를 측정하고 추세를 추적하는 대시보드. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/health/SKILL.md",
-    "bodyPath": "/skill-catalog/health.json"
-  },
-  {
-    "name": "improve-codebase-architecture",
-    "description": "코드베이스 아키텍처 개선 기회를 발굴하고 깊이 있는 모듈 리팩터링을 제안합니다.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/improve-codebase-architecture/SKILL.md",
-    "bodyPath": "/skill-catalog/improve-codebase-architecture.json"
-  },
-  {
-    "name": "investigate",
-    "description": "근본 원인 규명 중심의 체계적 디버깅. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/investigate/SKILL.md",
-    "bodyPath": "/skill-catalog/investigate.json"
-  },
-  {
-    "name": "ios-clean",
-    "description": "iOS 앱에서 DebugBridge SPM 패키지와 #if DEBUG 관련 코드를 제거합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/ios-clean/SKILL.md",
-    "bodyPath": "/skill-catalog/ios-clean.json"
-  },
-  {
-    "name": "ios-design-review",
-    "description": "실제 iPhone 기기에서 iOS 앱 비주얼 디자인을 감사합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/ios-design-review/SKILL.md",
-    "bodyPath": "/skill-catalog/ios-design-review.json"
-  },
-  {
-    "name": "ios-fix",
-    "description": "iOS 버그를 자율적으로 수정하고 실제 기기에서 검증까지 완료합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/ios-fix/SKILL.md",
-    "bodyPath": "/skill-catalog/ios-fix.json"
-  },
-  {
-    "name": "ios-qa",
-    "description": "SwiftUI 앱을 실제 iPhone 기기에서 실행하여 비전 기반 자동 QA를 수행합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/ios-qa/SKILL.md",
-    "bodyPath": "/skill-catalog/ios-qa.json"
-  },
-  {
-    "name": "ios-sync",
-    "description": "최신 gstack 템플릿으로 iOS 디버그 브릿지를 재생성합니다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/ios-sync/SKILL.md",
-    "bodyPath": "/skill-catalog/ios-sync.json"
-  },
-  {
-    "name": "land-and-deploy",
-    "description": "PR 머지 후 CI 대기, 운영 배포, canary 헬스체크까지 자동 수행. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/land-and-deploy/SKILL.md",
-    "bodyPath": "/skill-catalog/land-and-deploy.json"
-  },
-  {
-    "name": "landing-report",
-    "description": "버전 슬롯 점유 현황과 열린 PR 큐를 읽기 전용으로 보여주는 대시보드. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/landing-report/SKILL.md",
-    "bodyPath": "/skill-catalog/landing-report.json"
-  },
-  {
-    "name": "learn",
-    "description": "gstack이 세션 간 축적한 학습 내용을 조회·정리·내보내기한다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/learn/SKILL.md",
-    "bodyPath": "/skill-catalog/learn.json"
-  },
-  {
-    "name": "llm-gateway-consumer-setup",
-    "description": "Use when setting up @krdn/llm-gateway in a new consumer project — installs the package, generates example usage code, adds the auto-update GitHub workflow, configures Renovate or Dependabot, and prints the library-repo registration checklist. Triggers on \"llm-gateway 셋업\", \"소비자 프로젝트 구성\", \"gateway setup\", \"@krdn/llm-gateway 추가\".",
-    "version": null,
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/llm-gateway-consumer-setup/SKILL.md",
-    "bodyPath": "/skill-catalog/llm-gateway-consumer-setup.json"
-  },
-  {
-    "name": "make-pdf",
-    "description": "마크다운 파일을 여백·페이지 번호·목차·워터마크가 포함된 완성형 PDF로 변환한다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/make-pdf/SKILL.md",
-    "bodyPath": "/skill-catalog/make-pdf.json"
-  },
-  {
-    "name": "notify-important",
-    "description": "중요 내용 이메일 알림. 시스템 장애, 보안 이슈, 주요 설정 변경 등 중요한 작업 완료 시 자동으로 이메일 발송. \"/notify-important\" 또는 중요 작업 후 자동 사용.",
-    "version": "1.0.0",
-    "model": "haiku",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/notify-important/SKILL.md",
-    "bodyPath": "/skill-catalog/notify-important.json"
-  },
-  {
-    "name": "office-hours",
-    "description": "YC 스타일 오피스 아워 — 스타트업 아이디어 검증 또는 사이드 프로젝트 브레인스토밍 두 가지 모드. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/office-hours/SKILL.md",
-    "bodyPath": "/skill-catalog/office-hours.json"
-  },
-  {
-    "name": "open-gstack-browser",
-    "description": "사이드바 확장이 내장된 AI 제어 Chromium 브라우저를 실행한다. (gstack)",
-    "version": "0.2.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/connect-chrome/SKILL.md",
-    "bodyPath": "/skill-catalog/open-gstack-browser.json"
-  },
-  {
-    "name": "pair-agent",
-    "description": "원격 AI 에이전트와 브라우저를 공유 연결하는 스킬. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/pair-agent/SKILL.md",
-    "bodyPath": "/skill-catalog/pair-agent.json"
-  },
-  {
-    "name": "plan-ceo-review",
-    "description": "CEO·창업자 시각으로 플랜의 야망과 범위를 재검토하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/plan-ceo-review/SKILL.md",
-    "bodyPath": "/skill-catalog/plan-ceo-review.json"
-  },
-  {
-    "name": "plan-design-review",
-    "description": "디자이너 시각으로 플랜의 UI/UX 품질을 평가하고 개선하는 스킬. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/plan-design-review/SKILL.md",
-    "bodyPath": "/skill-catalog/plan-design-review.json"
-  },
-  {
-    "name": "plan-devex-review",
-    "description": "개발자 경험(DX) 관점으로 플랜을 심층 검토하는 스킬. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/plan-devex-review/SKILL.md",
-    "bodyPath": "/skill-catalog/plan-devex-review.json"
-  },
-  {
-    "name": "plan-eng-review",
-    "description": "엔지니어링 매니저 시각으로 플랜의 아키텍처와 실행 완성도를 검토하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/plan-eng-review/SKILL.md",
-    "bodyPath": "/skill-catalog/plan-eng-review.json"
-  },
-  {
-    "name": "plan-tune",
-    "description": "gstack 질문 민감도와 개발자 프로파일을 자기 조정하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/plan-tune/SKILL.md",
-    "bodyPath": "/skill-catalog/plan-tune.json"
-  },
-  {
-    "name": "playwright-cli",
-    "description": "playwright-cli를 사용해 브라우저 탐색, 폼 입력, 스크린샷, 데이터 추출 등 웹 자동화를 수행하는 스킬.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/playwright-cli/SKILL.md",
-    "bodyPath": "/skill-catalog/playwright-cli.json"
-  },
-  {
-    "name": "port-manager",
-    "description": "개발 프로젝트 포트 관리. 프로젝트별 포트 등록, 목록 조회, 개발 서버 시작. \"/port\", \"/port register\", \"/port start\" 등으로 사용.",
-    "version": "1.0.0",
-    "model": "haiku",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/port-manager/SKILL.md",
-    "bodyPath": "/skill-catalog/port-manager.json"
-  },
-  {
-    "name": "prompt-assistant",
-    "description": "사용자의 프롬프트를 분석하고 개선하는 어시스턴트. 프롬프트 검토, 명확화 질문, 컨텍스트 요청, 잠재적 문제점 사전 분석을 수행합니다. \"/prompt\", \"프롬프트 분석\", \"프롬프트 검토\" 등의 명령 시 사용합니다. 계획 파일 기반 인터뷰도 지원합니다.",
-    "version": "1.0.0",
-    "model": "sonnet",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/prompt-assistant/SKILL.md",
-    "bodyPath": "/skill-catalog/prompt-assistant.json"
-  },
-  {
-    "name": "prototype",
-    "description": "설계를 확정하기 전 버릴 프로토타입을 빠르게 만들어 질문에 답한다. 로직/상태 검증용 터미널 앱과 여러 UI 변형 중 하나로 분기한다.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/prototype/SKILL.md",
-    "bodyPath": "/skill-catalog/prototype.json"
-  },
-  {
-    "name": "qa",
-    "description": "웹 애플리케이션을 체계적으로 QA 테스트하고 발견된 버그를 수정한다. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/qa/SKILL.md",
-    "bodyPath": "/skill-catalog/qa.json"
-  },
-  {
-    "name": "qa-only",
-    "description": "코드를 수정하지 않고 QA 테스트 결과만 리포트로 출력한다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/qa-only/SKILL.md",
-    "bodyPath": "/skill-catalog/qa-only.json"
-  },
-  {
-    "name": "retro",
-    "description": "주간 엔지니어링 회고를 수행하고 기여 현황과 트렌드를 분석한다. (gstack)",
-    "version": "2.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/retro/SKILL.md",
-    "bodyPath": "/skill-catalog/retro.json"
-  },
-  {
-    "name": "review",
-    "description": "PR을 머지하기 전 코드 diff를 검토한다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/review/SKILL.md",
-    "bodyPath": "/skill-catalog/review.json"
-  },
-  {
-    "name": "scrape",
-    "description": "웹 페이지에서 데이터를 추출한다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/scrape/SKILL.md",
-    "bodyPath": "/skill-catalog/scrape.json"
-  },
-  {
-    "name": "setup-browser-cookies",
-    "description": "실제 Chromium 브라우저의 쿠키를 헤드리스 브라우저 세션으로 가져온다. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/setup-browser-cookies/SKILL.md",
-    "bodyPath": "/skill-catalog/setup-browser-cookies.json"
-  },
-  {
-    "name": "setup-deploy",
-    "description": "/land-and-deploy에 사용할 배포 설정을 자동 감지하고 CLAUDE.md에 기록하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/setup-deploy/SKILL.md",
-    "bodyPath": "/skill-catalog/setup-deploy.json"
-  },
-  {
-    "name": "setup-gbrain",
-    "description": "gbrain CLI 설치, 로컬 PGLite 또는 Supabase brain 초기화, MCP 등록까지 한 번에 설정하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/setup-gbrain/SKILL.md",
-    "bodyPath": "/skill-catalog/setup-gbrain.json"
-  },
-  {
-    "name": "setup-matt-pocock-skills",
-    "description": "AGENTS.md/CLAUDE.md에 이슈 트래커·트리아지 레이블·도메인 문서 설정 블록을 구성하는 스킬.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/setup-matt-pocock-skills/SKILL.md",
-    "bodyPath": "/skill-catalog/setup-matt-pocock-skills.json"
-  },
-  {
-    "name": "ship",
-    "description": "베이스 브랜치 병합, 테스트, diff 리뷰, 버전 범프, CHANGELOG 업데이트, 커밋, 푸시, PR 생성을 한 번에 처리하는 배포 워크플로 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/ship/SKILL.md",
-    "bodyPath": "/skill-catalog/ship.json"
-  },
-  {
-    "name": "skillify",
-    "description": "직전 /scrape 플로우를 영구 브라우저 스킬 파일로 코드화하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/skillify/SKILL.md",
-    "bodyPath": "/skill-catalog/skillify.json"
-  },
-  {
-    "name": "spec",
-    "description": "모호한 요청을 실행 가능한 정밀 스펙으로 다듬고 GitHub 이슈로 등록하는 스킬. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/spec/SKILL.md",
-    "bodyPath": "/skill-catalog/spec.json"
-  },
-  {
-    "name": "sync-gbrain",
-    "description": "레포 코드를 gbrain에 동기화하고 CLAUDE.md의 에이전트 검색 안내를 갱신하는 스킬. (gstack)",
-    "version": "1.0.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/sync-gbrain/SKILL.md",
-    "bodyPath": "/skill-catalog/sync-gbrain.json"
-  },
-  {
-    "name": "system-check",
-    "description": "Ubuntu 서버 전체 시스템 점검 및 문제 해결. 사용자가 \"시스템 점검\", \"서버 상태 확인\", \"system check\" 등을 요청할 때 사용.",
-    "version": "1.0.0",
-    "model": "haiku",
-    "source": "standalone",
-    "filePath": "~/.claude/skills/system-check/SKILL.md",
-    "bodyPath": "/skill-catalog/system-check.json"
-  },
-  {
-    "name": "tdd",
-    "description": "TDD(테스트 주도 개발) red-green-refactor 루프로 기능 구현 및 버그 수정을 진행.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/tdd/SKILL.md",
-    "bodyPath": "/skill-catalog/tdd.json"
-  },
-  {
-    "name": "to-issues",
-    "description": "계획서·스펙·PRD를 수직 슬라이스(트레이서 불릿) 단위의 독립 이슈로 분해해 이슈 트래커에 등록.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/to-issues/SKILL.md",
-    "bodyPath": "/skill-catalog/to-issues.json"
-  },
-  {
-    "name": "to-prd",
-    "description": "현재 대화 컨텍스트를 바탕으로 PRD를 작성하고 이슈 트래커에 게시.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/to-prd/SKILL.md",
-    "bodyPath": "/skill-catalog/to-prd.json"
-  },
-  {
-    "name": "triage",
-    "description": "이슈 트래커의 이슈를 트리아지 상태 머신(needs-triage → ready-for-agent 등)으로 분류·관리.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/triage/SKILL.md",
-    "bodyPath": "/skill-catalog/triage.json"
-  },
-  {
-    "name": "unfreeze",
-    "description": "/freeze로 설정된 디렉터리 편집 제한을 해제해 모든 경로 편집을 다시 허용. (gstack)",
-    "version": "0.1.0",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/unfreeze/SKILL.md",
-    "bodyPath": "/skill-catalog/unfreeze.json"
-  },
-  {
-    "name": "vault",
-    "description": "Obsidian-wiki vault 운영 — `/vault ingest <소스>`로 raw/wiki/index/log를 일관되게 갱신하고, `/vault query <질문>`으로 위키 기반 답변을 작성하며, `/vault lint`로 건강 점검. 사용자가 \"위키에 넣어줘\", \"ingest해줘\", \"vault에 저장\", \"위키에서 찾아줘\", \"vault 정리해줘\", \"lint\" 등을 말할 때, 또는 `/vault` 슬래시 명령을 직접 호출할 때 사용. URL/파일/텍스트/세션 산출물(.md 리포트 등) 무엇이든 ingest 가능.",
-    "version": null,
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/vault/SKILL.md",
-    "bodyPath": "/skill-catalog/vault.json"
-  },
-  {
-    "name": "wezterm-agent-deck",
-    "description": "WezTerm 터미널 창에서 Claude Code 에이전트 상태(working/waiting/idle/inactive)를 실시간 모니터링.",
-    "version": "0.7.13",
-    "model": null,
-    "source": "standalone",
-    "filePath": "~/.claude/skills/wezterm-agent-deck/SKILL.md",
-    "bodyPath": "/skill-catalog/wezterm-agent-deck.json"
-  },
-  {
-    "name": "write-a-skill",
-    "description": "새로운 에이전트 스킬을 올바른 구조와 점진적 공개(progressive disclosure) 원칙으로 생성.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/write-a-skill/SKILL.md",
-    "bodyPath": "/skill-catalog/write-a-skill.json"
-  },
-  {
-    "name": "zoom-out",
-    "description": "한 단계 위 추상화 레벨로 시야를 넓혀 낯선 코드의 전체 구조와 연관 모듈 맵을 파악한다.",
-    "version": null,
-    "model": null,
-    "source": "personal",
-    "filePath": "~/.claude/skills/zoom-out/SKILL.md",
-    "bodyPath": "/skill-catalog/zoom-out.json"
+{
+  "skills": [
+    {
+      "name": "auto-doc",
+      "description": "자동 문서화 스킬. 코드 변경 시 문서 자동 업데이트, ADR 생성, 학습 내용 정리를 수행합니다. \"/doc\", \"문서화\", \"ADR 작성\" 등을 요청할 때 사용.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/auto-doc/SKILL.md",
+      "bodyPath": "/skill-catalog/auto-doc.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "autoplan",
+      "description": "CEO·디자인·엔지니어링·DX 리뷰를 일괄 실행하고 6가지 의사결정 원칙으로 자동 판단하는 계획 검토 파이프라인. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/autoplan/SKILL.md",
+      "bodyPath": "/skill-catalog/autoplan.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "benchmark",
+      "description": "페이지 로드 시간·Core Web Vitals·리소스 크기를 측정하고 PR마다 성능 회귀를 감지하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/benchmark/SKILL.md",
+      "bodyPath": "/skill-catalog/benchmark.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "benchmark-models",
+      "description": "동일한 프롬프트를 Claude·GPT·Gemini에 동시 실행해 지연시간·토큰·비용을 비교하는 크로스 모델 benchmark. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/benchmark-models/SKILL.md",
+      "bodyPath": "/skill-catalog/benchmark-models.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "browse",
+      "description": "QA 테스트와 사이트 dogfooding을 위한 빠른 헤드리스 브라우저 스킬. (gstack)",
+      "version": "1.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/browse/SKILL.md",
+      "bodyPath": "/skill-catalog/browse.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "canary",
+      "description": "배포 후 라이브 앱을 지속 모니터링해 콘솔 에러·성능 회귀·페이지 오류를 감지하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/canary/SKILL.md",
+      "bodyPath": "/skill-catalog/canary.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "careful",
+      "description": "파괴적 명령(rm -rf, DROP TABLE, force-push 등) 실행 전 경고를 표시하는 안전 가드레일 스킬. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/careful/SKILL.md",
+      "bodyPath": "/skill-catalog/careful.json",
+      "category": "security-safety"
+    },
+    {
+      "name": "caveman",
+      "description": "불필요한 수식어와 인사말을 제거해 토큰 사용량을 약 75% 줄이는 초압축 커뮤니케이션 모드.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/caveman/SKILL.md",
+      "bodyPath": "/skill-catalog/caveman.json",
+      "category": "session-context"
+    },
+    {
+      "name": "codex",
+      "description": "OpenAI Codex CLI 래퍼 — 코드 리뷰·챌린지·자문 세 가지 모드. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/codex/SKILL.md",
+      "bodyPath": "/skill-catalog/codex.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "context-manager",
+      "description": "세션 컨텍스트 저장/복원. \"컨텍스트 저장\", \"세션 복원\", \"/context\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": "haiku",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/context-manager/SKILL.md",
+      "bodyPath": "/skill-catalog/context-manager.json",
+      "category": "session-context"
+    },
+    {
+      "name": "context-restore",
+      "description": "이전에 `/context-save`로 저장한 작업 컨텍스트를 복원합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/context-restore/SKILL.md",
+      "bodyPath": "/skill-catalog/context-restore.json",
+      "category": "session-context"
+    },
+    {
+      "name": "context-save",
+      "description": "현재 작업 컨텍스트를 저장합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/context-save/SKILL.md",
+      "bodyPath": "/skill-catalog/context-save.json",
+      "category": "session-context"
+    },
+    {
+      "name": "cso",
+      "description": "최고 보안 책임자(CSO) 모드 — 인프라 보안 감사를 수행합니다. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/cso/SKILL.md",
+      "bodyPath": "/skill-catalog/cso.json",
+      "category": "security-safety"
+    },
+    {
+      "name": "deploy-manager",
+      "description": "프로젝트 배포 관리 스킬. 단일/다중 프로젝트 배포, 환경별 배포, 롤백을 담당합니다. \"/deploy\", \"배포해줘\", \"롤백해줘\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/deploy-manager/SKILL.md",
+      "bodyPath": "/skill-catalog/deploy-manager.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "design-consultation",
+      "description": "디자인 시스템 컨설팅 — 미학·타이포그래피·컬러·레이아웃·모션을 포함한 완전한 디자인 시스템을 제안하고 DESIGN.md를 생성합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/design-consultation/SKILL.md",
+      "bodyPath": "/skill-catalog/design-consultation.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "design-html",
+      "description": "디자인 확정 단계 — Pretext 네이티브 방식으로 프로덕션 품질의 HTML/CSS를 생성합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/design-html/SKILL.md",
+      "bodyPath": "/skill-catalog/design-html.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "design-review",
+      "description": "디자인 QA: 시각적 불일치, 간격 문제, 계층 구조, AI 남용 패턴, 느린 인터랙션을 찾아 수정. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/design-review/SKILL.md",
+      "bodyPath": "/skill-catalog/design-review.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "design-shotgun",
+      "description": "다수의 AI 디자인 변형을 생성하고 비교 보드에서 피드백을 수집해 반복 개선. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/design-shotgun/SKILL.md",
+      "bodyPath": "/skill-catalog/design-shotgun.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "devex-review",
+      "description": "실제 브라우저를 구동해 개발자 경험(DX)을 직접 테스트하고 스코어카드를 작성. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/devex-review/SKILL.md",
+      "bodyPath": "/skill-catalog/devex-review.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "diagnose",
+      "description": "재현 → 최소화 → 가설 → 계측 → 수정 → 회귀 테스트로 이어지는 어려운 버그 진단 루프.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/diagnose/SKILL.md",
+      "bodyPath": "/skill-catalog/diagnose.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "diagram",
+      "description": "영어 설명이나 mermaid 소스를 다이어그램 트리플(소스, .excalidraw 파일, SVG/PNG)로 변환. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/diagram/SKILL.md",
+      "bodyPath": "/skill-catalog/diagram.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "document-generate",
+      "description": "Diataxis 프레임워크를 사용해 기능·모듈·프로젝트의 누락 문서를 처음부터 생성. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/document-generate/SKILL.md",
+      "bodyPath": "/skill-catalog/document-generate.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "document-release",
+      "description": "배포 후 문서 동기화: README·ARCHITECTURE·CLAUDE.md를 diff에 맞춰 갱신하고 문서 부채를 리포트. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/document-release/SKILL.md",
+      "bodyPath": "/skill-catalog/document-release.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "excalidraw-diagram",
+      "description": "정보를 단순 나열하는 것이 아니라 시각적 논증을 만드는 Excalidraw 다이어그램 JSON 파일 생성.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/excalidraw-diagram/SKILL.md",
+      "bodyPath": "/skill-catalog/excalidraw-diagram.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "find-skills",
+      "description": "사용자가 특정 기능을 물어볼 때 설치 가능한 스킬을 검색하고 추천하는 스킬 탐색기.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/find-skills/SKILL.md",
+      "bodyPath": "/skill-catalog/find-skills.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "framework-manager",
+      "description": "프레임워크 관리 스킬. 프레임워크 설치, 활성화/비활성화, 마이그레이션을 담당합니다. \"/framework\", \"프레임워크 관리\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/framework-manager/SKILL.md",
+      "bodyPath": "/skill-catalog/framework-manager.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "freeze",
+      "description": "특정 디렉토리 밖 파일 편집을 세션 동안 차단하는 편집 범위 제한 스킬. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/freeze/SKILL.md",
+      "bodyPath": "/skill-catalog/freeze.json",
+      "category": "security-safety"
+    },
+    {
+      "name": "gon:autonomous",
+      "description": "gsd-autonomous Wrapper — blocker 시 GStack 페르소나(CEO/Designer/Engineer/Skeptic) 4-Agent 병렬 의사결정으로 자동 해소. 완전 무인 빌드 루프.",
+      "version": "0.2.2",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:autonomous/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-autonomous.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "gon:dashboard",
+      "description": "프로젝트 살아있는 대시보드 생성·갱신. project-state.json(의도)과 코드 파생 데이터(KB·git·테스트)를 읽어 dashboard.html을 재생성. \"/gon:dashboard\", \"대시보드 갱신\", \"대시보드 열어줘\", \"프로젝트 현황\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:dashboard/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-dashboard.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "gon:doc-graph",
+      "description": "문서·프로젝트 시각화 그래프 생성기. URL, PDF, 마크다운 문서 또는 프로젝트 디렉토리를 분석하여 구조화된 마크다운 정리본을 저장하고, 인터랙티브 HTML 시각화와 Excalidraw 다이어그램을 자동 생성. \"/gon:doc-graph\", \"문서 시각화\", \"그래프 생성\", \"프로젝트 분석\" 요청 시 사용.",
+      "version": "1.3.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:doc-graph/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-doc-graph.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "gon:evolve",
+      "description": "재귀적 자기 개선 시스템. 코드베이스 전체(스킬, 훅, 에이전트, 동기화 시스템, 문서, 그리고 자기 자신)를 분석하고 개선안을 제안합니다. \"/gon:evolve\", \"진화\", \"자기 개선\", \"코드베이스 분석\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:evolve/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-evolve.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "gon:maintain",
+      "description": "확장 시스템 자기 정비. Skills, Agents, Plugins, Hooks, Frameworks를 스캔하여 중복, 비활성, 고아 항목, 내장 기능 중복을 감지하고 정리를 제안합니다. \"/gon:maintain\", \"정비\", \"cleanup\", \"확장 정리\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:maintain/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-maintain.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "gon:save-issue",
+      "description": "이슈 저장 스킬 (Save Issue). 작업 완료 후 커밋, 푸시, GitHub 이슈 등록을 자동화합니다. \"/gon:save-issue\", \"이슈 저장\", \"작업 저장\", \"커밋해줘\", \"커밋하고 푸시\", \"변경사항 저장\" 요청 시 사용.",
+      "version": "1.4.0",
+      "model": "haiku",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:save-issue/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-save-issue.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "gon:todo",
+      "description": "지능형 TODO 자동 수집. 개발 중 발견된 버그, 아이디어, 기술 부채를 프로젝트별로 자동 감지·관리합니다. \"/gon:todo\", \"todo 추가\", \"할일 목록\" 요청 시 사용.",
+      "version": "1.0.0",
+      "model": "haiku",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gon:todo/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-todo.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "graphify",
+      "description": "코드베이스·문서·영상 등 임의의 입력을 지식 그래프(knowledge graph)로 변환하고 커뮤니티 감지·쿼리·경로 탐색 도구를 제공한다.",
+      "version": null,
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/graphify/SKILL.md",
+      "bodyPath": "/skill-catalog/graphify.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "grill-me",
+      "description": "계획이나 설계를 집요하게 인터뷰하여 결정 트리의 각 분기를 해소하고 공유된 이해에 도달한다.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/grill-me/SKILL.md",
+      "bodyPath": "/skill-catalog/grill-me.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "grill-with-docs",
+      "description": "기존 도메인 모델과 문서(CONTEXT.md, ADR)를 참조하며 계획을 집요하게 검증하고, 결정이 굳어지면 문서를 인라인으로 갱신한다.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/grill-with-docs/SKILL.md",
+      "bodyPath": "/skill-catalog/grill-with-docs.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "gstack",
+      "description": "QA 테스트와 사이트 도그푸딩을 위한 빠른 헤드리스 브라우저 도구. (gstack)",
+      "version": "1.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/_gstack-command/SKILL.md",
+      "bodyPath": "/skill-catalog/gstack.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "gstack-upgrade",
+      "description": "gstack을 최신 버전으로 업그레이드하고 변경 사항을 표시한다. (gstack)",
+      "version": "1.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/gstack-upgrade/SKILL.md",
+      "bodyPath": "/skill-catalog/gstack-upgrade.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "guard",
+      "description": "파괴적 명령 경고 + 디렉터리 범위 편집 제한의 완전 안전 모드. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/guard/SKILL.md",
+      "bodyPath": "/skill-catalog/guard.json",
+      "category": "security-safety"
+    },
+    {
+      "name": "health",
+      "description": "코드베이스 품질 종합 점수를 측정하고 추세를 추적하는 대시보드. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/health/SKILL.md",
+      "bodyPath": "/skill-catalog/health.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "improve-codebase-architecture",
+      "description": "코드베이스 아키텍처 개선 기회를 발굴하고 깊이 있는 모듈 리팩터링을 제안합니다.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/improve-codebase-architecture/SKILL.md",
+      "bodyPath": "/skill-catalog/improve-codebase-architecture.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "investigate",
+      "description": "근본 원인 규명 중심의 체계적 디버깅. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/investigate/SKILL.md",
+      "bodyPath": "/skill-catalog/investigate.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "ios-clean",
+      "description": "iOS 앱에서 DebugBridge SPM 패키지와 #if DEBUG 관련 코드를 제거합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/ios-clean/SKILL.md",
+      "bodyPath": "/skill-catalog/ios-clean.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "ios-design-review",
+      "description": "실제 iPhone 기기에서 iOS 앱 비주얼 디자인을 감사합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/ios-design-review/SKILL.md",
+      "bodyPath": "/skill-catalog/ios-design-review.json",
+      "category": "design-ux"
+    },
+    {
+      "name": "ios-fix",
+      "description": "iOS 버그를 자율적으로 수정하고 실제 기기에서 검증까지 완료합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/ios-fix/SKILL.md",
+      "bodyPath": "/skill-catalog/ios-fix.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "ios-qa",
+      "description": "SwiftUI 앱을 실제 iPhone 기기에서 실행하여 비전 기반 자동 QA를 수행합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/ios-qa/SKILL.md",
+      "bodyPath": "/skill-catalog/ios-qa.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "ios-sync",
+      "description": "최신 gstack 템플릿으로 iOS 디버그 브릿지를 재생성합니다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/ios-sync/SKILL.md",
+      "bodyPath": "/skill-catalog/ios-sync.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "land-and-deploy",
+      "description": "PR 머지 후 CI 대기, 운영 배포, canary 헬스체크까지 자동 수행. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/land-and-deploy/SKILL.md",
+      "bodyPath": "/skill-catalog/land-and-deploy.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "landing-report",
+      "description": "버전 슬롯 점유 현황과 열린 PR 큐를 읽기 전용으로 보여주는 대시보드. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/landing-report/SKILL.md",
+      "bodyPath": "/skill-catalog/landing-report.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "learn",
+      "description": "gstack이 세션 간 축적한 학습 내용을 조회·정리·내보내기한다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/learn/SKILL.md",
+      "bodyPath": "/skill-catalog/learn.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "llm-gateway-consumer-setup",
+      "description": "Use when setting up @krdn/llm-gateway in a new consumer project — installs the package, generates example usage code, adds the auto-update GitHub workflow, configures Renovate or Dependabot, and prints the library-repo registration checklist. Triggers on \"llm-gateway 셋업\", \"소비자 프로젝트 구성\", \"gateway setup\", \"@krdn/llm-gateway 추가\".",
+      "version": null,
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/llm-gateway-consumer-setup/SKILL.md",
+      "bodyPath": "/skill-catalog/llm-gateway-consumer-setup.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "make-pdf",
+      "description": "마크다운 파일을 여백·페이지 번호·목차·워터마크가 포함된 완성형 PDF로 변환한다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/make-pdf/SKILL.md",
+      "bodyPath": "/skill-catalog/make-pdf.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "notify-important",
+      "description": "중요 내용 이메일 알림. 시스템 장애, 보안 이슈, 주요 설정 변경 등 중요한 작업 완료 시 자동으로 이메일 발송. \"/notify-important\" 또는 중요 작업 후 자동 사용.",
+      "version": "1.0.0",
+      "model": "haiku",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/notify-important/SKILL.md",
+      "bodyPath": "/skill-catalog/notify-important.json",
+      "category": "session-context"
+    },
+    {
+      "name": "office-hours",
+      "description": "YC 스타일 오피스 아워 — 스타트업 아이디어 검증 또는 사이드 프로젝트 브레인스토밍 두 가지 모드. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/office-hours/SKILL.md",
+      "bodyPath": "/skill-catalog/office-hours.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "open-gstack-browser",
+      "description": "사이드바 확장이 내장된 AI 제어 Chromium 브라우저를 실행한다. (gstack)",
+      "version": "0.2.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/connect-chrome/SKILL.md",
+      "bodyPath": "/skill-catalog/open-gstack-browser.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "pair-agent",
+      "description": "원격 AI 에이전트와 브라우저를 공유 연결하는 스킬. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/pair-agent/SKILL.md",
+      "bodyPath": "/skill-catalog/pair-agent.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "plan-ceo-review",
+      "description": "CEO·창업자 시각으로 플랜의 야망과 범위를 재검토하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/plan-ceo-review/SKILL.md",
+      "bodyPath": "/skill-catalog/plan-ceo-review.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "plan-design-review",
+      "description": "디자이너 시각으로 플랜의 UI/UX 품질을 평가하고 개선하는 스킬. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/plan-design-review/SKILL.md",
+      "bodyPath": "/skill-catalog/plan-design-review.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "plan-devex-review",
+      "description": "개발자 경험(DX) 관점으로 플랜을 심층 검토하는 스킬. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/plan-devex-review/SKILL.md",
+      "bodyPath": "/skill-catalog/plan-devex-review.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "plan-eng-review",
+      "description": "엔지니어링 매니저 시각으로 플랜의 아키텍처와 실행 완성도를 검토하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/plan-eng-review/SKILL.md",
+      "bodyPath": "/skill-catalog/plan-eng-review.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "plan-tune",
+      "description": "gstack 질문 민감도와 개발자 프로파일을 자기 조정하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/plan-tune/SKILL.md",
+      "bodyPath": "/skill-catalog/plan-tune.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "playwright-cli",
+      "description": "playwright-cli를 사용해 브라우저 탐색, 폼 입력, 스크린샷, 데이터 추출 등 웹 자동화를 수행하는 스킬.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/playwright-cli/SKILL.md",
+      "bodyPath": "/skill-catalog/playwright-cli.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "port-manager",
+      "description": "개발 프로젝트 포트 관리. 프로젝트별 포트 등록, 목록 조회, 개발 서버 시작. \"/port\", \"/port register\", \"/port start\" 등으로 사용.",
+      "version": "1.0.0",
+      "model": "haiku",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/port-manager/SKILL.md",
+      "bodyPath": "/skill-catalog/port-manager.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "prompt-assistant",
+      "description": "사용자의 프롬프트를 분석하고 개선하는 어시스턴트. 프롬프트 검토, 명확화 질문, 컨텍스트 요청, 잠재적 문제점 사전 분석을 수행합니다. \"/prompt\", \"프롬프트 분석\", \"프롬프트 검토\" 등의 명령 시 사용합니다. 계획 파일 기반 인터뷰도 지원합니다.",
+      "version": "1.0.0",
+      "model": "sonnet",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/prompt-assistant/SKILL.md",
+      "bodyPath": "/skill-catalog/prompt-assistant.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "prototype",
+      "description": "설계를 확정하기 전 버릴 프로토타입을 빠르게 만들어 질문에 답한다. 로직/상태 검증용 터미널 앱과 여러 UI 변형 중 하나로 분기한다.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/prototype/SKILL.md",
+      "bodyPath": "/skill-catalog/prototype.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "qa",
+      "description": "웹 애플리케이션을 체계적으로 QA 테스트하고 발견된 버그를 수정한다. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/qa/SKILL.md",
+      "bodyPath": "/skill-catalog/qa.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "qa-only",
+      "description": "코드를 수정하지 않고 QA 테스트 결과만 리포트로 출력한다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/qa-only/SKILL.md",
+      "bodyPath": "/skill-catalog/qa-only.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "retro",
+      "description": "주간 엔지니어링 회고를 수행하고 기여 현황과 트렌드를 분석한다. (gstack)",
+      "version": "2.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/retro/SKILL.md",
+      "bodyPath": "/skill-catalog/retro.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "review",
+      "description": "PR을 머지하기 전 코드 diff를 검토한다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/review/SKILL.md",
+      "bodyPath": "/skill-catalog/review.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "scrape",
+      "description": "웹 페이지에서 데이터를 추출한다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/scrape/SKILL.md",
+      "bodyPath": "/skill-catalog/scrape.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "setup-browser-cookies",
+      "description": "실제 Chromium 브라우저의 쿠키를 헤드리스 브라우저 세션으로 가져온다. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/setup-browser-cookies/SKILL.md",
+      "bodyPath": "/skill-catalog/setup-browser-cookies.json",
+      "category": "browser-automation"
+    },
+    {
+      "name": "setup-deploy",
+      "description": "/land-and-deploy에 사용할 배포 설정을 자동 감지하고 CLAUDE.md에 기록하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/setup-deploy/SKILL.md",
+      "bodyPath": "/skill-catalog/setup-deploy.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "setup-gbrain",
+      "description": "gbrain CLI 설치, 로컬 PGLite 또는 Supabase brain 초기화, MCP 등록까지 한 번에 설정하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/setup-gbrain/SKILL.md",
+      "bodyPath": "/skill-catalog/setup-gbrain.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "setup-matt-pocock-skills",
+      "description": "AGENTS.md/CLAUDE.md에 이슈 트래커·트리아지 레이블·도메인 문서 설정 블록을 구성하는 스킬.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/setup-matt-pocock-skills/SKILL.md",
+      "bodyPath": "/skill-catalog/setup-matt-pocock-skills.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "ship",
+      "description": "베이스 브랜치 병합, 테스트, diff 리뷰, 버전 범프, CHANGELOG 업데이트, 커밋, 푸시, PR 생성을 한 번에 처리하는 배포 워크플로 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/ship/SKILL.md",
+      "bodyPath": "/skill-catalog/ship.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "skillify",
+      "description": "직전 /scrape 플로우를 영구 브라우저 스킬 파일로 코드화하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/skillify/SKILL.md",
+      "bodyPath": "/skill-catalog/skillify.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "spec",
+      "description": "모호한 요청을 실행 가능한 정밀 스펙으로 다듬고 GitHub 이슈로 등록하는 스킬. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/spec/SKILL.md",
+      "bodyPath": "/skill-catalog/spec.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "sync-gbrain",
+      "description": "레포 코드를 gbrain에 동기화하고 CLAUDE.md의 에이전트 검색 안내를 갱신하는 스킬. (gstack)",
+      "version": "1.0.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/sync-gbrain/SKILL.md",
+      "bodyPath": "/skill-catalog/sync-gbrain.json",
+      "category": "platform-ecosystem"
+    },
+    {
+      "name": "system-check",
+      "description": "Ubuntu 서버 전체 시스템 점검 및 문제 해결. 사용자가 \"시스템 점검\", \"서버 상태 확인\", \"system check\" 등을 요청할 때 사용.",
+      "version": "1.0.0",
+      "model": "haiku",
+      "source": "standalone",
+      "filePath": "~/.claude/skills/system-check/SKILL.md",
+      "bodyPath": "/skill-catalog/system-check.json",
+      "category": "deploy-ops"
+    },
+    {
+      "name": "tdd",
+      "description": "TDD(테스트 주도 개발) red-green-refactor 루프로 기능 구현 및 버그 수정을 진행.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/tdd/SKILL.md",
+      "bodyPath": "/skill-catalog/tdd.json",
+      "category": "code-quality"
+    },
+    {
+      "name": "to-issues",
+      "description": "계획서·스펙·PRD를 수직 슬라이스(트레이서 불릿) 단위의 독립 이슈로 분해해 이슈 트래커에 등록.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/to-issues/SKILL.md",
+      "bodyPath": "/skill-catalog/to-issues.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "to-prd",
+      "description": "현재 대화 컨텍스트를 바탕으로 PRD를 작성하고 이슈 트래커에 게시.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/to-prd/SKILL.md",
+      "bodyPath": "/skill-catalog/to-prd.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "triage",
+      "description": "이슈 트래커의 이슈를 트리아지 상태 머신(needs-triage → ready-for-agent 등)으로 분류·관리.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/triage/SKILL.md",
+      "bodyPath": "/skill-catalog/triage.json",
+      "category": "planning-spec"
+    },
+    {
+      "name": "unfreeze",
+      "description": "/freeze로 설정된 디렉터리 편집 제한을 해제해 모든 경로 편집을 다시 허용. (gstack)",
+      "version": "0.1.0",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/unfreeze/SKILL.md",
+      "bodyPath": "/skill-catalog/unfreeze.json",
+      "category": "security-safety"
+    },
+    {
+      "name": "vault",
+      "description": "Obsidian-wiki vault 운영 — `/vault ingest <소스>`로 raw/wiki/index/log를 일관되게 갱신하고, `/vault query <질문>`으로 위키 기반 답변을 작성하며, `/vault lint`로 건강 점검. 사용자가 \"위키에 넣어줘\", \"ingest해줘\", \"vault에 저장\", \"위키에서 찾아줘\", \"vault 정리해줘\", \"lint\" 등을 말할 때, 또는 `/vault` 슬래시 명령을 직접 호출할 때 사용. URL/파일/텍스트/세션 산출물(.md 리포트 등) 무엇이든 ingest 가능.",
+      "version": null,
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/vault/SKILL.md",
+      "bodyPath": "/skill-catalog/vault.json",
+      "category": "docs-knowledge"
+    },
+    {
+      "name": "wezterm-agent-deck",
+      "description": "WezTerm 터미널 창에서 Claude Code 에이전트 상태(working/waiting/idle/inactive)를 실시간 모니터링.",
+      "version": "0.7.13",
+      "model": null,
+      "source": "standalone",
+      "filePath": "~/.claude/skills/wezterm-agent-deck/SKILL.md",
+      "bodyPath": "/skill-catalog/wezterm-agent-deck.json",
+      "category": "session-context"
+    },
+    {
+      "name": "write-a-skill",
+      "description": "새로운 에이전트 스킬을 올바른 구조와 점진적 공개(progressive disclosure) 원칙으로 생성.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/write-a-skill/SKILL.md",
+      "bodyPath": "/skill-catalog/write-a-skill.json",
+      "category": "workflow-orchestration"
+    },
+    {
+      "name": "zoom-out",
+      "description": "한 단계 위 추상화 레벨로 시야를 넓혀 낯선 코드의 전체 구조와 연관 모듈 맵을 파악한다.",
+      "version": null,
+      "model": null,
+      "source": "personal",
+      "filePath": "~/.claude/skills/zoom-out/SKILL.md",
+      "bodyPath": "/skill-catalog/zoom-out.json",
+      "category": "docs-knowledge"
+    }
+  ],
+  "categories": {
+    "planning-spec": {
+      "label": "계획·스펙·요구사항",
+      "order": 1
+    },
+    "code-quality": {
+      "label": "코드 품질·리뷰·테스트",
+      "order": 2
+    },
+    "design-ux": {
+      "label": "디자인·UI/UX",
+      "order": 3
+    },
+    "browser-automation": {
+      "label": "브라우저·웹 자동화",
+      "order": 4
+    },
+    "deploy-ops": {
+      "label": "배포·운영·모니터링",
+      "order": 5
+    },
+    "docs-knowledge": {
+      "label": "문서화·지식",
+      "order": 6
+    },
+    "workflow-orchestration": {
+      "label": "워크플로·오케스트레이션",
+      "order": 7
+    },
+    "session-context": {
+      "label": "세션·컨텍스트·메모리",
+      "order": 8
+    },
+    "security-safety": {
+      "label": "보안·안전 가드",
+      "order": 9
+    },
+    "platform-ecosystem": {
+      "label": "플랫폼·에코시스템",
+      "order": 10
+    }
   }
-]
+}

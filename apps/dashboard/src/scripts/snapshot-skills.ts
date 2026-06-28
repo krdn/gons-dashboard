@@ -13,7 +13,13 @@ import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toMeta, extractBody, sanitizeName } from "@/entities/skill/lib/parseSkill";
-import type { SkillMeta, SkillTranslations } from "@/entities/skill/model/types";
+import {
+  UNCATEGORIZED,
+  type SkillMeta,
+  type SkillTranslations,
+  type SkillCategoryDefs,
+  type SkillCategoryMetaMap,
+} from "@/entities/skill/model/types";
 
 const SKILLS_DIR = join(homedir(), ".claude", "skills");
 
@@ -24,6 +30,9 @@ const BODY_DIR = join(here, "..", "..", "public", "skill-catalog");
 // 한글 번역 overlay — 원본 SKILL.md(영어, 불가침) 대신 committed source.
 // snapshot 재생성 시 catalog/body 로 merge 되므로 번역이 소실되지 않는다.
 const TRANSLATIONS_PATH = join(here, "..", "entities", "skill", "translations.ko.json");
+// 카테고리 분류 overlay (committed source — 사람이 편집). slug → {label, order, skills[]}.
+// snapshot 이 skills[] 를 역인덱싱해 각 meta.category 를 주입한다.
+const CATEGORIES_PATH = join(here, "..", "entities", "skill", "categories.json");
 
 /** translations.ko.json 로드. 없거나 깨졌으면 빈 overlay(영어 그대로 fallback). */
 function loadTranslations(): SkillTranslations {
@@ -37,6 +46,44 @@ function loadTranslations(): SkillTranslations {
   }
 }
 
+/** categories.json 로드. 없거나 깨졌으면 빈 맵(전부 UNCATEGORIZED fallback). */
+function loadCategories(): SkillCategoryDefs {
+  if (!existsSync(CATEGORIES_PATH)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(CATEGORIES_PATH, "utf8"));
+    return parsed && typeof parsed === "object" ? (parsed as SkillCategoryDefs) : {};
+  } catch (err) {
+    console.warn(`[snapshot-skills] ⚠️ categories.json 파싱 실패 — 미분류 fallback: ${String(err)}`);
+    return {};
+  }
+}
+
+/** categories.json → 역인덱스 (skill name → slug). 한 스킬이 두 카테고리에 있으면 첫 등장 우선 + warn. */
+function buildCategoryIndex(defs: SkillCategoryDefs): Record<string, string> {
+  const index: Record<string, string> = {};
+  for (const [slug, def] of Object.entries(defs)) {
+    for (const name of def.skills) {
+      if (index[name]) {
+        console.warn(
+          `[snapshot-skills] ⚠️ "${name}" 가 두 카테고리에 중복: ${index[name]} / ${slug}. 첫 등장 유지.`,
+        );
+        continue;
+      }
+      index[name] = slug;
+    }
+  }
+  return index;
+}
+
+/** categories.json → UI 용 경량 메타 맵 (label/order 만, skills 제외). */
+function buildCategoryMeta(defs: SkillCategoryDefs): SkillCategoryMetaMap {
+  const meta: SkillCategoryMetaMap = {};
+  for (const [slug, def] of Object.entries(defs)) {
+    meta[slug] = { label: def.label, order: def.order };
+  }
+  return meta;
+}
+
 function tildePath(abs: string): string {
   const home = homedir();
   return abs.startsWith(home) ? abs.replace(home, "~") : abs;
@@ -46,7 +93,7 @@ function main() {
   if (!existsSync(SKILLS_DIR)) {
     console.warn(`[snapshot-skills] ${SKILLS_DIR} 없음 — 빈 카탈로그 생성`);
     mkdirSync(dirname(CATALOG_OUT), { recursive: true });
-    writeFileSync(CATALOG_OUT, "[]\n");
+    writeFileSync(CATALOG_OUT, JSON.stringify({ skills: [], categories: {} }, null, 2) + "\n");
     return;
   }
 
@@ -55,6 +102,9 @@ function main() {
   mkdirSync(BODY_DIR, { recursive: true });
 
   const translations = loadTranslations();
+  const categoryDefs = loadCategories();
+  const categoryIndex = buildCategoryIndex(categoryDefs); // name → slug
+  const uncategorized: string[] = []; // categories.json 에 누락된 스킬 (완전성 warn 용)
   const entries = readdirSync(SKILLS_DIR, { withFileTypes: true });
   const metas: SkillMeta[] = [];
   const usedFileNames = new Set<string>(); // sanitizeName 충돌 감지
@@ -117,6 +167,11 @@ function main() {
       }
       if (tr?.description || tr?.summary) translatedCount++;
 
+      // 카테고리 주입 — categories.json 역인덱스. 미매핑이면 UNCATEGORIZED + 추적.
+      const slug = categoryIndex[meta.name];
+      meta.category = slug ?? UNCATEGORIZED;
+      if (!slug) uncategorized.push(meta.name);
+
       metas.push(meta);
       // 본문은 원문 그대로(영어 보존). 한글 요약은 별도 필드로 분리 저장 —
       // SkillDetail 이 전용 박스로 렌더하므로 본문의 native blockquote 와 충돌하지 않는다.
@@ -133,11 +188,31 @@ function main() {
   }
 
   metas.sort((a, b) => a.name.localeCompare(b.name));
-  writeFileSync(CATALOG_OUT, JSON.stringify(metas, null, 2) + "\n");
+
+  // catalog.json envelope — { skills, categories }. categories 는 UI 섹션 헤더·순서용 경량 메타.
+  const categoryMeta = buildCategoryMeta(categoryDefs);
+  writeFileSync(
+    CATALOG_OUT,
+    JSON.stringify({ skills: metas, categories: categoryMeta }, null, 2) + "\n",
+  );
+
+  // 카테고리 분포 — 새 스킬 silent drop 즉시 가시화.
+  const distribution: Record<string, number> = {};
+  for (const m of metas) distribution[m.category] = (distribution[m.category] ?? 0) + 1;
+  const distLine = Object.entries(categoryMeta)
+    .sort((a, b) => a[1].order - b[1].order)
+    .map(([slug]) => `${slug}=${distribution[slug] ?? 0}`)
+    .join(" ");
 
   console.log(`[snapshot-skills] ✅ 생성 ${metas.length}개 / skip ${skipped}개 / 한글 overlay ${translatedCount}개`);
   console.log(`  catalog: ${tildePath(CATALOG_OUT)}`);
   console.log(`  bodies:  ${tildePath(BODY_DIR)}/`);
+  console.log(`  카테고리 분포: ${distLine}`);
+  if (uncategorized.length > 0) {
+    console.warn(
+      `[snapshot-skills] ⚠️ 미분류 ${uncategorized.length}개 (categories.json 에 추가 필요): ${uncategorized.join(", ")}`,
+    );
+  }
 }
 
 main();

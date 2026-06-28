@@ -5,7 +5,13 @@ import remarkGfm from "remark-gfm";
 import { SOURCE_LABEL, type SkillMeta, type SkillBody } from "@/entities/skill/client";
 import { SkillSummaryBox } from "./SkillSummaryBox";
 
-export function SkillDetail({ meta }: { meta: SkillMeta | null }) {
+export function SkillDetail({
+  meta,
+  categoryLabel,
+}: {
+  meta: SkillMeta | null;
+  categoryLabel: string | null;
+}) {
   const [body, setBody] = useState<string | null>(null);
   const [summaryKo, setSummaryKo] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -51,6 +57,11 @@ export function SkillDetail({ meta }: { meta: SkillMeta | null }) {
           {meta.name}
         </h2>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          {categoryLabel && (
+            <span className="inline-flex rounded-md border border-[var(--color-accent)] bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[var(--color-text)]">
+              {categoryLabel}
+            </span>
+          )}
           <span className="inline-flex rounded-md border border-[var(--color-hairline)] px-1.5 py-0.5 font-mono">
             {SOURCE_LABEL[meta.source]}
           </span>

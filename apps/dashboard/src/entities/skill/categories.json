@@ -1,0 +1,151 @@
+{
+  "planning-spec": {
+    "label": "계획·스펙·요구사항",
+    "order": 1,
+    "skills": [
+      "autoplan",
+      "grill-me",
+      "grill-with-docs",
+      "office-hours",
+      "plan-ceo-review",
+      "plan-design-review",
+      "plan-devex-review",
+      "plan-eng-review",
+      "plan-tune",
+      "prompt-assistant",
+      "prototype",
+      "spec",
+      "to-issues",
+      "to-prd",
+      "triage"
+    ]
+  },
+  "code-quality": {
+    "label": "코드 품질·리뷰·테스트",
+    "order": 2,
+    "skills": [
+      "devex-review",
+      "diagnose",
+      "health",
+      "improve-codebase-architecture",
+      "investigate",
+      "ios-qa",
+      "qa",
+      "qa-only",
+      "review",
+      "tdd"
+    ]
+  },
+  "design-ux": {
+    "label": "디자인·UI/UX",
+    "order": 3,
+    "skills": [
+      "design-consultation",
+      "design-html",
+      "design-review",
+      "design-shotgun",
+      "diagram",
+      "excalidraw-diagram",
+      "ios-design-review"
+    ]
+  },
+  "browser-automation": {
+    "label": "브라우저·웹 자동화",
+    "order": 4,
+    "skills": [
+      "browse",
+      "gstack",
+      "open-gstack-browser",
+      "pair-agent",
+      "playwright-cli",
+      "scrape",
+      "setup-browser-cookies"
+    ]
+  },
+  "deploy-ops": {
+    "label": "배포·운영·모니터링",
+    "order": 5,
+    "skills": [
+      "canary",
+      "deploy-manager",
+      "land-and-deploy",
+      "landing-report",
+      "retro",
+      "setup-deploy",
+      "system-check"
+    ]
+  },
+  "docs-knowledge": {
+    "label": "문서화·지식",
+    "order": 6,
+    "skills": [
+      "auto-doc",
+      "document-generate",
+      "document-release",
+      "gon:doc-graph",
+      "graphify",
+      "learn",
+      "make-pdf",
+      "vault",
+      "zoom-out"
+    ]
+  },
+  "workflow-orchestration": {
+    "label": "워크플로·오케스트레이션",
+    "order": 7,
+    "skills": [
+      "benchmark",
+      "benchmark-models",
+      "find-skills",
+      "gon:autonomous",
+      "gon:dashboard",
+      "gon:evolve",
+      "gon:maintain",
+      "gon:save-issue",
+      "gon:todo",
+      "ship",
+      "skillify",
+      "write-a-skill"
+    ]
+  },
+  "session-context": {
+    "label": "세션·컨텍스트·메모리",
+    "order": 8,
+    "skills": [
+      "caveman",
+      "context-manager",
+      "context-restore",
+      "context-save",
+      "notify-important",
+      "wezterm-agent-deck"
+    ]
+  },
+  "security-safety": {
+    "label": "보안·안전 가드",
+    "order": 9,
+    "skills": [
+      "careful",
+      "cso",
+      "freeze",
+      "guard",
+      "unfreeze"
+    ]
+  },
+  "platform-ecosystem": {
+    "label": "플랫폼·에코시스템",
+    "order": 10,
+    "skills": [
+      "codex",
+      "framework-manager",
+      "gstack-upgrade",
+      "ios-clean",
+      "ios-fix",
+      "ios-sync",
+      "llm-gateway-consumer-setup",
+      "port-manager",
+      "setup-gbrain",
+      "setup-matt-pocock-skills",
+      "sync-gbrain"
+    ]
+  }
+}

@@ -9,6 +9,7 @@ function meta(over: Partial<SkillMeta>): SkillMeta {
     version: null,
     model: null,
     source: "standalone",
+    category: "uncategorized",
     filePath: "x",
     bodyPath: "/skill-catalog/x.json",
     ...over,

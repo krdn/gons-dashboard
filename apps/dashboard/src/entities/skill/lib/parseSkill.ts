@@ -1,5 +1,5 @@
 import matter from "gray-matter";
-import type { SkillMeta, SkillSource } from "../model/types";
+import { UNCATEGORIZED, type SkillMeta, type SkillSource } from "../model/types";
 
 /** name 의 파일명 위험 문자(`:` `/` 공백)를 `-` 로 치환. */
 export function sanitizeName(name: string): string {
@@ -35,6 +35,8 @@ export function toMeta(raw: RawSkill): SkillMeta {
     version: asString(data.version),
     model: asString(data.model),
     source,
+    // 기본 미분류 — snapshot 이 categories.json 역인덱스로 실제 slug 를 덮어쓴다.
+    category: UNCATEGORIZED,
     filePath: raw.filePath,
     bodyPath: `/skill-catalog/${sanitizeName(name)}.json`,
   };

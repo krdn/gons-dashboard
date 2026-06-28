@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
-import { getSkills } from "@/entities/skill/server";
+import { getSkills, getSkillCategories } from "@/entities/skill/server";
 import { SkillCatalog } from "@/widgets/skill-catalog";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PageHeader } from "@/shared/ui/PageHeader";
@@ -12,6 +12,7 @@ export default async function SkillsPage() {
   if (!session?.user?.id) redirect("/login");
 
   const skills = getSkills();
+  const categories = getSkillCategories();
 
   return (
     <PageContainer>
@@ -19,7 +20,7 @@ export default async function SkillsPage() {
         title="Claude Code 스킬"
         subtitle={`설치된 스킬의 사용법과 출처를 살펴봅니다 (${skills.length}개).`}
       />
-      <SkillCatalog skills={skills} />
+      <SkillCatalog skills={skills} categories={categories} />
     </PageContainer>
   );
 }
