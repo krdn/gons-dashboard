@@ -1,1 +1,74 @@
-{}
+{
+  "andrej-karpathy-skills": {
+    "description": "Andrej Karpathy가 관찰한 LLM 코딩 함정을 바탕으로, 흔한 LLM 코딩 실수를 줄이는 행동 가이드라인"
+  },
+  "chrome-devtools-mcp": {
+    "description": "Chrome DevTools와 Puppeteer로 Chrome에서 안정적인 자동화·심층 디버깅·성능 분석을 수행"
+  },
+  "claude-code-setup": {
+    "description": "코드베이스를 분석해 hook·skill·MCP 서버·subagent 등 프로젝트에 맞는 Claude Code 자동화를 추천"
+  },
+  "claude-md-management": {
+    "description": "CLAUDE.md 파일을 유지·개선하는 도구 — 품질 감사, 세션 학습 기록, 프로젝트 메모리 최신화"
+  },
+  "claude-mem": {
+    "description": "Claude Code용 메모리 압축 시스템 — 세션 간 컨텍스트를 영속화"
+  },
+  "code-simplifier": {
+    "description": "기능을 보존하면서 코드를 명확성·일관성·유지보수성 관점에서 단순화·정제하는 에이전트"
+  },
+  "codex": {
+    "description": "Claude Code에서 Codex를 호출해 코드 리뷰하거나 작업을 위임"
+  },
+  "context7": {
+    "description": "Upstash Context7 MCP 서버 — 최신 문서 조회. 버전별 문서와 코드 예시를 소스 저장소에서 직접 LLM 컨텍스트로 가져옴"
+  },
+  "ecc": {
+    "description": "엔지니어링 팀용 하네스 네이티브 ECC 플러그인 — 에이전트 64개, 스킬 261개, 레거시 명령 shim 84개, 재사용 hook·rule·MCP 컨벤션과 Claude Code 및 인접 에이전트 하네스용 운영 워크플로"
+  },
+  "explanatory-output-style": {
+    "description": "구현 선택과 코드베이스 패턴에 대한 교육적 통찰을 추가 (폐지된 Explanatory output style을 대체)"
+  },
+  "feature-dev": {
+    "description": "코드베이스 탐색·아키텍처 설계·품질 리뷰 전담 에이전트를 갖춘 종합 기능 개발 워크플로"
+  },
+  "frontend-design": {
+    "description": "UI/UX 구현을 위한 프런트엔드 디자인 스킬"
+  },
+  "hookify": {
+    "description": "대화 패턴을 분석해 원치 않는 동작을 막는 hook을 손쉽게 생성"
+  },
+  "memsearch": {
+    "description": "Claude Code용 자동 시맨틱 메모리 — 세션 간 작업 내역을 기억"
+  },
+  "obsidian": {
+    "description": "Obsidian vault 파일(Markdown·Bases·Canvas)을 생성·편집. vault의 .md·.base·.canvas 파일 작업 시 사용"
+  },
+  "playwright": {
+    "description": "Microsoft의 브라우저 자동화·E2E 테스트 MCP 서버. 웹 페이지 상호작용, 스크린샷, 폼 입력, 요소 클릭, 자동 브라우저 테스트 워크플로를 지원"
+  },
+  "ralph-loop": {
+    "description": "대화형 반복 개발을 위한 연속 자기참조 AI 루프 — Ralph Wiggum 기법 구현. 같은 프롬프트로 작업 완료까지 Claude를 while-true 루프로 실행"
+  },
+  "security-guidance": {
+    "description": "Claude 생성 코드에 대한 보안 리뷰. 편집 시 패턴 기반 경고, Stop 시 LLM diff 리뷰, injection·XSS·SSRF·하드코딩 시크릿 등 25종 이상 취약점을 잡는 커밋 리뷰어"
+  },
+  "skill-creator": {
+    "description": "새 스킬 생성, 기존 스킬 개선, 스킬 성능 측정. 스킬을 처음부터 만들거나, 갱신·최적화하거나, eval로 테스트하거나, 분산 분석으로 성능을 벤치마크할 때 사용"
+  },
+  "slack": {
+    "description": "Slack 연동 — 메시지 검색, 커뮤니케이션 발송, 캔버스 관리 등"
+  },
+  "superpowers": {
+    "description": "Claude Code 핵심 스킬 라이브러리 — TDD, 디버깅, 협업 패턴과 검증된 기법"
+  },
+  "understand-anything": {
+    "description": "AI 기반 코드베이스 이해 — 어떤 프로젝트든 분석·시각화·설명"
+  },
+  "vercel": {
+    "description": "웹 앱과 에이전트를 빌드·배포"
+  },
+  "watch": {
+    "description": "Claude가 영상을 보게 함. yt-dlp로 다운로드, ffmpeg로 자동 스케일 프레임 추출, 캡션 또는 Whisper 폴백으로 자막을 가져와 프레임+트랜스크립트를 Claude에 전달해 영상 내용을 답변"
+  }
+}
