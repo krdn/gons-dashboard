@@ -27,7 +27,7 @@ export function PluginDetail({ plugin }: { plugin: PluginMeta | null }) {
   }
 
   const flags: string[] = [];
-  if (plugin.counts.hooks) flags.push("Hooks ✓");
+  if (plugin.counts.hooks > 0) flags.push(`Hooks ${plugin.counts.hooks}`);
   if (plugin.counts.mcp) flags.push("MCP ✓");
 
   const emptyComponents =

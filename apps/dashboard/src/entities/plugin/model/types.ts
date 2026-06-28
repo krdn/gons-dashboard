@@ -12,8 +12,8 @@ export interface PluginComponentCounts {
   skills: number;
   agents: number;
   commands: number;
-  hooks: boolean;
-  mcp: boolean;
+  hooks: number; // hooks.json 안의 hook command 총 개수 (0 = 없음). skills/agents/commands 와 동일 "출하 항목 수".
+  mcp: boolean; // MCP 서버는 존재 여부만 (요청 범위 — hook 개수만 셈)
 }
 
 export interface PluginComponents {
