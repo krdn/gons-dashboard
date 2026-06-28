@@ -1,0 +1,803 @@
+[
+  {
+    "name": "auto-doc",
+    "description": "자동 문서화 스킬. 코드 변경 시 문서 자동 업데이트, ADR 생성, 학습 내용 정리를 수행합니다. \"/doc\", \"문서화\", \"ADR 작성\" 등을 요청할 때 사용.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/auto-doc/SKILL.md",
+    "bodyPath": "/skill-catalog/auto-doc.json"
+  },
+  {
+    "name": "autoplan",
+    "description": "Auto-review pipeline — reads the full CEO, design, eng, and DX review skills from disk and runs them sequentially with auto-decisions using 6 decision principles. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/autoplan/SKILL.md",
+    "bodyPath": "/skill-catalog/autoplan.json"
+  },
+  {
+    "name": "benchmark",
+    "description": "Performance regression detection using the browse daemon. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/benchmark/SKILL.md",
+    "bodyPath": "/skill-catalog/benchmark.json"
+  },
+  {
+    "name": "benchmark-models",
+    "description": "Cross-model benchmark for gstack skills. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/benchmark-models/SKILL.md",
+    "bodyPath": "/skill-catalog/benchmark-models.json"
+  },
+  {
+    "name": "browse",
+    "description": "Fast headless browser for QA testing and site dogfooding. (gstack)",
+    "version": "1.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/browse/SKILL.md",
+    "bodyPath": "/skill-catalog/browse.json"
+  },
+  {
+    "name": "canary",
+    "description": "Post-deploy canary monitoring. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/canary/SKILL.md",
+    "bodyPath": "/skill-catalog/canary.json"
+  },
+  {
+    "name": "careful",
+    "description": "Safety guardrails for destructive commands. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/careful/SKILL.md",
+    "bodyPath": "/skill-catalog/careful.json"
+  },
+  {
+    "name": "caveman",
+    "description": "Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. Use when user says \"caveman mode\", \"talk like caveman\", \"use caveman\", \"less tokens\", \"be brief\", or invokes /caveman.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/caveman/SKILL.md",
+    "bodyPath": "/skill-catalog/caveman.json"
+  },
+  {
+    "name": "codex",
+    "description": "OpenAI Codex CLI wrapper — three modes. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/codex/SKILL.md",
+    "bodyPath": "/skill-catalog/codex.json"
+  },
+  {
+    "name": "context-manager",
+    "description": "세션 컨텍스트 저장/복원. \"컨텍스트 저장\", \"세션 복원\", \"/context\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": "haiku",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/context-manager/SKILL.md",
+    "bodyPath": "/skill-catalog/context-manager.json"
+  },
+  {
+    "name": "context-restore",
+    "description": "Restore working context saved earlier by /context-save. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/context-restore/SKILL.md",
+    "bodyPath": "/skill-catalog/context-restore.json"
+  },
+  {
+    "name": "context-save",
+    "description": "Save working context. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/context-save/SKILL.md",
+    "bodyPath": "/skill-catalog/context-save.json"
+  },
+  {
+    "name": "cso",
+    "description": "Chief Security Officer mode. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/cso/SKILL.md",
+    "bodyPath": "/skill-catalog/cso.json"
+  },
+  {
+    "name": "deploy-manager",
+    "description": "프로젝트 배포 관리 스킬. 단일/다중 프로젝트 배포, 환경별 배포, 롤백을 담당합니다. \"/deploy\", \"배포해줘\", \"롤백해줘\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/deploy-manager/SKILL.md",
+    "bodyPath": "/skill-catalog/deploy-manager.json"
+  },
+  {
+    "name": "design-consultation",
+    "description": "Design consultation: understands your product, researches the landscape, proposes a complete design system (aesthetic, typography, color, layout, spacing, motion), and generates font+color preview... (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/design-consultation/SKILL.md",
+    "bodyPath": "/skill-catalog/design-consultation.json"
+  },
+  {
+    "name": "design-html",
+    "description": "Design finalization: generates production-quality Pretext-native HTML/CSS. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/design-html/SKILL.md",
+    "bodyPath": "/skill-catalog/design-html.json"
+  },
+  {
+    "name": "design-review",
+    "description": "Designer's eye QA: finds visual inconsistency, spacing issues, hierarchy problems, AI slop patterns, and slow interactions — then fixes them. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/design-review/SKILL.md",
+    "bodyPath": "/skill-catalog/design-review.json"
+  },
+  {
+    "name": "design-shotgun",
+    "description": "Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/design-shotgun/SKILL.md",
+    "bodyPath": "/skill-catalog/design-shotgun.json"
+  },
+  {
+    "name": "devex-review",
+    "description": "Live developer experience audit. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/devex-review/SKILL.md",
+    "bodyPath": "/skill-catalog/devex-review.json"
+  },
+  {
+    "name": "diagnose",
+    "description": "Disciplined diagnosis loop for hard bugs and performance regressions. Reproduce → minimise → hypothesise → instrument → fix → regression-test. Use when user says \"diagnose this\" / \"debug this\", reports a bug, says something is broken/throwing/failing, or describes a performance regression.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/diagnose/SKILL.md",
+    "bodyPath": "/skill-catalog/diagnose.json"
+  },
+  {
+    "name": "diagram",
+    "description": "Turn an English description (or mermaid source) into a diagram triplet: the source, an editable .excalidraw file you can open (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/diagram/SKILL.md",
+    "bodyPath": "/skill-catalog/diagram.json"
+  },
+  {
+    "name": "document-generate",
+    "description": "Generate missing documentation from scratch for a feature, module, or entire project. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/document-generate/SKILL.md",
+    "bodyPath": "/skill-catalog/document-generate.json"
+  },
+  {
+    "name": "document-release",
+    "description": "Post-ship documentation update. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/document-release/SKILL.md",
+    "bodyPath": "/skill-catalog/document-release.json"
+  },
+  {
+    "name": "excalidraw-diagram",
+    "description": "Create Excalidraw diagram JSON files that make visual arguments. Use when the user wants to visualize workflows, architectures, or concepts.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/excalidraw-diagram/SKILL.md",
+    "bodyPath": "/skill-catalog/excalidraw-diagram.json"
+  },
+  {
+    "name": "find-skills",
+    "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/find-skills/SKILL.md",
+    "bodyPath": "/skill-catalog/find-skills.json"
+  },
+  {
+    "name": "framework-manager",
+    "description": "프레임워크 관리 스킬. 프레임워크 설치, 활성화/비활성화, 마이그레이션을 담당합니다. \"/framework\", \"프레임워크 관리\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/framework-manager/SKILL.md",
+    "bodyPath": "/skill-catalog/framework-manager.json"
+  },
+  {
+    "name": "freeze",
+    "description": "Restrict file edits to a specific directory for the session. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/freeze/SKILL.md",
+    "bodyPath": "/skill-catalog/freeze.json"
+  },
+  {
+    "name": "gon:autonomous",
+    "description": "gsd-autonomous Wrapper — blocker 시 GStack 페르소나(CEO/Designer/Engineer/Skeptic) 4-Agent 병렬 의사결정으로 자동 해소. 완전 무인 빌드 루프.",
+    "version": "0.2.2",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:autonomous/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-autonomous.json"
+  },
+  {
+    "name": "gon:dashboard",
+    "description": "프로젝트 살아있는 대시보드 생성·갱신. project-state.json(의도)과 코드 파생 데이터(KB·git·테스트)를 읽어 dashboard.html을 재생성. \"/gon:dashboard\", \"대시보드 갱신\", \"대시보드 열어줘\", \"프로젝트 현황\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:dashboard/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-dashboard.json"
+  },
+  {
+    "name": "gon:doc-graph",
+    "description": "문서·프로젝트 시각화 그래프 생성기. URL, PDF, 마크다운 문서 또는 프로젝트 디렉토리를 분석하여 구조화된 마크다운 정리본을 저장하고, 인터랙티브 HTML 시각화와 Excalidraw 다이어그램을 자동 생성. \"/gon:doc-graph\", \"문서 시각화\", \"그래프 생성\", \"프로젝트 분석\" 요청 시 사용.",
+    "version": "1.3.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:doc-graph/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-doc-graph.json"
+  },
+  {
+    "name": "gon:evolve",
+    "description": "재귀적 자기 개선 시스템. 코드베이스 전체(스킬, 훅, 에이전트, 동기화 시스템, 문서, 그리고 자기 자신)를 분석하고 개선안을 제안합니다. \"/gon:evolve\", \"진화\", \"자기 개선\", \"코드베이스 분석\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:evolve/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-evolve.json"
+  },
+  {
+    "name": "gon:maintain",
+    "description": "확장 시스템 자기 정비. Skills, Agents, Plugins, Hooks, Frameworks를 스캔하여 중복, 비활성, 고아 항목, 내장 기능 중복을 감지하고 정리를 제안합니다. \"/gon:maintain\", \"정비\", \"cleanup\", \"확장 정리\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:maintain/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-maintain.json"
+  },
+  {
+    "name": "gon:save-issue",
+    "description": "이슈 저장 스킬 (Save Issue). 작업 완료 후 커밋, 푸시, GitHub 이슈 등록을 자동화합니다. \"/gon:save-issue\", \"이슈 저장\", \"작업 저장\", \"커밋해줘\", \"커밋하고 푸시\", \"변경사항 저장\" 요청 시 사용.",
+    "version": "1.4.0",
+    "model": "haiku",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:save-issue/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-save-issue.json"
+  },
+  {
+    "name": "gon:todo",
+    "description": "지능형 TODO 자동 수집. 개발 중 발견된 버그, 아이디어, 기술 부채를 프로젝트별로 자동 감지·관리합니다. \"/gon:todo\", \"todo 추가\", \"할일 목록\" 요청 시 사용.",
+    "version": "1.0.0",
+    "model": "haiku",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gon:todo/SKILL.md",
+    "bodyPath": "/skill-catalog/gon-todo.json"
+  },
+  {
+    "name": "graphify",
+    "description": "Use for any question about a codebase, its architecture, file relationships, or project content — especially when graphify-out/ exists, where the question should be treated as a graphify query first. Turns any input (code, docs, papers, images, videos) into a persistent knowledge graph with god nodes, community detection, and query/path/explain tools.",
+    "version": null,
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/graphify/SKILL.md",
+    "bodyPath": "/skill-catalog/graphify.json"
+  },
+  {
+    "name": "grill-me",
+    "description": "Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions \"grill me\".",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/grill-me/SKILL.md",
+    "bodyPath": "/skill-catalog/grill-me.json"
+  },
+  {
+    "name": "grill-with-docs",
+    "description": "Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/grill-with-docs/SKILL.md",
+    "bodyPath": "/skill-catalog/grill-with-docs.json"
+  },
+  {
+    "name": "gstack",
+    "description": "Fast headless browser for QA testing and site dogfooding. (gstack)",
+    "version": "1.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/_gstack-command/SKILL.md",
+    "bodyPath": "/skill-catalog/gstack.json"
+  },
+  {
+    "name": "gstack-upgrade",
+    "description": "Upgrade gstack to the latest version.",
+    "version": "1.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/gstack-upgrade/SKILL.md",
+    "bodyPath": "/skill-catalog/gstack-upgrade.json"
+  },
+  {
+    "name": "guard",
+    "description": "Full safety mode: destructive command warnings + directory-scoped edits. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/guard/SKILL.md",
+    "bodyPath": "/skill-catalog/guard.json"
+  },
+  {
+    "name": "health",
+    "description": "Code quality dashboard. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/health/SKILL.md",
+    "bodyPath": "/skill-catalog/health.json"
+  },
+  {
+    "name": "improve-codebase-architecture",
+    "description": "Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and the decisions in docs/adr/. Use when the user wants to improve architecture, find refactoring opportunities, consolidate tightly-coupled modules, or make a codebase more testable and AI-navigable.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/improve-codebase-architecture/SKILL.md",
+    "bodyPath": "/skill-catalog/improve-codebase-architecture.json"
+  },
+  {
+    "name": "investigate",
+    "description": "Systematic debugging with root cause investigation. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/investigate/SKILL.md",
+    "bodyPath": "/skill-catalog/investigate.json"
+  },
+  {
+    "name": "ios-clean",
+    "description": "Remove the DebugBridge SPM package and all #if DEBUG wiring from an iOS app. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/ios-clean/SKILL.md",
+    "bodyPath": "/skill-catalog/ios-clean.json"
+  },
+  {
+    "name": "ios-design-review",
+    "description": "Visual design audit for iOS apps on real hardware. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/ios-design-review/SKILL.md",
+    "bodyPath": "/skill-catalog/ios-design-review.json"
+  },
+  {
+    "name": "ios-fix",
+    "description": "Autonomous iOS bug fixer. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/ios-fix/SKILL.md",
+    "bodyPath": "/skill-catalog/ios-fix.json"
+  },
+  {
+    "name": "ios-qa",
+    "description": "Live-device iOS QA for SwiftUI apps. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/ios-qa/SKILL.md",
+    "bodyPath": "/skill-catalog/ios-qa.json"
+  },
+  {
+    "name": "ios-sync",
+    "description": "Regenerate the iOS debug bridge against the latest upstream gstack templates. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/ios-sync/SKILL.md",
+    "bodyPath": "/skill-catalog/ios-sync.json"
+  },
+  {
+    "name": "land-and-deploy",
+    "description": "Land and deploy workflow. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/land-and-deploy/SKILL.md",
+    "bodyPath": "/skill-catalog/land-and-deploy.json"
+  },
+  {
+    "name": "landing-report",
+    "description": "Read-only queue dashboard for workspace-aware ship. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/landing-report/SKILL.md",
+    "bodyPath": "/skill-catalog/landing-report.json"
+  },
+  {
+    "name": "learn",
+    "description": "Manage project learnings.",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/learn/SKILL.md",
+    "bodyPath": "/skill-catalog/learn.json"
+  },
+  {
+    "name": "llm-gateway-consumer-setup",
+    "description": "Use when setting up @krdn/llm-gateway in a new consumer project — installs the package, generates example usage code, adds the auto-update GitHub workflow, configures Renovate or Dependabot, and prints the library-repo registration checklist. Triggers on \"llm-gateway 셋업\", \"소비자 프로젝트 구성\", \"gateway setup\", \"@krdn/llm-gateway 추가\".",
+    "version": null,
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/llm-gateway-consumer-setup/SKILL.md",
+    "bodyPath": "/skill-catalog/llm-gateway-consumer-setup.json"
+  },
+  {
+    "name": "make-pdf",
+    "description": "Turn any markdown file into a publication-quality PDF. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/make-pdf/SKILL.md",
+    "bodyPath": "/skill-catalog/make-pdf.json"
+  },
+  {
+    "name": "notify-important",
+    "description": "중요 내용 이메일 알림. 시스템 장애, 보안 이슈, 주요 설정 변경 등 중요한 작업 완료 시 자동으로 이메일 발송. \"/notify-important\" 또는 중요 작업 후 자동 사용.",
+    "version": "1.0.0",
+    "model": "haiku",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/notify-important/SKILL.md",
+    "bodyPath": "/skill-catalog/notify-important.json"
+  },
+  {
+    "name": "office-hours",
+    "description": "YC Office Hours — two modes. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/office-hours/SKILL.md",
+    "bodyPath": "/skill-catalog/office-hours.json"
+  },
+  {
+    "name": "open-gstack-browser",
+    "description": "Launch GStack Browser — AI-controlled Chromium with the sidebar extension baked in.",
+    "version": "0.2.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/connect-chrome/SKILL.md",
+    "bodyPath": "/skill-catalog/open-gstack-browser.json"
+  },
+  {
+    "name": "pair-agent",
+    "description": "Pair a remote AI agent with your browser. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/pair-agent/SKILL.md",
+    "bodyPath": "/skill-catalog/pair-agent.json"
+  },
+  {
+    "name": "plan-ceo-review",
+    "description": "CEO/founder-mode plan review. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/plan-ceo-review/SKILL.md",
+    "bodyPath": "/skill-catalog/plan-ceo-review.json"
+  },
+  {
+    "name": "plan-design-review",
+    "description": "Designer's eye plan review — interactive, like CEO and Eng review. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/plan-design-review/SKILL.md",
+    "bodyPath": "/skill-catalog/plan-design-review.json"
+  },
+  {
+    "name": "plan-devex-review",
+    "description": "Interactive developer experience plan review. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/plan-devex-review/SKILL.md",
+    "bodyPath": "/skill-catalog/plan-devex-review.json"
+  },
+  {
+    "name": "plan-eng-review",
+    "description": "Eng manager-mode plan review. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/plan-eng-review/SKILL.md",
+    "bodyPath": "/skill-catalog/plan-eng-review.json"
+  },
+  {
+    "name": "plan-tune",
+    "description": "Self-tuning question sensitivity + developer psychographic for gstack (v1: observational). (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/plan-tune/SKILL.md",
+    "bodyPath": "/skill-catalog/plan-tune.json"
+  },
+  {
+    "name": "playwright-cli",
+    "description": "Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, test web applications, or extract information from web pages.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/playwright-cli/SKILL.md",
+    "bodyPath": "/skill-catalog/playwright-cli.json"
+  },
+  {
+    "name": "port-manager",
+    "description": "개발 프로젝트 포트 관리. 프로젝트별 포트 등록, 목록 조회, 개발 서버 시작. \"/port\", \"/port register\", \"/port start\" 등으로 사용.",
+    "version": "1.0.0",
+    "model": "haiku",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/port-manager/SKILL.md",
+    "bodyPath": "/skill-catalog/port-manager.json"
+  },
+  {
+    "name": "prompt-assistant",
+    "description": "사용자의 프롬프트를 분석하고 개선하는 어시스턴트. 프롬프트 검토, 명확화 질문, 컨텍스트 요청, 잠재적 문제점 사전 분석을 수행합니다. \"/prompt\", \"프롬프트 분석\", \"프롬프트 검토\" 등의 명령 시 사용합니다. 계획 파일 기반 인터뷰도 지원합니다.",
+    "version": "1.0.0",
+    "model": "sonnet",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/prompt-assistant/SKILL.md",
+    "bodyPath": "/skill-catalog/prompt-assistant.json"
+  },
+  {
+    "name": "prototype",
+    "description": "Build a throwaway prototype to flush out a design before committing to it. Routes between two branches — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. Use when the user wants to prototype, sanity-check a data model or state machine, mock up a UI, explore design options, or says \"prototype this\", \"let me play with it\", \"try a few designs\".",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/prototype/SKILL.md",
+    "bodyPath": "/skill-catalog/prototype.json"
+  },
+  {
+    "name": "qa",
+    "description": "Systematically QA test a web application and fix bugs found. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/qa/SKILL.md",
+    "bodyPath": "/skill-catalog/qa.json"
+  },
+  {
+    "name": "qa-only",
+    "description": "Report-only QA testing. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/qa-only/SKILL.md",
+    "bodyPath": "/skill-catalog/qa-only.json"
+  },
+  {
+    "name": "retro",
+    "description": "Weekly engineering retrospective. (gstack)",
+    "version": "2.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/retro/SKILL.md",
+    "bodyPath": "/skill-catalog/retro.json"
+  },
+  {
+    "name": "review",
+    "description": "Pre-landing PR review. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/review/SKILL.md",
+    "bodyPath": "/skill-catalog/review.json"
+  },
+  {
+    "name": "scrape",
+    "description": "Pull data from a web page. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/scrape/SKILL.md",
+    "bodyPath": "/skill-catalog/scrape.json"
+  },
+  {
+    "name": "setup-browser-cookies",
+    "description": "Import cookies from your real Chromium browser into the headless browse session. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/setup-browser-cookies/SKILL.md",
+    "bodyPath": "/skill-catalog/setup-browser-cookies.json"
+  },
+  {
+    "name": "setup-deploy",
+    "description": "Configure deployment settings for /land-and-deploy.",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/setup-deploy/SKILL.md",
+    "bodyPath": "/skill-catalog/setup-deploy.json"
+  },
+  {
+    "name": "setup-gbrain",
+    "description": "Set up gbrain for this coding agent: install the CLI, initialize a local PGLite or Supabase brain, register MCP, capture per-remote trust policy. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/setup-gbrain/SKILL.md",
+    "bodyPath": "/skill-catalog/setup-gbrain.json"
+  },
+  {
+    "name": "setup-matt-pocock-skills",
+    "description": "Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, and domain doc layout. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, or domain docs.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/setup-matt-pocock-skills/SKILL.md",
+    "bodyPath": "/skill-catalog/setup-matt-pocock-skills.json"
+  },
+  {
+    "name": "ship",
+    "description": "Ship workflow: detect + merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, create PR. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/ship/SKILL.md",
+    "bodyPath": "/skill-catalog/ship.json"
+  },
+  {
+    "name": "skillify",
+    "description": "Codify the most recent successful /scrape flow into a permanent browser-skill on disk. (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/skillify/SKILL.md",
+    "bodyPath": "/skill-catalog/skillify.json"
+  },
+  {
+    "name": "spec",
+    "description": "Turn vague intent into a precise, executable spec in five phases. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/spec/SKILL.md",
+    "bodyPath": "/skill-catalog/spec.json"
+  },
+  {
+    "name": "sync-gbrain",
+    "description": "Keep gbrain current with this repo's code and refresh agent search guidance in CLAUDE.md. Wraps the gstack-gbrain-sync orchestrator with state (gstack)",
+    "version": "1.0.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/sync-gbrain/SKILL.md",
+    "bodyPath": "/skill-catalog/sync-gbrain.json"
+  },
+  {
+    "name": "system-check",
+    "description": "Ubuntu 서버 전체 시스템 점검 및 문제 해결. 사용자가 \"시스템 점검\", \"서버 상태 확인\", \"system check\" 등을 요청할 때 사용.",
+    "version": "1.0.0",
+    "model": "haiku",
+    "source": "standalone",
+    "filePath": "~/.claude/skills/system-check/SKILL.md",
+    "bodyPath": "/skill-catalog/system-check.json"
+  },
+  {
+    "name": "tdd",
+    "description": "Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions \"red-green-refactor\", wants integration tests, or asks for test-first development.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/tdd/SKILL.md",
+    "bodyPath": "/skill-catalog/tdd.json"
+  },
+  {
+    "name": "to-issues",
+    "description": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. Use when user wants to convert a plan into issues, create implementation tickets, or break down work into issues.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/to-issues/SKILL.md",
+    "bodyPath": "/skill-catalog/to-issues.json"
+  },
+  {
+    "name": "to-prd",
+    "description": "Turn the current conversation context into a PRD and publish it to the project issue tracker. Use when user wants to create a PRD from the current context.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/to-prd/SKILL.md",
+    "bodyPath": "/skill-catalog/to-prd.json"
+  },
+  {
+    "name": "triage",
+    "description": "Triage issues through a state machine driven by triage roles. Use when user wants to create an issue, triage issues, review incoming bugs or feature requests, prepare issues for an AFK agent, or manage issue workflow.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/triage/SKILL.md",
+    "bodyPath": "/skill-catalog/triage.json"
+  },
+  {
+    "name": "unfreeze",
+    "description": "Clear the freeze boundary set by /freeze, allowing edits to all directories again. (gstack)",
+    "version": "0.1.0",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/unfreeze/SKILL.md",
+    "bodyPath": "/skill-catalog/unfreeze.json"
+  },
+  {
+    "name": "vault",
+    "description": "Obsidian-wiki vault 운영 — `/vault ingest <소스>`로 raw/wiki/index/log를 일관되게 갱신하고, `/vault query <질문>`으로 위키 기반 답변을 작성하며, `/vault lint`로 건강 점검. 사용자가 \"위키에 넣어줘\", \"ingest해줘\", \"vault에 저장\", \"위키에서 찾아줘\", \"vault 정리해줘\", \"lint\" 등을 말할 때, 또는 `/vault` 슬래시 명령을 직접 호출할 때 사용. URL/파일/텍스트/세션 산출물(.md 리포트 등) 무엇이든 ingest 가능.",
+    "version": null,
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/vault/SKILL.md",
+    "bodyPath": "/skill-catalog/vault.json"
+  },
+  {
+    "name": "wezterm-agent-deck",
+    "description": "This skill should be used when the user asks about \"agent deck\", \"claude monitoring\", \"agent status\", \"agent notifications\", \"claude code status\", \"agent counts\", \"working waiting idle\", or mentions monitoring Claude Code agents in WezTerm.",
+    "version": "0.7.13",
+    "model": null,
+    "source": "standalone",
+    "filePath": "~/.claude/skills/wezterm-agent-deck/SKILL.md",
+    "bodyPath": "/skill-catalog/wezterm-agent-deck.json"
+  },
+  {
+    "name": "write-a-skill",
+    "description": "Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, or build a new skill.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/write-a-skill/SKILL.md",
+    "bodyPath": "/skill-catalog/write-a-skill.json"
+  },
+  {
+    "name": "zoom-out",
+    "description": "Tell the agent to zoom out and give broader context or a higher-level perspective. Use when you're unfamiliar with a section of code or need to understand how it fits into the bigger picture.",
+    "version": null,
+    "model": null,
+    "source": "personal",
+    "filePath": "~/.claude/skills/zoom-out/SKILL.md",
+    "bodyPath": "/skill-catalog/zoom-out.json"
+  }
+]
