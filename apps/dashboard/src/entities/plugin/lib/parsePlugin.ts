@@ -36,6 +36,24 @@ function hasHooks(installPath: string): boolean {
   }
 }
 
+/**
+ * MCP 정의는 두 방식이 있다 (둘 다 Claude Code 공식 스펙):
+ *   1) 독립 `.mcp.json` 파일 (context7·playwright)
+ *   2) `plugin.json` 의 `mcpServers` 키 인라인 (chrome-devtools-mcp)
+ * 둘 중 하나라도 있으면 MCP plugin.
+ */
+function hasMcp(installPath: string): boolean {
+  if (existsSync(join(installPath, ".mcp.json"))) return true;
+  const manifestPath = join(installPath, ".claude-plugin", "plugin.json");
+  if (!existsSync(manifestPath)) return false;
+  try {
+    const raw = JSON.parse(readFileSync(manifestPath, "utf8"));
+    return raw?.mcpServers != null && Object.keys(raw.mcpServers).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function countComponents(installPath: string): {
   counts: PluginComponentCounts;
   components: PluginComponents;
@@ -44,7 +62,7 @@ export function countComponents(installPath: string): {
   const agents = listMdNames(join(installPath, "agents")).sort();
   const commands = listMdNames(join(installPath, "commands")).sort();
   const hooks = hasHooks(installPath);
-  const mcp = existsSync(join(installPath, ".mcp.json"));
+  const mcp = hasMcp(installPath);
   return {
     counts: { skills: skills.length, agents: agents.length, commands: commands.length, hooks, mcp },
     components: { skills, agents, commands },

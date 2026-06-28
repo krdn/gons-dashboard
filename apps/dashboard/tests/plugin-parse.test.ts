@@ -47,6 +47,33 @@ describe("countComponents", () => {
     expect(counts.hooks).toBe(false);
     expect(components.skills).toEqual([]);
   });
+
+  it(".mcp.json 파일 방식 MCP 인식", () => {
+    const dir = mkdtempSync(join(tmpdir(), "plugin-mcp-file-"));
+    writeFileSync(join(dir, ".mcp.json"), "{}");
+    expect(countComponents(dir).counts.mcp).toBe(true);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("plugin.json mcpServers 인라인 방식 MCP 인식 (chrome-devtools-mcp 패턴)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "plugin-mcp-inline-"));
+    mkdirSync(join(dir, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(dir, ".claude-plugin", "plugin.json"),
+      JSON.stringify({ mcpServers: { foo: { command: "npx", args: ["foo"] } } }),
+    );
+    // .mcp.json 은 없지만 plugin.json 인라인 정의로 MCP=true 여야 한다.
+    expect(countComponents(dir).counts.mcp).toBe(true);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("빈 mcpServers 객체는 MCP 아님", () => {
+    const dir = mkdtempSync(join(tmpdir(), "plugin-mcp-empty-"));
+    mkdirSync(join(dir, ".claude-plugin"), { recursive: true });
+    writeFileSync(join(dir, ".claude-plugin", "plugin.json"), JSON.stringify({ mcpServers: {} }));
+    expect(countComponents(dir).counts.mcp).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 describe("parseManifest", () => {

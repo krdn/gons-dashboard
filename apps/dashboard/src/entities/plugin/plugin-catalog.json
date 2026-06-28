@@ -47,7 +47,7 @@
         "agents": 0,
         "commands": 0,
         "hooks": false,
-        "mcp": false
+        "mcp": true
       },
       "components": {
         "skills": [
