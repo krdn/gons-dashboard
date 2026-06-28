@@ -1,0 +1,235 @@
+{
+  "agents": [
+    {
+      "name": "architect",
+      "description": "Software architecture specialist for system design, scalability, and technical decision-making. Use PROACTIVELY when planning new features, refactoring large systems, or making architectural decisions.",
+      "model": "opus",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/architect.md",
+      "bodyPath": "/agent-catalog/architect.json"
+    },
+    {
+      "name": "build-error-resolver",
+      "description": "Build and TypeScript error resolution specialist. Use PROACTIVELY when build fails or type errors occur. Fixes build/type errors only with minimal diffs, no architectural edits. Focuses on getting the build green quickly.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/build-error-resolver.md",
+      "bodyPath": "/agent-catalog/build-error-resolver.json"
+    },
+    {
+      "name": "code-reviewer",
+      "description": "Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ],
+      "source": "framework",
+      "filePath": "~/.claude/agents/code-reviewer.md",
+      "bodyPath": "/agent-catalog/code-reviewer.json"
+    },
+    {
+      "name": "coder",
+      "description": "Implementation specialist for writing clean, efficient code with self-learning capabilities",
+      "model": "inherit",
+      "tools": [],
+      "source": "personal",
+      "filePath": "~/.claude/agents/coder.md",
+      "bodyPath": "/agent-catalog/coder.json"
+    },
+    {
+      "name": "doc-updater",
+      "description": "Documentation and codemap specialist. Use PROACTIVELY for updating codemaps and documentation. Runs /update-codemaps and /update-docs, generates docs/CODEMAPS/*, updates READMEs and guides.",
+      "model": "haiku",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/doc-updater.md",
+      "bodyPath": "/agent-catalog/doc-updater.json"
+    },
+    {
+      "name": "e2e-runner",
+      "description": "End-to-end testing specialist using Vercel Agent Browser (preferred) with Playwright fallback. Use PROACTIVELY for generating, maintaining, and running E2E tests. Manages test journeys, quarantines flaky tests, uploads artifacts (screenshots, videos, traces), and ensures critical user flows work.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/e2e-runner.md",
+      "bodyPath": "/agent-catalog/e2e-runner.json"
+    },
+    {
+      "name": "evolve-analyzer",
+      "description": "gons-evolve 코드베이스 전체를 분석하여 개선점을 도출하는 에이전트. /gon:evolve 스킬이 스폰합니다.",
+      "model": "inherit",
+      "tools": [
+        "Read",
+        "Bash",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/evolve-analyzer.md",
+      "bodyPath": "/agent-catalog/evolve-analyzer.json"
+    },
+    {
+      "name": "monitor",
+      "description": "시스템 모니터링 에이전트. 서버 및 서비스 상태를 모니터링하고 이상 감지 시 자동 진단/복구를 수행합니다. \"모니터링\", \"서비스 상태\", \"헬스체크\" 요청 시 사용.",
+      "model": "haiku",
+      "tools": [],
+      "source": "framework",
+      "filePath": "~/.claude/agents/monitor.md",
+      "bodyPath": "/agent-catalog/monitor.json"
+    },
+    {
+      "name": "orchestrator",
+      "description": "프로젝트 오케스트레이터. 여러 프로젝트를 트리 구조로 관리하고 작업을 도메인별 에이전트에 분배합니다. \"프로젝트 상태\", \"전체 배포\", \"크로스 프로젝트 작업\" 등을 요청할 때 사용. \"/orchestrate\", \"오케스트레이터\" 명령으로 호출.",
+      "model": "opus",
+      "tools": [],
+      "source": "framework",
+      "filePath": "~/.claude/agents/orchestrator.md",
+      "bodyPath": "/agent-catalog/orchestrator.json"
+    },
+    {
+      "name": "planner",
+      "description": "Expert planning specialist for complex features and refactoring. Use PROACTIVELY when users request feature implementation, architectural changes, or complex refactoring. Automatically activated for planning tasks.",
+      "model": "opus",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/planner.md",
+      "bodyPath": "/agent-catalog/planner.json"
+    },
+    {
+      "name": "refactor-cleaner",
+      "description": "Dead code cleanup and consolidation specialist. Use PROACTIVELY for removing unused code, duplicates, and refactoring. Runs analysis tools (knip, depcheck, ts-prune) to identify dead code and safely removes it.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/refactor-cleaner.md",
+      "bodyPath": "/agent-catalog/refactor-cleaner.json"
+    },
+    {
+      "name": "researcher",
+      "description": "Deep research and information gathering specialist with AI-enhanced pattern recognition",
+      "model": "inherit",
+      "tools": [],
+      "source": "personal",
+      "filePath": "~/.claude/agents/researcher.md",
+      "bodyPath": "/agent-catalog/researcher.json"
+    },
+    {
+      "name": "reviewer",
+      "description": "Code review and quality assurance specialist with AI-powered pattern detection",
+      "model": "inherit",
+      "tools": [],
+      "source": "personal",
+      "filePath": "~/.claude/agents/reviewer.md",
+      "bodyPath": "/agent-catalog/reviewer.json"
+    },
+    {
+      "name": "rust-reviewer",
+      "description": "Expert Rust code reviewer specializing in ownership, lifetimes, error handling, unsafe usage, and idiomatic patterns. Use for all Rust code changes. MUST BE USED for Rust projects.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/rust-reviewer.md",
+      "bodyPath": "/agent-catalog/rust-reviewer.json"
+    },
+    {
+      "name": "security-reviewer",
+      "description": "Security vulnerability detection and remediation specialist. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. Flags secrets, SSRF, injection, unsafe crypto, and OWASP Top 10 vulnerabilities.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Grep",
+        "Glob"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/security-reviewer.md",
+      "bodyPath": "/agent-catalog/security-reviewer.json"
+    },
+    {
+      "name": "tdd-guide",
+      "description": "Test-Driven Development specialist enforcing write-tests-first methodology. Use PROACTIVELY when writing new features, fixing bugs, or refactoring code. Ensures 80%+ test coverage.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Grep"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/tdd-guide.md",
+      "bodyPath": "/agent-catalog/tdd-guide.json"
+    },
+    {
+      "name": "tester",
+      "description": "Comprehensive testing and quality assurance specialist with AI-powered test generation",
+      "model": "inherit",
+      "tools": [],
+      "source": "personal",
+      "filePath": "~/.claude/agents/tester.md",
+      "bodyPath": "/agent-catalog/tester.json"
+    },
+    {
+      "name": "typescript-reviewer",
+      "description": "Expert TypeScript/JavaScript code reviewer specializing in type safety, async correctness, Node/web security, and idiomatic patterns. Use for all TypeScript and JavaScript code changes. MUST BE USED for TypeScript/JavaScript projects.",
+      "model": "sonnet",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ],
+      "source": "personal",
+      "filePath": "~/.claude/agents/typescript-reviewer.md",
+      "bodyPath": "/agent-catalog/typescript-reviewer.json"
+    }
+  ]
+}

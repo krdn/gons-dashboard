@@ -151,3 +151,43 @@ export function ServerIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+// Claude Code 그룹 — 별표(sparkle) 모티프
+export function ClaudeIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M12 3v18M3 12h18M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+// 개인 그룹 — 사람 모티프
+export function PersonalIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+    </svg>
+  );
+}
+
+// 그룹 펼침/접힘 토글 표시 — CSS transform 으로 회전
+export function ChevronRightIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+// Claude Code 에이전트 — 봇 모티프
+export function AgentIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <rect x="4" y="8" width="16" height="11" rx="2" />
+      <path d="M12 4v4" />
+      <circle cx="12" cy="3.5" r="1" />
+      <path d="M9 13h.01M15 13h.01" />
+    </svg>
+  );
+}

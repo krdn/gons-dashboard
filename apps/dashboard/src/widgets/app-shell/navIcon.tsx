@@ -5,8 +5,11 @@ import {
   ChartIcon,
   SkillIcon,
   PluginIcon,
+  AgentIcon,
   FortuneIcon,
   TigerIcon,
+  ClaudeIcon,
+  PersonalIcon,
   ServerIcon,
 } from "@/shared/ui/icons";
 import { type NavIconKey } from "@/shared/config/navigation";
@@ -16,8 +19,11 @@ const MAP: Record<NavIconKey, (p: { size?: number; className?: string }) => Reac
   chart: ChartIcon,
   skill: SkillIcon,
   plugin: PluginIcon,
+  agent: AgentIcon,
   fortune: FortuneIcon,
   tiger: TigerIcon,
+  claude: ClaudeIcon,
+  personal: PersonalIcon,
   server: ServerIcon,
 };
 
