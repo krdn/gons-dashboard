@@ -13,6 +13,26 @@ export const SOURCE_LABEL: Record<SkillSource, string> = {
 export const UNCATEGORIZED = "uncategorized";
 export const UNCATEGORIZED_LABEL = "기타";
 
+// 필요도 등급 (범용 개발 생산성 기준 평가 결과). categories 와 직교하는 평가 축.
+// necessity.json(committed source) 에서 snapshot 이 각 meta.necessity 로 주입.
+export type SkillTier = "high" | "medium" | "low" | "remove" | "unrated";
+
+// 표시 순서: 상(1) → 중(2) → 하(3) → 삭제(4) → 미평가(5).
+export const TIER_LABEL: Record<SkillTier, string> = {
+  high: "상",
+  medium: "중",
+  low: "하",
+  remove: "삭제 가능",
+  unrated: "미평가",
+};
+export const TIER_ORDER: Record<SkillTier, number> = {
+  high: 1,
+  medium: 2,
+  low: 3,
+  remove: 4,
+  unrated: 5,
+};
+
 // 리스트(catalog.json)에 담기는 경량 메타데이터 — body 없음.
 export interface SkillMeta {
   name: string;
@@ -21,6 +41,8 @@ export interface SkillMeta {
   model: string | null;
   source: SkillSource;
   category: string; // categories.json 의 slug (snapshot 빌드 시 주입). 미매핑 시 UNCATEGORIZED.
+  necessity: SkillTier; // necessity.json 의 등급 (snapshot 주입). 미매핑 시 "unrated".
+  necessityReason: string; // 그 등급인 사유 (디테일 패널 표시용). 미매핑 시 "".
   filePath: string; // 원본 SKILL.md 경로 (~/ 축약, 표시용)
   bodyPath: string; // "/skill-catalog/<sanitized-name>.json" (fetch URL)
 }

@@ -16,6 +16,7 @@ import { toMeta, extractBody, sanitizeName } from "@/entities/skill/lib/parseSki
 import {
   UNCATEGORIZED,
   type SkillMeta,
+  type SkillTier,
   type SkillTranslations,
   type SkillCategoryDefs,
   type SkillCategoryMetaMap,
@@ -33,6 +34,12 @@ const TRANSLATIONS_PATH = join(here, "..", "entities", "skill", "translations.ko
 // 카테고리 분류 overlay (committed source — 사람이 편집). slug → {label, order, skills[]}.
 // snapshot 이 skills[] 를 역인덱싱해 각 meta.category 를 주입한다.
 const CATEGORIES_PATH = join(here, "..", "entities", "skill", "categories.json");
+// 필요도 평가 overlay (committed source). name → {tier, reason}.
+// snapshot 이 각 meta.necessity / necessityReason 으로 주입한다.
+const NECESSITY_PATH = join(here, "..", "entities", "skill", "necessity.json");
+
+type NecessityEntry = { tier: SkillTier; reason: string };
+type NecessityMap = Record<string, NecessityEntry>;
 
 /** translations.ko.json 로드. 없거나 깨졌으면 빈 overlay(영어 그대로 fallback). */
 function loadTranslations(): SkillTranslations {
@@ -84,6 +91,18 @@ function buildCategoryMeta(defs: SkillCategoryDefs): SkillCategoryMetaMap {
   return meta;
 }
 
+/** necessity.json 로드. 없거나 깨졌으면 빈 맵(전부 unrated fallback). */
+function loadNecessity(): NecessityMap {
+  if (!existsSync(NECESSITY_PATH)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(NECESSITY_PATH, "utf8"));
+    return parsed && typeof parsed === "object" ? (parsed as NecessityMap) : {};
+  } catch (err) {
+    console.warn(`[snapshot-skills] ⚠️ necessity.json 파싱 실패 — 미평가 fallback: ${String(err)}`);
+    return {};
+  }
+}
+
 function tildePath(abs: string): string {
   const home = homedir();
   return abs.startsWith(home) ? abs.replace(home, "~") : abs;
@@ -105,6 +124,8 @@ function main() {
   const categoryDefs = loadCategories();
   const categoryIndex = buildCategoryIndex(categoryDefs); // name → slug
   const uncategorized: string[] = []; // categories.json 에 누락된 스킬 (완전성 warn 용)
+  const necessityMap = loadNecessity(); // name → {tier, reason}
+  const unrated: string[] = []; // necessity.json 에 누락된 스킬 (완전성 warn 용)
   const entries = readdirSync(SKILLS_DIR, { withFileTypes: true });
   const metas: SkillMeta[] = [];
   const usedFileNames = new Set<string>(); // sanitizeName 충돌 감지
@@ -172,6 +193,12 @@ function main() {
       meta.category = slug ?? UNCATEGORIZED;
       if (!slug) uncategorized.push(meta.name);
 
+      // 필요도 주입 — necessity.json. 미매핑이면 unrated + 추적.
+      const nec = necessityMap[meta.name];
+      meta.necessity = nec?.tier ?? "unrated";
+      meta.necessityReason = nec?.reason ?? "";
+      if (!nec) unrated.push(meta.name);
+
       metas.push(meta);
       // 본문은 원문 그대로(영어 보존). 한글 요약은 별도 필드로 분리 저장 —
       // SkillDetail 이 전용 박스로 렌더하므로 본문의 native blockquote 와 충돌하지 않는다.
@@ -211,6 +238,19 @@ function main() {
   if (uncategorized.length > 0) {
     console.warn(
       `[snapshot-skills] ⚠️ 미분류 ${uncategorized.length}개 (categories.json 에 추가 필요): ${uncategorized.join(", ")}`,
+    );
+  }
+
+  // 필요도 분포 — 새 스킬이 평가 안 된 채 추가되면 즉시 가시화.
+  const tierDist: Record<string, number> = {};
+  for (const m of metas) tierDist[m.necessity] = (tierDist[m.necessity] ?? 0) + 1;
+  const tierLine = (["high", "medium", "low", "remove", "unrated"] as const)
+    .map((t) => `${t}=${tierDist[t] ?? 0}`)
+    .join(" ");
+  console.log(`  필요도 분포: ${tierLine}`);
+  if (unrated.length > 0) {
+    console.warn(
+      `[snapshot-skills] ⚠️ 미평가 ${unrated.length}개 (necessity.json 에 추가 필요): ${unrated.join(", ")}`,
     );
   }
 }

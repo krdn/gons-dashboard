@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SOURCE_LABEL, type SkillMeta, type SkillBody } from "@/entities/skill/client";
 import { SkillSummaryBox } from "./SkillSummaryBox";
+import { TierBadge } from "./TierBadge";
 
 export function SkillDetail({
   meta,
@@ -57,6 +58,7 @@ export function SkillDetail({
           {meta.name}
         </h2>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          <TierBadge tier={meta.necessity} className="px-1.5 py-0.5 text-xs" />
           {categoryLabel && (
             <span className="inline-flex rounded-md border border-[var(--color-accent)] bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[var(--color-text)]">
               {categoryLabel}
@@ -75,6 +77,12 @@ export function SkillDetail({
         <p className="mt-2 font-mono text-xs text-[var(--color-text-subtle)]">
           {meta.filePath}
         </p>
+        {meta.necessityReason && (
+          <p className="mt-3 rounded-md border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-3 py-2 text-xs leading-relaxed text-[var(--color-text-muted)]">
+            <span className="font-medium text-[var(--color-text)]">필요도 평가</span>{" "}
+            {meta.necessityReason}
+          </p>
+        )}
       </header>
 
       {status === "loading" && (

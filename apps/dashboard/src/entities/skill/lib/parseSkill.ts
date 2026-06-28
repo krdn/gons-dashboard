@@ -37,6 +37,9 @@ export function toMeta(raw: RawSkill): SkillMeta {
     source,
     // 기본 미분류 — snapshot 이 categories.json 역인덱스로 실제 slug 를 덮어쓴다.
     category: UNCATEGORIZED,
+    // 기본 미평가 — snapshot 이 necessity.json 으로 실제 등급을 덮어쓴다.
+    necessity: "unrated",
+    necessityReason: "",
     filePath: raw.filePath,
     bodyPath: `/skill-catalog/${sanitizeName(name)}.json`,
   };

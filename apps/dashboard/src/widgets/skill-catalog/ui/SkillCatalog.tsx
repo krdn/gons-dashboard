@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import type { SkillMeta, SkillCategoryMetaMap } from "@/entities/skill/client";
-import { filterSkills, type SourceFilter } from "../lib/filterSkills";
+import { filterSkills, type SourceFilter, type TierFilter } from "../lib/filterSkills";
 import { groupSkills } from "../lib/groupSkills";
 import { SkillGroupSection } from "./SkillGroupSection";
 import { SkillDetail } from "./SkillDetail";
@@ -10,6 +10,14 @@ const SOURCE_CHIPS: { value: SourceFilter; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "standalone", label: "직접 설치" },
   { value: "personal", label: "개인" },
+];
+
+const TIER_CHIPS: { value: TierFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "high", label: "상" },
+  { value: "medium", label: "중" },
+  { value: "low", label: "하" },
+  { value: "remove", label: "삭제 가능" },
 ];
 
 export function SkillCatalog({
@@ -21,13 +29,14 @@ export function SkillCatalog({
 }) {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<SourceFilter>("all");
+  const [tier, setTier] = useState<TierFilter>("all");
   const [selectedName, setSelectedName] = useState<string | null>(null);
   // 사용자가 명시적으로 접은 카테고리 slug 집합. 기본 = 빈 집합(전체 펼침).
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(
-    () => filterSkills(skills, query, source),
-    [skills, query, source],
+    () => filterSkills(skills, query, source, tier),
+    [skills, query, source, tier],
   );
 
   const groups = useMemo(
@@ -96,6 +105,24 @@ export function SkillCatalog({
           <span className="ml-auto font-mono text-[var(--color-text-subtle)]">
             {filtered.length}
           </span>
+        </div>
+        <div role="group" aria-label="필요도 필터" className="flex flex-wrap items-center gap-1 text-xs">
+          <span className="mr-1 text-[10px] text-[var(--color-text-subtle)]">필요도</span>
+          {TIER_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              onClick={() => setTier(chip.value)}
+              aria-pressed={tier === chip.value}
+              className={`rounded-md border px-2 py-1 transition-colors ${
+                tier === chip.value
+                  ? "border-[var(--color-accent)] bg-[var(--color-surface-2)] text-[var(--color-text)]"
+                  : "border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
 
         {groups.length === 0 ? (

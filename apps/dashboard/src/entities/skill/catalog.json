@@ -6,9 +6,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "코드 변경 시 문서/ADR 자동 갱신은 보편 가치가 있으나 매 작업마다 호출하진 않음. document-generate(처음부터 생성)·document-release(배포 후 동기화)와 기능이 갈리지만 부분 중첩. 문서화 단계에서만 쓰는 상황 의존 도구.",
       "filePath": "~/.claude/skills/auto-doc/SKILL.md",
-      "bodyPath": "/skill-catalog/auto-doc.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/auto-doc.json"
     },
     {
       "name": "autoplan",
@@ -16,9 +18,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "CEO/디자인/엔지니어링/DX 4개 plan-review를 일괄 실행하는 파이프라인. 계획 검토라는 보편 작업이지만 gstack 페르소나 의존이고 신규 기능 계획 단계에서만 호출. plan-*-review 4종을 흡수하는 상위 래퍼라 그쪽이 삭제 후보.",
       "filePath": "~/.claude/skills/autoplan/SKILL.md",
-      "bodyPath": "/skill-catalog/autoplan.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/autoplan.json"
     },
     {
       "name": "benchmark",
@@ -26,9 +30,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "페이지 로드·Core Web Vitals 성능 회귀 감지는 웹 프론트엔드 한정이고 PR마다 자동이라기보다 성능 작업 시에만. gstack 데몬 의존. 범용 개발 전반엔 비해당.",
       "filePath": "~/.claude/skills/benchmark/SKILL.md",
-      "bodyPath": "/skill-catalog/benchmark.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/benchmark.json"
     },
     {
       "name": "benchmark-models",
@@ -36,9 +42,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "Claude/GPT/Gemini 크로스 모델 지연·비용 비교는 LLM 통합 프로젝트에서 모델 선정 시 단발로만 씀. 일상 개발 빈도 매우 낮음.",
       "filePath": "~/.claude/skills/benchmark-models/SKILL.md",
-      "bodyPath": "/skill-catalog/benchmark-models.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/benchmark-models.json"
     },
     {
       "name": "browse",
@@ -46,9 +54,11 @@
       "version": "1.1.0",
       "model": null,
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "remove",
+      "necessityReason": "description가 gstack과 글자 그대로 동일('Fast headless browser for QA testing and site dogfooding'). gstack이 bin/ 툴링(gstack-update-check 등)을 보유한 정본이고 browse/_gstack-command는 같은 도구의 별칭. 대표=gstack 하나만 유지.",
       "filePath": "~/.claude/skills/browse/SKILL.md",
-      "bodyPath": "/skill-catalog/browse.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/browse.json"
     },
     {
       "name": "canary",
@@ -56,9 +66,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "low",
+      "necessityReason": "배포 후 라이브 앱 지속 모니터링은 운영 배포가 있는 프로젝트에서만, 그리고 land-and-deploy 워크플로에 종속적. gstack 의존. 일상 개발 빈도 낮음.",
       "filePath": "~/.claude/skills/canary/SKILL.md",
-      "bodyPath": "/skill-catalog/canary.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/canary.json"
     },
     {
       "name": "careful",
@@ -66,9 +78,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "security-safety",
+      "necessity": "remove",
+      "necessityReason": "guard(중,유지)에 흡수됨. guard의 PreToolUse 훅이 standalone careful 디렉토리가 아니라 bundled 사본(gstack/careful/bin/check-careful.sh)을 가리키므로 careful 삭제해도 guard 안 깨짐. 대표=guard.",
       "filePath": "~/.claude/skills/careful/SKILL.md",
-      "bodyPath": "/skill-catalog/careful.json",
-      "category": "security-safety"
+      "bodyPath": "/skill-catalog/careful.json"
     },
     {
       "name": "caveman",
@@ -76,9 +90,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "session-context",
+      "necessity": "low",
+      "necessityReason": "(b 근접) 토큰 75% 절감 압축 모드는 출력 스타일 토글일 뿐이고 사용자 취향 한정. 개발 산출물에 기여 없음. 거의 호출 안 됨.",
       "filePath": "~/.claude/skills/caveman/SKILL.md",
-      "bodyPath": "/skill-catalog/caveman.json",
-      "category": "session-context"
+      "bodyPath": "/skill-catalog/caveman.json"
     },
     {
       "name": "codex",
@@ -86,9 +102,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "medium",
+      "necessityReason": "OpenAI Codex CLI 래퍼(리뷰·챌린지·자문). codex 플러그인(codex:rescue/setup 등)과 일부 겹치나 cross-model 자문 경로로 가치. LLM 멀티에이전트 워크플로 쓸 때만이라 중. gstack.",
       "filePath": "~/.claude/skills/codex/SKILL.md",
-      "bodyPath": "/skill-catalog/codex.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/codex.json"
     },
     {
       "name": "context-manager",
@@ -96,9 +114,11 @@
       "version": "1.0.0",
       "model": "haiku",
       "source": "standalone",
+      "category": "session-context",
+      "necessity": "medium",
+      "necessityReason": "세션 컨텍스트 저장/복원은 긴 작업 분할 시 유용. context-save/context-restore를 합친 통합본이라 그 둘이 분할 중복(삭제 후보), 이쪽이 survivor. 다만 Claude Code 자체 세션 연속성과 부분 겹침.",
       "filePath": "~/.claude/skills/context-manager/SKILL.md",
-      "bodyPath": "/skill-catalog/context-manager.json",
-      "category": "session-context"
+      "bodyPath": "/skill-catalog/context-manager.json"
     },
     {
       "name": "context-restore",
@@ -106,9 +126,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "session-context",
+      "necessity": "remove",
+      "necessityReason": "context-manager(중)의 /context restore와 동일 기능. context-save와 매칭 페어이며 둘 다 context-manager로 대체. 대표=context-manager.",
       "filePath": "~/.claude/skills/context-restore/SKILL.md",
-      "bodyPath": "/skill-catalog/context-restore.json",
-      "category": "session-context"
+      "bodyPath": "/skill-catalog/context-restore.json"
     },
     {
       "name": "context-save",
@@ -116,9 +138,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "session-context",
+      "necessity": "remove",
+      "necessityReason": "사용자 자작 context-manager(중,유지)가 /context save|restore|list|delete 전부 커버하고 한국어 트리거까지 보유. gstack context-save는 그 부분집합. 대표=context-manager.",
       "filePath": "~/.claude/skills/context-save/SKILL.md",
-      "bodyPath": "/skill-catalog/context-save.json",
-      "category": "session-context"
+      "bodyPath": "/skill-catalog/context-save.json"
     },
     {
       "name": "cso",
@@ -126,9 +150,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "security-safety",
+      "necessity": "low",
+      "necessityReason": "인프라 보안 감사 CSO 모드. security-review/security-scan(ECC 내장)·cso가 보안 클러스터로 겹치고, 인프라 보안 감사라는 특수 단발 작업 한정. gstack.",
       "filePath": "~/.claude/skills/cso/SKILL.md",
-      "bodyPath": "/skill-catalog/cso.json",
-      "category": "security-safety"
+      "bodyPath": "/skill-catalog/cso.json"
     },
     {
       "name": "deploy-manager",
@@ -136,9 +162,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "medium",
+      "necessityReason": "단일/다중 배포·롤백 관리. ship·land-and-deploy·setup-deploy와 배포 클러스터에서 겹침. gstack 의존 안 하는 범용 배포/롤백 진입점이라 survivor 후보로 중. CI 파이프라인 없는 단순 프로젝트에 유용.",
       "filePath": "~/.claude/skills/deploy-manager/SKILL.md",
-      "bodyPath": "/skill-catalog/deploy-manager.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/deploy-manager.json"
     },
     {
       "name": "design-consultation",
@@ -146,9 +174,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "medium",
+      "necessityReason": "디자인 시스템 전체 제안(타이포·컬러·레이아웃·모션). 새 UI 디자인 방향 잡을 때 유용하나 디자인 단계 한정. frontend-design 플러그인과 일부 겹침. gstack.",
       "filePath": "~/.claude/skills/design-consultation/SKILL.md",
-      "bodyPath": "/skill-catalog/design-consultation.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/design-consultation.json"
     },
     {
       "name": "design-html",
@@ -156,9 +186,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "low",
+      "necessityReason": "Pretext 네이티브 HTML/CSS 생성. gstack의 Pretext 워크플로 전용이라 그 스택 안 쓰면 무의미. 디자인 확정 단계 한정.",
       "filePath": "~/.claude/skills/design-html/SKILL.md",
-      "bodyPath": "/skill-catalog/design-html.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/design-html.json"
     },
     {
       "name": "design-review",
@@ -166,9 +198,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "medium",
+      "necessityReason": "디자인 QA(시각 불일치·간격·AI슬롭). 실제 브라우저로 시각 검수하는 가치. qa/devex-review와 일부 겹치나 디자이너 관점은 차별. 웹 UI 작업 시에만이라 중. gstack.",
       "filePath": "~/.claude/skills/design-review/SKILL.md",
-      "bodyPath": "/skill-catalog/design-review.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/design-review.json"
     },
     {
       "name": "design-shotgun",
@@ -176,9 +210,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "low",
+      "necessityReason": "다수 AI 디자인 변형 생성+비교보드. 디자인 탐색이라는 특수 단계 전용. design-consultation/design-review와 디자인 클러스터 겹침. 자주 안 씀.",
       "filePath": "~/.claude/skills/design-shotgun/SKILL.md",
-      "bodyPath": "/skill-catalog/design-shotgun.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/design-shotgun.json"
     },
     {
       "name": "devex-review",
@@ -186,9 +222,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "medium",
+      "necessityReason": "실제 브라우저 구동 DX 스코어카드는 개발자 도구/SDK 프로젝트에서 가치. 일반 코딩엔 상황 한정. browser-driving 클러스터 중 DX 초점이라 별도지만 plan-devex-review와 관점 겹침.",
       "filePath": "~/.claude/skills/devex-review/SKILL.md",
-      "bodyPath": "/skill-catalog/devex-review.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/devex-review.json"
     },
     {
       "name": "diagnose",
@@ -196,9 +234,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "code-quality",
+      "necessity": "high",
+      "necessityReason": "재현→최소화→가설→계측→수정→회귀의 버그 진단 루프. 언어·스택 무관 보편 핵심. investigate와 직접 겹치나(둘 다 89개 내) diagnose가 더 완결된 루프라 survivor. 디버깅은 rubric의 '상' 예시.",
       "filePath": "~/.claude/skills/diagnose/SKILL.md",
-      "bodyPath": "/skill-catalog/diagnose.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/diagnose.json"
     },
     {
       "name": "diagram",
@@ -206,9 +246,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "medium",
+      "necessityReason": "영어/mermaid를 다이어그램 트리플로 변환은 설계 시각화에 유용하나 매일은 아님. excalidraw-diagram과 출력 겹침(둘 다 excalidraw)이나 diagram은 source+SVG/PNG까지 포함해 더 범용. 시각화 필요 시 상황 의존.",
       "filePath": "~/.claude/skills/diagram/SKILL.md",
-      "bodyPath": "/skill-catalog/diagram.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/diagram.json"
     },
     {
       "name": "document-generate",
@@ -216,9 +258,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "Diataxis로 누락 문서를 처음부터 생성. auto-doc(변경기반 갱신)·document-release와 문서화 클러스터지만 'from scratch 생성'은 역할 차별. 새 모듈 문서화 시 유용해 중. gstack.",
       "filePath": "~/.claude/skills/document-generate/SKILL.md",
-      "bodyPath": "/skill-catalog/document-generate.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/document-generate.json"
     },
     {
       "name": "document-release",
@@ -226,9 +270,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "배포 후 README/ARCHITECTURE/CLAUDE.md를 diff에 맞춰 갱신은 릴리스마다 유용하나 배포 시점 한정. auto-doc/document-generate와 문서화 클러스터 내 역할 분담. 상황 의존.",
       "filePath": "~/.claude/skills/document-release/SKILL.md",
-      "bodyPath": "/skill-catalog/document-release.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/document-release.json"
     },
     {
       "name": "excalidraw-diagram",
@@ -236,9 +282,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "medium",
+      "necessityReason": "삭제요망(중복) 주장은 표면적 산출물(.excalidraw 확장자)만 겹칠 뿐 능력이 다르다. diagram(gstack)은 __mermaidToExcalidraw로 mermaid 자동 레이아웃을 기계적 트랜스파일하며 flowchart 외 타입은 excalidraw 출력을 아예 건너뛰고, gon:doc-graph는 문서·프로젝트 파싱에서 그래프를 자동 생성한다 — 둘 다 소스로부터 기계 생성. excalidraw-diagram은 isomorphism/education 테스트와 의도적 구성으로 '시각적 논증'을 손으로 작곡하는 유일한 변형이자, 클러스터에서 유일하게 비-gstack(파이썬 렌더러만 의존)이라 gstack 미사용 시 오히려 survivor 쪽이다. 다이어그래밍 자체는 task가 명시적으로 '범용이면 낮추지 말 것'으로 보호한 기능이나, 시각화 작업 단계에 의존해 매번 쓰지는 않으므로 상이 아닌 중.",
       "filePath": "~/.claude/skills/excalidraw-diagram/SKILL.md",
-      "bodyPath": "/skill-catalog/excalidraw-diagram.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/excalidraw-diagram.json"
     },
     {
       "name": "find-skills",
@@ -246,9 +294,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "workflow-orchestration",
+      "necessity": "medium",
+      "necessityReason": "설치 가능 스킬 검색·추천. ECC skill-scout/skill-stocktake와 겹치나 '사용자 질문→스킬 매칭' 진입점으로 범용. 메타 도구라 매번은 아니라 중.",
       "filePath": "~/.claude/skills/find-skills/SKILL.md",
-      "bodyPath": "/skill-catalog/find-skills.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/find-skills.json"
     },
     {
       "name": "framework-manager",
@@ -256,9 +306,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "low",
+      "necessityReason": "프레임워크 설치/활성화/마이그레이션. gon 프레임워크 생태계 전용 메타 도구라 그 시스템 안 쓰면 무의미. gon:maintain과 관리 영역 겹침.",
       "filePath": "~/.claude/skills/framework-manager/SKILL.md",
-      "bodyPath": "/skill-catalog/framework-manager.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/framework-manager.json"
     },
     {
       "name": "freeze",
@@ -266,9 +318,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "security-safety",
+      "necessity": "remove",
+      "necessityReason": "guard에 흡수됨. guard 훅이 gstack/freeze/bin/check-freeze.sh(bundled)를 사용하므로 standalone freeze 삭제 무해. 대표=guard.",
       "filePath": "~/.claude/skills/freeze/SKILL.md",
-      "bodyPath": "/skill-catalog/freeze.json",
-      "category": "security-safety"
+      "bodyPath": "/skill-catalog/freeze.json"
     },
     {
       "name": "gon:autonomous",
@@ -276,9 +330,11 @@
       "version": "0.2.2",
       "model": null,
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "gsd-autonomous 래퍼로 blocker 시 GStack 페르소나(CEO/Designer/Engineer) 호출. gsd/gstack 자율실행 생태계 의존이라 그 워크플로 밖에선 무의미.",
       "filePath": "~/.claude/skills/gon:autonomous/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-autonomous.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/gon-autonomous.json"
     },
     {
       "name": "gon:dashboard",
@@ -286,9 +342,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "project-state.json+코드 파생 데이터로 dashboard.html 재생성. gon 프로젝트 메타 시스템 전용. ECC dashboard-builder와 영역 겹침. 그 시스템 안 쓰면 무용.",
       "filePath": "~/.claude/skills/gon:dashboard/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-dashboard.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/gon-dashboard.json"
     },
     {
       "name": "gon:doc-graph",
@@ -296,9 +354,11 @@
       "version": "1.3.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "URL/PDF/MD/디렉토리→마크다운 정리+HTML 시각화+excalidraw. graphify·diagram·excalidraw-diagram과 시각화 클러스터 겹치나 입력 다양성·정리본 동시 생성이 차별. 문서 분석 시 유용해 중.",
       "filePath": "~/.claude/skills/gon:doc-graph/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-doc-graph.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/gon-doc-graph.json"
     },
     {
       "name": "gon:evolve",
@@ -306,9 +366,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "코드베이스 전체(스킬·훅·에이전트) 분석+개선안. gon:maintain·ECC evolve와 자기개선 클러스터 겹침. gon 확장 생태계 전용 메타라 그 시스템 안 쓰면 무용.",
       "filePath": "~/.claude/skills/gon:evolve/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-evolve.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/gon-evolve.json"
     },
     {
       "name": "gon:maintain",
@@ -316,9 +378,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "Skills/Agents/Plugins/Hooks 스캔해 중복·고아 정리는 확장 시스템 메타 정비. 정확히 이번 평가 같은 작업이지만 일상 개발 빈도 매우 낮음. gon:evolve와 인접.",
       "filePath": "~/.claude/skills/gon:maintain/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-maintain.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/gon-maintain.json"
     },
     {
       "name": "gon:save-issue",
@@ -326,9 +390,11 @@
       "version": "1.4.0",
       "model": "haiku",
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "medium",
+      "necessityReason": "작업 완료 후 커밋·푸시·GitHub 이슈 등록 자동화는 git 워크플로로 자주 쓰일 수 있으나, 커밋/푸시는 Claude Code 기본 git 능력과 겹치고 이슈 등록 부분만 차별. ship/gon:todo와 인접. 상황 의존.",
       "filePath": "~/.claude/skills/gon:save-issue/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-save-issue.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/gon-save-issue.json"
     },
     {
       "name": "gon:todo",
@@ -336,9 +402,11 @@
       "version": "1.0.0",
       "model": "haiku",
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "medium",
+      "necessityReason": "개발 중 버그·기술부채 자동 감지·프로젝트별 TODO 관리. learn·gon:save-issue와 일부 겹침. TODO 수집은 유용하나 TodoWrite 내장+이슈트래커로 대체 가능 측면 있어 중.",
       "filePath": "~/.claude/skills/gon:todo/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-todo.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/gon-todo.json"
     },
     {
       "name": "graphify",
@@ -346,9 +414,11 @@
       "version": null,
       "model": null,
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "임의 입력→지식그래프(커뮤니티 감지·쿼리·경로). zoom-out·gon:doc-graph·ECC understand-anything류와 코드이해 클러스터 겹침. 대규모 코드베이스 탐색 시 강력하나 매번은 아니라 중.",
       "filePath": "~/.claude/skills/graphify/SKILL.md",
-      "bodyPath": "/skill-catalog/graphify.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/graphify.json"
     },
     {
       "name": "grill-me",
@@ -356,9 +426,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "계획/설계를 집요하게 인터뷰해 결정 트리 분기 해소는 설계 단계에서 보편 가치. grill-with-docs(문서 참조판)와 거의 같은 일이라 한쪽 흡수 가능하나 docs 없는 일반 설계엔 이쪽. 계획 단계 한정.",
       "filePath": "~/.claude/skills/grill-me/SKILL.md",
-      "bodyPath": "/skill-catalog/grill-me.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/grill-me.json"
     },
     {
       "name": "grill-with-docs",
@@ -366,9 +438,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "기존 도메인 모델/문서 참조하며 계획 검증 + 문서 인라인 갱신. grill-me의 문서 연동 변형이라 부분 중복이나 CONTEXT.md/ADR 있는 프로젝트엔 차별. 문서 기반 설계 단계 한정.",
       "filePath": "~/.claude/skills/grill-with-docs/SKILL.md",
-      "bodyPath": "/skill-catalog/grill-with-docs.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/grill-with-docs.json"
     },
     {
       "name": "gstack",
@@ -376,9 +450,11 @@
       "version": "1.1.0",
       "model": null,
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "medium",
+      "necessityReason": "헤드리스 브라우저 QA(browse와 description 동일). 브라우저 QA 클러스터의 survivor로 둠 — browse를 제거하고 이쪽 유지. playwright MCP/playwright-cli와도 겹치나 gstack 생태계 표준 진입점이라 중.",
       "filePath": "~/.claude/skills/_gstack-command/SKILL.md",
-      "bodyPath": "/skill-catalog/gstack.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/gstack.json"
     },
     {
       "name": "gstack-upgrade",
@@ -386,9 +462,11 @@
       "version": "1.1.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "low",
+      "necessityReason": "[DeepDive 되돌림] FALSE POSITIVE. 모든 gstack preamble이 UPGRADE_AVAILABLE 감지 시 이 파일의 'Inline upgrade flow'를 읽어 실행(autoplan line152 등 다수). 삭제하면 gstack 자기 업그레이드 경로가 깨짐 — 의존성 허브라 유지.",
       "filePath": "~/.claude/skills/gstack-upgrade/SKILL.md",
-      "bodyPath": "/skill-catalog/gstack-upgrade.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/gstack-upgrade.json"
     },
     {
       "name": "guard",
@@ -396,9 +474,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "security-safety",
+      "necessity": "medium",
+      "necessityReason": "파괴적 명령 경고 + 디렉터리 범위 편집 제한의 통합 안전 모드. careful/freeze/unfreeze를 흡수하는 survivor라 가치 집중. 다만 Claude Code 권한/훅 시스템과 부분 겹치고 항상 켜두진 않음. 안전이 중요한 세션에서 상황 의존.",
       "filePath": "~/.claude/skills/guard/SKILL.md",
-      "bodyPath": "/skill-catalog/guard.json",
-      "category": "security-safety"
+      "bodyPath": "/skill-catalog/guard.json"
     },
     {
       "name": "health",
@@ -406,9 +486,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "medium",
+      "necessityReason": "코드베이스 품질 종합 점수+추세. ECC skill-health/quality-gate, review와 품질 클러스터 일부 겹침. 품질 대시보드는 주기적 점검에 유용하나 매 작업은 아니라 중. gstack.",
       "filePath": "~/.claude/skills/health/SKILL.md",
-      "bodyPath": "/skill-catalog/health.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/health.json"
     },
     {
       "name": "improve-codebase-architecture",
@@ -416,9 +498,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "code-quality",
+      "necessity": "medium",
+      "necessityReason": "아키텍처 개선 기회 발굴+깊은 모듈 리팩터링 제안. ECC refactor-clean·zoom-out과 리팩터 클러스터 겹침. 아키텍처 개선이라는 특정 단계 한정이나 가치 높아 중.",
       "filePath": "~/.claude/skills/improve-codebase-architecture/SKILL.md",
-      "bodyPath": "/skill-catalog/improve-codebase-architecture.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/improve-codebase-architecture.json"
     },
     {
       "name": "investigate",
@@ -426,9 +510,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "remove",
+      "necessityReason": "diagnose(상,유지)와 전면 중복. 둘 다 'reproduce→hypothesize→fix→regression' 디버깅 루프이고 'Iron Law: no fixes without root cause' 동일 철학. diagnose가 feedback-loop 구축을 더 정밀히 다루는 상위본. 대표=diagnose.",
       "filePath": "~/.claude/skills/investigate/SKILL.md",
-      "bodyPath": "/skill-catalog/investigate.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/investigate.json"
     },
     {
       "name": "ios-clean",
@@ -436,9 +522,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "low",
+      "necessityReason": "iOS DebugBridge SPM·#if DEBUG 제거는 iOS 플랫폼 + gstack 디버그 브릿지 전용 단발 작업. iOS 안 하면 비해당(태스크가 iOS 전용을 하로 명시).",
       "filePath": "~/.claude/skills/ios-clean/SKILL.md",
-      "bodyPath": "/skill-catalog/ios-clean.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/ios-clean.json"
     },
     {
       "name": "ios-design-review",
@@ -446,9 +534,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "design-ux",
+      "necessity": "low",
+      "necessityReason": "실기기 iOS 비주얼 감사. iOS+실 iPhone 하드웨어 한정. 플랫폼 전용이라 해당 상황 외 무용.",
       "filePath": "~/.claude/skills/ios-design-review/SKILL.md",
-      "bodyPath": "/skill-catalog/ios-design-review.json",
-      "category": "design-ux"
+      "bodyPath": "/skill-catalog/ios-design-review.json"
     },
     {
       "name": "ios-fix",
@@ -456,9 +546,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "low",
+      "necessityReason": "iOS 버그 자율 수정+실기기 검증. iOS 전용. diagnose/investigate의 iOS 특화판이나 플랫폼 한정이라 하.",
       "filePath": "~/.claude/skills/ios-fix/SKILL.md",
-      "bodyPath": "/skill-catalog/ios-fix.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/ios-fix.json"
     },
     {
       "name": "ios-qa",
@@ -466,9 +558,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "low",
+      "necessityReason": "SwiftUI 앱 실기기 비전 QA(gstack). iOS/SwiftUI 전용. 플랫폼 한정으로 범용성 없음.",
       "filePath": "~/.claude/skills/ios-qa/SKILL.md",
-      "bodyPath": "/skill-catalog/ios-qa.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/ios-qa.json"
     },
     {
       "name": "ios-sync",
@@ -476,9 +570,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "low",
+      "necessityReason": "iOS 디버그 브릿지를 gstack 템플릿으로 재생성은 iOS + gstack 전용 setup성 일회성. 비iOS 작업엔 비해당.",
       "filePath": "~/.claude/skills/ios-sync/SKILL.md",
-      "bodyPath": "/skill-catalog/ios-sync.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/ios-sync.json"
     },
     {
       "name": "land-and-deploy",
@@ -486,9 +582,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "medium",
+      "necessityReason": "PR 머지 후 CI 대기→운영 배포→canary 헬스체크 자동화는 배포 파이프라인이 있는 프로젝트에서 가치. deploy-manager·ship과 역할 겹치고 배포 시점 한정. gstack/canary 의존. 상황 의존.",
       "filePath": "~/.claude/skills/land-and-deploy/SKILL.md",
-      "bodyPath": "/skill-catalog/land-and-deploy.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/land-and-deploy.json"
     },
     {
       "name": "landing-report",
@@ -496,9 +594,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "low",
+      "necessityReason": "버전 슬롯·열린 PR 큐를 읽기 전용으로 보여주는 대시보드는 gstack workspace-aware ship 워크플로 전용. 그 생태계 안 쓰면 무의미.",
       "filePath": "~/.claude/skills/landing-report/SKILL.md",
-      "bodyPath": "/skill-catalog/landing-report.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/landing-report.json"
     },
     {
       "name": "learn",
@@ -506,9 +606,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "low",
+      "necessityReason": "gstack이 세션 간 축적한 학습 조회·정리. gstack 학습 영속화 생태계 전용. claude-mem·ECC continuous-learning과 학습 클러스터 겹침. gstack 안 쓰면 무용.",
       "filePath": "~/.claude/skills/learn/SKILL.md",
-      "bodyPath": "/skill-catalog/learn.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/learn.json"
     },
     {
       "name": "llm-gateway-consumer-setup",
@@ -516,9 +618,11 @@
       "version": null,
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "remove",
+      "necessityReason": "새 소비자 프로젝트에 @krdn/llm-gateway를 1회 설치·워크플로 구성. 이 레포는 이미 llm-gateway 도입 완료(MEMORY llm-gateway-provider-claude-cli). 새 프로젝트당 1회뿐인 글로벌 셋업 스킬이라 이 워크스페이스 기준 저빈도.",
       "filePath": "~/.claude/skills/llm-gateway-consumer-setup/SKILL.md",
-      "bodyPath": "/skill-catalog/llm-gateway-consumer-setup.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/llm-gateway-consumer-setup.json"
     },
     {
       "name": "make-pdf",
@@ -526,9 +630,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "마크다운→목차·페이지번호·워터마크 PDF. 대체 도구 적고 산출물 명확. 문서 납품 시 유용하나 빈도 낮아 중. gstack이나 기능 자체는 범용.",
       "filePath": "~/.claude/skills/make-pdf/SKILL.md",
-      "bodyPath": "/skill-catalog/make-pdf.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/make-pdf.json"
     },
     {
       "name": "notify-important",
@@ -536,9 +642,11 @@
       "version": "1.0.0",
       "model": "haiku",
       "source": "standalone",
+      "category": "session-context",
+      "necessity": "low",
+      "necessityReason": "중요 작업 후 이메일 자동 발송. 알림이라는 부수 기능. ECC unified-notifications-ops와 겹침. 장애/보안 등 특수 트리거 한정이라 자주 안 씀.",
       "filePath": "~/.claude/skills/notify-important/SKILL.md",
-      "bodyPath": "/skill-catalog/notify-important.json",
-      "category": "session-context"
+      "bodyPath": "/skill-catalog/notify-important.json"
     },
     {
       "name": "office-hours",
@@ -546,9 +654,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "low",
+      "necessityReason": "YC식 스타트업 아이디어 검증/브레인스토밍. 개발 작업 아닌 창업 피칭 전용. 일반 개발 생산성과 무관. superpowers:brainstorming과 일부 겹침.",
       "filePath": "~/.claude/skills/office-hours/SKILL.md",
-      "bodyPath": "/skill-catalog/office-hours.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/office-hours.json"
     },
     {
       "name": "open-gstack-browser",
@@ -556,9 +666,11 @@
       "version": "0.2.0",
       "model": null,
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "remove",
+      "necessityReason": "connect-chrome가 동일 파일(둘 다 name:open-gstack-browser, 본문·트리거 동일). 단 둘 중 하나만 살리면 됨 — 실제 삭제 대상은 connect-chrome 쪽이 더 명확하고(중복 트윈) gstack 브라우저 진입점 1개만 유지 권장. 어느 쪽이든 두 파일을 1개로 통합.",
       "filePath": "~/.claude/skills/connect-chrome/SKILL.md",
-      "bodyPath": "/skill-catalog/open-gstack-browser.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/open-gstack-browser.json"
     },
     {
       "name": "pair-agent",
@@ -566,9 +678,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "low",
+      "necessityReason": "원격 AI 에이전트와 브라우저 공유 연결. 원격 페어링이라는 매우 특수한 협업 시나리오 전용. gstack. 거의 호출 안 됨.",
       "filePath": "~/.claude/skills/pair-agent/SKILL.md",
-      "bodyPath": "/skill-catalog/pair-agent.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/pair-agent.json"
     },
     {
       "name": "plan-ceo-review",
@@ -576,9 +690,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "remove",
+      "necessityReason": "[파일 보존·카탈로그 숨김 권장] 파일 삭제 불가. autoplan이 ~/.claude/skills/gstack/plan-ceo-review/SKILL.md 를 disk에서 직접 Read해 실행(autoplan line1045, 878). 파일 지우면 autoplan 깨짐. standalone 카탈로그에서는 숨길 수 있으나 파일은 autoplan 컴포넌트로 보존 필요.",
       "filePath": "~/.claude/skills/plan-ceo-review/SKILL.md",
-      "bodyPath": "/skill-catalog/plan-ceo-review.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/plan-ceo-review.json"
     },
     {
       "name": "plan-design-review",
@@ -586,9 +702,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "remove",
+      "necessityReason": "[파일 보존·카탈로그 숨김 권장] autoplan이 disk에서 plan-design-review/SKILL.md를 읽어 design 리뷰 단계로 실행. 파일 보존 필수. 카탈로그 노출만 제거 가능.",
       "filePath": "~/.claude/skills/plan-design-review/SKILL.md",
-      "bodyPath": "/skill-catalog/plan-design-review.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/plan-design-review.json"
     },
     {
       "name": "plan-devex-review",
@@ -596,9 +714,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "remove",
+      "necessityReason": "[파일 보존·카탈로그 숨김 권장] autoplan이 disk에서 plan-devex-review/SKILL.md를 읽어 DX 리뷰 단계로 실행(description: 'CEO, design, eng, and DX review skills from disk'). 파일 보존 필수. 카탈로그 노출만 제거 가능.",
       "filePath": "~/.claude/skills/plan-devex-review/SKILL.md",
-      "bodyPath": "/skill-catalog/plan-devex-review.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/plan-devex-review.json"
     },
     {
       "name": "plan-eng-review",
@@ -606,9 +726,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "remove",
+      "necessityReason": "[파일 보존·카탈로그 숨김 권장] autoplan이 disk에서 plan-eng-review/SKILL.md를 읽어 eng 리뷰 단계로 실행. 파일 보존 필수. 카탈로그 노출만 제거 가능.",
       "filePath": "~/.claude/skills/plan-eng-review/SKILL.md",
-      "bodyPath": "/skill-catalog/plan-eng-review.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/plan-eng-review.json"
     },
     {
       "name": "plan-tune",
@@ -616,9 +738,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "low",
+      "necessityReason": "gstack 질문 민감도·개발자 프로파일 자기 조정은 gstack plan-review 생태계 전용 설정 튜닝(d). 일회성·저빈도. gstack 안 쓰면 무의미.",
       "filePath": "~/.claude/skills/plan-tune/SKILL.md",
-      "bodyPath": "/skill-catalog/plan-tune.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/plan-tune.json"
     },
     {
       "name": "playwright-cli",
@@ -626,9 +750,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "medium",
+      "necessityReason": "playwright-cli로 브라우저 탐색·폼·스크린샷·추출. browse/gstack/scrape와 브라우저 클러스터 겹치고 playwright MCP 내장과도 겹침. 다만 CLI 스크립팅·데이터 추출 범용성이 있어 survivor급 중.",
       "filePath": "~/.claude/skills/playwright-cli/SKILL.md",
-      "bodyPath": "/skill-catalog/playwright-cli.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/playwright-cli.json"
     },
     {
       "name": "port-manager",
@@ -636,9 +762,11 @@
       "version": "1.0.0",
       "model": "haiku",
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "medium",
+      "necessityReason": "프로젝트별 포트 등록·조회·dev 서버 시작은 멀티 프로젝트 개발 시 자주 유용하나 특정 포트 레지스트리 컨벤션 의존. dev 서버 시작은 기본 명령으로도 가능. 상황 의존.",
       "filePath": "~/.claude/skills/port-manager/SKILL.md",
-      "bodyPath": "/skill-catalog/port-manager.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/port-manager.json"
     },
     {
       "name": "prompt-assistant",
@@ -646,9 +774,11 @@
       "version": "1.0.0",
       "model": "sonnet",
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "프롬프트 분석·명확화 질문·잠재 문제 사전 분석은 모호한 요청을 다듬을 때 보편 가치. spec과 목적 일부 겹치나 spec은 이슈 등록까지, 이쪽은 프롬프트 정제. 요청 시작 단계 한정.",
       "filePath": "~/.claude/skills/prompt-assistant/SKILL.md",
-      "bodyPath": "/skill-catalog/prompt-assistant.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/prompt-assistant.json"
     },
     {
       "name": "prototype",
@@ -656,9 +786,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "버릴 프로토타입 빠르게 만들어 질문 답(터미널앱+UI변형). 설계 검증 단계 한정이나 'throwaway로 답 찾기' 패턴이 차별. 새 기능 탐색 시 유용해 중. gstack.",
       "filePath": "~/.claude/skills/prototype/SKILL.md",
-      "bodyPath": "/skill-catalog/prototype.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/prototype.json"
     },
     {
       "name": "qa",
@@ -666,9 +798,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "medium",
+      "necessityReason": "웹앱 체계적 QA+버그 수정. qa-only(리포트전용)와 수정 여부로 갈림 — 수정 포함이라 survivor. 웹 QA 보편 작업이나 웹 한정+gstack이라 중. browser-qa 내장과도 겹침.",
       "filePath": "~/.claude/skills/qa/SKILL.md",
-      "bodyPath": "/skill-catalog/qa.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/qa.json"
     },
     {
       "name": "qa-only",
@@ -676,9 +810,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "remove",
+      "necessityReason": "qa(유지)의 report-only 부분집합 — qa SKILL과 상호 명시. 둘 다 같은 QA 흐름이라 report-only 변형은 qa 하나로 대체. [파일 검증: qa-only가 \"for full loop use /qa\", qa가 \"report-only use /qa-only\"]",
       "filePath": "~/.claude/skills/qa-only/SKILL.md",
-      "bodyPath": "/skill-catalog/qa-only.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/qa-only.json"
     },
     {
       "name": "retro",
@@ -686,9 +822,11 @@
       "version": "2.0.0",
       "model": null,
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "low",
+      "necessityReason": "주간 엔지니어링 회고+기여 트렌드 분석. 팀 회고라는 주기적 특수 작업. claude-mem weekly-digests·ECC continuous-learning과 겹침. 개인 개발엔 빈도 낮아 하.",
       "filePath": "~/.claude/skills/retro/SKILL.md",
-      "bodyPath": "/skill-catalog/retro.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/retro.json"
     },
     {
       "name": "review",
@@ -696,9 +834,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "code-quality",
+      "necessity": "high",
+      "necessityReason": "PR 머지 전 코드 diff 검토는 언어·스택 무관 거의 모든 개발에서 반복되는 보편 핵심 작업(기능 범용이라 gstack 태그로 강등 안 함). 매우 자주 호출.",
       "filePath": "~/.claude/skills/review/SKILL.md",
-      "bodyPath": "/skill-catalog/review.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/review.json"
     },
     {
       "name": "scrape",
@@ -706,9 +846,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "medium",
+      "necessityReason": "웹페이지 데이터 추출. playwright-cli·browse와 브라우저 클러스터 겹치고 WebFetch 내장과도 일부 겹침. 다만 구조화 추출 특화로 데이터 수집 시 유용해 중. skillify와 쌍.",
       "filePath": "~/.claude/skills/scrape/SKILL.md",
-      "bodyPath": "/skill-catalog/scrape.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/scrape.json"
     },
     {
       "name": "setup-browser-cookies",
@@ -716,9 +858,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "browser-automation",
+      "necessity": "remove",
+      "necessityReason": "인증 페이지 QA 전 쿠키 임포트 1회용. 이 대시보드는 dev OAuth 세션 재사용(MEMORY) 경로로 인증 테스트하므로 gstack 브라우저 쿠키 임포트 불필요. 저빈도.",
       "filePath": "~/.claude/skills/setup-browser-cookies/SKILL.md",
-      "bodyPath": "/skill-catalog/setup-browser-cookies.json",
-      "category": "browser-automation"
+      "bodyPath": "/skill-catalog/setup-browser-cookies.json"
     },
     {
       "name": "setup-deploy",
@@ -726,9 +870,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "remove",
+      "necessityReason": "land-and-deploy용 배포 설정을 CLAUDE.md에 1회 기록하는 셋업. 이 프로젝트는 자체 docker --context home-server 배포 흐름(CLAUDE.md '운영 배포')이 확립돼 land-and-deploy 미사용. 일회성.",
       "filePath": "~/.claude/skills/setup-deploy/SKILL.md",
-      "bodyPath": "/skill-catalog/setup-deploy.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/setup-deploy.json"
     },
     {
       "name": "setup-gbrain",
@@ -736,9 +882,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "remove",
+      "necessityReason": "gbrain CLI/MCP 1회 셋업. 이 환경은 gbrain 미사용(MCP는 PlayMCP/Zapier/claude-mem). 설치 안 한 시스템의 셋업 스킬이라 불필요.",
       "filePath": "~/.claude/skills/setup-gbrain/SKILL.md",
-      "bodyPath": "/skill-catalog/setup-gbrain.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/setup-gbrain.json"
     },
     {
       "name": "setup-matt-pocock-skills",
@@ -746,9 +894,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "platform-ecosystem",
+      "necessity": "remove",
+      "necessityReason": "to-issues/triage/diagnose 등이 쓸 issue-tracker·triage label·domain doc 블록을 AGENTS/CLAUDE.md에 1회 스캐폴딩. 이 레포는 이미 docs/agents/{issue-tracker,triage-labels,domain}.md 보유(CLAUDE.md 'Agent 보조 자료')라 셋업 완료 상태. 일회성.",
       "filePath": "~/.claude/skills/setup-matt-pocock-skills/SKILL.md",
-      "bodyPath": "/skill-catalog/setup-matt-pocock-skills.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/setup-matt-pocock-skills.json"
     },
     {
       "name": "ship",
@@ -756,9 +906,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "medium",
+      "necessityReason": "머지·테스트·diff리뷰·버전범프·CHANGELOG·커밋·PR을 한 번에. land-and-deploy·deploy-manager·gon:save-issue와 릴리스 클러스터 겹침. all-in-one 릴리스 진입점이라 survivor급 중. gstack.",
       "filePath": "~/.claude/skills/ship/SKILL.md",
-      "bodyPath": "/skill-catalog/ship.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/ship.json"
     },
     {
       "name": "skillify",
@@ -766,9 +918,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "workflow-orchestration",
+      "necessity": "low",
+      "necessityReason": "직전 scrape 플로우를 영구 브라우저 스킬 파일로 코드화. scrape 종속 메타 도구(스크래퍼를 스킬로 굳히기). write-a-skill과 영역 겹침. 특수 단발이라 하.",
       "filePath": "~/.claude/skills/skillify/SKILL.md",
-      "bodyPath": "/skill-catalog/skillify.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/skillify.json"
     },
     {
       "name": "spec",
@@ -776,9 +930,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "planning-spec",
+      "necessity": "high",
+      "necessityReason": "모호한 요청→정밀 실행가능 스펙+GitHub 이슈 등록. 언어/스택 무관 거의 모든 작업의 출발점인 보편 핵심 작업. 기능 자체가 범용이라 gstack 표기에도 상.",
       "filePath": "~/.claude/skills/spec/SKILL.md",
-      "bodyPath": "/skill-catalog/spec.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/spec.json"
     },
     {
       "name": "sync-gbrain",
@@ -786,9 +942,11 @@
       "version": "1.0.0",
       "model": null,
       "source": "standalone",
+      "category": "platform-ecosystem",
+      "necessity": "remove",
+      "necessityReason": "setup-gbrain로 깐 gbrain을 레포에 재인덱싱하는 후속. gbrain 미사용이므로 setup-gbrain과 한 묶음으로 동반 제거. gbrain 도입하면 setup+sync 둘 다 복원.",
       "filePath": "~/.claude/skills/sync-gbrain/SKILL.md",
-      "bodyPath": "/skill-catalog/sync-gbrain.json",
-      "category": "platform-ecosystem"
+      "bodyPath": "/skill-catalog/sync-gbrain.json"
     },
     {
       "name": "system-check",
@@ -796,9 +954,11 @@
       "version": "1.0.0",
       "model": "haiku",
       "source": "standalone",
+      "category": "deploy-ops",
+      "necessity": "medium",
+      "necessityReason": "Ubuntu 서버 전체 점검·문제 해결. 서버 운영 한정이나 인프라 점검은 범용 운영 작업. ECC terminal-ops·homelab류와 일부 겹침. 서버 다룰 때 유용해 중.",
       "filePath": "~/.claude/skills/system-check/SKILL.md",
-      "bodyPath": "/skill-catalog/system-check.json",
-      "category": "deploy-ops"
+      "bodyPath": "/skill-catalog/system-check.json"
     },
     {
       "name": "tdd",
@@ -806,9 +966,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "code-quality",
+      "necessity": "high",
+      "necessityReason": "TDD red-green-refactor 루프로 기능 구현·버그 수정은 언어·스택 무관 보편 핵심 개발 방법론(태스크가 TDD를 상 예시로 명시). 기능/버그 작업마다 가치.",
       "filePath": "~/.claude/skills/tdd/SKILL.md",
-      "bodyPath": "/skill-catalog/tdd.json",
-      "category": "code-quality"
+      "bodyPath": "/skill-catalog/tdd.json"
     },
     {
       "name": "to-issues",
@@ -816,9 +978,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "계획서/스펙/PRD를 수직 슬라이스 독립 이슈로 분해·등록은 계획→실행 전환 시 유용. spec·to-prd와 이슈 트래커 워크플로 클러스터를 이루며 분해 단계 한정. 상황 의존.",
       "filePath": "~/.claude/skills/to-issues/SKILL.md",
-      "bodyPath": "/skill-catalog/to-issues.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/to-issues.json"
     },
     {
       "name": "to-prd",
@@ -826,9 +990,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "현재 대화 컨텍스트로 PRD 작성·이슈 게시는 제품 기획 단계에서 유용하나 매 작업은 아님. spec/to-issues와 기획 클러스터 내 역할 분담. 상황 의존.",
       "filePath": "~/.claude/skills/to-prd/SKILL.md",
-      "bodyPath": "/skill-catalog/to-prd.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/to-prd.json"
     },
     {
       "name": "triage",
@@ -836,9 +1002,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "planning-spec",
+      "necessity": "medium",
+      "necessityReason": "이슈트래커 이슈를 트리아지 상태머신으로 분류. 이슈 관리 워크플로 한정이나 다른 스킬과 직접 중복은 적음(분류 전담). 이슈 운영 시 유용해 중.",
       "filePath": "~/.claude/skills/triage/SKILL.md",
-      "bodyPath": "/skill-catalog/triage.json",
-      "category": "planning-spec"
+      "bodyPath": "/skill-catalog/triage.json"
     },
     {
       "name": "unfreeze",
@@ -846,9 +1014,11 @@
       "version": "0.1.0",
       "model": null,
       "source": "standalone",
+      "category": "security-safety",
+      "necessity": "medium",
+      "necessityReason": "[DeepDive 되돌림] FALSE POSITIVE. guard SKILL이 'To remove the edit boundary, run /unfreeze'(line85)로 명시 — guard/freeze가 설정한 경계를 세션 중에 해제하는 유일한 수단이다. careful/freeze와 한 묶음으로 반사 분류하면 안 됨. guard의 페어 유틸이라 유지(또는 guard 의존으로 보존).",
       "filePath": "~/.claude/skills/unfreeze/SKILL.md",
-      "bodyPath": "/skill-catalog/unfreeze.json",
-      "category": "security-safety"
+      "bodyPath": "/skill-catalog/unfreeze.json"
     },
     {
       "name": "vault",
@@ -856,9 +1026,11 @@
       "version": null,
       "model": null,
       "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "low",
+      "necessityReason": "Obsidian-wiki vault ingest/query/lint 운영은 개인 지식관리 vault 도구 전용. Obsidian wiki 안 쓰면 비해당. 코딩 작업과 분리.",
       "filePath": "~/.claude/skills/vault/SKILL.md",
-      "bodyPath": "/skill-catalog/vault.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/vault.json"
     },
     {
       "name": "wezterm-agent-deck",
@@ -866,9 +1038,11 @@
       "version": "0.7.13",
       "model": null,
       "source": "standalone",
+      "category": "session-context",
+      "necessity": "low",
+      "necessityReason": "WezTerm 창에서 Claude Code 에이전트 상태 실시간 모니터링은 WezTerm + 멀티에이전트 운영 한정. 특정 터미널·워크플로 전용으로 범용성 낮음.",
       "filePath": "~/.claude/skills/wezterm-agent-deck/SKILL.md",
-      "bodyPath": "/skill-catalog/wezterm-agent-deck.json",
-      "category": "session-context"
+      "bodyPath": "/skill-catalog/wezterm-agent-deck.json"
     },
     {
       "name": "write-a-skill",
@@ -876,9 +1050,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "workflow-orchestration",
+      "necessity": "medium",
+      "necessityReason": "새 에이전트 스킬을 올바른 구조·점진공개로 생성. skill-creator 플러그인·ECC skill-create와 직접 겹침. 스킬 작성 메타 도구라 빈도 낮으나 스킬 개발 시 핵심이라 중.",
       "filePath": "~/.claude/skills/write-a-skill/SKILL.md",
-      "bodyPath": "/skill-catalog/write-a-skill.json",
-      "category": "workflow-orchestration"
+      "bodyPath": "/skill-catalog/write-a-skill.json"
     },
     {
       "name": "zoom-out",
@@ -886,9 +1062,11 @@
       "version": null,
       "model": null,
       "source": "personal",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "한 단계 위 추상화로 낯선 코드 전체 구조·연관 모듈 맵 파악. graphify·improve-codebase-architecture·ECC codebase-onboarding과 코드이해 클러스터 겹침. 온보딩 시 유용하나 매번은 아니라 중.",
       "filePath": "~/.claude/skills/zoom-out/SKILL.md",
-      "bodyPath": "/skill-catalog/zoom-out.json",
-      "category": "docs-knowledge"
+      "bodyPath": "/skill-catalog/zoom-out.json"
     }
   ],
   "categories": {

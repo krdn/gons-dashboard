@@ -11,6 +11,8 @@ function skill(name: string, category: string): SkillMeta {
     model: null,
     source: "standalone",
     category,
+    necessity: "unrated",
+    necessityReason: "",
     filePath: `~/.claude/skills/${name}/SKILL.md`,
     bodyPath: `/skill-catalog/${name}.json`,
   };

@@ -1,5 +1,6 @@
 "use client";
 import { SOURCE_LABEL, type SkillMeta } from "@/entities/skill/client";
+import { TierBadge } from "./TierBadge";
 
 export function SkillList({
   skills,
@@ -34,8 +35,11 @@ export function SkillList({
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-medium text-[var(--color-text)]">
-                  {s.name}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <TierBadge tier={s.necessity} />
+                  <span className="truncate text-sm font-medium text-[var(--color-text)]">
+                    {s.name}
+                  </span>
                 </span>
                 <span className="shrink-0 font-mono text-[10px] text-[var(--color-text-subtle)]">
                   {SOURCE_LABEL[s.source]}

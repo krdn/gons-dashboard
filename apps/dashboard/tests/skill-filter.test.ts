@@ -10,6 +10,8 @@ function meta(over: Partial<SkillMeta>): SkillMeta {
     model: null,
     source: "standalone",
     category: "uncategorized",
+    necessity: "unrated",
+    necessityReason: "",
     filePath: "x",
     bodyPath: "/skill-catalog/x.json",
     ...over,
@@ -57,5 +59,26 @@ describe("filterSkills", () => {
     // "ultra" 는 caveman(personal) description 에만 있음 → standalone 필터로 빈 배열.
     const r = filterSkills(SKILLS, "ultra", "standalone");
     expect(r).toEqual([]);
+  });
+
+  it("필요도(tier) 필터 — 해당 등급만", () => {
+    const skills: SkillMeta[] = [
+      meta({ name: "spec", necessity: "high" }),
+      meta({ name: "auto-doc", necessity: "medium" }),
+      meta({ name: "browse", necessity: "remove" }),
+    ];
+    expect(filterSkills(skills, "", "all", "high").map((s) => s.name)).toEqual(["spec"]);
+    expect(filterSkills(skills, "", "all", "remove").map((s) => s.name)).toEqual(["browse"]);
+    expect(filterSkills(skills, "", "all", "all")).toHaveLength(3);
+  });
+
+  it("필요도 + source + 검색 동시 적용 (직교)", () => {
+    const skills: SkillMeta[] = [
+      meta({ name: "spec", necessity: "high", source: "standalone" }),
+      meta({ name: "spec-personal", necessity: "high", source: "personal" }),
+    ];
+    // high + standalone → spec 만.
+    const r = filterSkills(skills, "", "standalone", "high");
+    expect(r.map((s) => s.name)).toEqual(["spec"]);
   });
 });
