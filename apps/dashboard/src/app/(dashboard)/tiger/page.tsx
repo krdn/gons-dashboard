@@ -4,12 +4,14 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { playmcpProfiles } from "@/shared/lib/db/schema";
+import { PageContainer } from "@/shared/ui/PageContainer";
+import { PageHeader } from "@/shared/ui/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function TigerHomePage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/api/auth/signin");
+  if (!session?.user?.id) redirect("/login");
   const profiles = await db
     .select()
     .from(playmcpProfiles)
@@ -17,13 +19,11 @@ export default async function TigerHomePage() {
     .orderBy(playmcpProfiles.createdAt);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold">🐯 호(虎) 상담</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          1FATE 호작엔진이 분석하고, 호(虎)가 풀어드리는 사주 상담입니다.
-        </p>
-      </header>
+    <PageContainer width="narrow">
+      <PageHeader
+        title="🐯 호(虎) 상담"
+        subtitle="1FATE 호작엔진이 분석하고, 호(虎)가 풀어드리는 사주 상담입니다."
+      />
 
       {profiles.length === 0 ? (
         <section className="rounded-xl border bg-white p-8 text-center">
@@ -57,6 +57,6 @@ export default async function TigerHomePage() {
         <Link href="/tiger/manage" className="text-amber-700 underline">프로필 관리</Link>
         <Link href="/tiger/compatibility" className="text-amber-700 underline">인연 궁합</Link>
       </nav>
-    </main>
+    </PageContainer>
   );
 }
