@@ -116,6 +116,14 @@ export function SkillIcon({ size = 18, className }: IconProps) {
   );
 }
 
+export function PluginIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M10 3v3a2 2 0 0 0 4 0V3h4v4h-3a2 2 0 0 0 0 4h3v4a2 2 0 0 1-2 2h-4v-3a2 2 0 0 0-4 0v3H6a2 2 0 0 1-2-2v-4h3a2 2 0 0 0 0-4H4V5a2 2 0 0 1 2-2h4z" />
+    </svg>
+  );
+}
+
 export function FortuneIcon({ size = 18, className }: IconProps) {
   return (
     <svg {...svgProps(size)} className={className}>

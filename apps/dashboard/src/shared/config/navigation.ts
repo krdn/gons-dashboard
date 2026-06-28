@@ -4,6 +4,7 @@ export type NavIconKey =
   | "home"
   | "chart"
   | "skill"
+  | "plugin"
   | "fortune"
   | "tiger"
   | "server";
@@ -18,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "홈", icon: "home" },
   { href: "/stocks", label: "주식", icon: "chart" },
   { href: "/skills", label: "스킬", icon: "skill" },
+  { href: "/plugins", label: "플러그인", icon: "plugin" },
   { href: "/fortune", label: "운세", icon: "fortune" },
   { href: "/tiger", label: "호상담", icon: "tiger" },
   // { href: "/servers", label: "서버", icon: "server" }, // /servers 인덱스 라우트 미존재(servers/[hostName] 동적 라우트만 있음). 인덱스 신설 시 활성화.
