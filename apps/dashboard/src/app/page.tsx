@@ -116,6 +116,15 @@ export default async function DashboardPage() {
               US 티커 페르소나 × 장/중/단기 관점 분석 →
             </p>
           </Link>
+          <Link
+            href="/skills"
+            className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] px-5 py-4 transition-colors hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-2)]"
+          >
+            <h3 className="text-sm font-semibold">Claude Code 스킬</h3>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              설치된 스킬의 사용법·출처 카탈로그 →
+            </p>
+          </Link>
         </div>
 
         <aside aria-label="우측 위젯" className="flex flex-col gap-4">

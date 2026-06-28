@@ -9,28 +9,24 @@ export function SkillDetail({ meta }: { meta: SkillMeta | null }) {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
-    if (!meta) {
-      setBody(null);
-      setStatus("idle");
-      return;
-    }
+    if (!meta) return;
     let cancelled = false;
-    setStatus("loading");
-    setBody(null);
-    fetch(meta.bodyPath)
-      .then((r) => {
+    const load = async () => {
+      setStatus("loading");
+      setBody(null);
+      try {
+        const r = await fetch(meta.bodyPath);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<SkillBody>;
-      })
-      .then((data) => {
+        const data = (await r.json()) as SkillBody;
         if (cancelled) return;
         setBody(data.body);
         setStatus("idle");
-      })
-      .catch(() => {
+      } catch {
         if (cancelled) return;
         setStatus("error");
-      });
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
