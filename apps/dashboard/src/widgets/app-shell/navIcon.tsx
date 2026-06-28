@@ -1,4 +1,5 @@
 "use client";
+import { type ReactNode } from "react";
 import {
   HomeIcon,
   ChartIcon,
@@ -9,7 +10,7 @@ import {
 } from "@/shared/ui/icons";
 import { type NavIconKey } from "@/shared/config/navigation";
 
-const MAP: Record<NavIconKey, (p: { size?: number; className?: string }) => React.ReactNode> = {
+const MAP: Record<NavIconKey, (p: { size?: number; className?: string }) => ReactNode> = {
   home: HomeIcon,
   chart: ChartIcon,
   skill: SkillIcon,

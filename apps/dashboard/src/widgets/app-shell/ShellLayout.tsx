@@ -40,7 +40,7 @@ export function ShellLayout({
             aria-expanded={!collapsed}
             className="rounded p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
           >
-            {collapsed ? "›" : "‹"}
+            <span aria-hidden="true">{collapsed ? "›" : "‹"}</span>
           </button>
         </div>
         <Sidebar collapsed={collapsed} />
