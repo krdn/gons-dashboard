@@ -14,7 +14,7 @@ function mk(over: Partial<PluginMeta>): PluginMeta {
     keywords: [],
     enabled: true,
     resolved: true,
-    counts: { skills: 0, agents: 0, commands: 0, hooks: false, mcp: false },
+    counts: { skills: 0, agents: 0, commands: 0, hooks: 0, mcp: false },
     components: { skills: [], agents: [], commands: [] },
     ...over,
   };

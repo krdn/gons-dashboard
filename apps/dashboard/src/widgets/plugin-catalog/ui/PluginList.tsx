@@ -3,13 +3,13 @@ import type { PluginMeta } from "@/entities/plugin/client";
 import { pluginStatus } from "../lib/filterPlugins";
 import { PluginStatusBadge } from "./PluginStatusBadge";
 
-/** 0이 아닌 구성요소 축만 칩으로. boolean 축(hooks/mcp)은 true 일 때만. */
+/** 0이 아닌 구성요소 축만 칩으로. mcp(boolean)는 true 일 때만. */
 function countChips(p: PluginMeta): string[] {
   const chips: string[] = [];
   if (p.counts.skills) chips.push(`${p.counts.skills} skills`);
   if (p.counts.agents) chips.push(`${p.counts.agents} agents`);
   if (p.counts.commands) chips.push(`${p.counts.commands} cmds`);
-  if (p.counts.hooks) chips.push("hooks");
+  if (p.counts.hooks) chips.push(`${p.counts.hooks} hooks`);
   if (p.counts.mcp) chips.push("MCP");
   return chips;
 }

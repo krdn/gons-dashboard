@@ -1,6 +1,6 @@
 // plugin installPath 하위를 스캔해 구성요소 카운트 + manifest 메타 추출.
 // fs 직접 사용 — 스냅샷 스크립트(server tree) 전용. 경로 문자열만 받는다.
-import { readdirSync, existsSync, statSync, readFileSync } from "node:fs";
+import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PluginComponentCounts, PluginComponents } from "../model/types";
 
@@ -26,13 +26,28 @@ function listMdNames(dir: string): string[] {
   }
 }
 
-function hasHooks(installPath: string): boolean {
-  const hooksDir = join(installPath, "hooks");
-  if (existsSync(join(hooksDir, "hooks.json"))) return true;
+/**
+ * hooks/hooks.json 안의 hook command 총 개수를 센다.
+ * 구조: { hooks: { <EventName>: [{ matcher, hooks: [{ type, command }, ...] }, ...] } }.
+ * 파일 없거나 깨졌으면 0 (배지 미표시). skills/agents/commands 와 같은 "출하 항목 수" 의미.
+ */
+function countHooks(installPath: string): number {
+  const hooksJson = join(installPath, "hooks", "hooks.json");
+  if (!existsSync(hooksJson)) return 0;
   try {
-    return existsSync(hooksDir) && statSync(hooksDir).isDirectory();
+    const raw = JSON.parse(readFileSync(hooksJson, "utf8"));
+    const events = raw?.hooks;
+    if (events == null || typeof events !== "object") return 0;
+    let total = 0;
+    for (const matchers of Object.values(events)) {
+      if (!Array.isArray(matchers)) continue;
+      for (const m of matchers) {
+        if (Array.isArray(m?.hooks)) total += m.hooks.length;
+      }
+    }
+    return total;
   } catch {
-    return false;
+    return 0;
   }
 }
 
@@ -61,7 +76,7 @@ export function countComponents(installPath: string): {
   const skills = listDirs(join(installPath, "skills")).sort();
   const agents = listMdNames(join(installPath, "agents")).sort();
   const commands = listMdNames(join(installPath, "commands")).sort();
-  const hooks = hasHooks(installPath);
+  const hooks = countHooks(installPath);
   const mcp = hasMcp(installPath);
   return {
     counts: { skills: skills.length, agents: agents.length, commands: commands.length, hooks, mcp },

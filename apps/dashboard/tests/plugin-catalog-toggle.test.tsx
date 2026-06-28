@@ -20,7 +20,7 @@ function mk(name: string, marketplace: string): PluginMeta {
     keywords: [],
     enabled: true,
     resolved: true,
-    counts: { skills: 1, agents: 0, commands: 0, hooks: false, mcp: false },
+    counts: { skills: 1, agents: 0, commands: 0, hooks: 0, mcp: false },
     components: { skills: ["s"], agents: [], commands: [] },
   };
 }

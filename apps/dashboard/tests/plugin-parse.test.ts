@@ -8,13 +8,24 @@ let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "plugin-parse-"));
-  // skills/ 2개, agents/ 1개, commands/ 0개, hooks.json 있음, .mcp.json 없음
+  // skills/ 2개, agents/ 1개, commands/ 0개, hooks command 2개, .mcp.json 없음
   mkdirSync(join(root, "skills", "alpha"), { recursive: true });
   mkdirSync(join(root, "skills", "beta"), { recursive: true });
   mkdirSync(join(root, "agents"), { recursive: true });
   writeFileSync(join(root, "agents", "rev.md"), "# rev");
   mkdirSync(join(root, "hooks"), { recursive: true });
-  writeFileSync(join(root, "hooks", "hooks.json"), "{}");
+  // 실제 구조: PreToolUse 에 matcher 2블록(command 1+1) → 총 2개.
+  writeFileSync(
+    join(root, "hooks", "hooks.json"),
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: "Bash", hooks: [{ type: "command", command: "echo a" }] },
+          { matcher: "Write", hooks: [{ type: "command", command: "echo b" }] },
+        ],
+      },
+    }),
+  );
   mkdirSync(join(root, ".claude-plugin"), { recursive: true });
   writeFileSync(
     join(root, ".claude-plugin", "plugin.json"),
@@ -30,22 +41,30 @@ beforeAll(() => {
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 describe("countComponents", () => {
-  it("디렉토리/파일/존재 플래그를 정확히 센다", () => {
+  it("디렉토리/파일 개수 + hook command 개수를 정확히 센다", () => {
     const { counts, components } = countComponents(root);
     expect(counts.skills).toBe(2);
     expect(counts.agents).toBe(1);
     expect(counts.commands).toBe(0);
-    expect(counts.hooks).toBe(true);
+    expect(counts.hooks).toBe(2); // hooks.json 안의 command 총 2개
     expect(counts.mcp).toBe(false);
     expect(components.skills.sort()).toEqual(["alpha", "beta"]);
     expect(components.agents).toEqual(["rev"]);
   });
 
-  it("존재하지 않는 경로는 0/false/빈배열", () => {
+  it("존재하지 않는 경로는 0/빈배열", () => {
     const { counts, components } = countComponents(join(root, "nope"));
     expect(counts.skills).toBe(0);
-    expect(counts.hooks).toBe(false);
+    expect(counts.hooks).toBe(0);
     expect(components.skills).toEqual([]);
+  });
+
+  it("빈 {} hooks.json 은 hook 0개 (존재만으론 카운트 안 함)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "plugin-hooks-empty-"));
+    mkdirSync(join(dir, "hooks"), { recursive: true });
+    writeFileSync(join(dir, "hooks", "hooks.json"), "{}");
+    expect(countComponents(dir).counts.hooks).toBe(0);
+    rmSync(dir, { recursive: true, force: true });
   });
 
   it(".mcp.json 파일 방식 MCP 인식", () => {

@@ -20,7 +20,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -46,7 +46,7 @@
         "skills": 6,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": true
       },
       "components": {
@@ -77,7 +77,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -103,7 +103,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 1,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -143,7 +143,7 @@
         "skills": 17,
         "agents": 0,
         "commands": 0,
-        "hooks": true,
+        "hooks": 7,
         "mcp": true
       },
       "components": {
@@ -185,7 +185,7 @@
         "skills": 0,
         "agents": 1,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -211,7 +211,7 @@
         "skills": 3,
         "agents": 1,
         "commands": 7,
-        "hooks": true,
+        "hooks": 3,
         "mcp": false
       },
       "components": {
@@ -249,7 +249,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -273,7 +273,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": true
       },
       "components": {
@@ -297,7 +297,7 @@
         "skills": 17,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -351,7 +351,7 @@
         "skills": 261,
         "agents": 64,
         "commands": 84,
-        "hooks": true,
+        "hooks": 28,
         "mcp": true
       },
       "components": {
@@ -787,7 +787,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": true,
+        "hooks": 1,
         "mcp": false
       },
       "components": {
@@ -811,7 +811,7 @@
         "skills": 0,
         "agents": 3,
         "commands": 1,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -841,7 +841,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -865,7 +865,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -891,7 +891,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -917,7 +917,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -941,7 +941,7 @@
         "skills": 1,
         "agents": 1,
         "commands": 4,
-        "hooks": true,
+        "hooks": 4,
         "mcp": false
       },
       "components": {
@@ -974,7 +974,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 0,
-        "hooks": true,
+        "hooks": 4,
         "mcp": false
       },
       "components": {
@@ -1007,7 +1007,7 @@
         "skills": 5,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1037,7 +1037,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": true
       },
       "components": {
@@ -1061,7 +1061,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1085,7 +1085,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1109,7 +1109,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 3,
-        "hooks": true,
+        "hooks": 1,
         "mcp": false
       },
       "components": {
@@ -1137,7 +1137,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1161,7 +1161,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1185,7 +1185,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1209,7 +1209,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1233,7 +1233,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1257,7 +1257,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": true,
+        "hooks": 9,
         "mcp": false
       },
       "components": {
@@ -1281,7 +1281,7 @@
         "skills": 1,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1307,7 +1307,7 @@
         "skills": 6,
         "agents": 0,
         "commands": 5,
-        "hooks": false,
+        "hooks": 0,
         "mcp": true
       },
       "components": {
@@ -1351,7 +1351,7 @@
         "skills": 14,
         "agents": 0,
         "commands": 0,
-        "hooks": true,
+        "hooks": 1,
         "mcp": false
       },
       "components": {
@@ -1390,7 +1390,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1414,7 +1414,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1444,7 +1444,7 @@
         "skills": 8,
         "agents": 9,
         "commands": 0,
-        "hooks": true,
+        "hooks": 2,
         "mcp": false
       },
       "components": {
@@ -1496,7 +1496,7 @@
         "skills": 27,
         "agents": 3,
         "commands": 6,
-        "hooks": true,
+        "hooks": 4,
         "mcp": true
       },
       "components": {
@@ -1559,7 +1559,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1583,7 +1583,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1607,7 +1607,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1631,7 +1631,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1655,7 +1655,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": false,
+        "hooks": 0,
         "mcp": false
       },
       "components": {
@@ -1691,7 +1691,7 @@
         "skills": 0,
         "agents": 0,
         "commands": 1,
-        "hooks": true,
+        "hooks": 1,
         "mcp": false
       },
       "components": {
