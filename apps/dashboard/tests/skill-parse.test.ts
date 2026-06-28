@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toMeta, sanitizeName, extractBody } from "@/entities/skill/lib/parseSkill";
+import { toMeta, sanitizeName, extractBody, type RawSkill } from "@/entities/skill/lib/parseSkill";
 
 const NORMAL = `---
 name: auto-doc
@@ -87,12 +87,25 @@ describe("toMeta", () => {
     const m = toMeta({ dirName: "mystery", rawContent: NO_NAME, isSymlink: false, filePath: "x" });
     expect(m.name).toBe("mystery");
   });
+
+  it("RawSkill 타입 객체를 받는다", () => {
+    const raw: RawSkill = {
+      dirName: "auto-doc",
+      rawContent: NORMAL,
+      isSymlink: false,
+      filePath: "~/.claude/skills/auto-doc/SKILL.md",
+    };
+    expect(toMeta(raw).name).toBe("auto-doc");
+  });
 });
 
 describe("sanitizeName", () => {
   it("콜론·슬래시 → 하이픈", () => {
     expect(sanitizeName("gon:autonomous")).toBe("gon-autonomous");
     expect(sanitizeName("ecc:review")).toBe("ecc-review");
+  });
+  it("공백 → 하이픈", () => {
+    expect(sanitizeName("my skill")).toBe("my-skill");
   });
   it("일반 이름은 그대로", () => {
     expect(sanitizeName("auto-doc")).toBe("auto-doc");
