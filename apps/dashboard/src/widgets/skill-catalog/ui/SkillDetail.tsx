@@ -1,0 +1,86 @@
+"use client";
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { SOURCE_LABEL, type SkillMeta, type SkillBody } from "@/entities/skill/client";
+
+export function SkillDetail({ meta }: { meta: SkillMeta | null }) {
+  const [body, setBody] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+
+  useEffect(() => {
+    if (!meta) {
+      setBody(null);
+      setStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setStatus("loading");
+    setBody(null);
+    fetch(meta.bodyPath)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<SkillBody>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setBody(data.body);
+        setStatus("idle");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [meta]);
+
+  if (!meta) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[var(--color-hairline)] p-10 text-sm text-[var(--color-text-muted)]">
+        왼쪽에서 스킬을 선택하세요.
+      </div>
+    );
+  }
+
+  return (
+    <article className="rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface)] p-6">
+      <header className="mb-4 border-b border-[var(--color-hairline)] pb-4">
+        <h2 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">
+          {meta.name}
+        </h2>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          <span className="inline-flex rounded-md border border-[var(--color-hairline)] px-1.5 py-0.5 font-mono">
+            {SOURCE_LABEL[meta.source]}
+          </span>
+          {meta.version && (
+            <span className="font-mono">v{meta.version}</span>
+          )}
+          {meta.model && (
+            <span className="font-mono">model: {meta.model}</span>
+          )}
+        </div>
+        <p className="mt-2 font-mono text-xs text-[var(--color-text-subtle)]">
+          {meta.filePath}
+        </p>
+      </header>
+
+      {status === "loading" && (
+        <p role="status" className="text-sm text-[var(--color-text-muted)]">
+          본문 불러오는 중…
+        </p>
+      )}
+      {status === "error" && (
+        <p className="text-sm text-[var(--color-severity-high)]">
+          본문을 불러오지 못했습니다. 새로고침으로 재시도하세요.
+        </p>
+      )}
+      {body != null && (
+        <div className="text-sm leading-relaxed text-[var(--color-text)] [&_code]:rounded [&_code]:bg-[var(--color-surface-2)] [&_code]:px-1 [&_h1]:mb-3 [&_h1]:mt-5 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--color-surface-2)] [&_pre]:p-3 [&_strong]:font-semibold [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--color-hairline)] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--color-hairline)] [&_th]:bg-[var(--color-surface-2)] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+        </div>
+      )}
+    </article>
+  );
+}
