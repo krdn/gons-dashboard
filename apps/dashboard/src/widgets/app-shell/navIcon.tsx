@@ -1,0 +1,24 @@
+"use client";
+import {
+  HomeIcon,
+  ChartIcon,
+  SkillIcon,
+  FortuneIcon,
+  TigerIcon,
+  ServerIcon,
+} from "@/shared/ui/icons";
+import { type NavIconKey } from "@/shared/config/navigation";
+
+const MAP: Record<NavIconKey, (p: { size?: number; className?: string }) => React.ReactNode> = {
+  home: HomeIcon,
+  chart: ChartIcon,
+  skill: SkillIcon,
+  fortune: FortuneIcon,
+  tiger: TigerIcon,
+  server: ServerIcon,
+};
+
+export function NavIcon({ icon, className }: { icon: NavIconKey; className?: string }) {
+  const Cmp = MAP[icon];
+  return <Cmp size={18} className={className} />;
+}
