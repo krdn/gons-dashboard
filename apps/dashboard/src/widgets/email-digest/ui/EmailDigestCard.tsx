@@ -7,6 +7,7 @@ import { auth } from "@/shared/lib/auth";
 import { getReplyNeeded } from "@/entities/email";
 import { getEmailSettings } from "@/entities/email-settings";
 import { EmailSettingsDialog } from "@/features/email-settings-manage/client";
+import { WidgetHeader } from "@/shared/ui/WidgetHeader";
 import { ReplyCard } from "./ReplyCard";
 import { EmailDigestEmpty } from "./EmailDigestEmpty";
 
@@ -29,21 +30,13 @@ export async function EmailDigestCard() {
       aria-labelledby="reply-needed-heading"
       className="col-span-1 max-w-[760px]"
     >
-      <div className="mb-4 flex items-center justify-between">
-        <h2
-          id="reply-needed-heading"
-          className="flex items-baseline gap-2 text-base font-semibold tracking-tight text-[var(--color-text)]"
-        >
-          <span>답장 필요</span>
-          <span className="font-mono text-xs font-medium tabular-nums text-[var(--color-text-muted)]">
-            {items.length}
-          </span>
-          <span className="text-xs font-normal text-[var(--color-text-muted)]">
-            최근 {settings.windowDays}일
-          </span>
-        </h2>
-        <EmailSettingsDialog initial={settings} />
-      </div>
+      <WidgetHeader
+        title="답장 필요"
+        titleId="reply-needed-heading"
+        count={items.length}
+        meta={`최근 ${settings.windowDays}일`}
+        headerSlot={<EmailSettingsDialog initial={settings} />}
+      />
 
       {items.length === 0 ? (
         <EmailDigestEmpty />
