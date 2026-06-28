@@ -10,7 +10,7 @@ import "dotenv/config";
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, lstatSync, existsSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toMeta, extractBody, sanitizeName } from "@/entities/skill/lib/parseSkill";
 import type { SkillMeta } from "@/entities/skill/model/types";
@@ -30,6 +30,7 @@ function tildePath(abs: string): string {
 function main() {
   if (!existsSync(SKILLS_DIR)) {
     console.warn(`[snapshot-skills] ${SKILLS_DIR} 없음 — 빈 카탈로그 생성`);
+    mkdirSync(dirname(CATALOG_OUT), { recursive: true });
     writeFileSync(CATALOG_OUT, "[]\n");
     return;
   }
@@ -53,6 +54,7 @@ function main() {
     try {
       isSymlink = lstatSync(entryPath).isSymbolicLink();
     } catch {
+      console.warn(`[snapshot-skills] skip (stat 실패): ${entry.name}`);
       skipped++;
       continue;
     }
