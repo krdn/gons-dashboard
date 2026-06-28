@@ -35,7 +35,9 @@ export function Card({
   ...a11y
 }: CardProps) {
   const Tag = as;
-  const cls = `rounded-xl border ${TONE[tone]} ${PADDING[padding]} ${className}`.trim();
+  const cls = ["rounded-xl border", TONE[tone], PADDING[padding], className]
+    .filter(Boolean)
+    .join(" ");
   return (
     <Tag className={cls} {...a11y}>
       {children}
