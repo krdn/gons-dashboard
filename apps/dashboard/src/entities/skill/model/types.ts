@@ -21,7 +21,9 @@ export interface SkillMeta {
 
 // public/skill-catalog/<name>.json 의 형태.
 export interface SkillBody {
-  body: string; // SKILL.md frontmatter 이후 마크다운 전문
+  body: string; // SKILL.md frontmatter 이후 마크다운 전문 (원문, 영어 보존)
+  summaryKo?: string; // 한글 "한눈에" 요약 (overlay 있을 때만). 본문과 분리 저장하여
+  //                     SkillDetail 이 전용 박스로 렌더 — 본문의 native blockquote 와 충돌 방지.
 }
 
 // 한글 번역 overlay (translations.ko.json) 의 항목.

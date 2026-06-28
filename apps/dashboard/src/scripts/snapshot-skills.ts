@@ -12,7 +12,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, lstatSync, existsS
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { toMeta, extractBody, sanitizeName, prependSummary } from "@/entities/skill/lib/parseSkill";
+import { toMeta, extractBody, sanitizeName } from "@/entities/skill/lib/parseSkill";
 import type { SkillMeta, SkillTranslations } from "@/entities/skill/model/types";
 
 const SKILLS_DIR = join(homedir(), ".claude", "skills");
@@ -118,8 +118,14 @@ function main() {
       if (tr?.description || tr?.summary) translatedCount++;
 
       metas.push(meta);
-      const body = prependSummary(extractBody(rawContent), tr?.summary);
-      writeFileSync(join(BODY_DIR, fileName), JSON.stringify({ body }));
+      // 본문은 원문 그대로(영어 보존). 한글 요약은 별도 필드로 분리 저장 —
+      // SkillDetail 이 전용 박스로 렌더하므로 본문의 native blockquote 와 충돌하지 않는다.
+      const body = extractBody(rawContent);
+      const summaryKo = tr?.summary?.trim();
+      writeFileSync(
+        join(BODY_DIR, fileName),
+        JSON.stringify(summaryKo ? { body, summaryKo } : { body }),
+      );
     } catch (err) {
       console.warn(`[snapshot-skills] skip (파싱 실패): ${entry.name} — ${String(err)}`);
       skipped++;
