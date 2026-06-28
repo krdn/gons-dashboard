@@ -10,7 +10,7 @@
   },
   {
     "name": "autoplan",
-    "description": "Auto-review pipeline — reads the full CEO, design, eng, and DX review skills from disk and runs them sequentially with auto-decisions using 6 decision principles. (gstack)",
+    "description": "CEO·디자인·엔지니어링·DX 리뷰를 일괄 실행하고 6가지 의사결정 원칙으로 자동 판단하는 계획 검토 파이프라인. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -19,7 +19,7 @@
   },
   {
     "name": "benchmark",
-    "description": "Performance regression detection using the browse daemon. (gstack)",
+    "description": "페이지 로드 시간·Core Web Vitals·리소스 크기를 측정하고 PR마다 성능 회귀를 감지하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -28,7 +28,7 @@
   },
   {
     "name": "benchmark-models",
-    "description": "Cross-model benchmark for gstack skills. (gstack)",
+    "description": "동일한 프롬프트를 Claude·GPT·Gemini에 동시 실행해 지연시간·토큰·비용을 비교하는 크로스 모델 benchmark. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -37,7 +37,7 @@
   },
   {
     "name": "browse",
-    "description": "Fast headless browser for QA testing and site dogfooding. (gstack)",
+    "description": "QA 테스트와 사이트 dogfooding을 위한 빠른 헤드리스 브라우저 스킬. (gstack)",
     "version": "1.1.0",
     "model": null,
     "source": "standalone",
@@ -46,7 +46,7 @@
   },
   {
     "name": "canary",
-    "description": "Post-deploy canary monitoring. (gstack)",
+    "description": "배포 후 라이브 앱을 지속 모니터링해 콘솔 에러·성능 회귀·페이지 오류를 감지하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -55,7 +55,7 @@
   },
   {
     "name": "careful",
-    "description": "Safety guardrails for destructive commands. (gstack)",
+    "description": "파괴적 명령(rm -rf, DROP TABLE, force-push 등) 실행 전 경고를 표시하는 안전 가드레일 스킬. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -64,7 +64,7 @@
   },
   {
     "name": "caveman",
-    "description": "Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. Use when user says \"caveman mode\", \"talk like caveman\", \"use caveman\", \"less tokens\", \"be brief\", or invokes /caveman.",
+    "description": "불필요한 수식어와 인사말을 제거해 토큰 사용량을 약 75% 줄이는 초압축 커뮤니케이션 모드.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -73,7 +73,7 @@
   },
   {
     "name": "codex",
-    "description": "OpenAI Codex CLI wrapper — three modes. (gstack)",
+    "description": "OpenAI Codex CLI 래퍼 — 코드 리뷰·챌린지·자문 세 가지 모드. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -91,7 +91,7 @@
   },
   {
     "name": "context-restore",
-    "description": "Restore working context saved earlier by /context-save. (gstack)",
+    "description": "이전에 `/context-save`로 저장한 작업 컨텍스트를 복원합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -100,7 +100,7 @@
   },
   {
     "name": "context-save",
-    "description": "Save working context. (gstack)",
+    "description": "현재 작업 컨텍스트를 저장합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -109,7 +109,7 @@
   },
   {
     "name": "cso",
-    "description": "Chief Security Officer mode. (gstack)",
+    "description": "최고 보안 책임자(CSO) 모드 — 인프라 보안 감사를 수행합니다. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -127,7 +127,7 @@
   },
   {
     "name": "design-consultation",
-    "description": "Design consultation: understands your product, researches the landscape, proposes a complete design system (aesthetic, typography, color, layout, spacing, motion), and generates font+color preview... (gstack)",
+    "description": "디자인 시스템 컨설팅 — 미학·타이포그래피·컬러·레이아웃·모션을 포함한 완전한 디자인 시스템을 제안하고 DESIGN.md를 생성합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -136,7 +136,7 @@
   },
   {
     "name": "design-html",
-    "description": "Design finalization: generates production-quality Pretext-native HTML/CSS. (gstack)",
+    "description": "디자인 확정 단계 — Pretext 네이티브 방식으로 프로덕션 품질의 HTML/CSS를 생성합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -145,7 +145,7 @@
   },
   {
     "name": "design-review",
-    "description": "Designer's eye QA: finds visual inconsistency, spacing issues, hierarchy problems, AI slop patterns, and slow interactions — then fixes them. (gstack)",
+    "description": "디자인 QA: 시각적 불일치, 간격 문제, 계층 구조, AI 남용 패턴, 느린 인터랙션을 찾아 수정. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -154,7 +154,7 @@
   },
   {
     "name": "design-shotgun",
-    "description": "Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. (gstack)",
+    "description": "다수의 AI 디자인 변형을 생성하고 비교 보드에서 피드백을 수집해 반복 개선. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -163,7 +163,7 @@
   },
   {
     "name": "devex-review",
-    "description": "Live developer experience audit. (gstack)",
+    "description": "실제 브라우저를 구동해 개발자 경험(DX)을 직접 테스트하고 스코어카드를 작성. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -172,7 +172,7 @@
   },
   {
     "name": "diagnose",
-    "description": "Disciplined diagnosis loop for hard bugs and performance regressions. Reproduce → minimise → hypothesise → instrument → fix → regression-test. Use when user says \"diagnose this\" / \"debug this\", reports a bug, says something is broken/throwing/failing, or describes a performance regression.",
+    "description": "재현 → 최소화 → 가설 → 계측 → 수정 → 회귀 테스트로 이어지는 어려운 버그 진단 루프.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -181,7 +181,7 @@
   },
   {
     "name": "diagram",
-    "description": "Turn an English description (or mermaid source) into a diagram triplet: the source, an editable .excalidraw file you can open (gstack)",
+    "description": "영어 설명이나 mermaid 소스를 다이어그램 트리플(소스, .excalidraw 파일, SVG/PNG)로 변환. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -190,7 +190,7 @@
   },
   {
     "name": "document-generate",
-    "description": "Generate missing documentation from scratch for a feature, module, or entire project. (gstack)",
+    "description": "Diataxis 프레임워크를 사용해 기능·모듈·프로젝트의 누락 문서를 처음부터 생성. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -199,7 +199,7 @@
   },
   {
     "name": "document-release",
-    "description": "Post-ship documentation update. (gstack)",
+    "description": "배포 후 문서 동기화: README·ARCHITECTURE·CLAUDE.md를 diff에 맞춰 갱신하고 문서 부채를 리포트. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -208,7 +208,7 @@
   },
   {
     "name": "excalidraw-diagram",
-    "description": "Create Excalidraw diagram JSON files that make visual arguments. Use when the user wants to visualize workflows, architectures, or concepts.",
+    "description": "정보를 단순 나열하는 것이 아니라 시각적 논증을 만드는 Excalidraw 다이어그램 JSON 파일 생성.",
     "version": "1.0.0",
     "model": "sonnet",
     "source": "standalone",
@@ -217,7 +217,7 @@
   },
   {
     "name": "find-skills",
-    "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+    "description": "사용자가 특정 기능을 물어볼 때 설치 가능한 스킬을 검색하고 추천하는 스킬 탐색기.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -235,7 +235,7 @@
   },
   {
     "name": "freeze",
-    "description": "Restrict file edits to a specific directory for the session. (gstack)",
+    "description": "특정 디렉토리 밖 파일 편집을 세션 동안 차단하는 편집 범위 제한 스킬. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -307,7 +307,7 @@
   },
   {
     "name": "graphify",
-    "description": "Use for any question about a codebase, its architecture, file relationships, or project content — especially when graphify-out/ exists, where the question should be treated as a graphify query first. Turns any input (code, docs, papers, images, videos) into a persistent knowledge graph with god nodes, community detection, and query/path/explain tools.",
+    "description": "코드베이스·문서·영상 등 임의의 입력을 지식 그래프(knowledge graph)로 변환하고 커뮤니티 감지·쿼리·경로 탐색 도구를 제공한다.",
     "version": null,
     "model": null,
     "source": "standalone",
@@ -316,7 +316,7 @@
   },
   {
     "name": "grill-me",
-    "description": "Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions \"grill me\".",
+    "description": "계획이나 설계를 집요하게 인터뷰하여 결정 트리의 각 분기를 해소하고 공유된 이해에 도달한다.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -325,7 +325,7 @@
   },
   {
     "name": "grill-with-docs",
-    "description": "Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.",
+    "description": "기존 도메인 모델과 문서(CONTEXT.md, ADR)를 참조하며 계획을 집요하게 검증하고, 결정이 굳어지면 문서를 인라인으로 갱신한다.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -334,7 +334,7 @@
   },
   {
     "name": "gstack",
-    "description": "Fast headless browser for QA testing and site dogfooding. (gstack)",
+    "description": "QA 테스트와 사이트 도그푸딩을 위한 빠른 헤드리스 브라우저 도구. (gstack)",
     "version": "1.1.0",
     "model": null,
     "source": "standalone",
@@ -343,7 +343,7 @@
   },
   {
     "name": "gstack-upgrade",
-    "description": "Upgrade gstack to the latest version.",
+    "description": "gstack을 최신 버전으로 업그레이드하고 변경 사항을 표시한다. (gstack)",
     "version": "1.1.0",
     "model": null,
     "source": "standalone",
@@ -352,7 +352,7 @@
   },
   {
     "name": "guard",
-    "description": "Full safety mode: destructive command warnings + directory-scoped edits. (gstack)",
+    "description": "파괴적 명령 경고 + 디렉터리 범위 편집 제한의 완전 안전 모드. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -361,7 +361,7 @@
   },
   {
     "name": "health",
-    "description": "Code quality dashboard. (gstack)",
+    "description": "코드베이스 품질 종합 점수를 측정하고 추세를 추적하는 대시보드. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -370,7 +370,7 @@
   },
   {
     "name": "improve-codebase-architecture",
-    "description": "Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and the decisions in docs/adr/. Use when the user wants to improve architecture, find refactoring opportunities, consolidate tightly-coupled modules, or make a codebase more testable and AI-navigable.",
+    "description": "코드베이스 아키텍처 개선 기회를 발굴하고 깊이 있는 모듈 리팩터링을 제안합니다.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -379,7 +379,7 @@
   },
   {
     "name": "investigate",
-    "description": "Systematic debugging with root cause investigation. (gstack)",
+    "description": "근본 원인 규명 중심의 체계적 디버깅. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -388,7 +388,7 @@
   },
   {
     "name": "ios-clean",
-    "description": "Remove the DebugBridge SPM package and all #if DEBUG wiring from an iOS app. (gstack)",
+    "description": "iOS 앱에서 DebugBridge SPM 패키지와 #if DEBUG 관련 코드를 제거합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -397,7 +397,7 @@
   },
   {
     "name": "ios-design-review",
-    "description": "Visual design audit for iOS apps on real hardware. (gstack)",
+    "description": "실제 iPhone 기기에서 iOS 앱 비주얼 디자인을 감사합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -406,7 +406,7 @@
   },
   {
     "name": "ios-fix",
-    "description": "Autonomous iOS bug fixer. (gstack)",
+    "description": "iOS 버그를 자율적으로 수정하고 실제 기기에서 검증까지 완료합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -415,7 +415,7 @@
   },
   {
     "name": "ios-qa",
-    "description": "Live-device iOS QA for SwiftUI apps. (gstack)",
+    "description": "SwiftUI 앱을 실제 iPhone 기기에서 실행하여 비전 기반 자동 QA를 수행합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -424,7 +424,7 @@
   },
   {
     "name": "ios-sync",
-    "description": "Regenerate the iOS debug bridge against the latest upstream gstack templates. (gstack)",
+    "description": "최신 gstack 템플릿으로 iOS 디버그 브릿지를 재생성합니다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -433,7 +433,7 @@
   },
   {
     "name": "land-and-deploy",
-    "description": "Land and deploy workflow. (gstack)",
+    "description": "PR 머지 후 CI 대기, 운영 배포, canary 헬스체크까지 자동 수행. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -442,7 +442,7 @@
   },
   {
     "name": "landing-report",
-    "description": "Read-only queue dashboard for workspace-aware ship. (gstack)",
+    "description": "버전 슬롯 점유 현황과 열린 PR 큐를 읽기 전용으로 보여주는 대시보드. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -451,7 +451,7 @@
   },
   {
     "name": "learn",
-    "description": "Manage project learnings.",
+    "description": "gstack이 세션 간 축적한 학습 내용을 조회·정리·내보내기한다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -469,7 +469,7 @@
   },
   {
     "name": "make-pdf",
-    "description": "Turn any markdown file into a publication-quality PDF. (gstack)",
+    "description": "마크다운 파일을 여백·페이지 번호·목차·워터마크가 포함된 완성형 PDF로 변환한다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -487,7 +487,7 @@
   },
   {
     "name": "office-hours",
-    "description": "YC Office Hours — two modes. (gstack)",
+    "description": "YC 스타일 오피스 아워 — 스타트업 아이디어 검증 또는 사이드 프로젝트 브레인스토밍 두 가지 모드. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -496,7 +496,7 @@
   },
   {
     "name": "open-gstack-browser",
-    "description": "Launch GStack Browser — AI-controlled Chromium with the sidebar extension baked in.",
+    "description": "사이드바 확장이 내장된 AI 제어 Chromium 브라우저를 실행한다. (gstack)",
     "version": "0.2.0",
     "model": null,
     "source": "standalone",
@@ -505,7 +505,7 @@
   },
   {
     "name": "pair-agent",
-    "description": "Pair a remote AI agent with your browser. (gstack)",
+    "description": "원격 AI 에이전트와 브라우저를 공유 연결하는 스킬. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -514,7 +514,7 @@
   },
   {
     "name": "plan-ceo-review",
-    "description": "CEO/founder-mode plan review. (gstack)",
+    "description": "CEO·창업자 시각으로 플랜의 야망과 범위를 재검토하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -523,7 +523,7 @@
   },
   {
     "name": "plan-design-review",
-    "description": "Designer's eye plan review — interactive, like CEO and Eng review. (gstack)",
+    "description": "디자이너 시각으로 플랜의 UI/UX 품질을 평가하고 개선하는 스킬. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -532,7 +532,7 @@
   },
   {
     "name": "plan-devex-review",
-    "description": "Interactive developer experience plan review. (gstack)",
+    "description": "개발자 경험(DX) 관점으로 플랜을 심층 검토하는 스킬. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -541,7 +541,7 @@
   },
   {
     "name": "plan-eng-review",
-    "description": "Eng manager-mode plan review. (gstack)",
+    "description": "엔지니어링 매니저 시각으로 플랜의 아키텍처와 실행 완성도를 검토하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -550,7 +550,7 @@
   },
   {
     "name": "plan-tune",
-    "description": "Self-tuning question sensitivity + developer psychographic for gstack (v1: observational). (gstack)",
+    "description": "gstack 질문 민감도와 개발자 프로파일을 자기 조정하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -559,7 +559,7 @@
   },
   {
     "name": "playwright-cli",
-    "description": "Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, test web applications, or extract information from web pages.",
+    "description": "playwright-cli를 사용해 브라우저 탐색, 폼 입력, 스크린샷, 데이터 추출 등 웹 자동화를 수행하는 스킬.",
     "version": "1.0.0",
     "model": "sonnet",
     "source": "standalone",
@@ -586,7 +586,7 @@
   },
   {
     "name": "prototype",
-    "description": "Build a throwaway prototype to flush out a design before committing to it. Routes between two branches — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. Use when the user wants to prototype, sanity-check a data model or state machine, mock up a UI, explore design options, or says \"prototype this\", \"let me play with it\", \"try a few designs\".",
+    "description": "설계를 확정하기 전 버릴 프로토타입을 빠르게 만들어 질문에 답한다. 로직/상태 검증용 터미널 앱과 여러 UI 변형 중 하나로 분기한다.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -595,7 +595,7 @@
   },
   {
     "name": "qa",
-    "description": "Systematically QA test a web application and fix bugs found. (gstack)",
+    "description": "웹 애플리케이션을 체계적으로 QA 테스트하고 발견된 버그를 수정한다. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -604,7 +604,7 @@
   },
   {
     "name": "qa-only",
-    "description": "Report-only QA testing. (gstack)",
+    "description": "코드를 수정하지 않고 QA 테스트 결과만 리포트로 출력한다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -613,7 +613,7 @@
   },
   {
     "name": "retro",
-    "description": "Weekly engineering retrospective. (gstack)",
+    "description": "주간 엔지니어링 회고를 수행하고 기여 현황과 트렌드를 분석한다. (gstack)",
     "version": "2.0.0",
     "model": null,
     "source": "standalone",
@@ -622,7 +622,7 @@
   },
   {
     "name": "review",
-    "description": "Pre-landing PR review. (gstack)",
+    "description": "PR을 머지하기 전 코드 diff를 검토한다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -631,7 +631,7 @@
   },
   {
     "name": "scrape",
-    "description": "Pull data from a web page. (gstack)",
+    "description": "웹 페이지에서 데이터를 추출한다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -640,7 +640,7 @@
   },
   {
     "name": "setup-browser-cookies",
-    "description": "Import cookies from your real Chromium browser into the headless browse session. (gstack)",
+    "description": "실제 Chromium 브라우저의 쿠키를 헤드리스 브라우저 세션으로 가져온다. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -649,7 +649,7 @@
   },
   {
     "name": "setup-deploy",
-    "description": "Configure deployment settings for /land-and-deploy.",
+    "description": "/land-and-deploy에 사용할 배포 설정을 자동 감지하고 CLAUDE.md에 기록하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -658,7 +658,7 @@
   },
   {
     "name": "setup-gbrain",
-    "description": "Set up gbrain for this coding agent: install the CLI, initialize a local PGLite or Supabase brain, register MCP, capture per-remote trust policy. (gstack)",
+    "description": "gbrain CLI 설치, 로컬 PGLite 또는 Supabase brain 초기화, MCP 등록까지 한 번에 설정하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -667,7 +667,7 @@
   },
   {
     "name": "setup-matt-pocock-skills",
-    "description": "Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, and domain doc layout. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, or domain docs.",
+    "description": "AGENTS.md/CLAUDE.md에 이슈 트래커·트리아지 레이블·도메인 문서 설정 블록을 구성하는 스킬.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -676,7 +676,7 @@
   },
   {
     "name": "ship",
-    "description": "Ship workflow: detect + merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, create PR. (gstack)",
+    "description": "베이스 브랜치 병합, 테스트, diff 리뷰, 버전 범프, CHANGELOG 업데이트, 커밋, 푸시, PR 생성을 한 번에 처리하는 배포 워크플로 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -685,7 +685,7 @@
   },
   {
     "name": "skillify",
-    "description": "Codify the most recent successful /scrape flow into a permanent browser-skill on disk. (gstack)",
+    "description": "직전 /scrape 플로우를 영구 브라우저 스킬 파일로 코드화하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -694,7 +694,7 @@
   },
   {
     "name": "spec",
-    "description": "Turn vague intent into a precise, executable spec in five phases. (gstack)",
+    "description": "모호한 요청을 실행 가능한 정밀 스펙으로 다듬고 GitHub 이슈로 등록하는 스킬. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -703,7 +703,7 @@
   },
   {
     "name": "sync-gbrain",
-    "description": "Keep gbrain current with this repo's code and refresh agent search guidance in CLAUDE.md. Wraps the gstack-gbrain-sync orchestrator with state (gstack)",
+    "description": "레포 코드를 gbrain에 동기화하고 CLAUDE.md의 에이전트 검색 안내를 갱신하는 스킬. (gstack)",
     "version": "1.0.0",
     "model": null,
     "source": "standalone",
@@ -721,7 +721,7 @@
   },
   {
     "name": "tdd",
-    "description": "Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions \"red-green-refactor\", wants integration tests, or asks for test-first development.",
+    "description": "TDD(테스트 주도 개발) red-green-refactor 루프로 기능 구현 및 버그 수정을 진행.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -730,7 +730,7 @@
   },
   {
     "name": "to-issues",
-    "description": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. Use when user wants to convert a plan into issues, create implementation tickets, or break down work into issues.",
+    "description": "계획서·스펙·PRD를 수직 슬라이스(트레이서 불릿) 단위의 독립 이슈로 분해해 이슈 트래커에 등록.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -739,7 +739,7 @@
   },
   {
     "name": "to-prd",
-    "description": "Turn the current conversation context into a PRD and publish it to the project issue tracker. Use when user wants to create a PRD from the current context.",
+    "description": "현재 대화 컨텍스트를 바탕으로 PRD를 작성하고 이슈 트래커에 게시.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -748,7 +748,7 @@
   },
   {
     "name": "triage",
-    "description": "Triage issues through a state machine driven by triage roles. Use when user wants to create an issue, triage issues, review incoming bugs or feature requests, prepare issues for an AFK agent, or manage issue workflow.",
+    "description": "이슈 트래커의 이슈를 트리아지 상태 머신(needs-triage → ready-for-agent 등)으로 분류·관리.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -757,7 +757,7 @@
   },
   {
     "name": "unfreeze",
-    "description": "Clear the freeze boundary set by /freeze, allowing edits to all directories again. (gstack)",
+    "description": "/freeze로 설정된 디렉터리 편집 제한을 해제해 모든 경로 편집을 다시 허용. (gstack)",
     "version": "0.1.0",
     "model": null,
     "source": "standalone",
@@ -775,7 +775,7 @@
   },
   {
     "name": "wezterm-agent-deck",
-    "description": "This skill should be used when the user asks about \"agent deck\", \"claude monitoring\", \"agent status\", \"agent notifications\", \"claude code status\", \"agent counts\", \"working waiting idle\", or mentions monitoring Claude Code agents in WezTerm.",
+    "description": "WezTerm 터미널 창에서 Claude Code 에이전트 상태(working/waiting/idle/inactive)를 실시간 모니터링.",
     "version": "0.7.13",
     "model": null,
     "source": "standalone",
@@ -784,7 +784,7 @@
   },
   {
     "name": "write-a-skill",
-    "description": "Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, or build a new skill.",
+    "description": "새로운 에이전트 스킬을 올바른 구조와 점진적 공개(progressive disclosure) 원칙으로 생성.",
     "version": null,
     "model": null,
     "source": "personal",
@@ -793,7 +793,7 @@
   },
   {
     "name": "zoom-out",
-    "description": "Tell the agent to zoom out and give broader context or a higher-level perspective. Use when you're unfamiliar with a section of code or need to understand how it fits into the bigger picture.",
+    "description": "한 단계 위 추상화 레벨로 시야를 넓혀 낯선 코드의 전체 구조와 연관 모듈 맵을 파악한다.",
     "version": null,
     "model": null,
     "source": "personal",

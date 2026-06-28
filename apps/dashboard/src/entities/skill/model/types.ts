@@ -23,3 +23,13 @@ export interface SkillMeta {
 export interface SkillBody {
   body: string; // SKILL.md frontmatter 이후 마크다운 전문
 }
+
+// 한글 번역 overlay (translations.ko.json) 의 항목.
+// 원본 SKILL.md(repo 밖, 영어 트리거라 불가침)는 건드리지 않고,
+// snapshot 빌드 시점에 catalog/body 로 merge 된다. name 으로 키잉.
+export interface SkillTranslation {
+  description?: string; // catalog 리스트/헤더에 표시될 한글 한 줄 설명
+  summary?: string; // body 맨 위에 prepend 될 "한눈에" 한글 요약 (마크다운, 줄당 1줄)
+}
+
+export type SkillTranslations = Record<string, SkillTranslation>;

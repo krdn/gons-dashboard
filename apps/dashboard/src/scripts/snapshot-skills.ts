@@ -12,8 +12,8 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, lstatSync, existsS
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { toMeta, extractBody, sanitizeName } from "@/entities/skill/lib/parseSkill";
-import type { SkillMeta } from "@/entities/skill/model/types";
+import { toMeta, extractBody, sanitizeName, prependSummary } from "@/entities/skill/lib/parseSkill";
+import type { SkillMeta, SkillTranslations } from "@/entities/skill/model/types";
 
 const SKILLS_DIR = join(homedir(), ".claude", "skills");
 
@@ -21,6 +21,21 @@ const SKILLS_DIR = join(homedir(), ".claude", "skills");
 const here = fileURLToPath(new URL(".", import.meta.url));
 const CATALOG_OUT = join(here, "..", "entities", "skill", "catalog.json");
 const BODY_DIR = join(here, "..", "..", "public", "skill-catalog");
+// 한글 번역 overlay — 원본 SKILL.md(영어, 불가침) 대신 committed source.
+// snapshot 재생성 시 catalog/body 로 merge 되므로 번역이 소실되지 않는다.
+const TRANSLATIONS_PATH = join(here, "..", "entities", "skill", "translations.ko.json");
+
+/** translations.ko.json 로드. 없거나 깨졌으면 빈 overlay(영어 그대로 fallback). */
+function loadTranslations(): SkillTranslations {
+  if (!existsSync(TRANSLATIONS_PATH)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(TRANSLATIONS_PATH, "utf8"));
+    return parsed && typeof parsed === "object" ? (parsed as SkillTranslations) : {};
+  } catch (err) {
+    console.warn(`[snapshot-skills] ⚠️ translations.ko.json 파싱 실패 — 영어 fallback: ${String(err)}`);
+    return {};
+  }
+}
 
 function tildePath(abs: string): string {
   const home = homedir();
@@ -39,10 +54,12 @@ function main() {
   if (existsSync(BODY_DIR)) rmSync(BODY_DIR, { recursive: true });
   mkdirSync(BODY_DIR, { recursive: true });
 
+  const translations = loadTranslations();
   const entries = readdirSync(SKILLS_DIR, { withFileTypes: true });
   const metas: SkillMeta[] = [];
   const usedFileNames = new Set<string>(); // sanitizeName 충돌 감지
   let skipped = 0;
+  let translatedCount = 0;
 
   for (const entry of entries) {
     const entryPath = join(SKILLS_DIR, entry.name);
@@ -92,8 +109,16 @@ function main() {
         continue;
       }
       usedFileNames.add(fileName);
+
+      // 한글 overlay merge — description override + body summary prepend.
+      const tr = translations[meta.name];
+      if (tr?.description) {
+        meta.description = tr.description;
+      }
+      if (tr?.description || tr?.summary) translatedCount++;
+
       metas.push(meta);
-      const body = extractBody(rawContent);
+      const body = prependSummary(extractBody(rawContent), tr?.summary);
       writeFileSync(join(BODY_DIR, fileName), JSON.stringify({ body }));
     } catch (err) {
       console.warn(`[snapshot-skills] skip (파싱 실패): ${entry.name} — ${String(err)}`);
@@ -104,7 +129,7 @@ function main() {
   metas.sort((a, b) => a.name.localeCompare(b.name));
   writeFileSync(CATALOG_OUT, JSON.stringify(metas, null, 2) + "\n");
 
-  console.log(`[snapshot-skills] ✅ 생성 ${metas.length}개 / skip ${skipped}개`);
+  console.log(`[snapshot-skills] ✅ 생성 ${metas.length}개 / skip ${skipped}개 / 한글 overlay ${translatedCount}개`);
   console.log(`  catalog: ${tildePath(CATALOG_OUT)}`);
   console.log(`  bodies:  ${tildePath(BODY_DIR)}/`);
 }
