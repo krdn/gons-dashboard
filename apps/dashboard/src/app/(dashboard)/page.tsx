@@ -2,7 +2,7 @@
 // 와이어프레임 reference:
 //   ~/.gstack/projects/krdn-gons-dashboard/designs/main-dashboard-20260509/wireframe-v1.html
 //
-// 좌(7) + 우(4) 비대칭 그리드. 좌에 EmailDigestCard, 우에 향후 위젯 placeholder.
+// 좌(7) + 우(4) 비대칭 그리드. 위젯은 WIDGET_REGISTRY 기반 선언적 배치(renderEntry).
 // 비로그인 상태면 /login으로 리다이렉트.
 
 import Link from "next/link";

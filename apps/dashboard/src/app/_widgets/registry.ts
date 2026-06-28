@@ -12,8 +12,7 @@ import { SupplementCheckerCard } from "@/widgets/supplement-checker";
 export interface WidgetEntry {
   id: string;
   column: "main" | "aside";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Component: (props: any) => ReactNode | Promise<ReactNode>;
+  Component: () => ReactNode | Promise<ReactNode>;
   Skeleton?: () => ReactNode;
 }
 
