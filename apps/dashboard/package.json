@@ -17,6 +17,7 @@
     "db:seed:projects": "tsx --conditions=react-server src/scripts/seed-projects.ts",
     "db:cleanup-projects": "tsx --conditions=react-server src/scripts/cleanup-projects.ts",
     "tiger:bootstrap": "tsx --conditions=react-server src/scripts/tiger-bootstrap.ts",
+    "skills:snapshot": "tsx --conditions=react-server src/scripts/snapshot-skills.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "eval:llm": "tsx --conditions=react-server --conditions=import tests/eval/run-llm-eval.ts"

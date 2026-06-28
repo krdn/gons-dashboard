@@ -16,6 +16,7 @@
     "db:studio": "pnpm --filter @gons/dashboard db:studio",
     "db:seed:hosts": "pnpm --filter @gons/dashboard db:seed:hosts",
     "db:seed:projects": "pnpm --filter @gons/dashboard db:seed:projects",
-    "db:cleanup-projects": "pnpm --filter @gons/dashboard db:cleanup-projects"
+    "db:cleanup-projects": "pnpm --filter @gons/dashboard db:cleanup-projects",
+    "skills:snapshot": "pnpm --filter @gons/dashboard skills:snapshot"
   }
 }
