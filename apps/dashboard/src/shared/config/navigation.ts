@@ -20,5 +20,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/skills", label: "스킬", icon: "skill" },
   { href: "/fortune", label: "운세", icon: "fortune" },
   { href: "/tiger", label: "호상담", icon: "tiger" },
-  // { href: "/servers", label: "서버", icon: "server" }, // 인덱스 라우트 미존재 — Task 8에서 신설 후 활성화
+  // { href: "/servers", label: "서버", icon: "server" }, // /servers 인덱스 라우트 미존재(servers/[hostName] 동적 라우트만 있음). 인덱스 신설 시 활성화.
 ];

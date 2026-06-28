@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CompatibilityPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/api/auth/signin");
+  if (!session?.user?.id) redirect("/login");
   const profiles = await db
     .select({ id: playmcpProfiles.id, nickname: playmcpProfiles.nickname, relation: playmcpProfiles.relation })
     .from(playmcpProfiles)

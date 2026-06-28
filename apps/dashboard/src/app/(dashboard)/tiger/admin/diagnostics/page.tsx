@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TigerDiagnosticsPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/api/auth/signin");
+  if (!session?.user?.id) redirect("/login");
   if (!isAdmin(session.user.email ?? null, env.ADMIN_EMAILS)) {
     return <main className="mx-auto max-w-3xl p-8"><p>관리자 권한 필요.</p></main>;
   }

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TigerManagePage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/api/auth/signin");
+  if (!session?.user?.id) redirect("/login");
   const profiles = await db
     .select()
     .from(playmcpProfiles)

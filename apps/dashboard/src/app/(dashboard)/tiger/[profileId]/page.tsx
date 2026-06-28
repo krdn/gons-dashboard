@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TigerProfilePage({ params }: { params: Promise<{ profileId: string }> }) {
   const session = await auth();
-  if (!session?.user?.id) redirect("/api/auth/signin");
+  if (!session?.user?.id) redirect("/login");
   const { profileId } = await params;
   const rows = await db
     .select()
