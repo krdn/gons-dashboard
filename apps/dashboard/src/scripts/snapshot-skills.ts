@@ -202,7 +202,8 @@ function main() {
       metas.push(meta);
       // 본문은 원문 그대로(영어 보존). 한글 요약은 별도 필드로 분리 저장 —
       // SkillDetail 이 전용 박스로 렌더하므로 본문의 native blockquote 와 충돌하지 않는다.
-      const body = extractBody(rawContent);
+      // 예외: tr.body 가 있으면 본문 전체를 그 한글로 교체(원문이 중국어인 agent-reach 등).
+      const body = tr?.body?.trim() ? tr.body.trim() : extractBody(rawContent);
       const summaryKo = tr?.summary?.trim();
       writeFileSync(
         join(BODY_DIR, fileName),

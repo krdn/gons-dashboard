@@ -2,7 +2,7 @@
   "skills": [
     {
       "name": "agent-reach",
-      "description": "小红书·트위터(X)·Reddit·B站·LinkedIn·GitHub·YouTube 등 15개 플랫폼의 인터넷 리서치를 단일 도구로 라우팅한다.",
+      "description": "샤오훙수(小红书)·트위터(X)·Reddit·비리비리(B站)·LinkedIn·GitHub·YouTube 등 15개 플랫폼의 인터넷 리서치를 단일 도구로 라우팅한다.",
       "version": null,
       "model": null,
       "source": "standalone",

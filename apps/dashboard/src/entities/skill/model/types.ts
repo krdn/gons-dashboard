@@ -60,6 +60,8 @@ export interface SkillBody {
 export interface SkillTranslation {
   description?: string; // catalog 리스트/헤더에 표시될 한글 한 줄 설명
   summary?: string; // body 맨 위에 prepend 될 "한눈에" 한글 요약 (마크다운, 줄당 1줄)
+  body?: string; // 본문 전체를 이 한글 마크다운으로 교체 (원문이 영어가 아닌 예외 스킬용).
+  //                대부분 스킬은 본문이 영어라 미사용 — agent-reach 처럼 원문이 중국어일 때만 채운다.
 }
 
 export type SkillTranslations = Record<string, SkillTranslation>;
