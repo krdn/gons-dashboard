@@ -1,6 +1,18 @@
 {
   "skills": [
     {
+      "name": "agent-reach",
+      "description": "小红书·트위터(X)·Reddit·B站·LinkedIn·GitHub·YouTube 등 15개 플랫폼의 인터넷 리서치를 단일 도구로 라우팅한다.",
+      "version": null,
+      "model": null,
+      "source": "standalone",
+      "category": "docs-knowledge",
+      "necessity": "medium",
+      "necessityReason": "小红书·Twitter·Reddit·B站·LinkedIn·GitHub·YouTube 등 15개 플랫폼 인터넷 리서치를 단일 라우팅으로 묶는 도구. 내장 WebSearch/WebFetch의 강화판으로 경쟁조사·기술동향·평판수집에 유용하나, 코드 작성·배포 같은 핵심 개발 루프엔 직접 쓰이지 않는 리서치 단계 의존 도구. 일부 백엔드(per-platform CLI/API)는 별도 설정·인증이 필요해 zero-config 6채널 밖에선 가용성이 환경에 좌우됨. 보편 필요는 아니나 리서치 작업에서 분명한 가치라 중.",
+      "filePath": "~/.claude/skills/agent-reach/SKILL.md",
+      "bodyPath": "/skill-catalog/agent-reach.json"
+    },
+    {
       "name": "auto-doc",
       "description": "자동 문서화 스킬. 코드 변경 시 문서 자동 업데이트, ADR 생성, 학습 내용 정리를 수행합니다. \"/doc\", \"문서화\", \"ADR 작성\" 등을 요청할 때 사용.",
       "version": "1.0.0",

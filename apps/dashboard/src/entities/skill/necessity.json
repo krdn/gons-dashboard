@@ -354,5 +354,9 @@
   "zoom-out": {
     "tier": "medium",
     "reason": "한 단계 위 추상화로 낯선 코드 전체 구조·연관 모듈 맵 파악. graphify·improve-codebase-architecture·ECC codebase-onboarding과 코드이해 클러스터 겹침. 온보딩 시 유용하나 매번은 아니라 중."
+  },
+  "agent-reach": {
+    "tier": "medium",
+    "reason": "小红书·Twitter·Reddit·B站·LinkedIn·GitHub·YouTube 등 15개 플랫폼 인터넷 리서치를 단일 라우팅으로 묶는 도구. 내장 WebSearch/WebFetch의 강화판으로 경쟁조사·기술동향·평판수집에 유용하나, 코드 작성·배포 같은 핵심 개발 루프엔 직접 쓰이지 않는 리서치 단계 의존 도구. 일부 백엔드(per-platform CLI/API)는 별도 설정·인증이 필요해 zero-config 6채널 밖에선 가용성이 환경에 좌우됨. 보편 필요는 아니나 리서치 작업에서 분명한 가치라 중."
   }
 }

@@ -87,7 +87,8 @@
       "learn",
       "make-pdf",
       "vault",
-      "zoom-out"
+      "zoom-out",
+      "agent-reach"
     ]
   },
   "workflow-orchestration": {
