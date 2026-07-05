@@ -48,7 +48,15 @@ resolveLatestModel(tier: "opus" | "gpt" | "gemini-pro"): Promise<string>
 
 **dated 배제 규칙**: 안정 버전은 `claude-opus-4-8`처럼 짧은 minor를 쓰고, dated 변종은 `claude-opus-4-20250514`처럼 끝 세그먼트가 8자리 YYYYMMDD다. 정규식 매칭 후 **끝 세그먼트가 정확히 8자리 숫자면 dated로 간주해 배제**한다(단순 `minor < N` 임계값보다 의미가 명확하고 미래 minor 증가에 안전). 이것이 이번 정규식 버그의 근본 수정.
 
-**gemini 의도적 결정**: 현재 프록시에 안정 `-pro`는 `gemini-2.5-pro`뿐이고 3.1은 `gemini-3.1-pro-preview`(preview)만 존재. 게다가 실측(2026-07-05) 결과 `gemini-3.1-pro-preview`는 이 Google 계정(krdn.net@gmail.com)에 **미개방(503 auth_unavailable)** — 프록시 `config.yaml`도 이 이유로 `gemini-pro-latest` alias를 `gemini-2.5-pro`에 고정("3.1-pro-preview는 이 계정 미개방(404) → 안정 세대로 지정"). 따라서 **preview 배제 + 안정 `-pro` 최신** 규칙으로 gemini는 `gemini-2.5-pro` 선택. **프록시가 `gemini-3.1-pro`를 안정 형태로 노출하면(계정 권한 개방 후) 코드 수정 없이 자동 승격**된다 — 이것이 이 설계의 핵심 이점. 계정 권한 개방은 프록시/Google 계정 소유자(사용자) 영역이며 이 spec 범위 밖.
+**gemini 규칙 (2026-07-06 갱신 — 인증 변경 반영)**: 프록시 gemini 인증이 3.1 이 열린 자격으로 교체되면서 라인업이 바뀌었다. 안정 `gemini-2.5-pro`가 **사라지고(502 unknown provider)**, 3.1 은 `gemini-3.1-pro-preview`/`gemini-3.1-pro-low` 접미사 형태로만 존재(모두 200). 즉 `^gemini-(\d+)\.(\d+)-pro$` 버전 파싱은 어느 것도 매칭 못 해 후보 0건이 된다.
+
+따라서 gemini-pro tier 는 **프록시 관리 alias `gemini-pro-latest` 를 1순위**로 쓴다 (`pickLatestModel` 의 `TierRule.alias`): 목록에 alias 가 있으면 버전 파싱보다 우선하고, 없으면 안정 `-pro` 버전 파싱으로 폴백. 근거:
+
+- alias 는 프록시가 "현재 최신 pro"로 관리 → 세대 교체(3.1→3.2)를 코드 수정 없이 자동 추종. "항상 최신" 요구에 정확히 부합.
+- opus/gpt 는 안정 버전 형식(`claude-opus-4-8`, `gpt-5.5`)이 여전히 살아있어 alias 없이 버전 파싱 유지 — alias 는 gemini 처럼 안정 형식이 사라진 provider 에만 적용.
+- 실동작 검증(2026-07-06): `resolveLatestModel("gemini-pro")` → `gemini-pro-latest`, 5-페르소나 structured output 5/5 성공(growth 포함).
+
+**주의**: 이전 감사(2026-07-05)에서 alias 가 한 세대 뒤처진 적이 있으나, 그건 안정 버전이 함께 존재할 때였다. 지금은 안정 `-pro` 가 없어 alias/preview 가 유일한 3.1 경로이며 alias 가 최신을 가리킨다. 미래에 안정 `gemini-N.N-pro` 가 다시 나오면 alias 우선 정책을 재검토한다(그때는 버전 파싱이 더 정확할 수 있음).
 
 ### env 폴백값 갱신
 

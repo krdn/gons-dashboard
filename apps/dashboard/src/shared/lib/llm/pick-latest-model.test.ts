@@ -67,24 +67,30 @@ describe("pickLatestModel", () => {
   });
 
   describe("gemini-pro tier", () => {
-    it("안정 gemini-N.N-pro 최신을 고르고 preview/flash 는 배제한다", () => {
+    // gemini 는 프록시가 관리하는 gemini-pro-latest alias 를 1순위로 쓴다.
+    // 인증 변경(2026-07-06)으로 안정 gemini-N.N-pro 가 사라지고 3.1 은 -preview/-low 로만
+    // 존재하게 되어, 프록시가 "현재 최신 pro"로 관리하는 alias 가 가장 견고하다.
+    it("gemini-pro-latest alias 가 목록에 있으면 그것을 우선한다", () => {
       const ids = [
-        "gemini-2.5-pro",
         "gemini-3.1-pro-preview",
-        "gemini-3.1-flash-lite-preview",
+        "gemini-3.1-pro-low",
         "gemini-flash-latest",
         "gemini-pro-latest",
       ];
-      // 3.1 은 preview 뿐이라 안정 최신은 2.5-pro
+      expect(pickLatestModel(ids, "gemini-pro")).toBe("gemini-pro-latest");
+    });
+
+    it("alias 는 안정 -pro 버전이 함께 있어도 우선한다(프록시 관리 신뢰)", () => {
+      const ids = ["gemini-2.5-pro", "gemini-pro-latest"];
+      expect(pickLatestModel(ids, "gemini-pro")).toBe("gemini-pro-latest");
+    });
+
+    it("alias 가 없으면 안정 gemini-N.N-pro 최신으로 폴백하고 preview 는 배제한다", () => {
+      const ids = ["gemini-2.5-pro", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview"];
       expect(pickLatestModel(ids, "gemini-pro")).toBe("gemini-2.5-pro");
     });
 
-    it("안정 3.1-pro 가 나오면 자동 승격한다", () => {
-      const ids = ["gemini-2.5-pro", "gemini-3.1-pro"];
-      expect(pickLatestModel(ids, "gemini-pro")).toBe("gemini-3.1-pro");
-    });
-
-    it("매칭 후보 0건이면 null", () => {
+    it("alias 도 안정 -pro 도 없으면 null", () => {
       expect(
         pickLatestModel(["gemini-3.1-pro-preview", "gemini-2.5-flash"], "gemini-pro"),
       ).toBeNull();

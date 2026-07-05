@@ -11,13 +11,19 @@ export type ModelTier = "opus" | "gpt" | "gemini-pro";
 interface TierRule {
   // 캡처그룹 2개 (major, minor) 를 가진 정규식. 끝 앵커($)로 preview/mini/flash/codex 접미사 자동 배제.
   pattern: RegExp;
+  // 프록시가 관리하는 alias. 목록에 실존하면 버전 파싱보다 우선한다.
+  // (gemini 처럼 안정 버전 형식이 사라지고 -preview/-low 로만 존재하는 provider 대응 —
+  //  프록시가 "현재 최신"으로 관리하는 alias 를 신뢰하고, 미래 세대 교체도 자동 추종.)
+  alias?: string;
 }
 
 // tier 별 매칭 규칙. $ 앵커가 부적합 변종(-mini, -preview, -flash, -codex, dated 3-segment)을 걸러낸다.
 const TIER_RULES: Record<ModelTier, TierRule> = {
   opus: { pattern: /^claude-opus-(\d+)-(\d+)$/ },
   gpt: { pattern: /^gpt-(\d+)\.(\d+)$/ },
-  "gemini-pro": { pattern: /^gemini-(\d+)\.(\d+)-pro$/ },
+  // gemini 는 인증 변경(2026-07-06)으로 안정 gemini-N.N-pro 가 사라지고 3.1 이 -preview/-low
+  // 로만 존재 → 프록시 관리 alias gemini-pro-latest 를 1순위로 쓴다. spec 2026-07-05 §gemini.
+  "gemini-pro": { pattern: /^gemini-(\d+)\.(\d+)-pro$/, alias: "gemini-pro-latest" },
 };
 
 // 끝 세그먼트가 정확히 8자리 숫자면 YYYYMMDD dated 변종으로 간주 (안정 버전 minor 는 이렇게 길지 않다).
@@ -36,7 +42,9 @@ function isDated(minor: string): boolean {
  * @returns 선택된 모델 id, 매칭 후보가 없으면 null
  */
 export function pickLatestModel(ids: readonly string[], tier: ModelTier): string | null {
-  const { pattern } = TIER_RULES[tier];
+  const { pattern, alias } = TIER_RULES[tier];
+  // alias 우선 — 프록시가 목록에 노출하는 경우에만(없으면 버전 파싱 폴백).
+  if (alias && ids.includes(alias)) return alias;
   const candidates: Array<{ id: string; major: number; minor: number }> = [];
   for (const id of ids) {
     const m = pattern.exec(id);
