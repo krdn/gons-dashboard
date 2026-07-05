@@ -1,6 +1,5 @@
 import "server-only";
-import { env } from "@/shared/config/env";
-import { resolveClaudeModel } from "@/shared/lib/llm/resolve-claude-model";
+import { resolveLatestModel } from "@/shared/lib/llm/resolve-latest-model";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { stockPersonaPreferences } from "@/shared/lib/db/schema";
@@ -26,8 +25,8 @@ export interface ResolvedModel {
  * 1. user override 로드 (없으면 빈 객체)
  * 2. DEFAULT_PERSONA_MODELS 와 머지 (override 가 우선)
  * 3. 각 ModelName 을 실제 proxy 모델 ID 로 매핑
- *    - claude: resolveClaudeModel() 로 런타임 선택
- *    - codex/gemini: 정적 env 값 사용
+ *    - claude/codex/gemini 모두 resolveLatestModel(tier) 로 런타임 최신 선택.
+ *    - 정적 env 값은 조회 실패 시 폴백으로만 쓰인다(resolve-latest-model 내부).
  */
 export async function resolvePersonaModels(
   userId: string,
@@ -39,11 +38,15 @@ export async function resolvePersonaModels(
     .limit(1);
   const overrides = (rows[0]?.overrides ?? {}) as Partial<PersonaModelMapping>;
 
-  const claudeModelId = await resolveClaudeModel();
+  const [claudeId, codexId, geminiId] = await Promise.all([
+    resolveLatestModel("opus"),
+    resolveLatestModel("gpt"),
+    resolveLatestModel("gemini-pro"),
+  ]);
   const modelIdByName: Record<ModelName, string> = {
-    claude: claudeModelId,
-    codex: env.SAJU_LLM_MODEL_CODEX,
-    gemini: env.SAJU_LLM_MODEL_GEMINI,
+    claude: claudeId,
+    codex: codexId,
+    gemini: geminiId,
   };
 
   const resolved = {} as Record<PersonaOrConsensus, ResolvedModel>;

@@ -4,10 +4,10 @@
 //  - 단일 ANTHROPIC_BASE_URL 프록시가 model ID 문자열로 백엔드(Claude/Codex/Gemini) 분기
 //  - UI 는 ./saju-model-registry-meta 에서 키/라벨/parser 만 가져온다 (client safe)
 //  - 이 파일은 env 에 접근하므로 server-only — narrative-server 와 API route 에서만 import
-//  - claude 모델은 런타임 resolveClaudeModel() 로 자동 선택; codex/gemini 는 정적 env
+//  - claude 모델은 런타임 resolveLatestModel("opus") 로 자동 선택; codex/gemini 는 정적 env
 import "server-only";
 import { env } from "@/shared/config/env";
-import { resolveClaudeModel } from "./resolve-claude-model";
+import { resolveLatestModel } from "./resolve-latest-model";
 import {
   SAJU_MODEL_KEYS,
   SAJU_MODEL_META,
@@ -30,14 +30,14 @@ export interface SajuModelInfo extends SajuModelMeta {
 
 /**
  * 사주 모델 registry를 런타임에 빌드한다.
- * claude 모델은 resolveClaudeModel() 로 최신 버전 자동 선택,
+ * claude 모델은 resolveLatestModel("opus") 로 최신 버전 자동 선택,
  * codex/gemini는 정적 env 값 사용.
  */
 export async function getSajuModelRegistry(): Promise<
   Record<SajuModelKey, SajuModelInfo>
 > {
   return {
-    claude: { ...SAJU_MODEL_META.claude, id: await resolveClaudeModel() },
+    claude: { ...SAJU_MODEL_META.claude, id: await resolveLatestModel("opus") },
     codex: { ...SAJU_MODEL_META.codex, id: env.SAJU_LLM_MODEL_CODEX },
     gemini: { ...SAJU_MODEL_META.gemini, id: env.SAJU_LLM_MODEL_GEMINI },
   };
