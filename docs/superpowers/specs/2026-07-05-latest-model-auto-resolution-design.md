@@ -48,7 +48,7 @@ resolveLatestModel(tier: "opus" | "gpt" | "gemini-pro"): Promise<string>
 
 **dated 배제 규칙**: 안정 버전은 `claude-opus-4-8`처럼 짧은 minor를 쓰고, dated 변종은 `claude-opus-4-20250514`처럼 끝 세그먼트가 8자리 YYYYMMDD다. 정규식 매칭 후 **끝 세그먼트가 정확히 8자리 숫자면 dated로 간주해 배제**한다(단순 `minor < N` 임계값보다 의미가 명확하고 미래 minor 증가에 안전). 이것이 이번 정규식 버그의 근본 수정.
 
-**gemini 의도적 결정**: 현재 프록시에 안정 `-pro`는 `gemini-2.5-pro`뿐이고 3.1은 `gemini-3.1-pro-preview`(preview)만 존재. **preview는 배제**(사용자 안정 우선 방침)하므로 gemini는 `gemini-2.5-pro` 선택. 안정 3.1-pro가 프록시에 나오면 자동으로 승격됨.
+**gemini 의도적 결정**: 현재 프록시에 안정 `-pro`는 `gemini-2.5-pro`뿐이고 3.1은 `gemini-3.1-pro-preview`(preview)만 존재. 게다가 실측(2026-07-05) 결과 `gemini-3.1-pro-preview`는 이 Google 계정(krdn.net@gmail.com)에 **미개방(503 auth_unavailable)** — 프록시 `config.yaml`도 이 이유로 `gemini-pro-latest` alias를 `gemini-2.5-pro`에 고정("3.1-pro-preview는 이 계정 미개방(404) → 안정 세대로 지정"). 따라서 **preview 배제 + 안정 `-pro` 최신** 규칙으로 gemini는 `gemini-2.5-pro` 선택. **프록시가 `gemini-3.1-pro`를 안정 형태로 노출하면(계정 권한 개방 후) 코드 수정 없이 자동 승격**된다 — 이것이 이 설계의 핵심 이점. 계정 권한 개방은 프록시/Google 계정 소유자(사용자) 영역이며 이 spec 범위 밖.
 
 ### env 폴백값 갱신
 
