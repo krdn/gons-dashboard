@@ -7,8 +7,8 @@ vi.mock("@/shared/config/env", () => ({
   },
 }));
 
-vi.mock("./resolve-claude-model", () => ({
-  resolveClaudeModel: vi.fn(async () => "claude-opus-resolved"),
+vi.mock("./resolve-latest-model", () => ({
+  resolveLatestModel: vi.fn(async () => "claude-opus-resolved"),
 }));
 
 import { resolveReplyModelId } from "./reply-model-registry";
@@ -20,7 +20,7 @@ describe("resolveReplyModelId", () => {
   it("codex → env 값", async () => {
     expect(await resolveReplyModelId("codex")).toBe("codex-test-id");
   });
-  it("claude → resolveClaudeModel() (opus, haiku 아님)", async () => {
+  it("claude → resolveLatestModel(\"opus\") (opus, haiku 아님)", async () => {
     expect(await resolveReplyModelId("claude")).toBe("claude-opus-resolved");
   });
 });
