@@ -2,7 +2,7 @@
 // 클라이언트가 ServiceWorkerRegistration.pushManager.subscribe() 결과를 POST.
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/shared/lib/auth";
 import { db } from "@/shared/lib/db/client";
 import { pushSubscriptions } from "@/shared/lib/db/schema";
@@ -54,9 +54,15 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "endpoint required" }, { status: 400 });
   }
 
+  // userId 스코프로 제한 — 다른 사용자의 endpoint 를 알아도 삭제 불가 (IDOR 방어).
   await db
     .delete(pushSubscriptions)
-    .where(eq(pushSubscriptions.endpoint, endpoint));
+    .where(
+      and(
+        eq(pushSubscriptions.endpoint, endpoint),
+        eq(pushSubscriptions.userId, session.user.id),
+      ),
+    );
 
   return NextResponse.json({ ok: true });
 }

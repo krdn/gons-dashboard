@@ -7,22 +7,34 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/shared/config/env";
 
 /**
- * Authorization: Bearer <token> 헤더 검증.
+ * 두 문자열을 timing-safe 하게 비교. 길이가 다르면 즉시 false
+ * (timingSafeEqual 은 길이 불일치 시 throw 하므로 사전 체크).
+ * Bearer 토큰류 시크릿 비교에 재사용.
+ */
+export function timingSafeCompare(provided: string, expected: string): boolean {
+  if (provided.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
+
+/**
+ * Request 의 Authorization: Bearer <token> 헤더에서 토큰을 뽑아
+ * 기대값과 timing-safe 비교.
  * @returns true if 유효, false otherwise (호출자가 401 응답).
  */
-export function verifyCronBearer(request: Request): boolean {
+export function verifyBearer(request: Request, expected: string): boolean {
   const auth = request.headers.get("authorization");
   if (!auth) return false;
 
   const match = auth.match(/^Bearer\s+(.+)$/i);
   if (!match) return false;
-  const provided = match[1];
 
-  const expected = env.CRON_BEARER_TOKEN;
-  if (provided.length !== expected.length) return false;
+  return timingSafeCompare(match[1], expected);
+}
 
-  // timing-safe 비교.
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  return timingSafeEqual(a, b);
+/**
+ * Cron 컨테이너 → app 호출의 Bearer 검증.
+ * @returns true if 유효, false otherwise (호출자가 401 응답).
+ */
+export function verifyCronBearer(request: Request): boolean {
+  return verifyBearer(request, env.CRON_BEARER_TOKEN);
 }
