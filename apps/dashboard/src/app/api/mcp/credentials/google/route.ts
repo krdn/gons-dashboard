@@ -13,6 +13,7 @@ import { db } from "@/shared/lib/db/client";
 import { users } from "@/shared/lib/db/schema";
 import { getValidAccessToken } from "@/shared/api/gmail/auth";
 import { InvalidGrantError } from "@/shared/api/gmail/errors";
+import { verifyBearer } from "@/shared/lib/auth/cron";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,8 @@ function unauthorized() {
 }
 
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization") ?? "";
-  const match = auth.match(/^Bearer\s+(.+)$/);
-  if (!match || match[1] !== env.MCP_DASHBOARD_TOKEN) {
+  // Bearer 토큰 timing-safe 비교 (단순 !== 는 timing side-channel 노출).
+  if (!verifyBearer(req, env.MCP_DASHBOARD_TOKEN)) {
     return unauthorized();
   }
 
