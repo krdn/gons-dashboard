@@ -11,7 +11,8 @@ export type NavIconKey =
   | "tiger"
   | "claude"
   | "personal"
-  | "server";
+  | "server"
+  | "memo";
 
 // 잎 노드 — 실제 라우트로 가는 링크
 export interface NavLeaf {
@@ -54,6 +55,7 @@ export const NAV_TREE: NavNode[] = [
       { kind: "leaf", href: "/stocks", label: "주식", icon: "chart" },
       { kind: "leaf", href: "/fortune", label: "운세", icon: "fortune" },
       { kind: "leaf", href: "/tiger", label: "호상담", icon: "tiger" },
+      { kind: "leaf", href: "/memos", label: "메모", icon: "memo" },
       // { kind: "leaf", href: "/servers", label: "서버", icon: "server" }, // /servers 인덱스 라우트 미존재(servers/[hostName] 동적 라우트만). 인덱스 신설 시 활성화.
     ],
   },

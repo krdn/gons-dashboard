@@ -11,6 +11,7 @@ import {
   ClaudeIcon,
   PersonalIcon,
   ServerIcon,
+  MemoIcon,
 } from "@/shared/ui/icons";
 import { type NavIconKey } from "@/shared/config/navigation";
 
@@ -25,6 +26,7 @@ const MAP: Record<NavIconKey, (p: { size?: number; className?: string }) => Reac
   claude: ClaudeIcon,
   personal: PersonalIcon,
   server: ServerIcon,
+  memo: MemoIcon,
 };
 
 export function NavIcon({ icon, className }: { icon: NavIconKey; className?: string }) {
