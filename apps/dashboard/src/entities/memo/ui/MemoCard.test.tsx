@@ -23,6 +23,7 @@ const summary = {
   preset: "summary",
   model: "claude-sonnet-5",
   content: "요약: 회의 3시",
+  presetLabel: null,
   createdAt: new Date("2026-07-09T10:05:00"),
   updatedAt: new Date("2026-07-09T10:05:00"),
 } as MemoTransformation;
@@ -65,5 +66,42 @@ describe("MemoCard 칩 전환", () => {
     const labels = screen.getAllByRole("button").map((b) => b.textContent);
     expect(labels.indexOf("요약")).toBeGreaterThan(-1);
     expect(labels.indexOf("요약")).toBeLessThan(labels.indexOf("할 일 추출"));
+  });
+  it("커스텀 변환본은 빌트인 칩 뒤에 오고 presetLabel로 표시된다", () => {
+    const custom = {
+      ...summary,
+      id: "t3",
+      preset: "c-abc12345",
+      presetLabel: "코칭",
+      content: "코칭 스타일 정리본",
+    } as MemoTransformation;
+    render(<MemoCard memo={memo} transformations={[custom, summary]} />);
+    const labels = screen.getAllByRole("button").map((b) => b.textContent);
+    expect(labels.indexOf("요약")).toBeLessThan(labels.indexOf("코칭"));
+    fireEvent.click(screen.getByRole("button", { name: "코칭" }));
+    expect(screen.getByText("코칭 스타일 정리본")).toBeTruthy();
+  });
+  it("presetLabel이 null인 빌트인은 코드 라벨로 폴백한다", () => {
+    render(<MemoCard memo={memo} transformations={[summary]} />);
+    expect(screen.getByRole("button", { name: "요약" })).toBeTruthy();
+  });
+  it("커스텀 변환본 2개는 라벨 사전순으로 정렬된다", () => {
+    const coaching = {
+      ...summary,
+      id: "t3",
+      preset: "c-bbbbbbbb",
+      presetLabel: "코칭",
+      content: "코칭본",
+    } as MemoTransformation;
+    const briefing = {
+      ...summary,
+      id: "t4",
+      preset: "c-aaaaaaaa",
+      presetLabel: "브리핑",
+      content: "브리핑본",
+    } as MemoTransformation;
+    render(<MemoCard memo={memo} transformations={[coaching, briefing]} />);
+    const labels = screen.getAllByRole("button").map((b) => b.textContent);
+    expect(labels.indexOf("브리핑")).toBeLessThan(labels.indexOf("코칭"));
   });
 });

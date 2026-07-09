@@ -1,29 +1,25 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  TRANSFORM_PRESET_IDS,
-  TRANSFORM_PRESET_LABELS,
-  type Memo,
-  type TransformPresetId,
-} from "@/entities/memo/client";
-import { TRANSFORM_PRESETS } from "../lib/preset-meta";
-import { transformMemoAction, saveTransformationAction } from "../client";
+import type { Memo } from "@/entities/memo/client";
+import { transformMemoAction, saveTransformationAction, type TransformPresetOption } from "../client";
 
 type Phase = "pick" | "loading" | "preview";
 
 interface TransformDialogProps {
   memo: Memo;
+  presets: TransformPresetOption[];
   /** 이미 저장된 프리셋 — 재생성 시 교체 경고 표시용. */
-  existingPresets: TransformPresetId[];
+  existingPresets: string[];
   onClose: () => void;
 }
 
 // createPortal로 body 탈출 — inert 조상 아래 렌더되면 클릭 불가 (과거 사고 재발 방지).
-export function TransformDialog({ memo, existingPresets, onClose }: TransformDialogProps) {
+export function TransformDialog({ memo, presets, existingPresets, onClose }: TransformDialogProps) {
   const [phase, setPhase] = useState<Phase>("pick");
-  const [preset, setPreset] = useState<TransformPresetId | null>(null);
+  const [preset, setPreset] = useState<string | null>(null);
   const [content, setContent] = useState("");
+  const [truncated, setTruncated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -70,7 +66,7 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
     return () => window.removeEventListener("keydown", onKey);
   }, [busy, onClose]);
 
-  function run(p: TransformPresetId) {
+  function run(p: string) {
     setPreset(p);
     setPhase("loading");
     setNotice(null);
@@ -78,6 +74,7 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
       (r) => {
         if (r.kind === "ok") {
           setContent(r.content);
+          setTruncated(r.truncated);
           setPhase("preview");
         } else {
           setNotice(
@@ -140,18 +137,18 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
               스타일을 선택하면 현재 정리본을 기준으로 변환합니다. 텍스트는 서버로 전송됩니다.
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {TRANSFORM_PRESET_IDS.map((id) => {
-                const tooShort = inputLen < TRANSFORM_PRESETS[id].minInputLen;
+              {presets.map((p) => {
+                const tooShort = inputLen < p.minInputLen;
                 return (
                   <button
-                    key={id}
+                    key={p.slug}
                     type="button"
                     disabled={tooShort}
-                    onClick={() => run(id)}
+                    onClick={() => run(p.slug)}
                     className="rounded border border-neutral-200 px-3 py-2 text-left text-sm hover:border-neutral-400 disabled:opacity-40"
                   >
-                    <span className="font-medium">{TRANSFORM_PRESET_LABELS[id]}</span>
-                    {existingPresets.includes(id) && (
+                    <span className="font-medium">{p.label}</span>
+                    {existingPresets.includes(p.slug) && (
                       <span className="block text-xs text-amber-600">저장됨 — 재생성 시 교체</span>
                     )}
                     {tooShort && <span className="block text-xs text-neutral-400">내용이 너무 짧음</span>}
@@ -171,7 +168,12 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
         {phase === "preview" && preset && (
           <>
             {existingPresets.includes(preset) && (
-              <p className="mb-2 text-xs text-amber-600">기존 {TRANSFORM_PRESET_LABELS[preset]} 정리본을 교체합니다.</p>
+              <p className="mb-2 text-xs text-amber-600">
+                기존 {presets.find((x) => x.slug === preset)?.label ?? preset} 정리본을 교체합니다.
+              </p>
+            )}
+            {truncated && (
+              <p className="mb-2 text-xs text-neutral-500">원문이 길어 앞부분(4,000자)만 변환되었습니다.</p>
             )}
             <textarea
               value={content}
