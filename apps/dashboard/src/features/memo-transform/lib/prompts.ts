@@ -24,3 +24,26 @@ export const PRESET_INSTRUCTIONS: Record<TransformPresetId, string> = {
   journal: `스타일: 일기체. 정돈된 일기(저널) 문체로 재구성한다. 사실 관계와 감정 표현을 보존하고 새로운 해석을 덧붙이지 않는다.`,
   email: `스타일: 이메일 초안. 인사말, 본문, 맺음말을 갖춘 정중한 이메일 초안으로 재구성한다. 수신자 이름이 원문에 없으면 "안녕하세요," 로 시작한다.`,
 };
+
+// 1층: 하드 계약 — 편집 불가. JSON 출력 계약이 여기 있어 Zod 파싱 실패를 격리한다.
+// 페르소나 중립 문구 (커스텀 프리셋의 자유 역할 부여와 싸우지 않게).
+export const HARD_CONTRACT = `개인 메모를 아래 지시에 따라 변환하는 작업입니다.
+
+응답은 반드시 JSON: {"content": "변환된 전체 텍스트"}`;
+
+// 2층: 원문 충실 가드 — 프리셋별 토글 (fidelity_guard=true일 때만 삽입).
+export const FIDELITY_GUARD = `절대 규칙:
+- 고유명사·숫자·날짜를 임의로 바꾸지 않는다.
+- 원문에 없는 내용을 추가하지 않는다.
+- 판단·평가·조언·안전 문구를 넣지 않는다.
+- 한국어 메모는 한국어로 유지한다.`;
+
+/** 3층 조립: 하드 계약 + (가드) + 스타일 지시. */
+export function buildTransformSystemPrompt(
+  instruction: string,
+  fidelityGuard: boolean
+): string {
+  return [HARD_CONTRACT, fidelityGuard ? FIDELITY_GUARD : null, instruction]
+    .filter(Boolean)
+    .join("\n\n");
+}
