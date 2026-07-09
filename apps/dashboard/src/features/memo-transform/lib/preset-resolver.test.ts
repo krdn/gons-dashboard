@@ -113,6 +113,21 @@ describe("resolvePreset", () => {
     expect(result?.strictPreserve).toBe(TRANSFORM_PRESETS.tidy.strictPreserve);
   });
 
+  it("빌트인 override → instruction/fidelityGuard는 행 값, 메타·label은 코드 값", async () => {
+    const row = makeRow({ slug: "tidy", instruction: "커스텀 지시", fidelityGuard: false });
+    getPresetBySlugMock.mockResolvedValue(row);
+    const result = await resolvePreset("u1", "tidy");
+    expect(result).not.toBeNull();
+    expect(result?.isBuiltin).toBe(true);
+    expect(result?.isOverridden).toBe(true);
+    expect(result?.instruction).toBe("커스텀 지시");
+    expect(result?.fidelityGuard).toBe(false);
+    // 메타 provenance: override 행이 있어도 minInputLen/strictPreserve는 코드 값 유지
+    expect(result?.minInputLen).toBe(TRANSFORM_PRESETS.tidy.minInputLen);
+    expect(result?.strictPreserve).toBe(TRANSFORM_PRESETS.tidy.strictPreserve);
+    expect(result?.label).toBe(TRANSFORM_PRESET_LABELS.tidy);
+  });
+
   it("커스텀 존재 → minInputLen 1, strictPreserve false", async () => {
     const row = makeRow({ slug: "custom-1", label: "커스텀1", instruction: "지시1" });
     getPresetBySlugMock.mockResolvedValue(row);
