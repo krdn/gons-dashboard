@@ -13,8 +13,8 @@ interface MemoCardProps {
   onTransform?: (memo: Memo) => void;
 }
 
-// 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 id).
-type MemoView = "cleaned" | "raw" | TransformPresetId;
+// 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 slug — 빌트인·커스텀 공통).
+type MemoView = { kind: "cleaned" } | { kind: "raw" } | { kind: "preset"; slug: string };
 
 // locale-free 시각 포맷 (hydration mismatch 방지 — Gotcha #3).
 function formatTime(d: Date): string {
@@ -22,29 +22,47 @@ function formatTime(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function chipLabel(t: MemoTransformation): string {
+  return t.presetLabel ?? TRANSFORM_PRESET_LABELS[t.preset as TransformPresetId] ?? t.preset;
+}
+
+const BUILTIN = TRANSFORM_PRESET_IDS as readonly string[];
+
 export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTransform }: MemoCardProps) {
-  const [view, setView] = useState<MemoView>("cleaned");
+  const [view, setView] = useState<MemoView>({ kind: "cleaned" });
   const isVoice = memo.source === "voice";
 
-  const active = transformations.find((t) => t.preset === view);
   const body =
-    view === "cleaned" ? memo.cleanedContent : view === "raw" ? memo.rawContent : (active?.content ?? memo.cleanedContent);
+    view.kind === "cleaned"
+      ? memo.cleanedContent
+      : view.kind === "raw"
+        ? memo.rawContent
+        : (transformations.find((t) => t.preset === view.slug)?.content ?? memo.cleanedContent);
 
-  // DB 조회는 순서를 보장하지 않으므로(ORDER BY 없음) 칩은 프리셋 고정 순서로 정렬 —
+  // DB 조회는 순서를 보장하지 않으므로(ORDER BY 없음) 칩은 빌트인 고정 순서 → 커스텀(라벨 사전순)으로 정렬 —
   // 재생성·재방문해도 같은 프리셋이 항상 같은 위치에 온다.
-  const sortedTransformations = [...transformations].sort(
-    (a, b) =>
-      (TRANSFORM_PRESET_IDS as readonly string[]).indexOf(a.preset) -
-      (TRANSFORM_PRESET_IDS as readonly string[]).indexOf(b.preset),
-  );
-  const chips: Array<{ key: MemoView; label: string }> = [
-    { key: "cleaned", label: "정리본" },
-    ...(isVoice ? [{ key: "raw" as MemoView, label: "원문" }] : []),
+  const sortedTransformations = [...transformations].sort((a, b) => {
+    const ai = BUILTIN.indexOf(a.preset);
+    const bi = BUILTIN.indexOf(b.preset);
+    const ar = ai === -1 ? BUILTIN.length : ai;
+    const br = bi === -1 ? BUILTIN.length : bi;
+    if (ar !== br) return ar - br;
+    return chipLabel(a).localeCompare(chipLabel(b), "ko");
+  });
+  const chips: Array<{ id: string; view: MemoView; label: string }> = [
+    { id: "cleaned", view: { kind: "cleaned" }, label: "정리본" },
+    ...(isVoice ? [{ id: "raw", view: { kind: "raw" } as MemoView, label: "원문" }] : []),
     ...sortedTransformations.map((t) => ({
-      key: t.preset as TransformPresetId,
-      label: TRANSFORM_PRESET_LABELS[t.preset as TransformPresetId] ?? t.preset,
+      id: `preset:${t.preset}`,
+      view: { kind: "preset", slug: t.preset } as MemoView,
+      label: chipLabel(t),
     })),
   ];
+
+  function isActive(v: MemoView): boolean {
+    if (v.kind !== view.kind) return false;
+    return v.kind === "preset" && view.kind === "preset" ? v.slug === view.slug : true;
+  }
 
   return (
     <article className="rounded-lg border border-neutral-200 p-4">
@@ -58,12 +76,12 @@ export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTrans
         <div className="mb-2 flex flex-wrap gap-1.5">
           {chips.map((c) => (
             <button
-              key={c.key}
+              key={c.id}
               type="button"
-              aria-pressed={view === c.key}
-              onClick={() => setView(c.key)}
+              aria-pressed={isActive(c.view)}
+              onClick={() => setView(c.view)}
               className={
-                view === c.key
+                isActive(c.view)
                   ? "rounded-full bg-neutral-900 px-2.5 py-0.5 text-xs text-white"
                   : "rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs text-neutral-500 hover:text-neutral-900"
               }

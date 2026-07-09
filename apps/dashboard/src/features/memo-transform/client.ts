@@ -7,3 +7,4 @@ export { saveTransformationAction } from "./api/saveTransformationAction";
 export type { SaveTransformationResult } from "./api/saveTransformationAction";
 export { TRANSFORM_PRESETS, isTransformPresetId } from "./lib/preset-meta";
 export type { TransformPresetMeta } from "./lib/preset-meta";
+export type { PresetCatalogEntry, TransformPresetOption } from "./lib/catalog-types";

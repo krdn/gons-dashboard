@@ -28,9 +28,9 @@ const base = { userId: USER_ID, source: "text" as const, title: "제목", rawCon
 describe("memoTransformRepo", () => {
   it("같은 (memo, preset) 재저장은 교체한다 (새 행 아님)", async () => {
     const memo = await createMemo(base);
-    const first = await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m1", content: "v1" });
+    const first = await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m1", content: "v1", presetLabel: null });
     await new Promise((r) => setTimeout(r, 5)); // updatedAt 단조 증가 보장용 (같은 ms 타이 방지)
-    const second = await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m2", content: "v2" });
+    const second = await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m2", content: "v2", presetLabel: null });
     expect(second.id).toBe(first.id);
     expect(second.updatedAt.getTime()).toBeGreaterThan(first.updatedAt.getTime());
     const list = await listTransformationsByUser(USER_ID);
@@ -42,23 +42,23 @@ describe("memoTransformRepo", () => {
   it("프리셋 7종 전부 CHECK 제약을 통과한다 (fixture drift 가드)", async () => {
     const memo = await createMemo(base);
     for (const preset of TRANSFORM_PRESET_IDS) {
-      await upsertTransformation({ memoId: memo.id, preset, model: "m", content: `${preset} 내용` });
+      await upsertTransformation({ memoId: memo.id, preset, model: "m", content: `${preset} 내용`, presetLabel: null });
     }
     expect(await listTransformationsByUser(USER_ID)).toHaveLength(TRANSFORM_PRESET_IDS.length);
   });
 
   it("다른 preset은 병존한다", async () => {
     const memo = await createMemo(base);
-    await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m", content: "요약" });
-    await upsertTransformation({ memoId: memo.id, preset: "todos", model: "m", content: "- [ ] 할일" });
+    await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m", content: "요약", presetLabel: null });
+    await upsertTransformation({ memoId: memo.id, preset: "todos", model: "m", content: "- [ ] 할일", presetLabel: null });
     expect(await listTransformationsByUser(USER_ID)).toHaveLength(2);
   });
 
   it("listTransformationsByUser는 소유자 것만 반환한다", async () => {
     const mine = await createMemo(base);
     const others = await createMemo({ ...base, userId: OTHER_ID });
-    await upsertTransformation({ memoId: mine.id, preset: "summary", model: "m", content: "a" });
-    await upsertTransformation({ memoId: others.id, preset: "summary", model: "m", content: "b" });
+    await upsertTransformation({ memoId: mine.id, preset: "summary", model: "m", content: "a", presetLabel: null });
+    await upsertTransformation({ memoId: others.id, preset: "summary", model: "m", content: "b", presetLabel: null });
     const list = await listTransformationsByUser(USER_ID);
     expect(list).toHaveLength(1);
     expect(list[0].memoId).toBe(mine.id);
@@ -66,16 +66,23 @@ describe("memoTransformRepo", () => {
 
   it("메모 삭제 시 변환본이 cascade 삭제된다", async () => {
     const memo = await createMemo(base);
-    await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m", content: "a" });
+    await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m", content: "a", presetLabel: null });
     await db.delete(memos).where(eq(memos.id, memo.id));
     const rows = await db.select().from(memoTransformations).where(eq(memoTransformations.memoId, memo.id));
     expect(rows).toHaveLength(0);
   });
 
-  it("허용 외 preset은 CHECK 제약으로 거부된다", async () => {
+  it("프리셋 유효성은 애플리케이션 레벨에서 검증 (DB는 문자열만 검증)", async () => {
     const memo = await createMemo(base);
-    await expect(
-      upsertTransformation({ memoId: memo.id, preset: "nope" as never, model: "m", content: "a" }),
-    ).rejects.toThrow();
+    // DB의 CHECK 제약 삭제 후 preset은 단순 text — "nope"도 저장됨.
+    // 애플리케이션은 features/memo-transform/lib/preset-meta.ts의 isTransformPresetId로 검증.
+    const result = await upsertTransformation({
+      memoId: memo.id,
+      preset: "nope",
+      model: "m",
+      content: "a",
+      presetLabel: null,
+    });
+    expect(result.preset).toBe("nope");
   });
 });
