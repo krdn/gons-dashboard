@@ -139,6 +139,7 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={8}
+              maxLength={20_000}
               className="w-full rounded border border-neutral-200 px-3 py-2 text-sm"
             />
             <div className="mt-3 flex gap-2">

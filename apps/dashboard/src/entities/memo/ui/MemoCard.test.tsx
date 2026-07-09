@@ -52,4 +52,12 @@ describe("MemoCard 칩 전환", () => {
     fireEvent.click(screen.getByRole("button", { name: "AI 정리" }));
     expect(onTransform).toHaveBeenCalledWith(memo);
   });
+  it("변환본 칩은 전달 순서와 무관하게 프리셋 고정 순서로 정렬된다", () => {
+    // DB 조회는 순서 무보장 — 역순으로 넘겨도 summary(요약)가 todos(할 일 추출)보다 앞이어야 한다.
+    const todos = { ...summary, id: "t2", preset: "todos", content: "- [ ] 회의 준비" } as MemoTransformation;
+    render(<MemoCard memo={memo} transformations={[todos, summary]} />);
+    const labels = screen.getAllByRole("button").map((b) => b.textContent);
+    expect(labels.indexOf("요약")).toBeGreaterThan(-1);
+    expect(labels.indexOf("요약")).toBeLessThan(labels.indexOf("할 일 추출"));
+  });
 });

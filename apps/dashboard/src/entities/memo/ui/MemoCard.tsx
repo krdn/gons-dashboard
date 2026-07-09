@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
-import { TRANSFORM_PRESET_LABELS } from "../model/types";
+import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
 
 interface MemoCardProps {
   memo: Memo;
@@ -30,10 +30,17 @@ export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTrans
   const body =
     view === "cleaned" ? memo.cleanedContent : view === "raw" ? memo.rawContent : (active?.content ?? memo.cleanedContent);
 
+  // DB 조회는 순서를 보장하지 않으므로(ORDER BY 없음) 칩은 프리셋 고정 순서로 정렬 —
+  // 재생성·재방문해도 같은 프리셋이 항상 같은 위치에 온다.
+  const sortedTransformations = [...transformations].sort(
+    (a, b) =>
+      (TRANSFORM_PRESET_IDS as readonly string[]).indexOf(a.preset) -
+      (TRANSFORM_PRESET_IDS as readonly string[]).indexOf(b.preset),
+  );
   const chips: Array<{ key: MemoView; label: string }> = [
     { key: "cleaned", label: "정리본" },
     ...(isVoice ? [{ key: "raw" as MemoView, label: "원문" }] : []),
-    ...transformations.map((t) => ({
+    ...sortedTransformations.map((t) => ({
       key: t.preset as TransformPresetId,
       label: TRANSFORM_PRESET_LABELS[t.preset as TransformPresetId] ?? t.preset,
     })),
