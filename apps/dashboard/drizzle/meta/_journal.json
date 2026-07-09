@@ -246,6 +246,13 @@
       "when": 1781829888395,
       "tag": "0034_windy_aaron_stack",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1783572104595,
+      "tag": "0035_friendly_reavers",
+      "breakpoints": true
     }
   ]
 }
