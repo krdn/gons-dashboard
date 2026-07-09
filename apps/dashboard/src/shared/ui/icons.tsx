@@ -191,3 +191,13 @@ export function AgentIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+// 메모 — 문서+펜 모티프
+export function MemoIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" />
+      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}

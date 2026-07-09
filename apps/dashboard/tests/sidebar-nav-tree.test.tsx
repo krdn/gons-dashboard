@@ -60,7 +60,7 @@ describe("Sidebar 트리 네비게이션", () => {
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href")).sort();
     expect(hrefs).toEqual(
-      ["/", "/agents", "/fortune", "/plugins", "/skills", "/stocks", "/tiger"].sort(),
+      ["/", "/agents", "/fortune", "/memos", "/plugins", "/skills", "/stocks", "/tiger"].sort(),
     );
   });
 });

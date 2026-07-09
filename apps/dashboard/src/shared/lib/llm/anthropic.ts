@@ -23,7 +23,7 @@ export const gatewayDefaults: Pick<AIGatewayOptions, "provider" | "baseUrl" | "a
  * 일 합산은 docker logs | jq.
  */
 export function logLlmSpend(
-  scope: "reply-classify" | "important-classify" | "reply-draft",
+  scope: "reply-classify" | "important-classify" | "reply-draft" | "memo-cleanup",
   model: string,
   usage: Record<string, unknown> | undefined | null,
 ): void {
