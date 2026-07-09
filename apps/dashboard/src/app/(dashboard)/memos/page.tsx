@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { listMemos, listTransformationsByUser, type MemoTransformation } from "@/entities/memo/server";
@@ -22,7 +23,15 @@ export default async function MemosPage() {
 
   return (
     <PageContainer width="narrow">
-      <PageHeader title="메모" subtitle="음성 또는 텍스트로 빠르게 기록해요." />
+      <PageHeader
+        title="메모"
+        subtitle="음성 또는 텍스트로 빠르게 기록해요."
+        actions={
+          <Link href="/memos/settings" className="text-sm text-neutral-500 hover:text-neutral-900">
+            ⚙ AI 정리 설정
+          </Link>
+        }
+      />
       <MemoWidget memos={memos} transformationsByMemo={transformationsByMemo} />
     </PageContainer>
   );
