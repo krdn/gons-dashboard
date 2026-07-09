@@ -42,6 +42,12 @@ describe("MemoCard 칩 전환", () => {
     fireEvent.click(screen.getByRole("button", { name: "요약" }));
     expect(screen.getByText("요약: 회의 3시")).toBeTruthy();
   });
+  it("활성 칩만 aria-pressed=true (SR 사용자 현재 뷰 인지)", () => {
+    render(<MemoCard memo={memo} transformations={[summary]} />);
+    fireEvent.click(screen.getByRole("button", { name: "요약" }));
+    expect(screen.getByRole("button", { name: "요약" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "정리본" }).getAttribute("aria-pressed")).toBe("false");
+  });
   it("텍스트 메모 + 변환 없음이면 칩 row가 없다", () => {
     render(<MemoCard memo={{ ...memo, source: "text" } as Memo} />);
     expect(screen.queryByRole("button", { name: "정리본" })).toBeNull();

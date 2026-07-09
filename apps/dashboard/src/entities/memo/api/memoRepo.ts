@@ -4,8 +4,16 @@ import { db } from "@/shared/lib/db/client";
 import { memos } from "@/shared/lib/db/schema";
 import type { Memo, MemoSource } from "../model/types";
 
+// 개인 대시보드 규모 상한 — 페이지네이션 도입 전까지 unbounded 쿼리 방지.
+const LIST_MEMOS_LIMIT = 200;
+
 export function listMemos(userId: string): Promise<Memo[]> {
-  return db.select().from(memos).where(eq(memos.userId, userId)).orderBy(desc(memos.createdAt));
+  return db
+    .select()
+    .from(memos)
+    .where(eq(memos.userId, userId))
+    .orderBy(desc(memos.createdAt))
+    .limit(LIST_MEMOS_LIMIT);
 }
 
 export async function getMemo(userId: string, id: string): Promise<Memo | null> {

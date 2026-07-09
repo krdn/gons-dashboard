@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   TRANSFORM_PRESET_IDS,
@@ -29,10 +29,42 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
 
   const inputLen = memo.cleanedContent.trim().length;
   const busy = phase === "loading" || saving;
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // 열릴 때 다이얼로그로 포커스 이동, 닫힐 때 트리거 버튼으로 복귀 (키보드 사용자 미아 방지).
+  useEffect(() => {
+    const prev = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+    return () => prev?.focus();
+  }, []);
+
+  // phase 전환으로 포커스 중이던 버튼이 언마운트되면 포커스가 body로 떨어진다 — 다이얼로그로 회수.
+  useEffect(() => {
+    if (!dialogRef.current?.contains(document.activeElement)) dialogRef.current?.focus();
+  }, [phase]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && !busy) onClose();
+      // 최소 포커스 트랩 — Tab이 다이얼로그 밖(배경 콘텐츠)으로 나가지 않게 순환.
+      if (e.key === "Tab") {
+        const root = dialogRef.current;
+        if (!root) return;
+        const focusables = Array.from(
+          root.querySelectorAll<HTMLElement>("button:not([disabled]), textarea, input:not([disabled])"),
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const current = document.activeElement;
+        if (e.shiftKey && (current === first || current === root)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (current === last || !root.contains(current))) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -92,10 +124,12 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="AI 정리"
-        className="w-full max-w-lg rounded-xl bg-white p-5 shadow-lg"
+        tabIndex={-1}
+        className="w-full max-w-lg rounded-xl bg-white p-5 shadow-lg outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-3 font-medium text-neutral-900">AI 정리 — {memo.title}</h2>
@@ -128,7 +162,11 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
           </>
         )}
 
-        {phase === "loading" && <p className="py-6 text-center text-sm text-neutral-500">AI가 정리하는 중…</p>}
+        {phase === "loading" && (
+          <p role="status" className="py-6 text-center text-sm text-neutral-500">
+            AI가 정리하는 중…
+          </p>
+        )}
 
         {phase === "preview" && preset && (
           <>
@@ -161,7 +199,11 @@ export function TransformDialog({ memo, existingPresets, onClose }: TransformDia
           </>
         )}
 
-        {notice && <p className="mt-3 text-sm text-neutral-500">{notice}</p>}
+        {notice && (
+          <p role="status" className="mt-3 text-sm text-neutral-500">
+            {notice}
+          </p>
+        )}
       </div>
     </div>,
     document.body,
