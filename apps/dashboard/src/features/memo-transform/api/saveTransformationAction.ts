@@ -30,7 +30,7 @@ export async function saveTransformationAction(
   const memo = await getMemo(session.user.id, memoId);
   if (!memo) return { kind: "not-found" };
 
-  return upsertTransformation({ memoId, preset, model: TRANSFORM_MODEL, content: trimmed }).then(
+  return upsertTransformation({ memoId, preset, model: TRANSFORM_MODEL, content: trimmed, presetLabel: null }).then(
     () => {
       revalidatePath("/memos");
       return { kind: "ok" as const };

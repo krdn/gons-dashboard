@@ -2,13 +2,14 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { memos, memoTransformations } from "@/shared/lib/db/schema";
-import type { MemoTransformation, TransformPresetId } from "../model/types";
+import type { MemoTransformation } from "../model/types";
 
 export interface UpsertTransformationInput {
   memoId: string;
-  preset: TransformPresetId;
+  preset: string;
   model: string;
   content: string;
+  presetLabel: string | null;
 }
 
 /** 메모당 프리셋당 1개 — 재저장은 교체 (UNIQUE(memo_id, preset) upsert). */
@@ -18,7 +19,7 @@ export async function upsertTransformation(input: UpsertTransformationInput): Pr
     .values(input)
     .onConflictDoUpdate({
       target: [memoTransformations.memoId, memoTransformations.preset],
-      set: { content: input.content, model: input.model, updatedAt: new Date() },
+      set: { content: input.content, model: input.model, presetLabel: input.presetLabel, updatedAt: new Date() },
     })
     .returning();
   return rows[0];

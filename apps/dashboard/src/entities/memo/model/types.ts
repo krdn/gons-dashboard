@@ -1,11 +1,12 @@
-import type { memos, memoTransformations } from "@/shared/lib/db/schema";
+import type { memos, memoTransformations, memoTransformPresets } from "@/shared/lib/db/schema";
 
 export type Memo = typeof memos.$inferSelect;
 export type MemoSource = "voice" | "text";
 
 export type MemoTransformation = typeof memoTransformations.$inferSelect;
+export type MemoTransformPreset = typeof memoTransformPresets.$inferSelect;
 
-// 스타일 변환 프리셋 — DB CHECK(memo_transformations_preset_check)와 동기 유지.
+// 빌트인 프리셋 목록 (커스텀은 DB memo_transform_presets).
 export const TRANSFORM_PRESET_IDS = [
   "tidy",
   "polish",

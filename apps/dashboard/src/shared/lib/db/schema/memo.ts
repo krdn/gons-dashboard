@@ -2,7 +2,7 @@
 // - memos: 텍스트/음성 메모. 원문(raw_content) + AI 정리본(cleaned_content) 둘 다 보관.
 //   음성은 승인해야 저장하므로 DB의 모든 행은 승인 완료 상태.
 import { sql } from "drizzle-orm";
-import { pgTable, text, timestamp, uuid, index, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, index, uniqueIndex, check, boolean } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const memos = pgTable(
@@ -41,20 +41,45 @@ export const memoTransformations = pgTable(
     memoId: uuid("memo_id")
       .notNull()
       .references(() => memos.id, { onDelete: "cascade" }),
-    // TransformPresetId — CHECK 제약으로 강제 (entities/memo/model/types.ts와 동기).
+    // TransformPresetId — 빌트인 프리셋 목록 (커스텀은 DB memo_transform_presets).
     preset: text("preset").notNull(),
     // 생성에 사용한 모델 (감사용).
     model: text("model").notNull(),
     content: text("content").notNull(),
+    // 저장 시점 라벨 스냅샷 (null = 코드 라벨 폴백).
+    presetLabel: text("preset_label"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("memo_transformations_memo_preset_uq").on(t.memoId, t.preset),
-    check(
-      "memo_transformations_preset_check",
-      sql`${t.preset} IN ('tidy', 'polish', 'summary', 'structured', 'todos', 'journal', 'email')`,
-    ),
     check("memo_transformations_content_not_empty", sql`length(${t.content}) > 0`),
+  ],
+);
+
+// memo_transform_presets: 빌트인 override(slug=빌트인 id) + 커스텀(slug='c-…').
+// 행 없음 = 코드 기본값 (복구 = 행 삭제). 스펙 2026-07-09-memo-preset-settings.
+export const memoTransformPresets = pgTable(
+  "memo_transform_presets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    instruction: text("instruction").notNull(),
+    fidelityGuard: boolean("fidelity_guard").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("memo_transform_presets_user_slug_uq").on(t.userId, t.slug),
+    check("memo_transform_presets_slug_format", sql`${t.slug} ~ '^[a-z0-9-]{1,40}$'`),
+    check("memo_transform_presets_label_len", sql`length(${t.label}) BETWEEN 1 AND 20`),
+    check(
+      "memo_transform_presets_instruction_len",
+      sql`length(${t.instruction}) BETWEEN 1 AND 2000`,
+    ),
   ],
 );
