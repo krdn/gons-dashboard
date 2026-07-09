@@ -17,12 +17,14 @@ export function useSpeechRecognition() {
   const [error, setError] = useState<SpeechError | null>(null);
   const recRef = useRef<SpeechRecognition | null>(null);
   const wantRecordingRef = useRef(false); // onend 자동 재시작 판단용.
+  const rawTranscriptRef = useRef(""); // onresult 순수성 확보용 — updater 밖에서 setInterim 호출하기 위한 현재값 보관.
   const isSupported = getRecognitionCtor() !== null;
 
   const start = useCallback(() => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) return;
     setError(null);
+    rawTranscriptRef.current = "";
     setRawTranscript("");
     setInterim("");
     const rec = new Ctor();
@@ -30,11 +32,10 @@ export function useSpeechRecognition() {
     rec.continuous = true;
     rec.interimResults = true;
     rec.onresult = (e: SpeechRecognitionEvent) => {
-      setRawTranscript((prev) => {
-        const { finalText, interim: itm } = accumulateFinal(prev, e);
-        setInterim(itm);
-        return finalText;
-      });
+      const { finalText, interim: itm } = accumulateFinal(rawTranscriptRef.current, e);
+      rawTranscriptRef.current = finalText;
+      setRawTranscript(finalText);
+      setInterim(itm);
     };
     rec.onerror = (e: SpeechRecognitionErrorEvent) => {
       const code = e.error;
@@ -75,6 +76,7 @@ export function useSpeechRecognition() {
   }, []);
 
   const reset = useCallback(() => {
+    rawTranscriptRef.current = "";
     setRawTranscript("");
     setInterim("");
     setError(null);
