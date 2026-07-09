@@ -1,14 +1,23 @@
 "use client";
 import { useState } from "react";
-import { MemoCard, type Memo } from "@/entities/memo/client";
+import {
+  MemoCard,
+  type Memo,
+  type MemoTransformation,
+  type TransformPresetId,
+} from "@/entities/memo/client";
 import { updateMemoAction, deleteMemoAction } from "../client";
+// features→features 허용 예외 (memo-manage가 변환 다이얼로그를 조립).
+import { TransformDialog } from "@/features/memo-transform/ui/TransformDialog";
 
 interface MemoListProps {
   memos: Memo[];
+  transformationsByMemo: Record<string, MemoTransformation[]>;
 }
 
-export function MemoList({ memos }: MemoListProps) {
+export function MemoList({ memos, transformationsByMemo }: MemoListProps) {
   const [editing, setEditing] = useState<Memo | null>(null);
+  const [transforming, setTransforming] = useState<Memo | null>(null);
   const [draft, setDraft] = useState({ title: "", cleaned: "" });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -104,8 +113,24 @@ export function MemoList({ memos }: MemoListProps) {
             </div>
           </div>
         ) : (
-          <MemoCard key={memo.id} memo={memo} onEdit={startEdit} onDelete={handleDelete} />
+          <MemoCard
+            key={memo.id}
+            memo={memo}
+            transformations={transformationsByMemo[memo.id] ?? []}
+            onEdit={startEdit}
+            onDelete={handleDelete}
+            onTransform={setTransforming}
+          />
         ),
+      )}
+      {transforming && (
+        <TransformDialog
+          memo={transforming}
+          existingPresets={(transformationsByMemo[transforming.id] ?? []).map(
+            (t) => t.preset as TransformPresetId,
+          )}
+          onClose={() => setTransforming(null)}
+        />
       )}
     </div>
   );
