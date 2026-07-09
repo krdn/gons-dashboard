@@ -29,6 +29,8 @@ export function MemoComposer() {
   const [notice, setNotice] = useState<string | null>(null);
   // 승인 저장에 쓸 원문 — 녹음 종료 시 또는 초안 복원 시 확정 (복원 후엔 speech state가 비어있다).
   const [pendingRaw, setPendingRaw] = useState("");
+  // 직전 AI 정리가 실패해 원문 폴백 상태인지 — 미리보기의 [다시 정리] affordance 노출 조건.
+  const [cleanupFailed, setCleanupFailed] = useState(false);
   // 승인 전 초안 (localStorage) — 새로고침/이탈 후에도 복원 배너로 노출 (Codex P2).
   // getServerSnapshot=null 이라 SSR/hydration 첫 렌더 일치, 이후 클라이언트에서만 나타남.
   const draft = useSyncExternalStore(subscribeDraft, getDraftSnapshot, () => null);
@@ -43,7 +45,33 @@ export function MemoComposer() {
     setCleaned(d.cleanedContent || d.rawContent);
     setTitle(d.title);
     setNotice(null);
+    // 정리 전(또는 실패) 초안이면 복원 후에도 [다시 정리]로 재시도 가능해야 한다.
+    setCleanupFailed(!d.cleanedContent);
     setMode("preview");
+  }
+
+  // AI 정리 실행 — 녹음 종료 직후와 미리보기의 [다시 정리] 재시도가 공유.
+  function runCleanup(raw: string) {
+    setMode("cleaning");
+    setNotice(null);
+    cleanupTranscriptAction(raw).then(
+      (result) => {
+        const ok = result.kind === "ok";
+        const text = ok ? result.cleaned : raw;
+        if (!ok) setNotice("AI 정리 실패 — 다시 정리하거나 원문 그대로 저장하세요.");
+        setCleanupFailed(!ok);
+        setCleaned(text);
+        // 실패 시 cleanedContent는 비워 저장 — 복원 시 "정리 안 된 초안"으로 식별돼 재시도 affordance가 살아난다.
+        saveDraft({ rawContent: raw, cleanedContent: ok ? text : "", title, savedAt: Date.now() });
+        setMode("preview");
+      },
+      () => {
+        setCleaned(raw);
+        setCleanupFailed(true);
+        setNotice("AI 정리 실패 — 다시 정리하거나 원문 그대로 저장하세요.");
+        setMode("preview");
+      },
+    );
   }
 
   // 음성: 녹음 종료(최종 final 대기) → 클린업 → 미리보기
@@ -60,20 +88,7 @@ export function MemoComposer() {
       }
       setPendingRaw(raw);
       saveDraft({ rawContent: raw, cleanedContent: "", title: "", savedAt: Date.now() });
-      cleanupTranscriptAction(raw).then(
-        (result) => {
-          const text = result.kind === "ok" ? result.cleaned : raw;
-          if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
-          setCleaned(text);
-          saveDraft({ rawContent: raw, cleanedContent: text, title: "", savedAt: Date.now() });
-          setMode("preview");
-        },
-        () => {
-          setCleaned(raw);
-          setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
-          setMode("preview");
-        },
-      );
+      runCleanup(raw);
     });
   }
 
@@ -104,6 +119,7 @@ export function MemoComposer() {
     setPendingRaw("");
     setCleaned("");
     setTitle("");
+    setCleanupFailed(false);
     setMode("idle");
   }
 
@@ -213,6 +229,16 @@ export function MemoComposer() {
                 <button type="button" onClick={handleApprove} disabled={saving} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
                   {saving ? "저장 중…" : "승인 · 저장"}
                 </button>
+                {cleanupFailed && (
+                  <button
+                    type="button"
+                    onClick={() => runCleanup(pendingRaw)}
+                    disabled={saving}
+                    className="rounded border px-4 py-2"
+                  >
+                    다시 정리
+                  </button>
+                )}
                 <button type="button" onClick={resetVoice} disabled={saving} className="rounded border px-4 py-2">
                   취소
                 </button>

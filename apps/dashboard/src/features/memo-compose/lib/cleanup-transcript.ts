@@ -67,6 +67,8 @@ export async function cleanupTranscript(raw: string): Promise<CleanupResult> {
     if (isDegenerateCleanup(input, cleaned)) return { kind: "raw-fallback", reason: "degenerate" };
     return { kind: "ok", cleaned };
   } catch (e) {
-    return { kind: "raw-fallback", reason: e instanceof Error ? e.message : "llm-error" };
+    // e.message는 게이트웨이 URL 등 내부 정보를 담을 수 있어 클라이언트 경계를 넘기지 않는다 (#285 transform-memo와 동일 패턴).
+    console.error("[memo-cleanup] LLM 호출 실패", e);
+    return { kind: "raw-fallback", reason: "llm-error" };
   }
 }
