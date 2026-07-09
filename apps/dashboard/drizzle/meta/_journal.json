@@ -253,6 +253,13 @@
       "when": 1783572104595,
       "tag": "0035_friendly_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1783588221553,
+      "tag": "0036_mixed_whirlwind",
+      "breakpoints": true
     }
   ]
 }
