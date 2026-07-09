@@ -1,5 +1,22 @@
-import { describe, it, expect } from "vitest";
-import { CleanupResponseSchema, isDegenerateCleanup } from "./cleanup-transcript";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const analyzeMock = vi.fn();
+vi.mock("@krdn/llm-gateway/gateway", () => ({
+  analyzeStructured: (...a: unknown[]) => analyzeMock(...a),
+}));
+vi.mock("@/shared/lib/llm/anthropic", () => ({
+  gatewayDefaults: { provider: "claude-cli", baseUrl: "http://test", apiKey: "k" },
+  logLlmSpend: vi.fn(),
+}));
+vi.mock("@/shared/lib/llm/draft-reply", () => ({
+  isRefusalDraft: (t: string) => t.startsWith("죄송"),
+}));
+
+import { CleanupResponseSchema, isDegenerateCleanup, cleanupTranscript } from "./cleanup-transcript";
+
+beforeEach(() => {
+  analyzeMock.mockReset();
+});
 
 describe("CleanupResponseSchema", () => {
   it("정상 cleaned 문자열을 통과시킨다", () => {
@@ -7,6 +24,25 @@ describe("CleanupResponseSchema", () => {
   });
   it("빈 cleaned는 거부한다", () => {
     expect(CleanupResponseSchema.safeParse({ cleaned: "" }).success).toBe(false);
+  });
+});
+
+describe("cleanupTranscript — 입력 길이 가드", () => {
+  it("4,000자 초과 입력은 LLM 호출 없이 too-long 폴백 (절단 유실 방지)", async () => {
+    const r = await cleanupTranscript("가".repeat(4_001));
+    expect(r).toEqual({ kind: "raw-fallback", reason: "too-long" });
+    expect(analyzeMock).not.toHaveBeenCalled();
+  });
+  it("빈 입력은 empty-input 폴백", async () => {
+    expect(await cleanupTranscript("   ")).toEqual({ kind: "raw-fallback", reason: "empty-input" });
+    expect(analyzeMock).not.toHaveBeenCalled();
+  });
+  it("4,000자 이하는 전체 입력으로 정상 호출", async () => {
+    analyzeMock.mockResolvedValue({ object: { cleaned: "가".repeat(3_000) }, usage: {} });
+    const input = "가".repeat(3_000);
+    const r = await cleanupTranscript(input);
+    expect(r.kind).toBe("ok");
+    expect(analyzeMock).toHaveBeenCalledWith(input, expect.anything(), expect.anything());
   });
 });
 

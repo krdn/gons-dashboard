@@ -1,7 +1,7 @@
 "use client";
 import { useState, useSyncExternalStore } from "react";
 import { useSpeechRecognition } from "../lib/useSpeechRecognition";
-import { saveDraft, clearDraft } from "../lib/memoDraftStorage";
+import { saveDraft, clearDraft, getDraftSnapshot, subscribeDraft } from "../lib/memoDraftStorage";
 import { cleanupTranscriptAction, createMemoAction } from "../client";
 
 type Mode = "idle" | "cleaning" | "preview";
@@ -27,38 +27,59 @@ export function MemoComposer() {
   const [textInput, setTextInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // 승인 저장에 쓸 원문 — 녹음 종료 시 또는 초안 복원 시 확정 (복원 후엔 speech state가 비어있다).
+  const [pendingRaw, setPendingRaw] = useState("");
+  // 승인 전 초안 (localStorage) — 새로고침/이탈 후에도 복원 배너로 노출 (Codex P2).
+  // getServerSnapshot=null 이라 SSR/hydration 첫 렌더 일치, 이후 클라이언트에서만 나타남.
+  const draft = useSyncExternalStore(subscribeDraft, getDraftSnapshot, () => null);
 
   const activeTab: Tab = tab ?? (voiceSupported ? "voice" : "text");
 
-  // 음성: 녹음 종료 → 클린업 → 미리보기
-  function handleStopAndClean() {
-    speech.stop();
-    const raw = speech.rawTranscript.trim();
-    if (!raw) {
-      setNotice("녹음된 내용이 없습니다.");
-      return;
-    }
-    setMode("cleaning");
-    saveDraft({ rawContent: raw, cleanedContent: "", title: "", savedAt: Date.now() });
-    cleanupTranscriptAction(raw).then(
-      (result) => {
-        const text = result.kind === "ok" ? result.cleaned : raw;
-        if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
-        setCleaned(text);
-        saveDraft({ rawContent: raw, cleanedContent: text, title: "", savedAt: Date.now() });
-        setMode("preview");
-      },
-      () => {
-        setCleaned(raw);
-        setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
-        setMode("preview");
-      },
-    );
+  function restoreDraft() {
+    const d = getDraftSnapshot();
+    if (!d) return;
+    setTab("voice");
+    setPendingRaw(d.rawContent);
+    setCleaned(d.cleanedContent || d.rawContent);
+    setTitle(d.title);
+    setNotice(null);
+    setMode("preview");
   }
 
-  // 음성 승인 저장
+  // 음성: 녹음 종료(최종 final 대기) → 클린업 → 미리보기
+  function handleStopAndClean() {
+    setMode("cleaning");
+    // stop()은 마지막 발화의 final 결과(onend)까지 기다린 최종 원문을 resolve한다 —
+    // 즉시 state를 읽으면 끝 문장이 유실된다 (Codex P2).
+    speech.stop().then((finalRaw) => {
+      const raw = finalRaw.trim();
+      if (!raw) {
+        setNotice("녹음된 내용이 없습니다.");
+        setMode("idle");
+        return;
+      }
+      setPendingRaw(raw);
+      saveDraft({ rawContent: raw, cleanedContent: "", title: "", savedAt: Date.now() });
+      cleanupTranscriptAction(raw).then(
+        (result) => {
+          const text = result.kind === "ok" ? result.cleaned : raw;
+          if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
+          setCleaned(text);
+          saveDraft({ rawContent: raw, cleanedContent: text, title: "", savedAt: Date.now() });
+          setMode("preview");
+        },
+        () => {
+          setCleaned(raw);
+          setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
+          setMode("preview");
+        },
+      );
+    });
+  }
+
+  // 음성 승인 저장 — 원문은 pendingRaw (초안 복원 경로에선 speech state가 비어있다).
   function handleApprove() {
-    const raw = speech.rawTranscript.trim();
+    const raw = pendingRaw.trim();
     setSaving(true);
     createMemoAction({ source: "voice", rawContent: raw, cleanedContent: cleaned.trim(), title }).then(
       (r) => {
@@ -80,6 +101,7 @@ export function MemoComposer() {
 
   function resetVoice() {
     speech.reset();
+    setPendingRaw("");
     setCleaned("");
     setTitle("");
     setMode("idle");
@@ -113,6 +135,19 @@ export function MemoComposer() {
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4">
+      {draft && mode === "idle" && !speech.isRecording && (
+        <div className="mb-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm">
+          <p className="text-amber-800">저장하지 않은 메모 초안이 있습니다.</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={restoreDraft} className="rounded bg-neutral-900 px-3 py-1 text-xs text-white">
+              복원
+            </button>
+            <button type="button" onClick={clearDraft} className="rounded border px-3 py-1 text-xs">
+              버리기
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mb-3 flex gap-2">
         <button
           type="button"
@@ -127,11 +162,12 @@ export function MemoComposer() {
         </button>
       </div>
 
-      {!voiceSupported && activeTab === "voice" && (
+      {!voiceSupported && activeTab === "voice" && mode === "idle" && (
         <p className="text-sm text-amber-600">이 브라우저는 음성 입력을 지원하지 않습니다. 텍스트 메모를 이용하세요.</p>
       )}
 
-      {activeTab === "voice" && voiceSupported && (
+      {/* preview는 음성 미지원 브라우저에서도 렌더 — 초안 복원 경로 (녹음 없이 승인만). */}
+      {activeTab === "voice" && (voiceSupported || mode === "preview") && (
         <div className="space-y-3">
           {mode === "idle" && (
             <>

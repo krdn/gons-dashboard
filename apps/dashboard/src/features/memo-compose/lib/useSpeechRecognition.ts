@@ -18,6 +18,7 @@ export function useSpeechRecognition() {
   const recRef = useRef<SpeechRecognition | null>(null);
   const wantRecordingRef = useRef(false); // onend 자동 재시작 판단용.
   const rawTranscriptRef = useRef(""); // onresult 순수성 확보용 — updater 밖에서 setInterim 호출하기 위한 현재값 보관.
+  const stopResolverRef = useRef<(() => void) | null>(null); // stop() 대기자 — onend에서 resolve.
   const isSupported = getRecognitionCtor() !== null;
 
   const start = useCallback(() => {
@@ -60,6 +61,9 @@ export function useSpeechRecognition() {
         }, 250);
       } else {
         setIsRecording(false);
+        // stop() 대기자에게 최종 transcript 확정 시점(onend)을 알린다.
+        stopResolverRef.current?.();
+        stopResolverRef.current = null;
       }
     };
     wantRecordingRef.current = true;
@@ -68,11 +72,31 @@ export function useSpeechRecognition() {
     setIsRecording(true);
   }, []);
 
-  const stop = useCallback(() => {
+  // 마지막 발화의 final 결과는 stop() 호출 뒤 onend 전에 도착한다 — 즉시 상태를 읽으면
+  // 끝 문장이 유실된다 (Codex P2). onend까지 기다린 최종 transcript를 resolve.
+  const stop = useCallback((): Promise<string> => {
     wantRecordingRef.current = false;
-    recRef.current?.stop();
     setIsRecording(false);
     setInterim("");
+    const rec = recRef.current;
+    if (!rec) return Promise.resolve(rawTranscriptRef.current);
+    return new Promise<string>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        stopResolverRef.current = null;
+        resolve(rawTranscriptRef.current);
+      };
+      stopResolverRef.current = finish;
+      // onend 미발화 브라우저 방어 — 2초 상한.
+      window.setTimeout(finish, 2_000);
+      try {
+        rec.stop();
+      } catch {
+        finish();
+      }
+    });
   }, []);
 
   const reset = useCallback(() => {
