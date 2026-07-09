@@ -30,30 +30,34 @@ export function MemoComposer() {
 
   const activeTab: Tab = tab ?? (voiceSupported ? "voice" : "text");
 
-  // 음성: 녹음 종료 → 클린업 → 미리보기
+  // 음성: 녹음 종료(최종 final 대기) → 클린업 → 미리보기
   function handleStopAndClean() {
-    speech.stop();
-    const raw = speech.rawTranscript.trim();
-    if (!raw) {
-      setNotice("녹음된 내용이 없습니다.");
-      return;
-    }
     setMode("cleaning");
-    saveDraft({ rawContent: raw, cleanedContent: "", title: "", savedAt: Date.now() });
-    cleanupTranscriptAction(raw).then(
-      (result) => {
-        const text = result.kind === "ok" ? result.cleaned : raw;
-        if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
-        setCleaned(text);
-        saveDraft({ rawContent: raw, cleanedContent: text, title: "", savedAt: Date.now() });
-        setMode("preview");
-      },
-      () => {
-        setCleaned(raw);
-        setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
-        setMode("preview");
-      },
-    );
+    // stop()은 마지막 발화의 final 결과(onend)까지 기다린 최종 원문을 resolve한다 —
+    // 즉시 state를 읽으면 끝 문장이 유실된다 (Codex P2).
+    speech.stop().then((finalRaw) => {
+      const raw = finalRaw.trim();
+      if (!raw) {
+        setNotice("녹음된 내용이 없습니다.");
+        setMode("idle");
+        return;
+      }
+      saveDraft({ rawContent: raw, cleanedContent: "", title: "", savedAt: Date.now() });
+      cleanupTranscriptAction(raw).then(
+        (result) => {
+          const text = result.kind === "ok" ? result.cleaned : raw;
+          if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
+          setCleaned(text);
+          saveDraft({ rawContent: raw, cleanedContent: text, title: "", savedAt: Date.now() });
+          setMode("preview");
+        },
+        () => {
+          setCleaned(raw);
+          setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
+          setMode("preview");
+        },
+      );
+    });
   }
 
   // 음성 승인 저장
