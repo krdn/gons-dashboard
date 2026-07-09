@@ -6,7 +6,7 @@ import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults, logLlmSpend } from "@/shared/lib/llm/anthropic";
 import { isRefusalDraft } from "@/shared/lib/llm/draft-reply";
 
-const MAX_INPUT = 20_000;
+const MAX_INPUT = 4_000;
 const CLEANUP_MODEL = "claude-sonnet-5";
 
 export const CleanupResponseSchema = z.object({
@@ -50,7 +50,7 @@ export async function cleanupTranscript(raw: string): Promise<CleanupResult> {
       ...gatewayDefaults,
       model: CLEANUP_MODEL,
       systemPrompt: SYSTEM_PROMPT,
-      maxOutputTokens: 2000,
+      maxOutputTokens: 4_000,
     });
 
     // logLlmSpend는 best-effort (관측이 주 경로를 깨지 않게).

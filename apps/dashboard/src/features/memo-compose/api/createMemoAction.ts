@@ -5,6 +5,8 @@ import { auth } from "@/shared/lib/auth";
 import { createMemo } from "@/entities/memo/server";
 import { deriveTitle, type MemoSource } from "@/entities/memo/client";
 
+const MAX_MEMO_LEN = 20_000;
+
 export interface CreateMemoInputAction {
   source: MemoSource;
   rawContent: string;
@@ -27,6 +29,7 @@ export async function createMemoAction(
   const raw = input.rawContent.trim();
   const cleaned = input.cleanedContent.trim();
   if (raw.length === 0 || cleaned.length === 0) return { kind: "invalid" };
+  if (raw.length > MAX_MEMO_LEN || cleaned.length > MAX_MEMO_LEN) return { kind: "invalid" };
   if (input.source !== "voice" && input.source !== "text") return { kind: "invalid" };
 
   const title = input.title?.trim() || deriveTitle(cleaned);

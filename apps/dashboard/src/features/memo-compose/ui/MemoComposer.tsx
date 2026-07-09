@@ -43,14 +43,14 @@ export function MemoComposer() {
     cleanupTranscriptAction(raw).then(
       (result) => {
         const text = result.kind === "ok" ? result.cleaned : raw;
-        if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문으로 진행하거나 재시도하세요.");
+        if (result.kind !== "ok") setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
         setCleaned(text);
         saveDraft({ rawContent: raw, cleanedContent: text, title: "", savedAt: Date.now() });
         setMode("preview");
       },
       () => {
         setCleaned(raw);
-        setNotice("AI 정리 실패 — 원문으로 진행하거나 재시도하세요.");
+        setNotice("AI 정리 실패 — 원문 그대로 저장하거나 취소 후 다시 녹음하세요.");
         setMode("preview");
       },
     );

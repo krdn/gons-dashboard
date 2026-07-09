@@ -25,6 +25,12 @@ describe("createMemoAction", () => {
     const r = await createMemoAction({ source: "x" as never, rawContent: "a", cleanedContent: "a" });
     expect(r.kind).toBe("invalid");
   });
+  it("초과 길이는 invalid", async () => {
+    const tooLong = "a".repeat(20_001);
+    const r = await createMemoAction({ source: "text", rawContent: tooLong, cleanedContent: "정상" });
+    expect(r.kind).toBe("invalid");
+    expect(createMemoMock).not.toHaveBeenCalled();
+  });
   it("title 미입력 시 cleaned에서 파생해 저장한다", async () => {
     await createMemoAction({ source: "text", rawContent: "원문", cleanedContent: "정리본 텍스트" });
     expect(createMemoMock).toHaveBeenCalledWith(expect.objectContaining({ title: "정리본 텍스트", userId: "u1" }));
