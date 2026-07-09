@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
-import { listMemos } from "@/entities/memo/server";
+import { listMemos, listTransformationsByUser, type MemoTransformation } from "@/entities/memo/server";
 import { MemoWidget } from "@/widgets/memo";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PageHeader } from "@/shared/ui/PageHeader";
@@ -11,12 +11,19 @@ export default async function MemosPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const memos = await listMemos(session.user.id);
+  const [memos, transformations] = await Promise.all([
+    listMemos(session.user.id),
+    listTransformationsByUser(session.user.id),
+  ]);
+  const transformationsByMemo: Record<string, MemoTransformation[]> = {};
+  for (const t of transformations) {
+    (transformationsByMemo[t.memoId] ??= []).push(t);
+  }
 
   return (
     <PageContainer width="narrow">
       <PageHeader title="메모" subtitle="음성 또는 텍스트로 빠르게 기록해요." />
-      <MemoWidget memos={memos} />
+      <MemoWidget memos={memos} transformationsByMemo={transformationsByMemo} />
     </PageContainer>
   );
 }
