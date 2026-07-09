@@ -46,6 +46,21 @@ describe("cleanupTranscript — 입력 길이 가드", () => {
   });
 });
 
+describe("cleanupTranscript — 출력 검증 분기", () => {
+  it("거절 응답은 refusal 폴백", async () => {
+    analyzeMock.mockResolvedValue({ object: { cleaned: "죄송하지만 도와드릴 수 없습니다" }, usage: {} });
+    const r = await cleanupTranscript("음 어 내일 회의가 세 시에 있어요");
+    expect(r).toEqual({ kind: "raw-fallback", reason: "refusal" });
+  });
+  it("LLM 예외는 reason을 llm-error로 뭉갠다 (내부 메시지 비노출)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    analyzeMock.mockRejectedValue(new Error("http://internal-gateway:8317 boom"));
+    const r = await cleanupTranscript("음 어 내일 회의가 세 시에 있어요");
+    expect(r).toEqual({ kind: "raw-fallback", reason: "llm-error" });
+    vi.restoreAllMocks();
+  });
+});
+
 describe("isDegenerateCleanup — 과도 축약 감지", () => {
   it("60% 미만으로 줄면 degenerate", () => {
     const raw = "가".repeat(100);

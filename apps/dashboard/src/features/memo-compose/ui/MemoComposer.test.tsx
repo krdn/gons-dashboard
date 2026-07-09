@@ -49,3 +49,24 @@ describe("MemoComposer — 초안 복원 배너", () => {
     expect(loadDraft()).toBeNull();
   });
 });
+
+describe("MemoComposer — AI 정리 재시도 (§5)", () => {
+  it("정리 안 된 초안(cleanedContent 빈값) 복원 시 [다시 정리]가 보이고, 클릭하면 재정리된다", async () => {
+    saveDraft({ rawContent: "음 어 원문", cleanedContent: "", title: "", savedAt: 1 });
+    render(<MemoComposer />);
+    fireEvent.click(screen.getByRole("button", { name: "복원" }));
+    // 복원 직후엔 원문 폴백 상태 — 재시도 affordance 노출
+    expect(screen.getByDisplayValue("음 어 원문")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "다시 정리" }));
+    // mock 액션이 ok("정리")를 반환 — textarea가 정리본으로 교체되고 버튼은 사라진다
+    expect(await screen.findByDisplayValue("정리")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "다시 정리" })).toBeNull();
+  });
+
+  it("정리된 초안 복원 시에는 [다시 정리]가 없다", () => {
+    saveDraft(draft);
+    render(<MemoComposer />);
+    fireEvent.click(screen.getByRole("button", { name: "복원" }));
+    expect(screen.queryByRole("button", { name: "다시 정리" })).toBeNull();
+  });
+});
