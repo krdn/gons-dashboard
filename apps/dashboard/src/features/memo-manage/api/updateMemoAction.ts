@@ -5,7 +5,11 @@ import { auth } from "@/shared/lib/auth";
 import { updateMemo } from "@/entities/memo/server";
 import { deriveTitle } from "@/entities/memo/client";
 
-export type UpdateMemoResult = { kind: "ok" } | { kind: "invalid" } | { kind: "not-found" };
+export type UpdateMemoResult =
+  | { kind: "ok" }
+  | { kind: "invalid" }
+  | { kind: "not-found" }
+  | { kind: "failed" };
 
 export async function updateMemoAction(
   id: string,
@@ -23,6 +27,6 @@ export async function updateMemoAction(
       revalidatePath("/memos");
       return { kind: "ok" as const };
     },
-    () => ({ kind: "not-found" as const }),
+    () => ({ kind: "failed" as const }),
   );
 }

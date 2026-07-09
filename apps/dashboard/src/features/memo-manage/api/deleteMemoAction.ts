@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { deleteMemo } from "@/entities/memo/server";
 
-export type DeleteMemoResult = { kind: "ok" } | { kind: "not-found" };
+export type DeleteMemoResult = { kind: "ok" } | { kind: "not-found" } | { kind: "failed" };
 
 export async function deleteMemoAction(id: string): Promise<DeleteMemoResult> {
   const session = await auth();
@@ -15,6 +15,6 @@ export async function deleteMemoAction(id: string): Promise<DeleteMemoResult> {
       revalidatePath("/memos");
       return { kind: "ok" as const };
     },
-    () => ({ kind: "not-found" as const }),
+    () => ({ kind: "failed" as const }),
   );
 }
