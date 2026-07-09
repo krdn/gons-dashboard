@@ -23,7 +23,7 @@
 - **베이스라인 (2026-06-16 측정, `apps/dashboard/tests/eval/reports/`)**:
   - deterministic recall = **0.529** — 정규식 prefilter가 답장 필요 메일의 ~47%(암시적 표현 = B 케이스)를 놓침. **상한을 만드는 건 Haiku가 아니라 정규식 prefilter**임을 실측 (모델 업그레이드 논의 시 핵심 근거).
   - 중요 트랙 categoryMacroF1 = **0.853**, importanceAccuracy = **0.765** (Haiku 건강).
-- **임계치** (`thresholds.json`): deterministic recall 0.45, 중요 categoryMacroF1 0.75 / importanceAccuracy 0.65. reply LLM 트랙은 **미보정(null)** — 아래 발견 때문.
+- **임계치** (`thresholds.json`): deterministic recall 0.45, 중요 categoryMacroF1 0.75 / importanceAccuracy 0.65. reply LLM 트랙은 2-a 해소 후 첫 무오염 run(2026-07-09, skip=0: precision=1.0, recall=0.294)으로 **붕괴 감지 하한선 확정** (precision 0.8 / recall 0.2 — 정확도 목표가 아니라 prefilter 천장 아래 tripwire).
 
 #### 2-a. 베이스라인이 잡은 발견 — 영어 메일 답장 분류가 reason 40자 제한에 걸림 ✅ 해소됨 (#145)
 
