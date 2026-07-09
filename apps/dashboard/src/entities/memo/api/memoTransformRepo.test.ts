@@ -4,6 +4,7 @@ import { memos, memoTransformations, users } from "@/shared/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createMemo } from "./memoRepo";
 import { upsertTransformation, listTransformationsByUser } from "./memoTransformRepo";
+import { TRANSFORM_PRESET_IDS } from "../model/types";
 
 const USER_ID = "00000000-0000-0000-0000-000000000abd";
 const OTHER_ID = "00000000-0000-0000-0000-000000000abe";
@@ -28,12 +29,22 @@ describe("memoTransformRepo", () => {
   it("같은 (memo, preset) 재저장은 교체한다 (새 행 아님)", async () => {
     const memo = await createMemo(base);
     const first = await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m1", content: "v1" });
+    await new Promise((r) => setTimeout(r, 5)); // updatedAt 단조 증가 보장용 (같은 ms 타이 방지)
     const second = await upsertTransformation({ memoId: memo.id, preset: "summary", model: "m2", content: "v2" });
     expect(second.id).toBe(first.id);
+    expect(second.updatedAt.getTime()).toBeGreaterThan(first.updatedAt.getTime());
     const list = await listTransformationsByUser(USER_ID);
     expect(list).toHaveLength(1);
     expect(list[0].content).toBe("v2");
     expect(list[0].model).toBe("m2");
+  });
+
+  it("프리셋 7종 전부 CHECK 제약을 통과한다 (fixture drift 가드)", async () => {
+    const memo = await createMemo(base);
+    for (const preset of TRANSFORM_PRESET_IDS) {
+      await upsertTransformation({ memoId: memo.id, preset, model: "m", content: `${preset} 내용` });
+    }
+    expect(await listTransformationsByUser(USER_ID)).toHaveLength(TRANSFORM_PRESET_IDS.length);
   });
 
   it("다른 preset은 병존한다", async () => {

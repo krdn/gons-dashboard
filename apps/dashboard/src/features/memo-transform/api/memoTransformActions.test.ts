@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const authMock = vi.fn();
 const getMemoMock = vi.fn();
 const upsertMock = vi.fn();
 const transformMock = vi.fn();
-vi.mock("@/shared/lib/auth", () => ({ auth: vi.fn(async () => ({ user: { id: "u1" } })) }));
+vi.mock("@/shared/lib/auth", () => ({ auth: (...a: unknown[]) => authMock(...a) }));
 vi.mock("@/entities/memo/server", () => ({
   getMemo: (...a: unknown[]) => getMemoMock(...a),
   upsertTransformation: (...a: unknown[]) => upsertMock(...a),
@@ -20,12 +21,18 @@ import { saveTransformationAction } from "./saveTransformationAction";
 const memo = { id: "m1", cleanedContent: "가".repeat(200) };
 
 beforeEach(() => {
+  authMock.mockReset().mockResolvedValue({ user: { id: "u1" } });
   getMemoMock.mockReset().mockResolvedValue(memo);
   upsertMock.mockReset().mockResolvedValue({ id: "t1" });
   transformMock.mockReset().mockResolvedValue({ kind: "ok", content: "결과" });
 });
 
 describe("transformMemoAction", () => {
+  it("미인증 세션은 Unauthorized로 거부한다", async () => {
+    authMock.mockResolvedValue(null);
+    await expect(transformMemoAction("m1", "summary")).rejects.toThrow("Unauthorized");
+    expect(getMemoMock).not.toHaveBeenCalled();
+  });
   it("알 수 없는 preset은 invalid (경계 검증)", async () => {
     expect((await transformMemoAction("m1", "nope")).kind).toBe("invalid");
     expect(getMemoMock).not.toHaveBeenCalled();
@@ -41,11 +48,18 @@ describe("transformMemoAction", () => {
   });
   it("변환 결과를 그대로 반환한다", async () => {
     expect(await transformMemoAction("m1", "summary")).toEqual({ kind: "ok", content: "결과" });
+    // 소유 검증이 세션 userId로 이뤄지는지 인자까지 단언 (userId 누락 회귀 가드).
+    expect(getMemoMock).toHaveBeenCalledWith("u1", "m1");
     expect(transformMock).toHaveBeenCalledWith(memo.cleanedContent, "summary");
   });
 });
 
 describe("saveTransformationAction", () => {
+  it("미인증 세션은 Unauthorized로 거부한다", async () => {
+    authMock.mockResolvedValue(null);
+    await expect(saveTransformationAction("m1", "summary", "내용")).rejects.toThrow("Unauthorized");
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
   it("빈 content는 invalid", async () => {
     expect((await saveTransformationAction("m1", "summary", "  ")).kind).toBe("invalid");
     expect(upsertMock).not.toHaveBeenCalled();
