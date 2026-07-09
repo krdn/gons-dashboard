@@ -43,10 +43,12 @@ export function isDegenerateCleanup(raw: string, cleaned: string): boolean {
 export async function cleanupTranscript(raw: string): Promise<CleanupResult> {
   const input = raw.trim();
   if (input.length === 0) return { kind: "raw-fallback", reason: "empty-input" };
-  const truncated = input.slice(0, MAX_INPUT);
+  // 초과분을 절단해 LLM에 보내면 잘린 정리본이 "성공"으로 저장돼 조용한 유실이 된다 —
+  // 절단 대신 원문 그대로 저장하는 폴백으로 처리 (UI가 안내 문구 표시).
+  if (input.length > MAX_INPUT) return { kind: "raw-fallback", reason: "too-long" };
 
   try {
-    const { object, usage } = await analyzeStructured(truncated, CleanupResponseSchema, {
+    const { object, usage } = await analyzeStructured(input, CleanupResponseSchema, {
       ...gatewayDefaults,
       model: CLEANUP_MODEL,
       systemPrompt: SYSTEM_PROMPT,
@@ -62,7 +64,7 @@ export async function cleanupTranscript(raw: string): Promise<CleanupResult> {
 
     const cleaned = object.cleaned;
     if (isRefusalDraft(cleaned)) return { kind: "raw-fallback", reason: "refusal" };
-    if (isDegenerateCleanup(truncated, cleaned)) return { kind: "raw-fallback", reason: "degenerate" };
+    if (isDegenerateCleanup(input, cleaned)) return { kind: "raw-fallback", reason: "degenerate" };
     return { kind: "ok", cleaned };
   } catch (e) {
     return { kind: "raw-fallback", reason: e instanceof Error ? e.message : "llm-error" };
