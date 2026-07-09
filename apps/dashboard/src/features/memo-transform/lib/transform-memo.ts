@@ -52,6 +52,8 @@ export async function transformMemoContent(
     }
     return { kind: "ok", content };
   } catch (e) {
-    return { kind: "failed", reason: e instanceof Error ? e.message : "llm-error" };
+    // e.message는 게이트웨이 URL 등 내부 정보를 담을 수 있어 클라이언트 경계를 넘기지 않는다.
+    console.error(`[memo-transform:${preset}] LLM 호출 실패`, e);
+    return { kind: "failed", reason: "llm-error" };
   }
 }

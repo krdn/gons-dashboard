@@ -60,6 +60,7 @@ export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTrans
             <button
               key={c.key}
               type="button"
+              aria-pressed={view === c.key}
               onClick={() => setView(c.key)}
               className={
                 view === c.key

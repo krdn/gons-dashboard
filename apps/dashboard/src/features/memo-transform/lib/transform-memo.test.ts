@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const analyzeMock = vi.fn();
 vi.mock("@krdn/llm-gateway/gateway", () => ({
@@ -16,6 +16,9 @@ import { transformMemoContent, TransformResponseSchema } from "./transform-memo"
 
 beforeEach(() => {
   analyzeMock.mockReset();
+});
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 // vi.mock이 게이트웨이를 대체해도 스키마 검증 자체는 여기서 직접 가드 (mock 함정 회피).
@@ -53,10 +56,17 @@ describe("transformMemoContent", () => {
     expect(r).toEqual({ kind: "failed", reason: "refusal" });
   });
 
-  it("LLM 예외는 failed(reason=메시지)", async () => {
-    analyzeMock.mockRejectedValue(new Error("boom"));
+  it("LLM 예외는 reason을 llm-error로 뭉갠다 (내부 메시지 비노출)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    analyzeMock.mockRejectedValue(new Error("http://internal-gateway:8317 boom"));
     const r = await transformMemoContent("원문 내용입니다 원문 내용입니다", "summary");
-    expect(r).toEqual({ kind: "failed", reason: "boom" });
+    expect(r).toEqual({ kind: "failed", reason: "llm-error" });
+  });
+
+  it("공백뿐인 출력은 empty-output 실패", async () => {
+    analyzeMock.mockResolvedValue({ object: { content: "   " }, usage: {} });
+    const r = await transformMemoContent("원문 내용입니다 원문 내용입니다", "summary");
+    expect(r).toEqual({ kind: "failed", reason: "empty-output" });
   });
 
   it("빈 입력은 LLM 호출 없이 empty-input", async () => {

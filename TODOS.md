@@ -25,8 +25,9 @@
   - 중요 트랙 categoryMacroF1 = **0.853**, importanceAccuracy = **0.765** (Haiku 건강).
 - **임계치** (`thresholds.json`): deterministic recall 0.45, 중요 categoryMacroF1 0.75 / importanceAccuracy 0.65. reply LLM 트랙은 **미보정(null)** — 아래 발견 때문.
 
-#### 2-a. 베이스라인이 잡은 발견 — 영어 메일 답장 분류가 reason 40자 제한에 걸림 (별도 PR 필요)
+#### 2-a. 베이스라인이 잡은 발견 — 영어 메일 답장 분류가 reason 40자 제한에 걸림 ✅ 해소됨 (#145)
 
+- **상태 (2026-07-09 확인)**: production 결함 해소 — `classify-thread.ts`의 `LlmResponseSchema`에서 `reason.max(40)` 제거(#145), 현재 `min(1)`만 검증하고 40자는 프롬프트 소프트 가이드로만 유지. eval 측 follow-up(아래)은 **의도적 미적용**: 근본 원인(체계적 길이 거부)이 사라져 `llm-unavailable`은 일시 게이트웨이 장애만 의미 — skip + `replySkipped` 카운터 보고가 평가 도구로서 더 정직. reply LLM 트랙 임계치(null)는 다음 Layer 2 실측(`pnpm eval:llm`) 후 확정.
 - **What**: 영어 메일에서 Haiku가 영어 `reason`을 생성하면 40자(`classify-thread.ts`의 `LlmResponseSchema reason.max(40)`)를 초과 → Zod 거부 → `classifyWithLLM`이 `llm-unavailable` 반환. `classifyThread.ts`는 이때 deterministic fallback으로 flag를 유지한다.
 - **Production 영향**: 영어 junk 메일이 deterministic 패턴(긴급/질문 키워드)을 통과하면, LLM이 걸러줘야 할 것을 reason 길이 거부로 못 걸러 **fallback으로 잘못 flag(FP)** 된다. 영어 사용자에게 답장 트랙 정확도 저하.
 - **Why 별도 PR**: 이건 production 분류 동작 변경(40자 한도 완화 또는 reason 언어 강제 등)이라 자체 brainstorm/리뷰 필요. eval에서 고칠 범위 아님.
