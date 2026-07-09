@@ -1,3 +1,4 @@
-// entities/memo — client-safe entrypoint (타입·상수만; server-only 함수 없음).
+// entities/memo — client-safe entrypoint.
 export type { Memo, MemoSource } from "./model/types";
 export { deriveTitle } from "./model/types";
+export { MemoCard } from "./ui/MemoCard";
