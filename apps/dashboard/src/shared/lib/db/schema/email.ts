@@ -181,6 +181,9 @@ export const emailSettings = pgTable(
 
     replyLanguage: text("reply_language").notNull().default("auto"), // 'auto'|'ko'|'en'|'ja'|'zh'
     replyModel: text("reply_model").notNull().default("gemini"), // 'gemini'|'codex'|'claude'
+    // 프록시 상세 모델 ID (예: gemini-2.5-pro). null = replyModel 키의 서버 기본값 자동 해석.
+    // 자유 형식 ID라 CHECK 없음 — 형식·공급사 일치는 Zod(_schema.ts)가 검증.
+    replyModelId: text("reply_model_id"),
 
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),

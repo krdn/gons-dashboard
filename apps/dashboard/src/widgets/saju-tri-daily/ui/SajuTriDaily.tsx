@@ -24,6 +24,7 @@ interface Props {
   userId: string;
   forDate?: string;
   modelKey: SajuModelKey;
+  modelId: string;
 }
 
 export async function SajuTriDaily({
@@ -31,6 +32,7 @@ export async function SajuTriDaily({
   userId,
   forDate,
   modelKey,
+  modelId,
 }: Props) {
   const date = forDate ?? currentKstDate();
 
@@ -63,6 +65,7 @@ export async function SajuTriDaily({
             forDate={date}
             triNation={result.triNation}
             modelKey={modelKey}
+            modelId={modelId}
           />
         </div>
       </section>

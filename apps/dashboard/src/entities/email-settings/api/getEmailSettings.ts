@@ -38,6 +38,7 @@ export const getEmailSettings = cache(
       replyLanguage: row.replyLanguage as ReplyLanguage,
       // 안전한 파싱 — stale/invalid DB 값이 REPLY_MODEL_META 룩업을 throw 시키지 않도록 폴백.
       replyModel: parseReplyModelKey(row.replyModel),
+      replyModelId: row.replyModelId ?? null,
     };
   },
 );

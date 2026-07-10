@@ -82,4 +82,37 @@ describe("EmailSettingsInput", () => {
       expect(r.success).toBe(false);
     });
   });
+
+  describe("replyModelId 검증", () => {
+    it("공급사 일치하는 상세 모델 ID 통과", () => {
+      const r = EmailSettingsInput.safeParse({
+        ...valid,
+        replyModel: "gemini",
+        replyModelId: "gemini-2.5-pro",
+      });
+      expect(r.success && r.data.replyModelId).toBe("gemini-2.5-pro");
+    });
+    it("빈 문자열/누락은 null (서버 기본값 자동)", () => {
+      const empty = EmailSettingsInput.safeParse({ ...valid, replyModelId: "" });
+      expect(empty.success && empty.data.replyModelId).toBeNull();
+      const missing = EmailSettingsInput.safeParse(valid);
+      expect(missing.success && missing.data.replyModelId).toBeNull();
+    });
+    it("공급사 불일치 거부 (gemini 키 + gpt-* ID)", () => {
+      const r = EmailSettingsInput.safeParse({
+        ...valid,
+        replyModel: "gemini",
+        replyModelId: "gpt-5.5",
+      });
+      expect(r.success).toBe(false);
+    });
+    it("형식 위반 ID 거부", () => {
+      const r = EmailSettingsInput.safeParse({
+        ...valid,
+        replyModel: "gemini",
+        replyModelId: "gemini 2.5 pro",
+      });
+      expect(r.success).toBe(false);
+    });
+  });
 });

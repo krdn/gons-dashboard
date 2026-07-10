@@ -2,6 +2,7 @@
 //
 // env 접근 / server-only 가 필요한 부분은 ./saju-model-registry.ts 에서 처리.
 // UI(client component)는 이 파일만 import — keys, labels, parser 정도만 사용.
+import type { LlmRecommendationRule } from "./provider-model-catalog";
 
 export const SAJU_MODEL_KEYS = ["claude", "codex", "gemini"] as const;
 export type SajuModelKey = (typeof SAJU_MODEL_KEYS)[number];
@@ -28,6 +29,49 @@ export const SAJU_MODEL_META: Record<SajuModelKey, SajuModelMeta> = {
     vendor: "Google",
     description: "Google Gemini 2.5 Pro — 비교 분석용 대안 모델",
   },
+};
+
+// 상세 모델 추천 규칙 (memo model-recommendations 패턴 — 규칙 순서 = 추천 우선순위).
+// 프록시 /v1/models 목록은 수시로 바뀌므로 ID 하드코딩 대신 family 패턴으로 매칭.
+export const SAJU_MODEL_RECOMMENDATION_RULES: Record<
+  SajuModelKey,
+  LlmRecommendationRule[]
+> = {
+  claude: [
+    {
+      matches: (id) => id.includes("opus"),
+      reason: "narrative 스키마 준수도 최고 — 기본 추천",
+    },
+    {
+      matches: (id) => id.includes("sonnet"),
+      reason: "품질·속도 균형",
+    },
+  ],
+  codex: [
+    {
+      // image 모델은 narrative 생성에 부적합 — 프록시 목록에 섞여 있어 명시 제외
+      matches: (id) =>
+        id.startsWith("gpt-") &&
+        !id.includes("oss") &&
+        !id.includes("codex") &&
+        !id.includes("image"),
+      reason: "범용 고품질 — 비교 분석용",
+    },
+    {
+      matches: (id) => id.includes("codex"),
+      reason: "구조화 출력 특화",
+    },
+  ],
+  gemini: [
+    {
+      matches: (id) => id.includes("pro"),
+      reason: "긴 문맥·자연스러운 서사 — 기본 추천",
+    },
+    {
+      matches: (id) => id.includes("flash"),
+      reason: "가장 빠르고 경제적",
+    },
+  ],
 };
 
 export const DEFAULT_SAJU_MODEL_KEY: SajuModelKey = "claude";

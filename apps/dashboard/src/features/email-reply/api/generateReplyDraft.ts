@@ -120,9 +120,10 @@ export async function generateReplyDraft(
   const fromHeader = findHeader(headers, "From");
   const toEmail = replyTo ?? fromHeader ?? row.fromEmail ?? "";
 
-  // 5. 사용자 설정 (언어 + 모델).
+  // 5. 사용자 설정 (언어 + 모델). 상세 모델 ID를 저장했으면 그대로, 없으면 키 기본값 해석.
   const settings = await getEmailSettings(userId);
-  const modelId = await resolveReplyModelId(settings.replyModel);
+  const modelId =
+    settings.replyModelId ?? (await resolveReplyModelId(settings.replyModel));
 
   // 6. 톤 3개 병렬 LLM 초안 (길이는 모달 선택값).
   const tones: ReplyTone[] = ["polite", "concise", "friendly"];

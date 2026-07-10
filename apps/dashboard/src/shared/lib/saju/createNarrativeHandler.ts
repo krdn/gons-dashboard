@@ -15,6 +15,10 @@ import {
   getSajuModelRegistry,
   parseSajuModelKey,
 } from "@/shared/lib/llm/saju-model-registry";
+import {
+  isLlmModelIdForProvider,
+  sanitizeLlmModelId,
+} from "@/shared/lib/llm/provider-model-catalog";
 import { ProfileNotFoundError } from "@/shared/lib/saju/resolveBirthInput";
 import { logger } from "@/shared/lib/log";
 
@@ -89,7 +93,13 @@ export function createNarrativeHandler<P>(
     try {
       const modelKey = parseSajuModelKey(searchParams.get("model"));
       const registry = await getSajuModelRegistry();
-      const modelId = registry[modelKey].id;
+      // 상세 모델 ID 파라미터 — 공급사(family) 일치 + 형식 통과 시에만 사용.
+      // 잘못된 값은 registry 기본값으로 silent 폴백 (parseSajuModelKey 철학 미러).
+      const requestedId = sanitizeLlmModelId(searchParams.get("modelId"));
+      const modelId =
+        requestedId !== null && isLlmModelIdForProvider(modelKey, requestedId)
+          ? requestedId
+          : registry[modelKey].id;
       const result = await config.buildAndNarrate({
         profileId,
         userId: session.user.id,

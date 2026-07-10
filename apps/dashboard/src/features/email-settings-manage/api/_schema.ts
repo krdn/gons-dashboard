@@ -1,5 +1,9 @@
 import "server-only";
 import { z } from "zod";
+import {
+  isLlmModelIdForProvider,
+  sanitizeLlmModelId,
+} from "@/shared/lib/llm/provider-model-catalog";
 
 const CATEGORY_VALUES = ["money", "security", "schedule", "notice"] as const;
 
@@ -31,7 +35,29 @@ export const EmailSettingsInput = z.object({
   digestHourKst: intIn(0, 23),
   replyLanguage: z.enum(["auto", "ko", "en", "ja", "zh"]).default("auto"),
   replyModel: z.enum(["gemini", "codex", "claude"]).default("gemini"),
-});
+  // 상세 모델 ID — 빈 문자열/누락 = null(서버 기본값 자동). 형식은 sanitize 화이트리스트.
+  replyModelId: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) =>
+      typeof v === "string" && v.trim().length > 0 ? v.trim() : null,
+    )
+    .refine((v) => v === null || sanitizeLlmModelId(v) !== null, {
+      message: "상세 모델 ID 형식이 올바르지 않습니다",
+    }),
+})
+  // 상세 모델이 선택한 공급사 계열인지 교차 검증 (예: replyModel=gemini + gpt-* 거부).
+  .superRefine((data, ctx) => {
+    if (
+      data.replyModelId !== null &&
+      !isLlmModelIdForProvider(data.replyModel, data.replyModelId)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["replyModelId"],
+        message: "상세 모델이 선택한 AI 공급사와 일치하지 않습니다",
+      });
+    }
+  });
 
 export type EmailSettingsActionResult =
   | { ok: true }

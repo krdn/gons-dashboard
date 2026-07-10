@@ -30,6 +30,7 @@ export async function updateEmailSettings(
     digestHourKst: formData.get("digestHourKst"),
     replyLanguage: formData.get("replyLanguage"),
     replyModel: formData.get("replyModel"),
+    replyModelId: formData.get("replyModelId"),
   };
 
   const parsed = EmailSettingsInput.safeParse(raw);
