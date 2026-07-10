@@ -3,7 +3,7 @@ import { z } from "zod";
 import { isMemoModelIdForProvider } from "@/entities/memo/client";
 
 export const MemoModelInput = z.enum(["claude", "codex", "gemini"]);
-export const MemoModelIdInput = z
+const MemoModelIdInput = z
   .string()
   .trim()
   .min(1)

@@ -18,7 +18,7 @@ export type TransformOutcome =
   | { kind: "ok"; content: string }
   | { kind: "failed"; reason: string };
 
-export function isModelUnavailableError(error: unknown): boolean {
+function isModelUnavailableError(error: unknown): boolean {
   return (
     error instanceof Error &&
     /auth_unavailable|no auth available|model not found/i.test(error.message)

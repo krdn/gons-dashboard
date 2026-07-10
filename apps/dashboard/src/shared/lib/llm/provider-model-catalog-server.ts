@@ -16,7 +16,7 @@ interface ModelsResponse {
   data?: Array<{ id?: unknown }>;
 }
 
-export function buildProviderModelCatalog(
+function buildProviderModelCatalog(
   ids: readonly string[],
   fallbackIds: Record<LlmProviderKey, string>,
 ): ProviderModelCatalog {

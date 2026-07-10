@@ -77,7 +77,7 @@ function isFieldsValid(fields: EditorFields): boolean {
   return fields.label.trim().length > 0 && fields.instruction.trim().length > 0;
 }
 
-export function usePresetEditorDirty(
+function usePresetEditorDirty(
   entry: PresetCatalogEntry | null,
   fields: EditorFields,
   modelCatalog: MemoModelCatalog,

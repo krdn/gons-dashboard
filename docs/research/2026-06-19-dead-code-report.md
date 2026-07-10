@@ -130,3 +130,33 @@ C/E 잔여 후보를 investigate→adversarial 워크플로로 재검증(8 에�
 1. **자동 정리분(`8559d78` + `5d811c8`)은 검증 완료** — 머지 가능.
 2. **B(barrel/entangled)·cron·tailwind·oauth·react-query/zustand는 보존 확정** — 추가 정리 여지 없음.
 3. B의 FSD barrel 공개 계약을 의도적으로 좁히려면 slice 단위 별도 검토 (현재 비권장).
+
+## 3차 실행 (2026-07-11) — 이후 3주 신규 코드 diff 정리
+
+knip 재스캔 후 **본 리포트의 보존 확정 목록과 diff** — 신규 후보만 grep 재검증.
+검증선: typecheck + lint(0 errors) + 전체 테스트 1031/1031 (baseline 동일) + `pnpm build`.
+
+### un-export (5개 — in-file 사용 확인, `export` 키워드만 제거)
+
+| 심볼 | 파일 | in-file 사용처 |
+|------|------|---------------|
+| `usePresetEditorDirty` | `features/memo-preset-manage/ui/PresetEditor.tsx` | `PresetEditor` |
+| `isModelUnavailableError` | `features/memo-transform/lib/transform-memo.ts` | `transformMemoContent` |
+| `buildProviderModelCatalog` | `shared/lib/llm/provider-model-catalog-server.ts` | `fetchProviderModelCatalog` 경로 |
+| `MemoModelIdInput` | `features/memo-preset-manage/api/_schema.ts` | `MemoModelSelectionInput` 등 |
+| `timingSafeCompare` | `shared/lib/auth/cron.ts` | `verifyBearer` |
+
+### delete-whole (1개)
+
+| 후보 | 판정 | 근거 |
+|------|------|------|
+| `CitySelector.tsx` + barrel 2줄 (`CitySelector`, `CityInfo` re-export) | DEAD_REMOVABLE | 2차에서 NOT_DEAD였으나 재검증 결과 소비처 0. PR #64 도입 후 소비 커밋 이력 자체가 없음(dead-on-arrival) — `TickerInput.tsx` 전례와 동일 |
+
+### 신규 knip FP 판정 (보존)
+
+| 후보 | 판정 |
+|------|------|
+| `prettier-plugin-tailwindcss` | KEEP — 레포 루트 `.prettierrc.json` `plugins`에 등록. knip이 워크스페이스 경계 밖 설정을 못 봄 |
+| `packages/stock-analysis/scripts/build-dart-corp-codes.ts` + `tsx`/`adm-zip`/`@types/adm-zip` | KEEP_ENTRYPOINT — 헤더 문서화된 수동 실행 스크립트(2026-05-22 spec), devDeps는 이 스크립트가 사용 |
+| `scripts/autopilot/cycle.workflow.js`, `schemas.js` | KEEP_ENTRYPOINT — Workflow 도구로 실행되는 운영 스크립트 |
+| memo·skill·email-settings 도메인의 barrel export/타입 다수 | KEEP — 기존 B(barrel 공개 계약) 정책 동일 적용 |

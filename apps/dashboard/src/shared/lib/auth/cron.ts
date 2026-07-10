@@ -11,7 +11,7 @@ import { env } from "@/shared/config/env";
  * (timingSafeEqual 은 길이 불일치 시 throw 하므로 사전 체크).
  * Bearer 토큰류 시크릿 비교에 재사용.
  */
-export function timingSafeCompare(provided: string, expected: string): boolean {
+function timingSafeCompare(provided: string, expected: string): boolean {
   if (provided.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
