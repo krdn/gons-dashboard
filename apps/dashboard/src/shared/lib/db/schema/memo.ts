@@ -2,7 +2,16 @@
 // - memos: 텍스트/음성 메모. 원문(raw_content) + AI 정리본(cleaned_content) 둘 다 보관.
 //   음성은 승인해야 저장하므로 DB의 모든 행은 승인 완료 상태.
 import { sql } from "drizzle-orm";
-import { pgTable, text, timestamp, uuid, index, uniqueIndex, check, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  index,
+  uniqueIndex,
+  check,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const memos = pgTable(
@@ -53,7 +62,10 @@ export const memoTransformations = pgTable(
   },
   (t) => [
     uniqueIndex("memo_transformations_memo_preset_uq").on(t.memoId, t.preset),
-    check("memo_transformations_content_not_empty", sql`length(${t.content}) > 0`),
+    check(
+      "memo_transformations_content_not_empty",
+      sql`length(${t.content}) > 0`,
+    ),
   ],
 );
 
@@ -70,16 +82,53 @@ export const memoTransformPresets = pgTable(
     label: text("label").notNull(),
     instruction: text("instruction").notNull(),
     fidelityGuard: boolean("fidelity_guard").notNull().default(true),
+    // null = 사용자 전체 기본 모델 상속.
+    model: text("model").$type<"claude" | "codex" | "gemini">(),
+    // 프록시 /v1/models에서 선택한 정확한 모델 ID. null이면 provider별 env 기본값.
+    modelId: text("model_id"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("memo_transform_presets_user_slug_uq").on(t.userId, t.slug),
-    check("memo_transform_presets_slug_format", sql`${t.slug} ~ '^[a-z0-9-]{1,40}$'`),
-    check("memo_transform_presets_label_len", sql`length(${t.label}) BETWEEN 1 AND 20`),
+    check(
+      "memo_transform_presets_slug_format",
+      sql`${t.slug} ~ '^[a-z0-9-]{1,40}$'`,
+    ),
+    check(
+      "memo_transform_presets_label_len",
+      sql`length(${t.label}) BETWEEN 1 AND 20`,
+    ),
     check(
       "memo_transform_presets_instruction_len",
       sql`length(${t.instruction}) BETWEEN 1 AND 2000`,
+    ),
+    check(
+      "memo_transform_presets_model_check",
+      sql`${t.model} IS NULL OR ${t.model} IN ('claude', 'codex', 'gemini')`,
+    ),
+  ],
+);
+
+// 사용자별 메모 변환 전체 기본 모델. 행 없음도 claude로 해석해 마이그레이션 전 동작을 보존한다.
+export const memoTransformSettings = pgTable(
+  "memo_transform_settings",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    defaultModel: text("default_model")
+      .$type<"claude" | "codex" | "gemini">()
+      .notNull()
+      .default("claude"),
+    defaultModelId: text("default_model_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      "memo_transform_settings_default_model_check",
+      sql`${t.defaultModel} IN ('claude', 'codex', 'gemini')`,
     ),
   ],
 );

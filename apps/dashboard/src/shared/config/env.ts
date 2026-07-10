@@ -6,7 +6,9 @@ import { z } from "zod";
 
 const schema = z.object({
   // Node
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
 
   // Database (Postgres on 192.168.0.5:5440)
   DATABASE_URL: z.string().url(),
@@ -45,6 +47,10 @@ const schema = z.object({
   // claude 키는 resolveLatestModel("opus") 런타임 해석이라 env 불필요.
   REPLY_LLM_MODEL_GEMINI: z.string().default("gemini-pro-latest"),
   REPLY_LLM_MODEL_CODEX: z.string().default("gpt-5.5"),
+  // 메모 변환 모델 — 선택 키는 DB에 저장하고 실제 ID는 프록시 호출 직전에 해석한다.
+  MEMO_LLM_MODEL_CLAUDE: z.string().default("claude-sonnet-5"),
+  MEMO_LLM_MODEL_CODEX: z.string().default("gpt-5.5"),
+  MEMO_LLM_MODEL_GEMINI: z.string().default("gemini-pro-latest"),
   SAJU_LLM_DAILY_BUDGET_KRW: z.coerce.number().int().positive().default(1000),
   SAJU_LLM_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
 
@@ -56,7 +62,10 @@ const schema = z.object({
   // sto/ksq_isu_base_info) 사용 신청 + 승인 필요.
   KRX_OPENAPI_AUTH_KEY: z
     .string()
-    .min(1, "KRX OpenAPI AUTH_KEY. https://openapi.krx.co.kr/ 에서 발급 + API 사용 신청."),
+    .min(
+      1,
+      "KRX OpenAPI AUTH_KEY. https://openapi.krx.co.kr/ 에서 발급 + API 사용 신청.",
+    ),
 
   // DART OpenAPI (재무제표) — KR 종목 PBR/배당/EPS/BPS overlay (PR 2)
   // 발급: opendart.fss.or.kr 회원가입 → 인증키 발급 (T+1).
@@ -88,7 +97,10 @@ const schema = z.object({
   // Gmail accounts 토큰은 NextAuth DrizzleAdapter 가 평문 저장(미적용). 감사 #15.
   PG_ENCRYPTION_KEY: z
     .string()
-    .min(32, "openssl rand -hex 32 로 생성. PlayMCP creds 암호화 (Gmail accounts 토큰은 평문)."),
+    .min(
+      32,
+      "openssl rand -hex 32 로 생성. PlayMCP creds 암호화 (Gmail accounts 토큰은 평문).",
+    ),
 
   // ─── PlayMCP 1FATE (호 상담 영역) ────────────────────────
   // PlayMCP 게이트웨이 OAuth 흐름 — spec §11 / plan 2026-05-15.
@@ -99,9 +111,7 @@ const schema = z.object({
   PLAYMCP_CLIENT_ID: z
     .string()
     .min(1, "PlayMCP gateway client_id 필수 — 가이드 고정값"),
-  PLAYMCP_BOOTSTRAP_OTT: z
-    .string()
-    .optional(),
+  PLAYMCP_BOOTSTRAP_OTT: z.string().optional(),
 
   // 본인 1명 allowlist (콤마 구분)
   ALLOWLIST_EMAILS: z.string().min(1),

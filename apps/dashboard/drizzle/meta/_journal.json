@@ -267,6 +267,20 @@
       "when": 1783604709005,
       "tag": "0037_lovely_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783658181607,
+      "tag": "0038_glamorous_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783659540137,
+      "tag": "0039_goofy_black_widow",
+      "breakpoints": true
     }
   ]
 }

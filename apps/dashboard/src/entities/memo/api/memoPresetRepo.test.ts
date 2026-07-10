@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import { db } from "@/shared/lib/db/client";
-import { memoTransformPresets, users } from "@/shared/lib/db/schema";
+import {
+  memoTransformPresets,
+  memoTransformSettings,
+  users,
+} from "@/shared/lib/db/schema";
 import { eq } from "drizzle-orm";
 import {
   listPresetsByUser,
@@ -9,6 +13,8 @@ import {
   insertPreset,
   deletePresetBySlug,
   countCustomPresets,
+  getDefaultMemoModel,
+  upsertDefaultMemoModel,
 } from "./memoPresetRepo";
 
 const USER_ID = "00000000-0000-0000-0000-000000000abf";
@@ -24,8 +30,18 @@ beforeAll(async () => {
     .onConflictDoNothing();
 });
 afterEach(async () => {
-  await db.delete(memoTransformPresets).where(eq(memoTransformPresets.userId, USER_ID));
-  await db.delete(memoTransformPresets).where(eq(memoTransformPresets.userId, OTHER_ID));
+  await db
+    .delete(memoTransformSettings)
+    .where(eq(memoTransformSettings.userId, USER_ID));
+  await db
+    .delete(memoTransformSettings)
+    .where(eq(memoTransformSettings.userId, OTHER_ID));
+  await db
+    .delete(memoTransformPresets)
+    .where(eq(memoTransformPresets.userId, USER_ID));
+  await db
+    .delete(memoTransformPresets)
+    .where(eq(memoTransformPresets.userId, OTHER_ID));
 });
 
 const customInput = {
@@ -34,6 +50,8 @@ const customInput = {
   label: "코칭",
   instruction: "스타일: 코칭.",
   fidelityGuard: true,
+  model: null,
+  modelId: null,
 };
 
 describe("memoPresetRepo", () => {
@@ -47,9 +65,15 @@ describe("memoPresetRepo", () => {
   it("같은 (userId, slug) upsert는 교체한다 (행 1개 유지, updatedAt 갱신)", async () => {
     const first = await upsertPreset(customInput);
     await new Promise((r) => setTimeout(r, 5)); // updatedAt 단조 증가 보장용 (같은 ms 타이 방지)
-    const second = await upsertPreset({ ...customInput, label: "냉정", instruction: "스타일: 냉정." });
+    const second = await upsertPreset({
+      ...customInput,
+      label: "냉정",
+      instruction: "스타일: 냉정.",
+    });
     expect(second.id).toBe(first.id);
-    expect(second.updatedAt.getTime()).toBeGreaterThan(first.updatedAt.getTime());
+    expect(second.updatedAt.getTime()).toBeGreaterThan(
+      first.updatedAt.getTime(),
+    );
     expect(second.label).toBe("냉정");
     const list = await listPresetsByUser(USER_ID);
     expect(list).toHaveLength(1);
@@ -77,6 +101,8 @@ describe("memoPresetRepo", () => {
       label: "정돈override",
       instruction: "스타일: 정돈.",
       fidelityGuard: true,
+      model: null,
+      modelId: null,
     });
     const count = await countCustomPresets(USER_ID);
     expect(count).toBe(2);
@@ -88,5 +114,26 @@ describe("memoPresetRepo", () => {
     const list = await listPresetsByUser(USER_ID);
     expect(list).toHaveLength(1);
     expect(list[0].userId).toBe(USER_ID);
+  });
+
+  it("전체 기본 모델은 행이 없으면 Claude이고 사용자별 upsert된다", async () => {
+    expect(await getDefaultMemoModel(USER_ID)).toEqual({
+      model: "claude",
+      modelId: null,
+    });
+    await upsertDefaultMemoModel(USER_ID, "gemini", "gemini-3.1-pro");
+    expect(await getDefaultMemoModel(USER_ID)).toEqual({
+      model: "gemini",
+      modelId: "gemini-3.1-pro",
+    });
+    expect(await getDefaultMemoModel(OTHER_ID)).toEqual({
+      model: "claude",
+      modelId: null,
+    });
+    await upsertDefaultMemoModel(USER_ID, "codex", "gpt-5.5");
+    expect(await getDefaultMemoModel(USER_ID)).toEqual({
+      model: "codex",
+      modelId: "gpt-5.5",
+    });
   });
 });

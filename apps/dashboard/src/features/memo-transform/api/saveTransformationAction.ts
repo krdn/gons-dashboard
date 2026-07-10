@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/shared/lib/auth";
 import { getMemo, upsertTransformation } from "@/entities/memo/server";
 import { resolvePreset } from "../lib/preset-resolver";
-import { TRANSFORM_MODEL } from "../lib/transform-memo";
 
 const MAX_CONTENT_LEN = 20_000;
 
@@ -27,7 +26,8 @@ export async function saveTransformationAction(
   if (!resolved) return { kind: "invalid" };
 
   const trimmed = content.trim();
-  if (trimmed.length === 0 || trimmed.length > MAX_CONTENT_LEN) return { kind: "invalid" };
+  if (trimmed.length === 0 || trimmed.length > MAX_CONTENT_LEN)
+    return { kind: "invalid" };
 
   const memo = await getMemo(session.user.id, memoId);
   if (!memo) return { kind: "not-found" };
@@ -36,7 +36,7 @@ export async function saveTransformationAction(
     memoId,
     preset,
     presetLabel: resolved.label,
-    model: TRANSFORM_MODEL,
+    model: resolved.modelId,
     content: trimmed,
   }).then(
     () => {

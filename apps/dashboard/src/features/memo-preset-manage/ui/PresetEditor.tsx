@@ -3,18 +3,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PresetCatalogEntry } from "@/features/memo-transform/client";
 import {
+  MEMO_MODEL_META,
+  type MemoModelCatalog,
+  type MemoModelSelection,
+} from "@/entities/memo/client";
+import {
   savePresetAction,
   createPresetAction,
   resetPresetAction,
   deletePresetAction,
   previewPresetAction,
 } from "../client";
+import { ModelSelectionFields } from "./ModelSelectionFields";
 
-const SAMPLE_TEXT = "음… 내일 오전에 김대리랑 회의 있고, 끝나면 보고서 초안 써야 함.";
+const SAMPLE_TEXT =
+  "음… 내일 오전에 김대리랑 회의 있고, 끝나면 보고서 초안 써야 함.";
 
 interface PresetEditorProps {
   /** null = 새 커스텀 프리셋 */
   entry: PresetCatalogEntry | null;
+  defaultModel: MemoModelSelection;
+  modelCatalog: MemoModelCatalog;
   onDone: () => void;
   /** dirty 상태 변화를 부모(PresetSettings)에 보고 — 항목 전환 시 confirm 판단용. */
   onDirtyChange?: (dirty: boolean) => void;
@@ -27,23 +36,53 @@ interface EditorFields {
   label: string;
   instruction: string;
   fidelityGuard: boolean;
+  model: MemoModelSelection["model"] | null;
+  modelId: string | null;
 }
 
-function fieldsFromEntry(entry: PresetCatalogEntry | null): EditorFields {
-  if (!entry) return { label: "", instruction: "", fidelityGuard: true };
-  return { label: entry.label, instruction: entry.instruction, fidelityGuard: entry.fidelityGuard };
+function fieldsFromEntry(
+  entry: PresetCatalogEntry | null,
+  modelCatalog: MemoModelCatalog,
+): EditorFields {
+  if (!entry)
+    return {
+      label: "",
+      instruction: "",
+      fidelityGuard: true,
+      model: null,
+      modelId: null,
+    };
+  return {
+    label: entry.label,
+    instruction: entry.instruction,
+    fidelityGuard: entry.fidelityGuard,
+    model: entry.model,
+    modelId: entry.model
+      ? (entry.modelId ?? modelCatalog[entry.model][0])
+      : null,
+  };
 }
 
 function fieldsEqual(a: EditorFields, b: EditorFields): boolean {
-  return a.label === b.label && a.instruction === b.instruction && a.fidelityGuard === b.fidelityGuard;
+  return (
+    a.label === b.label &&
+    a.instruction === b.instruction &&
+    a.fidelityGuard === b.fidelityGuard &&
+    a.model === b.model &&
+    a.modelId === b.modelId
+  );
 }
 
 function isFieldsValid(fields: EditorFields): boolean {
   return fields.label.trim().length > 0 && fields.instruction.trim().length > 0;
 }
 
-export function usePresetEditorDirty(entry: PresetCatalogEntry | null, fields: EditorFields): boolean {
-  const original = fieldsFromEntry(entry);
+export function usePresetEditorDirty(
+  entry: PresetCatalogEntry | null,
+  fields: EditorFields,
+  modelCatalog: MemoModelCatalog,
+): boolean {
+  const original = fieldsFromEntry(entry, modelCatalog);
   if (!entry) return isFieldsValid(fields);
   return !fieldsEqual(original, fields);
 }
@@ -56,9 +95,17 @@ const SAVE_FAILURE_MESSAGE: Record<SaveFailure, string> = {
   failed: "저장에 실패했습니다.",
 };
 
-export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps) {
+export function PresetEditor({
+  entry,
+  defaultModel,
+  modelCatalog,
+  onDone,
+  onDirtyChange,
+}: PresetEditorProps) {
   const router = useRouter();
-  const [fields, setFields] = useState<EditorFields>(() => fieldsFromEntry(entry));
+  const [fields, setFields] = useState<EditorFields>(() =>
+    fieldsFromEntry(entry, modelCatalog),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sampleText, setSampleText] = useState(SAMPLE_TEXT);
@@ -66,7 +113,7 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewRunning, setPreviewRunning] = useState(false);
 
-  const dirty = usePresetEditorDirty(entry, fields);
+  const dirty = usePresetEditorDirty(entry, fields, modelCatalog);
   const valid = isFieldsValid(fields);
 
   useEffect(() => {
@@ -86,6 +133,8 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
           label: fields.label,
           instruction: fields.instruction,
           fidelityGuard: fields.fidelityGuard,
+          model: fields.model,
+          modelId: fields.modelId,
         });
         if (result.kind !== "ok") {
           setError(SAVE_FAILURE_MESSAGE[result.kind]);
@@ -96,6 +145,8 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
           label: fields.label,
           instruction: fields.instruction,
           fidelityGuard: fields.fidelityGuard,
+          model: fields.model,
+          modelId: fields.modelId,
         });
         if (result.kind !== "ok") {
           setError(SAVE_FAILURE_MESSAGE[result.kind]);
@@ -141,10 +192,16 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
       const result = await previewPresetAction({
         instruction: fields.instruction,
         fidelityGuard: fields.fidelityGuard,
+        model: fields.model,
+        modelId: fields.modelId,
         sampleText,
       });
       if (result.kind === "ok") {
         setPreviewResult(result.content);
+      } else if (result.kind === "model-unavailable") {
+        setPreviewError(
+          "선택한 모델을 현재 프록시 인증으로 사용할 수 없습니다. 모델 목록을 새로고침하거나 다른 모델을 선택해 주세요.",
+        );
       } else {
         setPreviewError("테스트 실행에 실패했습니다.");
       }
@@ -156,7 +213,10 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
   return (
     <section aria-label="프리셋 편집" className="space-y-5">
       <div>
-        <label htmlFor="preset-label" className="mb-1 block text-sm font-medium text-neutral-700">
+        <label
+          htmlFor="preset-label"
+          className="mb-1 block text-sm font-medium text-neutral-700"
+        >
           라벨
         </label>
         <input
@@ -172,19 +232,52 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label htmlFor="preset-instruction" className="block text-sm font-medium text-neutral-700">
+          <label
+            htmlFor="preset-instruction"
+            className="block text-sm font-medium text-neutral-700"
+          >
             지시문
           </label>
-          <span className="text-xs text-neutral-400">{fields.instruction.length} / 2000</span>
+          <span className="text-xs text-neutral-400">
+            {fields.instruction.length} / 2000
+          </span>
         </div>
         <textarea
           id="preset-instruction"
           value={fields.instruction}
           maxLength={2000}
           rows={8}
-          onChange={(e) => setFields({ ...fields, instruction: e.target.value })}
+          onChange={(e) =>
+            setFields({ ...fields, instruction: e.target.value })
+          }
           className="w-full rounded border border-neutral-200 px-3 py-2 text-sm"
         />
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-medium text-neutral-700">LLM 모델</p>
+        <ModelSelectionFields
+          idPrefix="preset"
+          value={
+            fields.model && fields.modelId
+              ? { model: fields.model, modelId: fields.modelId }
+              : null
+          }
+          inheritFrom={defaultModel}
+          catalog={modelCatalog}
+          onChange={(selection) =>
+            setFields({
+              ...fields,
+              model: selection?.model ?? null,
+              modelId: selection?.modelId ?? null,
+            })
+          }
+        />
+        <p className="mt-1 text-xs text-neutral-400">
+          {fields.model === null
+            ? `전체 기본 모델(${defaultModel.modelId})이 바뀌면 이 프리셋도 함께 변경됩니다.`
+            : MEMO_MODEL_META[fields.model].description}
+        </p>
       </div>
 
       <div>
@@ -192,16 +285,22 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
           <input
             type="checkbox"
             checked={fields.fidelityGuard}
-            onChange={(e) => setFields({ ...fields, fidelityGuard: e.target.checked })}
+            onChange={(e) =>
+              setFields({ ...fields, fidelityGuard: e.target.checked })
+            }
           />
           충실 가드
         </label>
-        <p className="mt-1 text-xs text-neutral-400">고유명사·내용 보존, 조언 금지</p>
+        <p className="mt-1 text-xs text-neutral-400">
+          고유명사·내용 보존, 조언 금지
+        </p>
       </div>
 
       {isBuiltin && entry?.isOverridden && entry.defaultInstruction && (
         <details className="text-sm text-neutral-600">
-          <summary className="cursor-pointer select-none">기본 프롬프트 보기</summary>
+          <summary className="cursor-pointer select-none">
+            기본 프롬프트 보기
+          </summary>
           <p className="mt-2 whitespace-pre-wrap rounded border border-neutral-200 bg-neutral-50 p-3 text-xs">
             {entry.defaultInstruction}
           </p>
@@ -224,7 +323,11 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
           {saving ? "저장 중…" : "저장"}
         </button>
         {isBuiltin && entry?.isOverridden && (
-          <button type="button" onClick={handleReset} className="rounded border border-neutral-200 px-4 py-2 text-sm">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="rounded border border-neutral-200 px-4 py-2 text-sm"
+          >
             기본값 복구
           </button>
         )}
@@ -240,7 +343,9 @@ export function PresetEditor({ entry, onDone, onDirtyChange }: PresetEditorProps
       </div>
 
       <div className="border-t border-neutral-200 pt-4">
-        <h3 className="mb-2 text-sm font-medium text-neutral-700">테스트 실행</h3>
+        <h3 className="mb-2 text-sm font-medium text-neutral-700">
+          테스트 실행
+        </h3>
         <textarea
           value={sampleText}
           onChange={(e) => setSampleText(e.target.value)}
