@@ -81,9 +81,15 @@ interface Props {
   profileId: string;
   triNation: TriNationLifetime;
   modelKey: SajuModelKey;
+  modelId: string;
 }
 
-export function TriNationTabs({ profileId, triNation, modelKey }: Props) {
+export function TriNationTabs({
+  profileId,
+  triNation,
+  modelKey,
+  modelId,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
   // 카운트다운 표시용 현재 시각 (epoch ms). render 중 Date.now() 호출 금지(react-hooks/purity)
@@ -158,7 +164,7 @@ export function TriNationTabs({ profileId, triNation, modelKey }: Props) {
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/lifetime/${profileId}/narrative?school=${school}&model=${modelKey}`,
+          `/api/saju/lifetime/${profileId}/narrative?school=${school}&model=${modelKey}&modelId=${encodeURIComponent(modelId)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

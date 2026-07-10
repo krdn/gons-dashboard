@@ -63,6 +63,7 @@ interface Props {
   forDate: string;
   triNation: TriNationDailyLite;
   modelKey: SajuModelKey;
+  modelId: string;
 }
 
 export function TriDailyTabs({
@@ -70,6 +71,7 @@ export function TriDailyTabs({
   forDate,
   triNation,
   modelKey,
+  modelId,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
@@ -135,7 +137,7 @@ export function TriDailyTabs({
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/daily/${profileId}/narrative?school=${school}&forDate=${forDate}&model=${modelKey}`,
+          `/api/saju/daily/${profileId}/narrative?school=${school}&forDate=${forDate}&model=${modelKey}&modelId=${encodeURIComponent(modelId)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

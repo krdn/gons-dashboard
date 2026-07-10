@@ -69,9 +69,16 @@ interface Props {
   targetYear: number;
   triNation: TriNationYearly;
   modelKey: SajuModelKey;
+  modelId: string;
 }
 
-export function TriYearlyTabs({ profileId, targetYear, triNation, modelKey }: Props) {
+export function TriYearlyTabs({
+  profileId,
+  targetYear,
+  triNation,
+  modelKey,
+  modelId,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("ko");
   const [narratives, setNarratives] = useState<NarrativeCache>(INITIAL_CACHE);
   // 카운트다운 표시용 현재 시각. render 중 Date.now() 금지 — fetchNarrative 핸들러에서
@@ -142,7 +149,7 @@ export function TriYearlyTabs({ profileId, targetYear, triNation, modelKey }: Pr
       setNowMs(startNow);
       try {
         const res = await fetch(
-          `/api/saju/yearly/${profileId}/narrative?school=${school}&year=${targetYear}&model=${modelKey}`,
+          `/api/saju/yearly/${profileId}/narrative?school=${school}&year=${targetYear}&model=${modelKey}&modelId=${encodeURIComponent(modelId)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

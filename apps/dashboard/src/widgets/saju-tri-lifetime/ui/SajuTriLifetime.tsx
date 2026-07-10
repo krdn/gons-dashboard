@@ -19,9 +19,15 @@ interface Props {
   profileId: string;
   userId: string;
   modelKey: SajuModelKey;
+  modelId: string;
 }
 
-export async function SajuTriLifetime({ profileId, userId, modelKey }: Props) {
+export async function SajuTriLifetime({
+  profileId,
+  userId,
+  modelKey,
+  modelId,
+}: Props) {
   const result = await getOrBuildLifetime(profileId, userId).then(
     ({ triNation }) => ({ ok: true as const, triNation }),
     (e: unknown) => ({
@@ -45,7 +51,12 @@ export async function SajuTriLifetime({ profileId, userId, modelKey }: Props) {
         </h2>
         <div className="space-y-4">
           <CrossCheckBadge triNation={result.triNation} />
-          <TriNationTabs profileId={profileId} triNation={result.triNation} modelKey={modelKey} />
+          <TriNationTabs
+            profileId={profileId}
+            triNation={result.triNation}
+            modelKey={modelKey}
+            modelId={modelId}
+          />
         </div>
       </section>
     );

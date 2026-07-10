@@ -21,6 +21,12 @@ import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
 import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
 import { SajuTriDaily } from "@/widgets/saju-tri-daily";
 import { parseSajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
+import { getSajuModelRegistry } from "@/shared/lib/llm/saju-model-registry";
+import {
+  isLlmModelIdForProvider,
+  sanitizeLlmModelId,
+} from "@/shared/lib/llm/provider-model-catalog";
+import { listProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
 import { SajuModelPicker } from "@/features/saju-model-picker";
 import { TabsNav, TabPanel, TabSkeleton } from "@/shared/ui/Tabs";
 import {
@@ -42,7 +48,11 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ profileId: string }>;
-  searchParams: Promise<{ model?: string | string[]; tab?: string | string[] }>;
+  searchParams: Promise<{
+    model?: string | string[];
+    modelId?: string | string[];
+    tab?: string | string[];
+  }>;
 };
 
 const FORTUNE_TAB_PREFIX = "fortune";
@@ -71,6 +81,23 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
   const activeTab = parseFortuneTabKey(sp.tab);
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  // 상세 모델 ID — 공급사 일치 + 형식 통과 시에만 사용, 아니면 registry 기본값
+  // (createNarrativeHandler 의 폴백 규칙과 동일).
+  const registry = await getSajuModelRegistry();
+  const requestedModelId = sanitizeLlmModelId(
+    Array.isArray(sp.modelId) ? sp.modelId[0] : sp.modelId,
+  );
+  const modelId =
+    requestedModelId !== null &&
+    isLlmModelIdForProvider(modelKey, requestedModelId)
+      ? requestedModelId
+      : registry[modelKey].id;
+  const modelCatalog = await listProviderModelCatalog({
+    claude: registry.claude.id,
+    codex: registry.codex.id,
+    gemini: registry.gemini.id,
+  });
 
   const profile = await getFortuneProfile(profileId, session.user.id);
   if (!profile) notFound();
@@ -132,7 +159,11 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
     <main className="mx-auto w-full max-w-[900px] px-6 py-12">
       <div className="mb-6 flex items-start justify-between gap-4">
         <SajuDetailHeader profile={profile} />
-        <SajuModelPicker selected={modelKey} />
+        <SajuModelPicker
+          selected={modelKey}
+          selectedModelId={modelId}
+          catalog={modelCatalog}
+        />
       </div>
 
       <TabsNav
@@ -149,6 +180,7 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
               profileId={profileId}
               userId={session.user.id}
               modelKey={modelKey}
+              modelId={modelId}
             />
           </Suspense>
         </TabPanel>
@@ -161,6 +193,7 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
               profileId={profileId}
               userId={session.user.id}
               modelKey={modelKey}
+              modelId={modelId}
             />
           </Suspense>
         </TabPanel>
@@ -173,6 +206,7 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
               profileId={profileId}
               userId={session.user.id}
               modelKey={modelKey}
+              modelId={modelId}
             />
           </Suspense>
         </TabPanel>
@@ -185,6 +219,7 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
               profileId={profileId}
               userId={session.user.id}
               modelKey={modelKey}
+              modelId={modelId}
             />
           </Suspense>
         </TabPanel>

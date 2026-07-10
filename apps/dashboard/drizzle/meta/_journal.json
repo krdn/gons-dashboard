@@ -281,6 +281,13 @@
       "when": 1783659540137,
       "tag": "0039_goofy_black_widow",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1783672277064,
+      "tag": "0040_parallel_christian_walker",
+      "breakpoints": true
     }
   ]
 }
