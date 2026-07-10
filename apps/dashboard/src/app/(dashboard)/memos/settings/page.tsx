@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
-import { listPresetCatalog } from "@/features/memo-transform/lib/preset-resolver";
+import {
+  listPresetCatalog,
+  resolveDefaultMemoModel,
+} from "@/features/memo-transform/lib/preset-resolver";
+import { listMemoModelCatalog } from "@/features/memo-transform/lib/model-catalog";
 import { PresetSettings } from "@/features/memo-preset-manage/ui/PresetSettings";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PageHeader } from "@/shared/ui/PageHeader";
@@ -12,19 +16,30 @@ export default async function MemoPresetSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const catalog = await listPresetCatalog(session.user.id);
+  const [catalog, defaultModel, modelCatalog] = await Promise.all([
+    listPresetCatalog(session.user.id),
+    resolveDefaultMemoModel(session.user.id),
+    listMemoModelCatalog(),
+  ]);
 
   return (
     <PageContainer width="narrow">
       <PageHeader
         title="AI 정리 스타일 설정"
         actions={
-          <Link href="/memos" className="text-sm text-neutral-500 hover:text-neutral-900">
+          <Link
+            href="/memos"
+            className="text-sm text-neutral-500 hover:text-neutral-900"
+          >
             ← 메모
           </Link>
         }
       />
-      <PresetSettings catalog={catalog} />
+      <PresetSettings
+        catalog={catalog}
+        initialDefaultModel={defaultModel}
+        modelCatalog={modelCatalog}
+      />
     </PageContainer>
   );
 }
