@@ -33,6 +33,10 @@ const MODEL_CATALOG = {
   codex: ["gpt-5.5", "gpt-5.4"],
   gemini: ["gemini-pro-latest", "gemini-3.1-pro"],
 };
+const MODEL_CATALOG_SNAPSHOT = {
+  source: "live" as const,
+  catalog: MODEL_CATALOG,
+};
 const DEFAULT_MODEL = { model: "claude", modelId: "claude-sonnet-5" } as const;
 
 function makeCatalog(): PresetCatalogEntry[] {
@@ -93,7 +97,7 @@ function renderSettings() {
     <PresetSettings
       catalog={makeCatalog()}
       initialDefaultModel={DEFAULT_MODEL}
-      modelCatalog={MODEL_CATALOG}
+      modelCatalogSnapshot={MODEL_CATALOG_SNAPSHOT}
     />,
   );
 }
@@ -244,6 +248,24 @@ describe("PresetSettings", () => {
     expect(
       Array.from(other.querySelectorAll("option")).map((o) => o.value),
     ).toEqual(["gemini-3.1-pro"]);
+  });
+
+  it("fallback snapshot에서는 저장 모델을 사용 불가로 단정하지 않는다", () => {
+    render(
+      <PresetSettings
+        catalog={makeCatalog()}
+        initialDefaultModel={{ model: "claude", modelId: "claude-opus-3" }}
+        modelCatalogSnapshot={{
+          source: "fallback",
+          catalog: {
+            claude: ["claude-sonnet-5"],
+            codex: ["gpt-5.5"],
+            gemini: ["gemini-pro-latest"],
+          },
+        }}
+      />,
+    );
+    expect(screen.queryByText(/현재 프록시의 사용 가능 목록/)).toBeNull();
   });
 
   it("테스트 직전 모델이 사라지면 재선택 안내를 표시한다", async () => {

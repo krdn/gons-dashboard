@@ -32,6 +32,7 @@ export type {
   MemoModelKey,
   MemoModelSelection,
   MemoModelCatalog,
+  MemoModelCatalogSnapshot,
 } from "./model/types";
 export type { MemoTransformPreset } from "./model/types";
 export {

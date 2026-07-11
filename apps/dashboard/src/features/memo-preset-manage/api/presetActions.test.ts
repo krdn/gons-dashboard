@@ -43,8 +43,7 @@ vi.mock("@/features/memo-transform/lib/preset-resolver", () => ({
   resolveDefaultMemoModel: (...a: unknown[]) => resolveDefaultModelMock(...a),
 }));
 vi.mock("@/features/memo-transform/lib/model-catalog", () => ({
-  isMemoModelCurrentlyAvailable: (...a: unknown[]) =>
-    modelAvailabilityMock(...a),
+  getMemoModelAvailability: (...a: unknown[]) => modelAvailabilityMock(...a),
 }));
 
 import {
@@ -71,7 +70,7 @@ beforeEach(() => {
   resolveDefaultModelMock
     .mockReset()
     .mockResolvedValue({ model: "claude", modelId: "claude-sonnet-5" });
-  modelAvailabilityMock.mockReset().mockResolvedValue(true);
+  modelAvailabilityMock.mockReset().mockResolvedValue("available");
   revalidateMock.mockReset();
   transformMock
     .mockReset()
@@ -324,7 +323,7 @@ describe("previewPresetAction", () => {
   });
 
   it("페이지를 연 뒤 프록시 목록에서 사라진 모델은 LLM 호출 전에 거부한다", async () => {
-    modelAvailabilityMock.mockResolvedValue(false);
+    modelAvailabilityMock.mockResolvedValue("unavailable");
     await expect(
       previewPresetAction({
         instruction: "지시사항",
@@ -335,5 +334,21 @@ describe("previewPresetAction", () => {
       }),
     ).resolves.toEqual({ kind: "model-unavailable" });
     expect(transformMock).not.toHaveBeenCalled();
+  });
+
+  it("카탈로그 조회 실패로 unknown이면 LLM 호출을 시도한다", async () => {
+    modelAvailabilityMock.mockResolvedValue("unknown");
+    transformMock.mockResolvedValue({ kind: "transformed", content: "결과" });
+
+    await expect(
+      previewPresetAction({
+        instruction: "지시사항",
+        fidelityGuard: true,
+        model: "codex",
+        modelId: "gpt-5.6-luna",
+        sampleText: "샘플 텍스트입니다",
+      }),
+    ).resolves.toEqual({ kind: "ok", content: "결과" });
+    expect(transformMock).toHaveBeenCalled();
   });
 });

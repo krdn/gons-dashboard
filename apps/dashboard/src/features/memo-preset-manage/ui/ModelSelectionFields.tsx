@@ -2,16 +2,17 @@
 import {
   MEMO_MODEL_KEYS,
   MEMO_MODEL_META,
-  recommendMemoModels,
-  type MemoModelCatalog,
+  MEMO_MODEL_RECOMMENDATION_RULES,
+  type MemoModelCatalogSnapshot,
   type MemoModelKey,
   type MemoModelSelection,
 } from "@/entities/memo/client";
+import { deriveModelOptions } from "@/shared/lib/llm/provider-model-catalog";
 
 interface ModelSelectionFieldsProps {
   idPrefix: string;
   value: MemoModelSelection | null;
-  catalog: MemoModelCatalog;
+  snapshot: MemoModelCatalogSnapshot;
   inheritFrom?: MemoModelSelection;
   disabled?: boolean;
   onChange: (value: MemoModelSelection | null) => void;
@@ -21,22 +22,27 @@ interface ModelSelectionFieldsProps {
 export function ModelSelectionFields({
   idPrefix,
   value,
-  catalog,
+  snapshot,
   inheritFrom,
   disabled = false,
   onChange,
 }: ModelSelectionFieldsProps) {
+  const catalog = snapshot.catalog;
   const providerValue = value?.model ?? "inherit";
-  const unavailable = value
-    ? !catalog[value.model].includes(value.modelId)
-    : inheritFrom
-      ? !catalog[inheritFrom.model].includes(inheritFrom.modelId)
-      : false;
-  const recommendations = value ? recommendMemoModels(catalog, value.model) : [];
-  const recommendedIds = new Set(recommendations.map((rec) => rec.modelId));
-  const otherIds = value
-    ? catalog[value.model].filter((id) => !recommendedIds.has(id))
-    : [];
+  const effectiveSelection = value ?? inheritFrom;
+  const options = effectiveSelection
+    ? deriveModelOptions({
+        snapshot,
+        selection: {
+          provider: effectiveSelection.model,
+          modelId: effectiveSelection.modelId,
+        },
+        recommendationRules: MEMO_MODEL_RECOMMENDATION_RULES,
+      })
+    : null;
+  const recommendations = value ? (options?.recommended ?? []) : [];
+  const otherIds = value ? (options?.other ?? []) : [];
+  const unavailable = options?.availability === "unavailable";
 
   function changeProvider(raw: string) {
     if (raw === "inherit") {
@@ -98,7 +104,7 @@ export function ModelSelectionFields({
             )
           ) : (
             <>
-              {!catalog[value.model].includes(value.modelId) && (
+              {unavailable && (
                 <option value={value.modelId} disabled>
                   {value.modelId} (현재 사용 불가)
                 </option>
