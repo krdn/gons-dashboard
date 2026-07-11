@@ -17,34 +17,33 @@ import {
 } from "@/shared/lib/llm/saju-model-registry-meta";
 import {
   LLM_PROVIDER_META,
-  recommendLlmModels,
-  type ProviderModelCatalog,
+  deriveModelOptions,
+  type ProviderModelCatalogSnapshot,
 } from "@/shared/lib/llm/provider-model-catalog";
 
 interface Props {
   selected: SajuModelKey;
   /** 현재 유효 모델 ID (URL modelId 또는 registry 기본값) — 페이지(RSC)가 해석해 전달. */
   selectedModelId: string;
-  catalog: ProviderModelCatalog;
+  snapshot: ProviderModelCatalogSnapshot;
 }
 
 const selectCls =
   "rounded-md border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 py-1.5 text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]";
 
-export function SajuModelPicker({ selected, selectedModelId, catalog }: Props) {
+export function SajuModelPicker({ selected, selectedModelId, snapshot }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const recommendations = recommendLlmModels(
-    catalog,
-    selected,
-    SAJU_MODEL_RECOMMENDATION_RULES,
-  );
-  const recommendedIds = new Set(recommendations.map((rec) => rec.modelId));
-  const otherModelIds = catalog[selected].filter(
-    (id) => !recommendedIds.has(id),
-  );
-  const unavailable = !catalog[selected].includes(selectedModelId);
+  const options = deriveModelOptions({
+    snapshot,
+    selection: { provider: selected, modelId: selectedModelId },
+    recommendationRules: SAJU_MODEL_RECOMMENDATION_RULES,
+  });
+  const catalog = snapshot.catalog;
+  const recommendations = options.recommended;
+  const otherModelIds = options.other;
+  const unavailable = options.availability === "unavailable";
 
   const replaceParams = (mutate: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
