@@ -66,6 +66,9 @@ drizzle/meta/_journal.json.bak
 # Memsearch local index
 .memsearch/
 
+# Codex 세션 상태
+.context/
+
 # Docker (local override만; compose 파일은 커밋)
 docker-compose.override.yml
 .gstack/
