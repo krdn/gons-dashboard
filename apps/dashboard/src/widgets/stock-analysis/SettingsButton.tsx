@@ -3,14 +3,14 @@
 import { useState } from "react";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/client";
 import type {
-  ModelName,
+  PersonaModelOverride,
   PersonaOrConsensus,
 } from "@/entities/stock-analysis/client";
 import { PortfolioSettingsModal } from "./PortfolioSettingsModal";
 
 interface Props {
   initialHoldings: PortfolioHolding[];
-  initialOverrides: Partial<Record<PersonaOrConsensus, ModelName>>;
+  initialOverrides: Partial<Record<PersonaOrConsensus, PersonaModelOverride>>;
 }
 
 export function SettingsButton({ initialHoldings, initialOverrides }: Props) {

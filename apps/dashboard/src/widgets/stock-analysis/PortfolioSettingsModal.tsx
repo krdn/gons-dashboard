@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { PortfolioHolding } from "@/entities/portfolio-holding/client";
 import type {
-  ModelName,
+  PersonaModelOverride,
   PersonaOrConsensus,
 } from "@/entities/stock-analysis/client";
 import { Modal } from "@/shared/ui/Modal";
@@ -14,7 +14,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialHoldings: PortfolioHolding[];
-  initialOverrides: Partial<Record<PersonaOrConsensus, ModelName>>;
+  initialOverrides: Partial<Record<PersonaOrConsensus, PersonaModelOverride>>;
 }
 
 type Tab = "portfolio" | "llm";

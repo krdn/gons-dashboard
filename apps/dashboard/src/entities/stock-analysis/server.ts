@@ -18,6 +18,11 @@ export type {
 } from "./model/persona-types";
 export type { Consensus, MarketSnapshot } from "./model/consensus-types";
 export { DEFAULT_PERSONA_MODELS, PERSONA_DISPLAY } from "./model/persona-types";
+export {
+  normalizePersonaOverride,
+  type PersonaModelOverride,
+  type PersonaModelCatalogData,
+} from "./model/persona-model-override";
 
 // PR 2 (2026-05-23): 하드코딩 "v1.0" 제거 — 호출자가 PERSONA_PROMPT_VERSION 전달.
 // orchestrator 가 @gons/stock-analysis 의 PERSONA_PROMPT_VERSION ("v2") 을 넘긴다.

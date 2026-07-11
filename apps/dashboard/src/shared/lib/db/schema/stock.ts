@@ -57,9 +57,20 @@ export const stockPersonaPreferences = pgTable("stock_persona_preferences", {
   userId: uuid("user_id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
-  // 페르소나별 모델 선호 오버라이드: { fundamentalist: 'claude', technician: 'codex', ... }
+  // 페르소나별 모델 선호 오버라이드.
+  //   legacy value: 'claude' (공급사 키만)
+  //   현재 value:   { model: 'codex', modelId: 'gpt-5.5' } (modelId 생략 시 tier 최신 자동)
+  // 읽기 시 normalizePersonaOverride(entities/stock-analysis)로 두 형태 모두 수용.
   overrides: jsonb("overrides")
-    .$type<Record<string, "claude" | "codex" | "gemini">>()
+    .$type<
+      Record<
+        string,
+        | "claude"
+        | "codex"
+        | "gemini"
+        | { model: "claude" | "codex" | "gemini"; modelId?: string }
+      >
+    >()
     .default(sql`'{}'::jsonb`)
     .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

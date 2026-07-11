@@ -5,8 +5,9 @@ import { db } from "@/shared/lib/db/client";
 import { stockPersonaPreferences } from "@/shared/lib/db/schema";
 import { getHoldings } from "@/entities/portfolio-holding/server";
 import { getCachedAnalysis } from "@/entities/stock-analysis/server";
+import { normalizePersonaOverride } from "@/entities/stock-analysis/server";
 import type {
-  ModelName,
+  PersonaModelOverride,
   PersonaOrConsensus,
 } from "@/entities/stock-analysis/server";
 import { fetchYahooQuotes, PERSONA_PROMPT_VERSION } from "@gons/stock-analysis";
@@ -24,15 +25,22 @@ export async function StockAnalysisCard() {
     return <EmptyCard />;
   }
 
-  // 사용자 모델 override (DB 의 Record<string, ModelName> 을 PersonaOrConsensus 키로 narrow).
+  // 사용자 모델 override — legacy string / { model, modelId } 객체 모두 normalize.
   const overridesRow = await db
     .select()
     .from(stockPersonaPreferences)
     .where(eq(stockPersonaPreferences.userId, session.user.id))
     .limit(1);
-  const initialOverrides = (overridesRow[0]?.overrides ?? {}) as Partial<
-    Record<PersonaOrConsensus, ModelName>
-  >;
+  const rawOverrides = overridesRow[0]?.overrides ?? {};
+  const initialOverrides: Partial<
+    Record<PersonaOrConsensus, PersonaModelOverride>
+  > = {};
+  for (const [persona, value] of Object.entries(rawOverrides)) {
+    const normalized = normalizePersonaOverride(value);
+    if (normalized) {
+      initialOverrides[persona as PersonaOrConsensus] = normalized;
+    }
+  }
 
   // 시세 (배치) + 캐시 분석 + 일봉
   const symbols = holdings.map((h) => h.symbol);
