@@ -2,10 +2,16 @@
 // env 접근 / 실제 모델 ID 해석은 shared/lib/llm/reply-model-registry.ts (server-only).
 // 정책 (spec 2026-06-16): haiku 티어는 이메일 작성 거절 → 레지스트리에서 제외.
 //   gemini(추천)·codex·claude(=opus) 만 허용. 경험적 검증 완료.
-import type { LlmRecommendationRule } from "@/shared/lib/llm/provider-model-catalog";
+import type {
+  LlmProviderKey,
+  LlmRecommendationRule,
+  ProviderModelCatalogSnapshot,
+} from "@/shared/lib/llm/provider-model-catalog";
 
+// 표시 순서는 답장 도메인이 소유한다 (gemini 추천 우선) — 공통 LLM_PROVIDER_KEYS
+// 선언 순서와 무관.
 export const REPLY_MODEL_KEYS = ["gemini", "codex", "claude"] as const;
-export type ReplyModelKey = (typeof REPLY_MODEL_KEYS)[number];
+export type ReplyModelKey = LlmProviderKey;
 
 export interface ReplyModelMeta {
   label: string;
@@ -83,7 +89,7 @@ export const REPLY_MODEL_RECOMMENDATION_RULES: Record<
 // "use server" 파일에서 타입을 정의/재-export하지 않는다 — dev 모듈 사망 전례
 // (use-server-type-reexport-referenceerror) 회피를 위해 순수 모듈인 여기에 둔다.
 export interface ReplyModelCatalogData {
-  catalog: Record<ReplyModelKey, string[]>;
+  snapshot: ProviderModelCatalogSnapshot;
   // 각 키의 서버 기본 모델 ID (resolveReplyModelId 결과) — replyModelId=null 표시용.
   defaults: Record<ReplyModelKey, string>;
 }
