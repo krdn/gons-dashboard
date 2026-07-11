@@ -10,6 +10,24 @@ export type LlmProviderKey = (typeof LLM_PROVIDER_KEYS)[number];
 
 export type ProviderModelCatalog = Record<LlmProviderKey, string[]>;
 
+export interface ProviderModelSelection {
+  provider: LlmProviderKey;
+  modelId: string;
+}
+
+export interface ProviderModelCatalogSnapshot {
+  catalog: ProviderModelCatalog;
+  source: "live" | "fallback";
+}
+
+export type ModelAvailability = "available" | "unavailable" | "unknown";
+
+export interface ModelOptions {
+  recommended: LlmModelRecommendation[];
+  other: string[];
+  availability: ModelAvailability;
+}
+
 export const LLM_PROVIDER_META: Record<
   LlmProviderKey,
   { label: string; shortLabel: string }
@@ -55,7 +73,7 @@ export interface LlmRecommendationRule {
 export function recommendLlmModels(
   catalog: ProviderModelCatalog,
   provider: LlmProviderKey,
-  rules: Record<LlmProviderKey, LlmRecommendationRule[]>,
+  rules: Record<LlmProviderKey, readonly LlmRecommendationRule[]>,
 ): LlmModelRecommendation[] {
   const ids = catalog[provider];
   const taken = new Set<string>();
@@ -70,6 +88,37 @@ export function recommendLlmModels(
     }
   }
   return recommendations;
+}
+
+export interface DeriveModelOptionsInput {
+  snapshot: ProviderModelCatalogSnapshot;
+  selection: ProviderModelSelection;
+  recommendationRules: Record<LlmProviderKey, readonly LlmRecommendationRule[]>;
+}
+
+export function deriveModelOptions({
+  snapshot,
+  selection,
+  recommendationRules,
+}: DeriveModelOptionsInput): ModelOptions {
+  const recommended = recommendLlmModels(
+    snapshot.catalog,
+    selection.provider,
+    recommendationRules,
+  );
+  const recommendedIds = new Set(recommended.map(({ modelId }) => modelId));
+  const providerIds = snapshot.catalog[selection.provider];
+
+  return {
+    recommended,
+    other: providerIds.filter((modelId) => !recommendedIds.has(modelId)),
+    availability:
+      snapshot.source === "fallback"
+        ? "unknown"
+        : providerIds.includes(selection.modelId)
+          ? "available"
+          : "unavailable",
+  };
 }
 
 // URL/폼으로 들어오는 모델 ID 화이트리스트 문법 — 프록시 실제 ID 형태
