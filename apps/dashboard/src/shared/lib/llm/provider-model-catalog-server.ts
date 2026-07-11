@@ -1,10 +1,6 @@
 import "server-only";
 import { env } from "@/shared/config/env";
 import { logger } from "@/shared/lib/log";
-import type {
-  LlmProviderKey,
-  ProviderModelCatalog,
-} from "./provider-model-catalog";
 import {
   createProviderModelCatalogLoader,
   ProviderModelSourceError,
@@ -68,11 +64,3 @@ export const loadProviderModelCatalog = createProviderModelCatalogLoader(
   (failure) =>
     logger.warn("provider-model-catalog", "source-fallback", { ...failure }),
 );
-
-/** @deprecated Use loadProviderModelCatalog with an explicit policy. */
-export async function listProviderModelCatalog(
-  defaults: Record<LlmProviderKey, string>,
-): Promise<ProviderModelCatalog> {
-  return (await loadProviderModelCatalog({ defaults, defaultMode: "always" }))
-    .catalog;
-}

@@ -70,7 +70,7 @@ export interface LlmRecommendationRule {
  * 걸리면 먼저 온 규칙이 가진다. 도메인별 규칙 표는 호출자가 주입한다
  * (메모/답장/사주는 같은 카탈로그라도 추천 이유가 다르다).
  */
-export function recommendLlmModels(
+function matchRecommendedModels(
   catalog: ProviderModelCatalog,
   provider: LlmProviderKey,
   rules: Record<LlmProviderKey, readonly LlmRecommendationRule[]>,
@@ -101,7 +101,7 @@ export function deriveModelOptions({
   selection,
   recommendationRules,
 }: DeriveModelOptionsInput): ModelOptions {
-  const recommended = recommendLlmModels(
+  const recommended = matchRecommendedModels(
     snapshot.catalog,
     selection.provider,
     recommendationRules,
