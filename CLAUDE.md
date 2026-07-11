@@ -10,7 +10,9 @@
   - **Server Infra Monitor** — 등록된 Docker host들의 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그)
   - **Saju (사주)** — 외부 빌더 `@krdn/saju` (github:krdn/saju) 소비 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
   - **Stock Analysis (증권 종목)** — `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 (Phase 1~8 진행 중)
-  - **Calendar / Tiger Reading / Fortune Profile** — `packages/mcp-calendar` 외 보조 위젯
+  - **Memo** — 메모 작성·관리 + LLM 변환 프리셋 (`features/memo-{compose,manage,preset-manage,transform}`, `MEMO_LLM_MODEL_*`)
+  - **카탈로그 (Skill / Plugin / Agent)** — `~/.claude` 자산의 build-time JSON snapshot (`pnpm skills:snapshot` 등) + 한글화 overlay → `widgets/{skill,plugin,agent}-catalog`
+  - **Calendar / Tiger Reading / Fortune Profile / Supplement Checker / Autopilot** — `packages/mcp-calendar`, `@krdn/gons-health` 외 보조 위젯
 - **확장 방향**: 할 일, 노트 등 도메인을 점진 추가
 - **아키텍처**: FSD (Feature-Sliced Design)
 - **문서 언어**: 한국어 (코드·식별자는 영어)
@@ -19,9 +21,11 @@
 
 ```bash
 pnpm install
-cp .env.example .env          # 필수 값 채우기 (아래 "환경 변수" 참조)
+cp apps/dashboard/.env.example apps/dashboard/.env   # 필수 값 채우기 (아래 "환경 변수" 참조)
+                              # dev 는 apps/dashboard/.env, 운영 compose 는 루트 .env (별개 파일)
 pnpm db:generate              # 스키마 변경 시
-pnpm db:migrate               # 운영 DB(192.168.0.5:5440)에 마이그레이션 적용
+pnpm db:migrate               # dev DB 마이그레이션. ⚠️ 운영 DB 는 drizzle tracking 미인식 —
+                              # 새 마이그레이션은 psql BEGIN/COMMIT 로 수동 선적용 후 이미지 배포
 pnpm db:seed:hosts            # 호스트 등록 (home-server, krdn-lenovo)
 pnpm db:seed:projects         # 프로젝트 메타(한글명/카테고리/URL) 시드 — 선택
 pnpm dev                      # http://localhost:3020
@@ -70,8 +74,11 @@ gons-dashboard/
     └── shared-mcp-runtime/  # @gons/shared-mcp-runtime — MCP stdio + in-process 공통
 
 # 외부 GitHub 패키지 (dashboard 의존, 로컬 packages/ 아님):
-#   @krdn/saju       (github:krdn/saju#v1.2.2)       — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
-#   @krdn/tickerlens (github:krdn/tickerlens#v0.1.3) — stock 타임프레임 adapter
+#   @krdn/saju        (github:krdn/saju#v1.2.2)        — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
+#   @krdn/tickerlens  (github:krdn/tickerlens#v0.1.3)  — stock 타임프레임 adapter
+#   @krdn/llm-gateway (github:krdn/llm-gateway#v3.4.0) — LLM 호출 게이트웨이 (provider "claude-cli" → cli-proxy)
+#   @krdn/email       (github:krdn/email#v0.1.0)       — 이메일 도메인 타입/스키마 공용
+#   @krdn/gons-health (github:krdn/gons-health#v0.1.0) — 영양제 상호작용 (supplement-checker 위젯)
 ```
 
 신규 도메인/MCP 추가 패턴은 아래 "MCP 도구 호출 정책" 섹션 참조.
@@ -93,7 +100,7 @@ root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.m
 - **검증**: Zod (`shared/config/env.ts` 부팅 시점 검증)
 - **테스트**: Vitest (unit/integration) + setup hard-block (prod DB 가드)
 - **알림**: web-push (VAPID)
-- **AI**: Anthropic SDK → Claude Code CLI Proxy (`ANTHROPIC_BASE_URL`)
+- **AI**: `@krdn/llm-gateway` (provider `claude-cli`) → cli-proxy-api (`ANTHROPIC_BASE_URL`) — tier 별 최신 모델은 `resolveLatestModel` 런타임 선택
 
 ## FSD 아키텍처
 
@@ -102,10 +109,10 @@ root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.m
 ```
 src/
 ├── app/         # Next.js App Router (라우팅 + 레이아웃 + API routes)
-├── widgets/     # 조합 컴포넌트 (host-dashboard, email-digest, important-emails, server-overview)
-├── features/   # 기능 (auth, container-actions, container-list, email-analysis, gmail-sync, host-catalog)
+├── widgets/     # 조합 컴포넌트 22개 (host-dashboard, email-digest, saju-tri-*, stock-analysis, memo, skill-catalog …)
+├── features/   # 기능 28개 (auth, email-reply, memo-transform, saju-*-tri, stock-*, container-* …)
 │   └── <name>/{ui,model,api,lib}
-├── entities/   # 엔티티 (container, digest, email, host, project)
+├── entities/   # 엔티티 19개 (container, email, host, project, memo, stock-analysis, saju-chart …)
 │   └── <name>/{ui,model,api}
 └── shared/     # 공유 (ui, lib, api, config)
 ```
@@ -169,13 +176,13 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test
 
 ### 5. Drizzle hidden-thrash 방지 (서버 상세 페이지)
 
-`src/app/servers/[hostName]/page.tsx` 는 display 용 (`getProjects`, hidden=false) 과 dedup 용 (`getProjectComposeKeys`, hidden 포함) project 키 set 을 분리해야 한다. 하나만 쓰면 hidden project 가 매 요청마다 unknown 으로 분류돼 `onConflictDoUpdate` 가 트리거되는 thrash 가 재현된다.
+`src/app/(dashboard)/servers/[hostName]/page.tsx` 는 display 용 (`getProjects`, hidden=false) 과 dedup 용 (`getProjectComposeKeys`, hidden 포함) project 키 set 을 분리해야 한다. 하나만 쓰면 hidden project 가 매 요청마다 unknown 으로 분류돼 `onConflictDoUpdate` 가 트리거되는 thrash 가 재현된다.
 
 ### 6. OAuth scope 변경은 자동 회복 — events.signIn refreshAccountTokens
 
 `@auth/drizzle-adapter` 의 `linkAccount` 는 PK 충돌 시 silent fail (INSERT-only). 새 scope 또는 rotated refresh token 으로 재로그인해도 기존 `accounts` row 의 토큰 필드가 **자동으로 갱신되지 않는다**. `events.signIn` 에서 `refreshAccountTokens(db, account)` 를 호출해 명시 UPDATE 하도록 핫픽스 완료 (2026-05-12 Calendar MCP scope 사고 이후). NextAuth scope 배열에 새 항목을 추가할 때 사용자별 `DELETE FROM accounts; 재로그인` 절차는 더 이상 필요 없음 — 사용자가 한 번 재로그인하면 새 scope 가 자동으로 반영된다.
 
-회복 안 될 때만 폴백: `scripts/fix-oauth-scope.ts` (accounts row DELETE → fresh INSERT).
+회복 안 될 때만 폴백: `apps/dashboard/src/scripts/fix-oauth-scope.ts` (accounts row DELETE → fresh INSERT).
 
 ### 7. features barrel server/client seam (Phase 6 사고 + 패턴)
 
@@ -241,8 +248,11 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | pgcrypto | `PG_ENCRYPTION_KEY` | ✓ (PlayMCP creds at-rest — Gmail accounts 토큰은 평문, 위 "MCP 도구 호출 정책" 참조) |
 | Timezone | `TZ=Asia/Seoul` | ✓ (KST cron 정확성) |
 | Server Monitor | `DOCKER_DEFAULT_CONTEXT=home-server`, `DOCKER_CMD_TIMEOUT_MS=10000`, `ADMIN_EMAILS` | ✓ |
+| 로그인 허용 | `ALLOWLIST_EMAILS` | ✓ (로그인 허용 이메일 목록) |
 | Saju LLM | `SAJU_LLM_MODEL`, `SAJU_LLM_TEMPERATURE`, `SAJU_LLM_DAILY_BUDGET_KRW` | ✓ (saju 도메인 활성 시) |
-| Stock | `KRX_DATA_GO_KR_API_KEY` (KRX 종목 마스터) | ✓ (stock-analysis 활성 시) |
+| LLM 모델 폴백 | `SAJU/REPLY/MEMO_LLM_MODEL_{CLAUDE,CODEX,GEMINI}` | 기본값 있음 — `resolveLatestModel` 조회 실패 시 폴백, 프록시에 실존하는 ID 여야 함 |
+| Stock | `KRX_OPENAPI_AUTH_KEY` (KRX 종목 마스터) | ✓ (stock-analysis 활성 시) |
+| Stock 펀더멘털 | `DART_OPENAPI_AUTH_KEY`, `STOCK_FUNDAMENTALS_SOURCES`, `STOCK_WATCHLIST_MAX_PER_USER` | 선택 (DART 키 없으면 skip, 기본 `yahoo+dart` / 10) |
 | MCP / PlayMCP | `MCP_DASHBOARD_TOKEN`, `PLAYMCP_GATEWAY_URL`, `PLAYMCP_CLIENT_ID`, `PLAYMCP_BOOTSTRAP_OTT` | ✓ (MCP stdio + PlayMCP 게이트웨이 사용 시) |
 
 **시크릿은 어떤 형태로도 저장소에 커밋 금지** — README, 주석, 마크다운 본문 포함.
@@ -277,19 +287,25 @@ ssh gon@192.168.0.5 "curl -s http://localhost:3020/api/health"            # {"st
 
 - **인증 방식**: 각 모델의 CLI tool (Claude Code CLI, Codex CLI, Gemini CLI) 이 사전에 OAuth 로 로그인해 발급한 **auth file** (`/home/gon/projects/cli-proxy-api/auths/{claude,gemini,codex}-krdn.net@gmail.com-*.json`) 을 proxy 가 읽어 토큰 자동 갱신.
 - **결과**: dashboard 는 **API key 발급 없이** Claude/Gemini/Codex 모두 사용. 토큰 비용은 CLI 의 사용 한도 (예: Claude Code 의 Pro/Max plan) 안에서 처리.
-- **dashboard `.env`** 의 `ANTHROPIC_BASE_URL=http://192.168.0.5:8317` + `ANTHROPIC_API_KEY=my-proxy-key` 만 설정 → Anthropic SDK 가 표준 환경변수를 인식해 자동으로 proxy 로 라우팅.
+- **dashboard `.env`** 의 `ANTHROPIC_BASE_URL=http://192.168.0.5:8317` + `ANTHROPIC_API_KEY` 만 설정 → `@krdn/llm-gateway` 가 이 값으로 proxy 를 호출.
 
 ```typescript
-// shared/lib/llm/anthropic.ts
-import Anthropic from "@anthropic-ai/sdk";
-export const anthropic = new Anthropic(); // ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY 자동 인식
+// shared/lib/llm/anthropic.ts — 실제 호출은 @krdn/llm-gateway 경유
+import { type AIGatewayOptions } from "@krdn/llm-gateway/gateway";
+export const gatewayDefaults: Pick<AIGatewayOptions, "provider" | "baseUrl" | "apiKey"> = {
+  provider: "claude-cli", // ⚠️ "anthropic" 이면 /v1 경로 누락 → 404
+  baseUrl: env.ANTHROPIC_BASE_URL,
+  apiKey: env.ANTHROPIC_API_KEY,
+};
 ```
 
 ### 모델 라우팅 — proxy 가 `model` 문자열로 분기
 
-- `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5` → Claude Code CLI auth
-- `gpt-5.3-codex` → Codex CLI auth
-- `gemini-2.5-pro` → Gemini CLI auth
+- `claude-opus-4-8`, `claude-sonnet-5`, `claude-haiku-4-5-*` → Claude Code CLI auth
+- `gpt-5.5` → Codex CLI auth
+- `gemini-pro-latest` (alias) → Gemini CLI auth
+
+모델 ID 는 프록시 사정으로 소멸할 수 있다 (2026-07-05 `gpt-5.3-codex` 소멸 사고). 정상 경로는 `resolveLatestModel(tier)` 가 프록시 `/v1/models` 에서 최신 안정 모델을 런타임 선택 (tier 별 6h 캐시), `*_LLM_MODEL_*` env 는 조회 실패 시 폴백.
 
 `SAJU_LLM_MODEL_CLAUDE/CODEX/GEMINI` 가 페르소나/학파별로 분기. saju 는 [`shared/lib/llm/saju-model-registry.ts`](apps/dashboard/src/shared/lib/llm/saju-model-registry.ts) + `features/saju-model-picker` 가 모델 선택, stock-analysis 는 [`entities/stock-analysis/api/persona-router.ts`](apps/dashboard/src/entities/stock-analysis/api/persona-router.ts) 가 페르소나별 override 적용.
 
