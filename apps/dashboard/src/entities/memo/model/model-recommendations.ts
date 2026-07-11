@@ -1,20 +1,15 @@
-import type { MemoModelCatalog, MemoModelKey } from "./types";
-
-export interface MemoModelRecommendation {
-  modelId: string;
-  reason: string;
-}
-
-interface RecommendationRule {
-  /** 소문자 모델 ID가 이 family에 속하는지 판정 */
-  matches: (lowerId: string) => boolean;
-  reason: string;
-}
+import type {
+  LlmProviderKey,
+  LlmRecommendationRule,
+} from "@/shared/lib/llm/provider-model-catalog";
 
 // 프록시 /v1/models 목록은 수시로 바뀌므로 ID 하드코딩 대신 family 패턴으로 매칭한다.
-// 규칙 순서 = 추천 우선순위. 카탈로그는 env 기본이 맨 앞 + 최신 우선 정렬이라
-// find 한 번으로 family의 env 기본(있으면) 또는 최신 모델이 잡힌다.
-const RECOMMENDATION_RULES: Record<MemoModelKey, RecommendationRule[]> = {
+// 규칙 순서 = 추천 우선순위. 매칭 알고리즘은 shared deriveModelOptions가 소유하고,
+// 메모는 도메인 추천 이유(문구)만 이 표로 소유한다.
+export const MEMO_MODEL_RECOMMENDATION_RULES: Record<
+  LlmProviderKey,
+  readonly LlmRecommendationRule[]
+> = {
   claude: [
     {
       matches: (id) => id.includes("sonnet"),
@@ -59,26 +54,3 @@ const RECOMMENDATION_RULES: Record<MemoModelKey, RecommendationRule[]> = {
     },
   ],
 };
-
-/**
- * 현재 카탈로그에 실제 존재하는 모델만 추천한다 (없는 모델 추천 → 저장 시
- * model-unavailable 함정 방지). 같은 모델이 두 규칙에 걸리면 먼저 온 규칙이 가진다.
- */
-export function recommendMemoModels(
-  catalog: MemoModelCatalog,
-  provider: MemoModelKey,
-): MemoModelRecommendation[] {
-  const ids = catalog[provider];
-  const taken = new Set<string>();
-  const recommendations: MemoModelRecommendation[] = [];
-  for (const rule of RECOMMENDATION_RULES[provider]) {
-    const match = ids.find(
-      (id) => !taken.has(id) && rule.matches(id.toLowerCase()),
-    );
-    if (match) {
-      taken.add(match);
-      recommendations.push({ modelId: match, reason: rule.reason });
-    }
-  }
-  return recommendations;
-}

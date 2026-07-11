@@ -5,7 +5,7 @@ import {
   listPresetCatalog,
   resolveDefaultMemoModel,
 } from "@/features/memo-transform/lib/preset-resolver";
-import { listMemoModelCatalog } from "@/features/memo-transform/lib/model-catalog";
+import { loadMemoModelCatalog } from "@/features/memo-transform/lib/model-catalog";
 import { PresetSettings } from "@/features/memo-preset-manage/ui/PresetSettings";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PageHeader } from "@/shared/ui/PageHeader";
@@ -16,10 +16,10 @@ export default async function MemoPresetSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [catalog, defaultModel, modelCatalog] = await Promise.all([
+  const [catalog, defaultModel, modelCatalogSnapshot] = await Promise.all([
     listPresetCatalog(session.user.id),
     resolveDefaultMemoModel(session.user.id),
-    listMemoModelCatalog(),
+    loadMemoModelCatalog(),
   ]);
 
   return (
@@ -38,7 +38,7 @@ export default async function MemoPresetSettingsPage() {
       <PresetSettings
         catalog={catalog}
         initialDefaultModel={defaultModel}
-        modelCatalog={modelCatalog}
+        modelCatalogSnapshot={modelCatalogSnapshot}
       />
     </PageContainer>
   );

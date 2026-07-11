@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  deriveModelOptions,
   isLlmModelIdForProvider,
-  recommendLlmModels,
   sanitizeLlmModelId,
   type LlmRecommendationRule,
   type LlmProviderKey,
@@ -55,30 +55,54 @@ describe("sanitizeLlmModelId", () => {
   });
 });
 
-describe("recommendLlmModels", () => {
-  const rules: Record<LlmProviderKey, LlmRecommendationRule[]> = {
+describe("deriveModelOptions", () => {
+  const rules: Record<LlmProviderKey, readonly LlmRecommendationRule[]> = {
     claude: [
       { matches: (id) => id.includes("opus"), reason: "첫째" },
       { matches: (id) => id.includes("sonnet"), reason: "둘째" },
+      { matches: (id) => id.includes("opus"), reason: "중복" },
     ],
     codex: [],
     gemini: [],
   };
 
-  it("규칙 순서대로, 카탈로그에 존재하는 모델만 추천한다", () => {
-    const catalog = catalogWith({
-      claude: ["claude-sonnet-5", "claude-opus-4-8"],
-    });
-    const result = recommendLlmModels(catalog, "claude", rules);
-    expect(result).toEqual([
-      { modelId: "claude-opus-4-8", reason: "첫째" },
-      { modelId: "claude-sonnet-5", reason: "둘째" },
-    ]);
+  const catalog = catalogWith({
+    claude: ["claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5"],
   });
 
-  it("규칙이 없는 공급사는 빈 배열", () => {
-    const catalog = catalogWith({ codex: ["gpt-5.5"] });
-    expect(recommendLlmModels(catalog, "codex", rules)).toEqual([]);
+  it("규칙 우선순위와 중복 제거를 적용하고 나머지를 other로 반환한다", () => {
+    expect(
+      deriveModelOptions({
+        snapshot: { catalog, source: "live" },
+        selection: { provider: "claude", modelId: "claude-opus-4-8" },
+        recommendationRules: rules,
+      }),
+    ).toEqual({
+      recommended: [
+        { modelId: "claude-opus-4-8", reason: "첫째" },
+        { modelId: "claude-sonnet-5", reason: "둘째" },
+      ],
+      other: ["claude-haiku-4-5"],
+      availability: "available",
+    });
+  });
+
+  it("live 목록에서 사라진 선택은 unavailable이다", () => {
+    const result = deriveModelOptions({
+      snapshot: { catalog, source: "live" },
+      selection: { provider: "claude", modelId: "claude-opus-3" },
+      recommendationRules: rules,
+    });
+    expect(result.availability).toBe("unavailable");
+  });
+
+  it("fallback snapshot은 목록 포함 여부와 무관하게 unknown이다", () => {
+    const result = deriveModelOptions({
+      snapshot: { catalog, source: "fallback" },
+      selection: { provider: "claude", modelId: "claude-opus-3" },
+      recommendationRules: rules,
+    });
+    expect(result.availability).toBe("unknown");
   });
 });
 
@@ -87,11 +111,11 @@ describe("SAJU_MODEL_RECOMMENDATION_RULES (사주 narrative 도메인 규칙)", 
     const catalog = catalogWith({
       claude: ["claude-sonnet-5", "claude-opus-4-8"],
     });
-    const result = recommendLlmModels(
-      catalog,
-      "claude",
-      SAJU_MODEL_RECOMMENDATION_RULES,
-    );
+    const result = deriveModelOptions({
+      snapshot: { catalog, source: "live" },
+      selection: { provider: "claude", modelId: catalog.claude[0] },
+      recommendationRules: SAJU_MODEL_RECOMMENDATION_RULES,
+    }).recommended;
     expect(result.map((r) => r.modelId)).toEqual([
       "claude-opus-4-8",
       "claude-sonnet-5",
@@ -103,11 +127,11 @@ describe("SAJU_MODEL_RECOMMENDATION_RULES (사주 narrative 도메인 규칙)", 
     const catalog = catalogWith({
       codex: ["gpt-image-1", "gpt-oss-120b-medium", "gpt-5.3-codex", "gpt-5.5"],
     });
-    const result = recommendLlmModels(
-      catalog,
-      "codex",
-      SAJU_MODEL_RECOMMENDATION_RULES,
-    );
+    const result = deriveModelOptions({
+      snapshot: { catalog, source: "live" },
+      selection: { provider: "codex", modelId: catalog.codex[0] },
+      recommendationRules: SAJU_MODEL_RECOMMENDATION_RULES,
+    }).recommended;
     expect(result.map((r) => r.modelId)).toEqual(["gpt-5.5", "gpt-5.3-codex"]);
   });
 });

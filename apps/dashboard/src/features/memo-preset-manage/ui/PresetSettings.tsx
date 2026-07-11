@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { PresetCatalogEntry } from "@/features/memo-transform/client";
 import {
   type MemoModelCatalog,
+  type MemoModelCatalogSnapshot,
   type MemoModelSelection,
 } from "@/entities/memo/client";
 import { saveDefaultMemoModelAction } from "../client";
@@ -12,7 +13,7 @@ import { ModelSelectionFields } from "./ModelSelectionFields";
 interface PresetSettingsProps {
   catalog: PresetCatalogEntry[];
   initialDefaultModel: MemoModelSelection;
-  modelCatalog: MemoModelCatalog;
+  modelCatalogSnapshot: MemoModelCatalogSnapshot;
 }
 
 /** null = "+ 새 프리셋" 선택 상태, undefined = 아직 아무것도 선택 안 함(모바일 목록 표시). */
@@ -75,8 +76,9 @@ function PresetListItem({
 export function PresetSettings({
   catalog,
   initialDefaultModel,
-  modelCatalog,
+  modelCatalogSnapshot,
 }: PresetSettingsProps) {
+  const modelCatalog = modelCatalogSnapshot.catalog;
   const [selectedSlug, setSelectedSlug] = useState<string | null | undefined>(
     undefined,
   );
@@ -162,7 +164,7 @@ export function PresetSettings({
             <ModelSelectionFields
               idPrefix="memo-default"
               value={defaultModel}
-              catalog={modelCatalog}
+              snapshot={modelCatalogSnapshot}
               disabled={modelSaving}
               onChange={changeDefaultModel}
             />
@@ -242,7 +244,7 @@ export function PresetSettings({
                 key={selection?.slug ?? "new"}
                 entry={selection}
                 defaultModel={defaultModel}
-                modelCatalog={modelCatalog}
+                modelCatalogSnapshot={modelCatalogSnapshot}
                 onDone={handleDone}
                 onDirtyChange={setDirty}
               />

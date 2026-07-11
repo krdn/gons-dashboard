@@ -14,7 +14,7 @@ import {
 } from "@/entities/email-settings/model/replyModel";
 import {
   LLM_PROVIDER_META,
-  recommendLlmModels,
+  deriveModelOptions,
 } from "@/shared/lib/llm/provider-model-catalog";
 import { updateEmailSettings } from "../api/updateEmailSettings";
 import { syncNowAction } from "../api/syncNowAction";
@@ -78,32 +78,27 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
   // 표시/제출용 유효 모델 ID. 저장값 없으면 서버 기본값(defaults), 그것도 없으면 "" (자동).
   const effectiveModelId =
     modelId ?? catalogData?.defaults[modelKey] ?? "";
-  const recommendations = catalogData
-    ? recommendLlmModels(
-        catalogData.catalog,
-        modelKey,
-        REPLY_MODEL_RECOMMENDATION_RULES,
-      )
-    : [];
-  const recommendedIds = new Set(recommendations.map((rec) => rec.modelId));
-  const otherModelIds = catalogData
-    ? catalogData.catalog[modelKey].filter((id) => !recommendedIds.has(id))
-    : [];
-  const modelUnavailable =
-    catalogData !== null &&
-    effectiveModelId !== "" &&
-    !catalogData.catalog[modelKey].includes(effectiveModelId);
+  const modelOptions =
+    catalogData && effectiveModelId
+      ? deriveModelOptions({
+          snapshot: catalogData.snapshot,
+          selection: { provider: modelKey, modelId: effectiveModelId },
+          recommendationRules: REPLY_MODEL_RECOMMENDATION_RULES,
+        })
+      : null;
+  const recommendations = modelOptions?.recommended ?? [];
+  const otherModelIds = modelOptions?.other ?? [];
+  const modelUnavailable = modelOptions?.availability === "unavailable";
 
   function changeProvider(raw: string) {
     const key = raw as ReplyModelKey;
     setModelKey(key);
     if (catalogData) {
       // 공급사 전환 시 그 공급사의 서버 기본값(목록에 있으면) 또는 첫 모델로.
+      const catalog = catalogData.snapshot.catalog;
       const fallback = catalogData.defaults[key];
       setModelId(
-        catalogData.catalog[key].includes(fallback)
-          ? fallback
-          : (catalogData.catalog[key][0] ?? null),
+        catalog[key].includes(fallback) ? fallback : (catalog[key][0] ?? null),
       );
     } else {
       setModelId(null); // 카탈로그 미로드 — 서버 기본값 자동 해석에 맡김
@@ -325,7 +320,7 @@ export function EmailSettingsForm({ initial, onDone }: Props) {
                         )}
                       </>
                     ) : (
-                      catalogData.catalog[modelKey].map((id) => (
+                      catalogData.snapshot.catalog[modelKey].map((id) => (
                         <option key={id} value={id}>
                           {id}
                         </option>

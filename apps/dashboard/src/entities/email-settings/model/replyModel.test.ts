@@ -6,7 +6,11 @@ import {
   DEFAULT_REPLY_MODEL_KEY,
   parseReplyModelKey,
 } from "./replyModel";
-import { recommendLlmModels } from "@/shared/lib/llm/provider-model-catalog";
+import {
+  deriveModelOptions,
+  type LlmProviderKey,
+  type ProviderModelCatalog,
+} from "@/shared/lib/llm/provider-model-catalog";
 
 describe("replyModel registry", () => {
   it("기본값은 gemini (추천·검증된 모델)", () => {
@@ -44,11 +48,20 @@ describe("replyModel registry", () => {
 describe("REPLY_MODEL_RECOMMENDATION_RULES (상세 모델 추천 규칙)", () => {
   const emptyCatalog = { claude: [], codex: [], gemini: [] };
 
+  function recommendWith(catalog: ProviderModelCatalog, provider: LlmProviderKey) {
+    return deriveModelOptions({
+      snapshot: { catalog, source: "live" },
+      selection: {
+        provider,
+        modelId: catalog[provider][0] ?? "gemini-2.5-pro",
+      },
+      recommendationRules: REPLY_MODEL_RECOMMENDATION_RULES,
+    }).recommended;
+  }
+
   it("claude: haiku는 어떤 규칙에도 안 걸린다 (이메일 작성 거절 정책)", () => {
     const catalog = { ...emptyCatalog, claude: ["claude-haiku-4-5-20251001"] };
-    expect(
-      recommendLlmModels(catalog, "claude", REPLY_MODEL_RECOMMENDATION_RULES),
-    ).toEqual([]);
+    expect(recommendWith(catalog, "claude")).toEqual([]);
   });
 
   it("codex: image·oss·codex 계열은 범용 규칙에서 제외된다", () => {
@@ -56,11 +69,7 @@ describe("REPLY_MODEL_RECOMMENDATION_RULES (상세 모델 추천 규칙)", () =>
       ...emptyCatalog,
       codex: ["gpt-image-1", "gpt-oss-120b-medium", "gpt-5.3-codex", "gpt-5.5"],
     };
-    const result = recommendLlmModels(
-      catalog,
-      "codex",
-      REPLY_MODEL_RECOMMENDATION_RULES,
-    );
+    const result = recommendWith(catalog, "codex");
     expect(result.map((r) => r.modelId)).toEqual(["gpt-5.5", "gpt-5.3-codex"]);
   });
 
@@ -69,11 +78,7 @@ describe("REPLY_MODEL_RECOMMENDATION_RULES (상세 모델 추천 규칙)", () =>
       ...emptyCatalog,
       gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
     };
-    const result = recommendLlmModels(
-      catalog,
-      "gemini",
-      REPLY_MODEL_RECOMMENDATION_RULES,
-    );
+    const result = recommendWith(catalog, "gemini");
     expect(result.map((r) => r.modelId)).toEqual([
       "gemini-2.5-pro",
       "gemini-2.5-flash",

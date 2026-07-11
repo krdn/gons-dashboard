@@ -5,6 +5,7 @@ import type { PresetCatalogEntry } from "@/features/memo-transform/client";
 import {
   MEMO_MODEL_META,
   type MemoModelCatalog,
+  type MemoModelCatalogSnapshot,
   type MemoModelSelection,
 } from "@/entities/memo/client";
 import {
@@ -23,7 +24,7 @@ interface PresetEditorProps {
   /** null = 새 커스텀 프리셋 */
   entry: PresetCatalogEntry | null;
   defaultModel: MemoModelSelection;
-  modelCatalog: MemoModelCatalog;
+  modelCatalogSnapshot: MemoModelCatalogSnapshot;
   onDone: () => void;
   /** dirty 상태 변화를 부모(PresetSettings)에 보고 — 항목 전환 시 confirm 판단용. */
   onDirtyChange?: (dirty: boolean) => void;
@@ -98,10 +99,11 @@ const SAVE_FAILURE_MESSAGE: Record<SaveFailure, string> = {
 export function PresetEditor({
   entry,
   defaultModel,
-  modelCatalog,
+  modelCatalogSnapshot,
   onDone,
   onDirtyChange,
 }: PresetEditorProps) {
+  const modelCatalog = modelCatalogSnapshot.catalog;
   const router = useRouter();
   const [fields, setFields] = useState<EditorFields>(() =>
     fieldsFromEntry(entry, modelCatalog),
@@ -264,7 +266,7 @@ export function PresetEditor({
               : null
           }
           inheritFrom={defaultModel}
-          catalog={modelCatalog}
+          snapshot={modelCatalogSnapshot}
           onChange={(selection) =>
             setFields({
               ...fields,

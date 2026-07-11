@@ -2,10 +2,14 @@
 //
 // env 접근 / server-only 가 필요한 부분은 ./saju-model-registry.ts 에서 처리.
 // UI(client component)는 이 파일만 import — keys, labels, parser 정도만 사용.
-import type { LlmRecommendationRule } from "./provider-model-catalog";
+import type {
+  LlmProviderKey,
+  LlmRecommendationRule,
+} from "./provider-model-catalog";
 
+// 표시 순서는 사주 도메인이 소유한다 — 공통 LLM_PROVIDER_KEYS 선언 순서와 무관.
 export const SAJU_MODEL_KEYS = ["claude", "codex", "gemini"] as const;
-export type SajuModelKey = (typeof SAJU_MODEL_KEYS)[number];
+export type SajuModelKey = LlmProviderKey;
 
 export interface SajuModelMeta {
   label: string;

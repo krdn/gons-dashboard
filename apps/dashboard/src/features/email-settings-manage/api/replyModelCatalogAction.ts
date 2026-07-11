@@ -5,7 +5,7 @@
 // memo 설정 페이지(RSC prefetch)와 달리 Server Action 으로 분리.
 import { auth } from "@/shared/lib/auth";
 import { resolveReplyModelId } from "@/shared/lib/llm/reply-model-registry";
-import { listProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
+import { loadProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
 import type { ReplyModelCatalogData } from "@/entities/email-settings/model/replyModel";
 
 export async function replyModelCatalogAction(): Promise<ReplyModelCatalogData | null> {
@@ -18,14 +18,14 @@ export async function replyModelCatalogAction(): Promise<ReplyModelCatalogData |
     resolveReplyModelId("claude"),
   ]);
   const defaults = { gemini, codex, claude };
-  const catalog = await listProviderModelCatalog(defaults);
-
-  return {
-    // haiku 티어는 이메일 작성 거절(replyModel.ts 정책 주석) — 선택지에서 제외.
-    catalog: {
-      ...catalog,
-      claude: catalog.claude.filter((id) => !id.toLowerCase().includes("haiku")),
-    },
+  const snapshot = await loadProviderModelCatalog({
     defaults,
-  };
+    defaultMode: "always",
+    allow: {
+      // haiku 티어는 이메일 작성 거절(replyModel.ts 정책 주석) — 선택지에서 제외.
+      claude: (modelId) => !modelId.toLowerCase().includes("haiku"),
+    },
+  });
+
+  return { snapshot, defaults };
 }

@@ -6,7 +6,7 @@ import {
   resolveDefaultMemoModel,
   type ResolvedPreset,
 } from "@/features/memo-transform/lib/preset-resolver";
-import { isMemoModelCurrentlyAvailable } from "@/features/memo-transform/lib/model-catalog";
+import { getMemoModelAvailability } from "@/features/memo-transform/lib/model-catalog";
 import { PreviewPresetFieldsInput, SampleTextInput } from "./_schema";
 
 export type PreviewPresetResult =
@@ -33,8 +33,9 @@ export async function previewPresetAction(
     fields.data.model && fields.data.modelId
       ? { model: fields.data.model, modelId: fields.data.modelId }
       : await resolveDefaultMemoModel(session.user.id);
-  const available = await isMemoModelCurrentlyAvailable(selection.modelId);
-  if (available === false) return { kind: "model-unavailable" };
+  // unknown(카탈로그 조회 실패)은 호출을 차단하지 않는다 — 실패 시 LLM이 판정.
+  const availability = await getMemoModelAvailability(selection);
+  if (availability === "unavailable") return { kind: "model-unavailable" };
 
   const preset: ResolvedPreset = {
     slug: "preview",

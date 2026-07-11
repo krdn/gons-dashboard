@@ -5,7 +5,7 @@
 // Server Action 으로 분리 (email replyModelCatalogAction 패턴 미러).
 import { auth } from "@/shared/lib/auth";
 import { resolveLatestModel } from "@/shared/lib/llm/resolve-latest-model";
-import { listProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
+import { loadProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
 import type { PersonaModelCatalogData } from "@/entities/stock-analysis/server";
 
 export async function personaModelCatalogAction(): Promise<PersonaModelCatalogData | null> {
@@ -19,7 +19,10 @@ export async function personaModelCatalogAction(): Promise<PersonaModelCatalogDa
     resolveLatestModel("gemini-pro"),
   ]);
   const defaults = { claude, codex, gemini };
-  const catalog = await listProviderModelCatalog(defaults);
+  const snapshot = await loadProviderModelCatalog({
+    defaults,
+    defaultMode: "always",
+  });
 
-  return { catalog, defaults };
+  return { snapshot, defaults };
 }

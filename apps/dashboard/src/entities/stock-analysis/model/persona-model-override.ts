@@ -7,7 +7,7 @@
 import type { ModelName } from "./persona-types";
 import type {
   LlmRecommendationRule,
-  ProviderModelCatalog,
+  ProviderModelCatalogSnapshot,
 } from "@/shared/lib/llm/provider-model-catalog";
 
 export interface PersonaModelOverride {
@@ -39,7 +39,7 @@ export function normalizePersonaOverride(
 // "use server" 파일에서 타입을 정의/재-export하지 않는다 — dev 모듈 사망 전례
 // (use-server-type-reexport-referenceerror) 회피를 위해 순수 모듈인 여기에 둔다.
 export interface PersonaModelCatalogData {
-  catalog: ProviderModelCatalog;
+  snapshot: ProviderModelCatalogSnapshot;
   // 각 공급사의 서버 기본 모델 ID (resolveLatestModel 결과) — modelId 미지정 표시용.
   defaults: Record<ModelName, string>;
 }

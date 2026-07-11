@@ -7,6 +7,7 @@ export type {
   MemoModelKey,
   MemoModelSelection,
   MemoModelCatalog,
+  MemoModelCatalogSnapshot,
 } from "./model/types";
 export {
   deriveTitle,
@@ -17,6 +18,5 @@ export {
   DEFAULT_MEMO_MODEL_KEY,
   isMemoModelIdForProvider,
 } from "./model/types";
-export { recommendMemoModels } from "./model/model-recommendations";
-export type { MemoModelRecommendation } from "./model/model-recommendations";
+export { MEMO_MODEL_RECOMMENDATION_RULES } from "./model/model-recommendations";
 export { MemoCard } from "./ui/MemoCard";

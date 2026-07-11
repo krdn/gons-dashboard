@@ -10,6 +10,24 @@ export type LlmProviderKey = (typeof LLM_PROVIDER_KEYS)[number];
 
 export type ProviderModelCatalog = Record<LlmProviderKey, string[]>;
 
+export interface ProviderModelSelection {
+  provider: LlmProviderKey;
+  modelId: string;
+}
+
+export interface ProviderModelCatalogSnapshot {
+  catalog: ProviderModelCatalog;
+  source: "live" | "fallback";
+}
+
+export type ModelAvailability = "available" | "unavailable" | "unknown";
+
+export interface ModelOptions {
+  recommended: LlmModelRecommendation[];
+  other: string[];
+  availability: ModelAvailability;
+}
+
 export const LLM_PROVIDER_META: Record<
   LlmProviderKey,
   { label: string; shortLabel: string }
@@ -52,10 +70,10 @@ export interface LlmRecommendationRule {
  * 걸리면 먼저 온 규칙이 가진다. 도메인별 규칙 표는 호출자가 주입한다
  * (메모/답장/사주는 같은 카탈로그라도 추천 이유가 다르다).
  */
-export function recommendLlmModels(
+function matchRecommendedModels(
   catalog: ProviderModelCatalog,
   provider: LlmProviderKey,
-  rules: Record<LlmProviderKey, LlmRecommendationRule[]>,
+  rules: Record<LlmProviderKey, readonly LlmRecommendationRule[]>,
 ): LlmModelRecommendation[] {
   const ids = catalog[provider];
   const taken = new Set<string>();
@@ -70,6 +88,37 @@ export function recommendLlmModels(
     }
   }
   return recommendations;
+}
+
+export interface DeriveModelOptionsInput {
+  snapshot: ProviderModelCatalogSnapshot;
+  selection: ProviderModelSelection;
+  recommendationRules: Record<LlmProviderKey, readonly LlmRecommendationRule[]>;
+}
+
+export function deriveModelOptions({
+  snapshot,
+  selection,
+  recommendationRules,
+}: DeriveModelOptionsInput): ModelOptions {
+  const recommended = matchRecommendedModels(
+    snapshot.catalog,
+    selection.provider,
+    recommendationRules,
+  );
+  const recommendedIds = new Set(recommended.map(({ modelId }) => modelId));
+  const providerIds = snapshot.catalog[selection.provider];
+
+  return {
+    recommended,
+    other: providerIds.filter((modelId) => !recommendedIds.has(modelId)),
+    availability:
+      snapshot.source === "fallback"
+        ? "unknown"
+        : providerIds.includes(selection.modelId)
+          ? "available"
+          : "unavailable",
+  };
 }
 
 // URL/폼으로 들어오는 모델 ID 화이트리스트 문법 — 프록시 실제 ID 형태

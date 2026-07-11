@@ -26,7 +26,7 @@ import {
   isLlmModelIdForProvider,
   sanitizeLlmModelId,
 } from "@/shared/lib/llm/provider-model-catalog";
-import { listProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
+import { loadProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
 import { SajuModelPicker } from "@/features/saju-model-picker";
 import { TabsNav, TabPanel, TabSkeleton } from "@/shared/ui/Tabs";
 import {
@@ -93,10 +93,13 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
     isLlmModelIdForProvider(modelKey, requestedModelId)
       ? requestedModelId
       : registry[modelKey].id;
-  const modelCatalog = await listProviderModelCatalog({
-    claude: registry.claude.id,
-    codex: registry.codex.id,
-    gemini: registry.gemini.id,
+  const modelCatalogSnapshot = await loadProviderModelCatalog({
+    defaults: {
+      claude: registry.claude.id,
+      codex: registry.codex.id,
+      gemini: registry.gemini.id,
+    },
+    defaultMode: "always",
   });
 
   const profile = await getFortuneProfile(profileId, session.user.id);
@@ -162,7 +165,7 @@ export default async function SajuDetailPage({ params, searchParams }: Props) {
         <SajuModelPicker
           selected={modelKey}
           selectedModelId={modelId}
-          catalog={modelCatalog}
+          snapshot={modelCatalogSnapshot}
         />
       </div>
 

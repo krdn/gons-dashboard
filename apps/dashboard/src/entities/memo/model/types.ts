@@ -4,6 +4,13 @@ import type {
   memoTransformPresets,
   memoTransformSettings,
 } from "@/shared/lib/db/schema";
+import {
+  LLM_PROVIDER_KEYS,
+  isLlmModelIdForProvider,
+  type LlmProviderKey,
+  type ProviderModelCatalog,
+  type ProviderModelCatalogSnapshot,
+} from "@/shared/lib/llm/provider-model-catalog";
 
 export type Memo = typeof memos.$inferSelect;
 export type MemoSource = "voice" | "text";
@@ -13,8 +20,10 @@ export type MemoTransformPreset = typeof memoTransformPresets.$inferSelect;
 export type MemoTransformSettings = typeof memoTransformSettings.$inferSelect;
 
 // 공급사 키와 프록시에서 선택한 실제 모델 ID를 함께 저장한다.
-export const MEMO_MODEL_KEYS = ["claude", "codex", "gemini"] as const;
-export type MemoModelKey = (typeof MEMO_MODEL_KEYS)[number];
+// 공급사 키·카탈로그·검증은 shared/lib/llm 공통 모듈의 alias — 메모 고유 표시
+// 메타(MEMO_MODEL_META)와 DB 선택 타입만 이 파일이 소유한다.
+export const MEMO_MODEL_KEYS = LLM_PROVIDER_KEYS;
+export type MemoModelKey = LlmProviderKey;
 export const DEFAULT_MEMO_MODEL_KEY: MemoModelKey = "claude";
 
 export interface MemoModelSelection {
@@ -22,7 +31,8 @@ export interface MemoModelSelection {
   modelId: string;
 }
 
-export type MemoModelCatalog = Record<MemoModelKey, string[]>;
+export type MemoModelCatalog = ProviderModelCatalog;
+export type MemoModelCatalogSnapshot = ProviderModelCatalogSnapshot;
 
 export const MEMO_MODEL_META: Record<
   MemoModelKey,
@@ -52,21 +62,8 @@ export function isMemoModelKey(value: unknown): value is MemoModelKey {
   );
 }
 
-/** 프록시 모델 ID가 선택한 공급사 계열인지 확인한다. */
-export function isMemoModelIdForProvider(
-  provider: MemoModelKey,
-  modelId: string,
-): boolean {
-  const id = modelId.toLowerCase();
-  switch (provider) {
-    case "claude":
-      return id.startsWith("claude-");
-    case "codex":
-      return id.startsWith("gpt-") || /^o\d/.test(id) || id.includes("codex");
-    case "gemini":
-      return id.startsWith("gemini-");
-  }
-}
+/** 프록시 모델 ID가 선택한 공급사 계열인지 확인한다 (공통 검증 alias). */
+export const isMemoModelIdForProvider = isLlmModelIdForProvider;
 
 // 빌트인 프리셋 목록 (커스텀은 DB memo_transform_presets).
 export const TRANSFORM_PRESET_IDS = [
