@@ -29,4 +29,4 @@ History follows Conventional Commit prefixes such as `feat:`, `fix:`, `docs:`, a
 
 ## Security & Configuration
 
-Copy `.env.example` to `.env`; never commit secrets, tokens, or production credentials. Production seed and cleanup commands require explicit acknowledgement—consult `CLAUDE.md` and `docs/RUNBOOK.md` before operational changes.
+Copy `apps/dashboard/.env.example` to `apps/dashboard/.env` for local dev (the root `.env` is a separate file consumed only by the production compose); never commit secrets, tokens, or production credentials. Production seed and cleanup commands require explicit acknowledgement—consult `CLAUDE.md` and `docs/RUNBOOK.md` before operational changes.
