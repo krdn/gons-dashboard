@@ -14,7 +14,7 @@ import {
 } from "@/entities/stock-analysis/client";
 import {
   LLM_PROVIDER_META,
-  recommendLlmModels,
+  deriveModelOptions,
 } from "@/shared/lib/llm/provider-model-catalog";
 import { setPersonaModel, resetPersonaModels } from "../api/updateOverrides";
 import { personaModelCatalogAction } from "../api/personaModelCatalogAction";
@@ -95,10 +95,11 @@ export function PersonaModelPicker({ initialOverrides }: Props) {
     // 카탈로그 미로드면 modelId 생략 — 서버가 tier 최신을 자동 해석.
     let modelId: string | undefined;
     if (catalogData) {
+      const catalog = catalogData.snapshot.catalog;
       const fallback = catalogData.defaults[model];
-      modelId = catalogData.catalog[model].includes(fallback)
+      modelId = catalog[model].includes(fallback)
         ? fallback
-        : catalogData.catalog[model][0];
+        : catalog[model][0];
     }
     save(persona, modelId ? { model, modelId } : { model });
   };
@@ -140,17 +141,14 @@ export function PersonaModelPicker({ initialOverrides }: Props) {
       );
     }
 
-    const recommendations = recommendLlmModels(
-      catalogData.catalog,
-      provider,
-      STOCK_MODEL_RECOMMENDATION_RULES,
-    );
-    const recommendedIds = new Set(recommendations.map((rec) => rec.modelId));
-    const otherModelIds = catalogData.catalog[provider].filter(
-      (id) => !recommendedIds.has(id),
-    );
-    const unavailable =
-      value !== "" && !catalogData.catalog[provider].includes(value);
+    const options = deriveModelOptions({
+      snapshot: catalogData.snapshot,
+      selection: { provider, modelId: value },
+      recommendationRules: STOCK_MODEL_RECOMMENDATION_RULES,
+    });
+    const recommendations = options.recommended;
+    const otherModelIds = options.other;
+    const unavailable = value !== "" && options.availability === "unavailable";
 
     return (
       <select
@@ -185,7 +183,7 @@ export function PersonaModelPicker({ initialOverrides }: Props) {
             )}
           </>
         ) : (
-          catalogData.catalog[provider].map((id) => (
+          catalogData.snapshot.catalog[provider].map((id) => (
             <option key={id} value={id}>
               {id}
             </option>
