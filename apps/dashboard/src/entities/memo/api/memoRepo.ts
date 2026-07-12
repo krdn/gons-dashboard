@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
-import { memos } from "@/shared/lib/db/schema";
+import { memos, memoTransformations } from "@/shared/lib/db/schema";
 import type { Memo, MemoSource } from "../model/types";
+import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/search";
 
 // 개인 대시보드 규모 상한 — 페이지네이션 도입 전까지 unbounded 쿼리 방지.
 const LIST_MEMOS_LIMIT = 200;
@@ -14,6 +15,53 @@ export function listMemos(userId: string): Promise<Memo[]> {
     .where(eq(memos.userId, userId))
     .orderBy(desc(memos.createdAt))
     .limit(LIST_MEMOS_LIMIT);
+}
+
+export interface SearchMemosOutput {
+  memos: Memo[];
+  /** 상한 초과 매칭 존재 여부 — LIMIT+1 센티널 조회로 정확히 판별 (정확히 50개일 때 거짓 절단 안내 방지). */
+  truncated: boolean;
+}
+
+/**
+ * 제목·원문·정리본·AI 변환본 대상 검색. 토큰 간 AND, 토큰별 필드 간 OR.
+ * 개인 규모(사용자당 수백 행)라 인덱스 없이 user_id 필터 후 ILIKE로 충분 —
+ * 임계 도달 시 pg_trgm GIN 인덱스만 추가하면 된다 (스펙 2026-07-12-memo-search).
+ */
+export async function searchMemos(userId: string, query: string): Promise<SearchMemosOutput> {
+  const tokens = tokenizeSearchQuery(query);
+  if (tokens.length === 0) return { memos: [], truncated: false };
+
+  const termConditions = tokens.map((token) => {
+    const pattern = `%${escapeLike(token)}%`;
+    return or(
+      ilike(memos.title, pattern),
+      ilike(memos.rawContent, pattern),
+      ilike(memos.cleanedContent, pattern),
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(memoTransformations)
+          .where(
+            and(
+              eq(memoTransformations.memoId, memos.id),
+              ilike(memoTransformations.content, pattern),
+            ),
+          ),
+      ),
+    );
+  });
+
+  const rows = await db
+    .select()
+    .from(memos)
+    .where(and(eq(memos.userId, userId), ...termConditions))
+    .orderBy(desc(memos.createdAt))
+    .limit(SEARCH_MEMOS_LIMIT + 1);
+  return {
+    memos: rows.slice(0, SEARCH_MEMOS_LIMIT),
+    truncated: rows.length > SEARCH_MEMOS_LIMIT,
+  };
 }
 
 export async function getMemo(userId: string, id: string): Promise<Memo | null> {

@@ -19,4 +19,5 @@ export {
   isMemoModelIdForProvider,
 } from "./model/types";
 export { MEMO_MODEL_RECOMMENDATION_RULES } from "./model/model-recommendations";
+export { tokenizeSearchQuery, SEARCH_MEMOS_LIMIT } from "./model/search";
 export { MemoCard } from "./ui/MemoCard";

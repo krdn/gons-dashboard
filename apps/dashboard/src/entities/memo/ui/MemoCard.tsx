@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Highlighted } from "@/shared/ui/Highlighted";
 import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
 
@@ -11,6 +12,8 @@ interface MemoCardProps {
   onDelete?: (id: string) => void;
   /** AI 정리 다이얼로그 트리거 (조립은 MemoList 담당 — entity는 features 접근 불가). */
   onTransform?: (memo: Memo) => void;
+  /** 검색어 하이라이트 — 제목과 현재 보이는 본문 뷰(칩 전환 포함)에 적용. */
+  highlightTerms?: string[];
 }
 
 // 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 slug — 빌트인·커스텀 공통).
@@ -28,8 +31,41 @@ function chipLabel(t: MemoTransformation): string {
 
 const BUILTIN = TRANSFORM_PRESET_IDS as readonly string[];
 
-export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTransform }: MemoCardProps) {
-  const [view, setView] = useState<MemoView>({ kind: "cleaned" });
+function containsAnyTerm(text: string, terms: string[]): boolean {
+  const lower = text.toLowerCase();
+  return terms.some((t) => lower.includes(t.toLowerCase()));
+}
+
+// 검색 일치가 정리본에 없으면(원문·변환본에서만 일치) 그 뷰를 초기 선택 —
+// 하이라이트 없는 카드가 "무관한 결과"처럼 보이는 문제 방지.
+function deriveInitialView(
+  memo: Memo,
+  transformations: MemoTransformation[],
+  terms: string[],
+): MemoView {
+  if (terms.length === 0) return { kind: "cleaned" };
+  if (containsAnyTerm(memo.title, terms) || containsAnyTerm(memo.cleanedContent, terms)) {
+    return { kind: "cleaned" };
+  }
+  if (memo.source === "voice" && containsAnyTerm(memo.rawContent, terms)) {
+    return { kind: "raw" };
+  }
+  const matched = transformations.find((t) => containsAnyTerm(t.content, terms));
+  return matched ? { kind: "preset", slug: matched.preset } : { kind: "cleaned" };
+}
+
+export function MemoCard({
+  memo,
+  transformations = [],
+  onEdit,
+  onDelete,
+  onTransform,
+  highlightTerms = [],
+}: MemoCardProps) {
+  // 파생 초기 뷰 + 사용자 오버라이드 — 칩 클릭 전까지는 검색어가 실제 일치한 뷰를 보여준다.
+  const [userView, setUserView] = useState<MemoView | null>(null);
+  const view = userView ?? deriveInitialView(memo, transformations, highlightTerms);
+  const setView = setUserView;
   const isVoice = memo.source === "voice";
 
   const body =
@@ -67,7 +103,9 @@ export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTrans
   return (
     <article className="rounded-lg border border-neutral-200 p-4">
       <header className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="font-medium text-neutral-900">{memo.title}</h3>
+        <h3 className="font-medium text-neutral-900">
+          <Highlighted text={memo.title} terms={highlightTerms} />
+        </h3>
         <span className="shrink-0 rounded px-1.5 py-0.5 text-xs text-neutral-500">
           {isVoice ? "🎙 음성" : "✍ 텍스트"}
         </span>
@@ -91,7 +129,9 @@ export function MemoCard({ memo, transformations = [], onEdit, onDelete, onTrans
           ))}
         </div>
       )}
-      <p className="whitespace-pre-wrap text-sm text-neutral-700">{body}</p>
+      <p className="whitespace-pre-wrap text-sm text-neutral-700">
+        <Highlighted text={body} terms={highlightTerms} />
+      </p>
       <footer className="mt-3 flex items-center gap-3 text-xs text-neutral-400">
         <time>{formatTime(memo.createdAt)}</time>
         {onTransform && (

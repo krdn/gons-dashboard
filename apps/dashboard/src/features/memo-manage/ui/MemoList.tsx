@@ -10,9 +10,19 @@ interface MemoListProps {
   memos: Memo[];
   transformationsByMemo: Record<string, MemoTransformation[]>;
   presets: TransformPresetOption[];
+  /** 검색어 하이라이트 — 검색 결과 렌더 시에만 전달. */
+  highlightTerms?: string[];
+  /** 편집·삭제 성공 후 콜백 — 검색 모드의 클라이언트 결과를 재검색으로 갱신 (revalidatePath가 못 미침). */
+  onMutated?: () => void;
 }
 
-export function MemoList({ memos, transformationsByMemo, presets }: MemoListProps) {
+export function MemoList({
+  memos,
+  transformationsByMemo,
+  presets,
+  highlightTerms,
+  onMutated,
+}: MemoListProps) {
   const [editing, setEditing] = useState<Memo | null>(null);
   const [transforming, setTransforming] = useState<Memo | null>(null);
   const [draft, setDraft] = useState({ title: "", cleaned: "" });
@@ -33,6 +43,7 @@ export function MemoList({ memos, transformationsByMemo, presets }: MemoListProp
         if (r.kind === "ok") {
           setEditing(null);
           setNotice(null);
+          onMutated?.();
         } else if (r.kind === "invalid") {
           setNotice("내용이 비어 있습니다.");
         } else if (r.kind === "not-found") {
@@ -55,6 +66,7 @@ export function MemoList({ memos, transformationsByMemo, presets }: MemoListProp
         setBusy(false);
         if (r.kind === "ok") {
           setNotice(null);
+          onMutated?.();
         } else if (r.kind === "not-found") {
           setNotice("메모를 찾을 수 없습니다.");
         } else {
@@ -117,6 +129,7 @@ export function MemoList({ memos, transformationsByMemo, presets }: MemoListProp
             onEdit={startEdit}
             onDelete={handleDelete}
             onTransform={setTransforming}
+            highlightTerms={highlightTerms}
           />
         ),
       )}
