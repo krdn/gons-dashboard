@@ -9,8 +9,18 @@ export {
   searchMemos,
   setMemoCategory,
   listUnclassifiedMemos,
+  listMemosBetween,
+  listMemosOlderThan,
+  getMemosByIds,
+  listMemoAuthorUserIds,
   type CreateMemoInput,
 } from "./api/memoRepo";
+export {
+  insertDigest,
+  hasDigest,
+  getLatestDigest,
+  type InsertDigestInput,
+} from "./api/memoDigestRepo";
 export {
   classifyMemoContent,
   classifyAndPersistMemoCategory,
@@ -43,6 +53,7 @@ export {
 export type {
   Memo,
   MemoSource,
+  MemoDigest,
   MemoTransformation,
   TransformPresetId,
   MemoModelKey,

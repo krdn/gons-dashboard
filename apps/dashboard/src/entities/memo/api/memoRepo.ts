@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, exists, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, ilike, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { memos, memoTransformations } from "@/shared/lib/db/schema";
 import type { Memo, MemoSource } from "../model/types";
@@ -116,6 +116,41 @@ export function listUnclassifiedMemos(limit: number): Promise<Memo[]> {
     .where(isNull(memos.category))
     .orderBy(asc(memos.createdAt))
     .limit(limit);
+}
+
+/** 다이제스트 창 조회 — [from, to) 반개구간, 오래된 순 (요약이 시간 흐름을 따르도록). */
+export function listMemosBetween(userId: string, from: Date, to: Date): Promise<Memo[]> {
+  return db
+    .select()
+    .from(memos)
+    .where(and(eq(memos.userId, userId), gte(memos.createdAt, from), lt(memos.createdAt, to)))
+    .orderBy(asc(memos.createdAt))
+    .limit(500);
+}
+
+/** 재부상 후보 — before 이전 생성분 전체 (개인 규모라 전수 로드 허용). */
+export function listMemosOlderThan(userId: string, before: Date): Promise<Memo[]> {
+  return db
+    .select()
+    .from(memos)
+    .where(and(eq(memos.userId, userId), lt(memos.createdAt, before)))
+    .orderBy(asc(memos.createdAt))
+    .limit(2000);
+}
+
+/** 재부상 표시용 — 소유자 스코프 id 조회 (삭제된 id는 결과에서 자연 누락). */
+export function getMemosByIds(userId: string, ids: string[]): Promise<Memo[]> {
+  if (ids.length === 0) return Promise.resolve([]);
+  return db
+    .select()
+    .from(memos)
+    .where(and(eq(memos.userId, userId), inArray(memos.id, ids)));
+}
+
+/** 다이제스트 cron 대상 — 메모를 1건이라도 가진 사용자. */
+export async function listMemoAuthorUserIds(): Promise<string[]> {
+  const rows = await db.selectDistinct({ userId: memos.userId }).from(memos);
+  return rows.map((r) => r.userId);
 }
 
 export async function deleteMemo(userId: string, id: string): Promise<boolean> {
