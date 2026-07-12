@@ -99,7 +99,9 @@ export async function extractAndPersistMemoActions(
     allDay: action.allDay,
   }));
 
-  // 0건도 마킹 — "추출했더니 없음"을 기록해 재평가 차단 (트랜잭션, repo 주석 참조).
+  // 0건도 마킹 — "추출했더니 없음"을 기록해 재평가 차단. claim-first라 null이면
+  // 다른 경로(after ↔ cron)가 이미 추출한 것 — 중복 삽입 없이 종료 (리뷰 반영).
   const count = await insertActionItemsAndMark(memo.id, memo.userId, items);
+  if (count === null) return { kind: "already-extracted" };
   return { kind: "extracted", count };
 }

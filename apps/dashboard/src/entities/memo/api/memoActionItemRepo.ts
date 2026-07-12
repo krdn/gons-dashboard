@@ -17,24 +17,30 @@ export interface NewActionItem {
 }
 
 /**
- * 추출 결과 삽입 + memos.actions_extracted_at 마킹 — 단일 트랜잭션.
- * 분리하면 부분 실패 시 (insert만 성공 → 재추출로 제안 중복) / (마킹만 성공 → 제안 유실).
+ * 추출 결과 삽입 + memos.actions_extracted_at 마킹 — 단일 트랜잭션, claim-first.
+ * 마킹을 IS NULL 조건부 UPDATE로 "먼저" 실행해 승자만 insert한다 — after() 추출과
+ * cron sweep의 동시 실행이 제안을 중복 삽입하는 경합 차단 (리뷰 확정 결함:
+ * row lock이 두 트랜잭션을 직렬화하고 패자는 0-row로 skip).
+ * 반환 null = 다른 경로가 이미 추출함 (호출자는 already-extracted로 처리).
  */
 export async function insertActionItemsAndMark(
   memoId: string,
   userId: string,
   items: NewActionItem[],
-): Promise<number> {
+): Promise<number | null> {
   return db.transaction(async (tx) => {
+    const claimed = await tx
+      .update(memos)
+      .set({ actionsExtractedAt: new Date() })
+      .where(and(eq(memos.id, memoId), isNull(memos.actionsExtractedAt)))
+      .returning({ id: memos.id });
+    if (claimed.length === 0) return null;
+
     if (items.length > 0) {
       await tx
         .insert(memoActionItems)
         .values(items.map((item) => ({ ...item, memoId, userId })));
     }
-    await tx
-      .update(memos)
-      .set({ actionsExtractedAt: new Date() })
-      .where(eq(memos.id, memoId));
     return items.length;
   });
 }
@@ -76,11 +82,14 @@ export async function updateActionItemStatus(
   return rows[0] ?? null;
 }
 
-/** 리마인더 cron 대상 — 수락됨 + 기한 도래 + 미발송 (전 사용자). */
-export function listDueReminders(now: Date, limit: number): Promise<MemoActionItem[]> {
-  return db
-    .select()
+export type DueReminderItem = MemoActionItem & { memoTitle: string };
+
+/** 리마인더 cron 대상 — 수락됨 + 기한 도래 + 미발송 (전 사용자). push body용 메모 제목 JOIN (스펙 §7). */
+export async function listDueReminders(now: Date, limit: number): Promise<DueReminderItem[]> {
+  const rows = await db
+    .select({ item: memoActionItems, memoTitle: memos.title })
     .from(memoActionItems)
+    .innerJoin(memos, eq(memoActionItems.memoId, memos.id))
     .where(
       and(
         eq(memoActionItems.status, "accepted"),
@@ -91,6 +100,7 @@ export function listDueReminders(now: Date, limit: number): Promise<MemoActionIt
     )
     .orderBy(asc(memoActionItems.dueAt))
     .limit(limit);
+  return rows.map((row) => ({ ...row.item, memoTitle: row.memoTitle }));
 }
 
 /** push 결과와 무관하게 기록 — 구독 없음/VAPID 미설정이 무한 재시도가 되지 않게 (스펙 §5). */

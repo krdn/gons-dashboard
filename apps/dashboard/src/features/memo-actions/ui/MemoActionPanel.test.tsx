@@ -60,6 +60,24 @@ describe("MemoActionPanel", () => {
     expect(updateMock).toHaveBeenCalledWith("a1", "accepted");
   });
 
+  it("무시 클릭 → dismissed 전이 (proposed·accepted 양쪽 배선)", async () => {
+    render(<MemoActionPanel items={[item({})]} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "무시" }));
+      await Promise.resolve();
+    });
+    expect(updateMock).toHaveBeenCalledWith("a1", "dismissed");
+
+    cleanup();
+    updateMock.mockClear();
+    render(<MemoActionPanel items={[item({ status: "accepted" })]} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "무시" }));
+      await Promise.resolve();
+    });
+    expect(updateMock).toHaveBeenCalledWith("a1", "dismissed");
+  });
+
   it("accepted — 완료 버튼이 done 전이를 호출", async () => {
     render(<MemoActionPanel items={[item({ status: "accepted" })]} />);
     await act(async () => {

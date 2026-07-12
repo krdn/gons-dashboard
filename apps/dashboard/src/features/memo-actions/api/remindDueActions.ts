@@ -1,9 +1,11 @@
 // 기한 도래 리마인더 — cron perTarget용 (스펙 §5).
 import "server-only";
 import { sendPushToUser } from "@/shared/lib/push";
+import { logger } from "@/shared/lib/log";
 import { markActionItemReminded } from "@/entities/memo/server";
 
 const TITLE_MAX = 60;
+const BODY_MAX = 80;
 
 export interface RemindDueResult {
   kind: "reminded";
@@ -18,13 +20,23 @@ export async function remindDueActionItem(item: {
   id: string;
   userId: string;
   title: string;
+  memoTitle: string;
 }): Promise<RemindDueResult> {
   const push = await sendPushToUser(item.userId, {
     title: `⏰ ${item.title.slice(0, TITLE_MAX)}`,
-    body: "메모에서 추출한 할 일의 기한입니다.",
+    body: item.memoTitle.slice(0, BODY_MAX), // 출처 메모 제목 (스펙 §7)
     url: "/memos",
     tag: `memo-action-${item.id}`,
   });
-  await markActionItemReminded(item.id);
+  // 발송(비가역) 뒤 bookkeeping은 별도 try + best-effort (PR #157 관례) —
+  // mark 실패가 push 성공을 error로 가리지 않게. 실패 시 다음 주기 1회 중복 감수.
+  try {
+    await markActionItemReminded(item.id);
+  } catch (error) {
+    logger.warn("memo-action-reminders", "mark-reminded-failed", {
+      id: item.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   return { kind: "reminded", push: { total: push.total, sent: push.sent } };
 }

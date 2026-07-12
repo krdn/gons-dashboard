@@ -124,4 +124,10 @@ describe("extractAndPersistMemoActions", () => {
     expect(r).toEqual({ kind: "llm-unavailable" });
     expect(insertAndMarkMock).not.toHaveBeenCalled();
   });
+
+  it("claim 패배(null) — 다른 경로가 이미 추출했으면 already-extracted (after↔cron 경합)", async () => {
+    insertAndMarkMock.mockResolvedValue(null);
+    const r = await extractAndPersistMemoActions(baseMemo, NOW);
+    expect(r).toEqual({ kind: "already-extracted" });
+  });
 });
