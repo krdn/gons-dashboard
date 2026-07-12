@@ -6,8 +6,10 @@ export {
   createMemo,
   updateMemo,
   deleteMemo,
+  searchMemos,
   type CreateMemoInput,
 } from "./api/memoRepo";
+export { tokenizeSearchQuery, SEARCH_MEMOS_LIMIT } from "./model/search";
 export {
   upsertTransformation,
   listTransformationsByUser,
