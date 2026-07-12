@@ -54,6 +54,18 @@ describe("MemoCard 검색 하이라이트 초기 뷰", () => {
   });
 });
 
+describe("MemoCard 카테고리 뱃지", () => {
+  it("category가 있으면 라벨 뱃지를 표시한다", () => {
+    render(<MemoCard memo={{ ...memo, category: "idea" } as Memo} />);
+    expect(screen.getByText("아이디어")).toBeTruthy();
+  });
+  it("미분류(null)면 뱃지를 표시하지 않는다", () => {
+    render(<MemoCard memo={{ ...memo, category: null } as Memo} />);
+    expect(screen.queryByText("아이디어")).toBeNull();
+    expect(screen.queryByText("기타")).toBeNull();
+  });
+});
+
 describe("MemoCard 칩 전환", () => {
   it("기본은 정리본을 보여준다", () => {
     render(<MemoCard memo={memo} transformations={[summary]} />);

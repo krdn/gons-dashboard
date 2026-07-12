@@ -28,6 +28,7 @@ export function logLlmSpend(
     | "important-classify"
     | "reply-draft"
     | "memo-cleanup"
+    | "memo-classify"
     | `memo-transform:${string}`,
   model: string,
   usage: Record<string, unknown> | undefined | null,

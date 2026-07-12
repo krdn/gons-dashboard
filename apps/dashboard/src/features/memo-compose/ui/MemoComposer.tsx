@@ -2,7 +2,13 @@
 import { useState, useSyncExternalStore } from "react";
 import { useSpeechRecognition } from "../lib/useSpeechRecognition";
 import { saveDraft, clearDraft, getDraftSnapshot, subscribeDraft } from "../lib/memoDraftStorage";
-import { cleanupTranscriptAction, createMemoAction } from "../client";
+import { cleanupTranscriptAction, classifyMemoAction, createMemoAction } from "../client";
+
+// 저장 직후 카테고리 분류 트리거 — fire-and-forget. 실패해도 무해
+// (category null 유지 → cron sweep이 회수), UI는 결과를 기다리지 않는다.
+function triggerClassify(memoId: string) {
+  classifyMemoAction(memoId).catch(() => {});
+}
 
 type Mode = "idle" | "cleaning" | "preview";
 type Tab = "voice" | "text";
@@ -100,6 +106,7 @@ export function MemoComposer() {
       (r) => {
         setSaving(false);
         if (r.kind === "ok") {
+          triggerClassify(r.id);
           clearDraft();
           resetVoice();
           setNotice("저장되었습니다.");
@@ -135,6 +142,7 @@ export function MemoComposer() {
       (r) => {
         setSaving(false);
         if (r.kind === "ok") {
+          triggerClassify(r.id);
           setTextInput("");
           setTitle("");
           setNotice("저장되었습니다.");

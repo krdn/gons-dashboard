@@ -7,8 +7,22 @@ export {
   updateMemo,
   deleteMemo,
   searchMemos,
+  setMemoCategory,
+  listUnclassifiedMemos,
   type CreateMemoInput,
 } from "./api/memoRepo";
+export {
+  classifyMemoContent,
+  classifyAndPersistMemoCategory,
+  type ClassifyMemoContentResult,
+  type ClassifyAndPersistResult,
+} from "./api/classifyMemo";
+export {
+  MEMO_CATEGORY_IDS,
+  MEMO_CATEGORY_LABELS,
+  isMemoCategory,
+  type MemoCategory,
+} from "./model/category";
 export { tokenizeSearchQuery, SEARCH_MEMOS_LIMIT } from "./model/search";
 export {
   upsertTransformation,

@@ -29,12 +29,18 @@ export const memos = pgTable(
     rawContent: text("raw_content").notNull(),
     // 음성: AI 클린업본 / 텍스트: raw와 동일. 편집 대상.
     cleanedContent: text("cleaned_content").notNull(),
+    // MemoCategory slug — LLM 자동 분류. null = 미분류(분류 대기/실패, cron sweep이 회수).
+    category: text("category"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
     index("memos_user_created_idx").on(t.userId, t.createdAt.desc()),
     check("memos_source_check", sql`${t.source} IN ('voice', 'text')`),
+    check(
+      "memos_category_check",
+      sql`${t.category} IS NULL OR ${t.category} IN ('idea', 'todo', 'journal', 'reference', 'draft', 'etc')`,
+    ),
     check("memos_raw_not_empty", sql`length(${t.rawContent}) > 0`),
     check("memos_cleaned_not_empty", sql`length(${t.cleanedContent}) > 0`),
   ],

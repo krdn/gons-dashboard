@@ -6,3 +6,5 @@ export { cleanupTranscriptAction } from "./api/cleanupTranscriptAction";
 export type { CleanupResult } from "./lib/cleanup-transcript";
 export { createMemoAction } from "./api/createMemoAction";
 export type { CreateMemoInputAction, CreateMemoActionResult } from "./api/createMemoAction";
+export { classifyMemoAction } from "./api/classifyMemoAction";
+export type { ClassifyMemoActionResult } from "./api/classifyMemoAction";
