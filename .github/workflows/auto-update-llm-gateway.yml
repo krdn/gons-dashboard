@@ -64,11 +64,23 @@ jobs:
           KRX_OPENAPI_AUTH_KEY: placeholder-krx-key
         run: pnpm typecheck
 
+      # GITHUB_TOKEN으로 PR을 만들면 재귀 방지 규칙으로 pull_request 이벤트가 억제되어
+      # CI·auto-merge가 발화하지 않는다 (v4.0.1 업데이트 PR #292에서 실측 — 수동 push로
+      # synchronize 이벤트가 생기고서야 CI가 돌았음). auto-merge.yml과 동일하게 App
+      # 토큰을 사용하면 PR 생성이 App identity로 attribution되어 CI가 정상 트리거된다.
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         env:
           NEW_TAG: ${{ github.event.client_payload.tag }}
         with:
+          token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore(deps): @krdn/llm-gateway ${{ github.event.client_payload.tag }} 업데이트"
           title: "chore(deps): @krdn/llm-gateway → ${{ github.event.client_payload.tag }}"
           body: |
