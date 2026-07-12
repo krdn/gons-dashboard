@@ -19,7 +19,7 @@ vi.mock("@/features/memo-transform/client", () => ({
 
 import { SearchableMemoList } from "./SearchableMemoList";
 
-function makeMemo(id: string, title: string, cleaned: string): Memo {
+function makeMemo(id: string, title: string, cleaned: string, category: string | null = null): Memo {
   return {
     id,
     userId: "u1",
@@ -27,6 +27,7 @@ function makeMemo(id: string, title: string, cleaned: string): Memo {
     title,
     rawContent: cleaned,
     cleanedContent: cleaned,
+    category,
     createdAt: new Date("2026-07-10T10:00:00"),
     updatedAt: new Date("2026-07-10T10:00:00"),
   } as Memo;
@@ -123,5 +124,79 @@ describe("SearchableMemoList", () => {
     await typeAndFlush("회의");
     fireEvent.click(screen.getByRole("button", { name: "검색어 지우기" }));
     expect(screen.getByText("장보기")).toBeTruthy();
+  });
+});
+
+describe("카테고리 필터", () => {
+  const categorized = [
+    makeMemo("c1", "회의 메모", "회의는 세 시", "todo"),
+    makeMemo("c2", "장보기", "우유 사기", "idea"),
+    makeMemo("c3", "미분류 메모", "아직 분류 전"),
+  ];
+
+  function renderCategorized() {
+    render(<SearchableMemoList memos={categorized} transformationsByMemo={{}} presets={[]} />);
+  }
+
+  it("전체 + 고정 6종 칩이 렌더되고 기본 활성은 전체", () => {
+    renderCategorized();
+    const group = screen.getByRole("group", { name: "카테고리 필터" });
+    expect(group.querySelectorAll("button").length).toBe(7);
+    expect(screen.getByRole("button", { name: "전체" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("칩 클릭 시 idle 목록을 해당 카테고리로 거른다 (미분류 제외)", () => {
+    renderCategorized();
+    fireEvent.click(screen.getByRole("button", { name: "아이디어" }));
+    expect(screen.getByText("장보기")).toBeTruthy();
+    expect(screen.queryByText("회의 메모")).toBeNull();
+    expect(screen.queryByText("미분류 메모")).toBeNull();
+    expect(screen.getByRole("button", { name: "아이디어" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("활성 칩 재클릭은 전체로 복귀한다", () => {
+    renderCategorized();
+    fireEvent.click(screen.getByRole("button", { name: "아이디어" }));
+    fireEvent.click(screen.getByRole("button", { name: "아이디어" }));
+    expect(screen.getByText("회의 메모")).toBeTruthy();
+    expect(screen.getByText("미분류 메모")).toBeTruthy();
+  });
+
+  it("해당 카테고리 메모가 없으면 전용 empty 문구를 보여준다", () => {
+    renderCategorized();
+    fireEvent.click(screen.getByRole("button", { name: "일기" }));
+    expect(screen.getByText("‘일기’ 카테고리의 메모가 없습니다.")).toBeTruthy();
+  });
+
+  it("검색 결과에도 필터가 적용되고 카운트는 필터 후 개수", async () => {
+    // 제목에 검색어가 없어야 하이라이트 분절 없이 getByText로 찾을 수 있다.
+    searchMock.mockResolvedValue({
+      kind: "ok",
+      memos: [
+        makeMemo("s1", "안건정리", "회의 안건", "todo"),
+        makeMemo("s2", "생각모음", "회의 아이디어", "idea"),
+      ],
+      truncated: false,
+    });
+    renderCategorized();
+    await typeAndFlush("회의");
+    expect(screen.getByText("2개 결과")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "할 일" }));
+    expect(screen.getByText("1개 결과")).toBeTruthy();
+    expect(screen.getByText("안건정리")).toBeTruthy();
+    expect(screen.queryByText("생각모음")).toBeNull();
+  });
+
+  it("검색 결과가 필터로 전부 걸러지면 카테고리 empty 문구를 보여준다", async () => {
+    searchMock.mockResolvedValue({
+      kind: "ok",
+      memos: [makeMemo("s1", "안건정리", "회의 안건", "todo")],
+      truncated: false,
+    });
+    renderCategorized();
+    await typeAndFlush("회의");
+    fireEvent.click(screen.getByRole("button", { name: "일기" }));
+    expect(screen.getByText("‘일기’ 카테고리에 일치하는 결과가 없습니다.")).toBeTruthy();
   });
 });

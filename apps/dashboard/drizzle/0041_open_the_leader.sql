@@ -1,0 +1,2 @@
+ALTER TABLE "memos" ADD COLUMN "category" text;--> statement-breakpoint
+ALTER TABLE "memos" ADD CONSTRAINT "memos_category_check" CHECK ("memos"."category" IS NULL OR "memos"."category" IN ('idea', 'todo', 'journal', 'reference', 'draft', 'etc'));

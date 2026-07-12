@@ -288,6 +288,13 @@
       "when": 1783672277064,
       "tag": "0040_parallel_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783862879599,
+      "tag": "0041_open_the_leader",
+      "breakpoints": true
     }
   ]
 }

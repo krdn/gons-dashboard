@@ -3,7 +3,16 @@ import { db } from "@/shared/lib/db/client";
 import { memos, memoTransformations } from "@/shared/lib/db/schema";
 import { users } from "@/shared/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createMemo, listMemos, getMemo, updateMemo, deleteMemo, searchMemos } from "./memoRepo";
+import {
+  createMemo,
+  listMemos,
+  getMemo,
+  updateMemo,
+  deleteMemo,
+  searchMemos,
+  setMemoCategory,
+  listUnclassifiedMemos,
+} from "./memoRepo";
 
 const USER_ID = "00000000-0000-0000-0000-000000000abc";
 
@@ -61,6 +70,36 @@ describe("memoRepo", () => {
 
   it("빈 content는 CHECK 제약으로 거부된다", async () => {
     await expect(createMemo({ ...base, rawContent: "", cleanedContent: "" })).rejects.toThrow();
+  });
+});
+
+describe("memo category", () => {
+  const base = { userId: USER_ID, source: "text" as const, title: "제목", rawContent: "원문", cleanedContent: "원문" };
+
+  it("새 메모는 미분류(null)로 생성되고 setMemoCategory로 영속화된다", async () => {
+    const created = await createMemo(base);
+    expect(created.category).toBeNull();
+
+    await setMemoCategory(created.id, "idea");
+    expect((await getMemo(USER_ID, created.id))?.category).toBe("idea");
+  });
+
+  it("무효 카테고리는 CHECK 제약으로 거부된다", async () => {
+    const created = await createMemo(base);
+    await expect(
+      db.update(memos).set({ category: "bogus" }).where(eq(memos.id, created.id)),
+    ).rejects.toThrow();
+  });
+
+  it("listUnclassifiedMemos는 미분류만 오래된 순으로 반환한다", async () => {
+    const first = await createMemo({ ...base, title: "먼저" });
+    const second = await createMemo({ ...base, title: "나중" });
+    const classified = await createMemo({ ...base, title: "분류됨" });
+    await setMemoCategory(classified.id, "todo");
+
+    // 다른 테스트 파일의 잔여 행과 격리 — 이 유저 것만 대조.
+    const ours = (await listUnclassifiedMemos(1000)).filter((m) => m.userId === USER_ID);
+    expect(ours.map((m) => m.id)).toEqual([first.id, second.id]);
   });
 });
 

@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   tokenizeSearchQuery,
   SEARCH_MEMOS_LIMIT,
+  MEMO_CATEGORY_IDS,
+  MEMO_CATEGORY_LABELS,
   type Memo,
+  type MemoCategory,
   type MemoTransformation,
 } from "@/entities/memo/client";
 // features→features 허용 예외 (검색이 목록 렌더를 재사용).
@@ -28,6 +31,8 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
   // null = 아직 첫 응답 전 (검색 중 표시). 재검색 중엔 직전 결과를 유지해 점프를 막는다.
   const [results, setResults] = useState<{ memos: Memo[]; truncated: boolean } | null>(null);
   const [status, setStatus] = useState<SearchStatus>("done");
+  // 카테고리 필터 — 화면에 보이는 목록(원본·검색 결과 모두)에 클라이언트 적용. null = 전체.
+  const [category, setCategory] = useState<MemoCategory | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 응답 순서 역전 방지 — 마지막 요청만 반영.
@@ -89,7 +94,11 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
   }, []);
 
   const highlightTerms = active ? tokenizeSearchQuery(trimmed) : [];
-  const hasResults = results !== null && results.memos.length > 0;
+  const filterByCategory = (list: Memo[]): Memo[] =>
+    category === null ? list : list.filter((m) => m.category === category);
+  const visibleResults = results === null ? null : filterByCategory(results.memos);
+  const visibleIdle = filterByCategory(memos);
+  const hasResults = visibleResults !== null && visibleResults.length > 0;
   // 상태 라인 — 하나의 aria-live 영역이 검색 중·실패·빈 결과·카운트를 모두 알린다.
   const statusText =
     status === "failed"
@@ -98,8 +107,10 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
         ? "검색 중…"
         : results.memos.length === 0
           ? `‘${trimmed}’에 대한 결과가 없습니다.`
-          : `${results.memos.length}개 결과${results.truncated ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`;
-  const isMessage = status === "failed" || results === null || results.memos.length === 0;
+          : category !== null && visibleResults !== null && visibleResults.length === 0
+            ? `‘${MEMO_CATEGORY_LABELS[category]}’ 카테고리에 일치하는 결과가 없습니다.`
+            : `${visibleResults?.length ?? 0}개 결과${results.truncated ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`;
+  const isMessage = status === "failed" || results === null || !hasResults;
 
   return (
     <div className="space-y-3">
@@ -143,6 +154,36 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
         </div>
       </div>
 
+      <div role="group" aria-label="카테고리 필터" className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          aria-pressed={category === null}
+          onClick={() => setCategory(null)}
+          className={
+            category === null
+              ? "rounded-full bg-neutral-900 px-2.5 py-0.5 text-xs text-white"
+              : "rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs text-neutral-500 hover:text-neutral-900"
+          }
+        >
+          전체
+        </button>
+        {MEMO_CATEGORY_IDS.map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={category === id}
+            onClick={() => setCategory((cur) => (cur === id ? null : id))}
+            className={
+              category === id
+                ? "rounded-full bg-neutral-900 px-2.5 py-0.5 text-xs text-white"
+                : "rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs text-neutral-500 hover:text-neutral-900"
+            }
+          >
+            {MEMO_CATEGORY_LABELS[id]}
+          </button>
+        ))}
+      </div>
+
       {active ? (
         <>
           <p
@@ -153,9 +194,9 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
           >
             {statusText}
           </p>
-          {status !== "failed" && hasResults && (
+          {status !== "failed" && visibleResults !== null && hasResults && (
             <MemoList
-              memos={results.memos}
+              memos={visibleResults}
               transformationsByMemo={transformationsByMemo}
               presets={presets}
               highlightTerms={highlightTerms}
@@ -163,8 +204,12 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
             />
           )}
         </>
+      ) : category !== null && visibleIdle.length === 0 ? (
+        <p className="py-8 text-center text-sm text-neutral-400">
+          ‘{MEMO_CATEGORY_LABELS[category]}’ 카테고리의 메모가 없습니다.
+        </p>
       ) : (
-        <MemoList memos={memos} transformationsByMemo={transformationsByMemo} presets={presets} />
+        <MemoList memos={visibleIdle} transformationsByMemo={transformationsByMemo} presets={presets} />
       )}
     </div>
   );

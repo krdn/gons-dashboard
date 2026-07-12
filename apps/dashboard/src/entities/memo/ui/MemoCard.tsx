@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Highlighted } from "@/shared/ui/Highlighted";
 import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
+import { MEMO_CATEGORY_LABELS, isMemoCategory } from "../model/category";
 
 interface MemoCardProps {
   memo: Memo;
@@ -106,9 +107,16 @@ export function MemoCard({
         <h3 className="font-medium text-neutral-900">
           <Highlighted text={memo.title} terms={highlightTerms} />
         </h3>
-        <span className="shrink-0 rounded px-1.5 py-0.5 text-xs text-neutral-500">
-          {isVoice ? "🎙 음성" : "✍ 텍스트"}
-        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          {isMemoCategory(memo.category) && (
+            <span className="rounded border border-neutral-200 px-1.5 py-0.5 text-xs text-neutral-500">
+              {MEMO_CATEGORY_LABELS[memo.category]}
+            </span>
+          )}
+          <span className="rounded px-1.5 py-0.5 text-xs text-neutral-500">
+            {isVoice ? "🎙 음성" : "✍ 텍스트"}
+          </span>
+        </div>
       </header>
       {chips.length > 1 && (
         <div className="mb-2 flex flex-wrap gap-1.5">

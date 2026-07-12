@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { memos, memoTransformations } from "@/shared/lib/db/schema";
 import type { Memo, MemoSource } from "../model/types";
+import type { MemoCategory } from "../model/category";
 import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/search";
 
 // 개인 대시보드 규모 상한 — 페이지네이션 도입 전까지 unbounded 쿼리 방지.
@@ -97,6 +98,24 @@ export async function updateMemo(
     .where(and(eq(memos.id, id), eq(memos.userId, userId)))
     .returning();
   return rows[0] ?? null;
+}
+
+/**
+ * 카테고리 영속화. userId 미요구 — 내부용 (분류 오케스트레이션 전용, 소유권은
+ * 호출자가 보장). updatedAt은 건드리지 않는다 (내용 편집이 아니므로).
+ */
+export async function setMemoCategory(id: string, category: MemoCategory): Promise<void> {
+  await db.update(memos).set({ category }).where(eq(memos.id, id));
+}
+
+/** cron sweep 대상 — 전 사용자 미분류 메모, 오래된 순 (백필이 과거부터 진행). */
+export function listUnclassifiedMemos(limit: number): Promise<Memo[]> {
+  return db
+    .select()
+    .from(memos)
+    .where(isNull(memos.category))
+    .orderBy(asc(memos.createdAt))
+    .limit(limit);
 }
 
 export async function deleteMemo(userId: string, id: string): Promise<boolean> {
