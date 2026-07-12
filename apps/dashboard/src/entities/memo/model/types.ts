@@ -1,5 +1,6 @@
 import type {
   memos,
+  memoActionItems,
   memoDigests,
   memoTransformations,
   memoTransformPresets,
@@ -16,6 +17,7 @@ import {
 export type Memo = typeof memos.$inferSelect;
 export type MemoSource = "voice" | "text";
 export type MemoDigest = typeof memoDigests.$inferSelect;
+export type MemoActionItem = typeof memoActionItems.$inferSelect;
 
 export type MemoTransformation = typeof memoTransformations.$inferSelect;
 export type MemoTransformPreset = typeof memoTransformPresets.$inferSelect;

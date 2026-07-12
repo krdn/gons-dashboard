@@ -6,6 +6,7 @@ import {
   MEMO_CATEGORY_IDS,
   MEMO_CATEGORY_LABELS,
   type Memo,
+  type MemoActionItem,
   type MemoCategory,
   type MemoTransformation,
 } from "@/entities/memo/client";
@@ -22,11 +23,18 @@ interface SearchableMemoListProps {
   memos: Memo[];
   transformationsByMemo: Record<string, MemoTransformation[]>;
   presets: TransformPresetOption[];
+  /** 사용자 전체 액션 맵 — 검색 결과(200개 컷 밖 메모)에도 유효 (transformationsByMemo와 동일 원리). */
+  actionItemsByMemo?: Record<string, MemoActionItem[]>;
 }
 
 // 검색바 + 목록 전환 — 비활성(빈 쿼리)이면 서버가 내려준 원본 목록,
 // 활성이면 searchMemosAction 결과(전체 메모 대상, 하이라이트 포함)를 보여준다.
-export function SearchableMemoList({ memos, transformationsByMemo, presets }: SearchableMemoListProps) {
+export function SearchableMemoList({
+  memos,
+  transformationsByMemo,
+  presets,
+  actionItemsByMemo,
+}: SearchableMemoListProps) {
   const [query, setQuery] = useState("");
   // null = 아직 첫 응답 전 (검색 중 표시). 재검색 중엔 직전 결과를 유지해 점프를 막는다.
   const [results, setResults] = useState<{ memos: Memo[]; truncated: boolean } | null>(null);
@@ -199,6 +207,7 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
               memos={visibleResults}
               transformationsByMemo={transformationsByMemo}
               presets={presets}
+              actionItemsByMemo={actionItemsByMemo}
               highlightTerms={highlightTerms}
               onMutated={() => runSearch(trimmed)}
             />
@@ -209,7 +218,12 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
           ‘{MEMO_CATEGORY_LABELS[category]}’ 카테고리의 메모가 없습니다.
         </p>
       ) : (
-        <MemoList memos={visibleIdle} transformationsByMemo={transformationsByMemo} presets={presets} />
+        <MemoList
+          memos={visibleIdle}
+          transformationsByMemo={transformationsByMemo}
+          presets={presets}
+          actionItemsByMemo={actionItemsByMemo}
+        />
       )}
     </div>
   );

@@ -16,6 +16,9 @@ vi.mock("@/features/memo-transform/client", () => ({
   transformMemoAction: vi.fn(),
   saveTransformationAction: vi.fn(),
 }));
+vi.mock("@/features/memo-actions/client", () => ({
+  updateActionItemStatusAction: vi.fn(),
+}));
 
 import { SearchableMemoList } from "./SearchableMemoList";
 

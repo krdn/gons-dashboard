@@ -302,6 +302,13 @@
       "when": 1783864691520,
       "tag": "0042_orange_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1783866342730,
+      "tag": "0043_cuddly_diamondback",
+      "breakpoints": true
     }
   ]
 }

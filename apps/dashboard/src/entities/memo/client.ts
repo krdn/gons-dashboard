@@ -2,6 +2,7 @@
 export type {
   Memo,
   MemoSource,
+  MemoActionItem,
   MemoTransformation,
   TransformPresetId,
   MemoModelKey,
@@ -25,5 +26,15 @@ export {
   isMemoCategory,
   type MemoCategory,
 } from "./model/category";
+export {
+  ACTION_ITEM_KINDS,
+  ACTION_ITEM_STATUSES,
+  ACTION_ITEM_KIND_LABELS,
+  isActionItemKind,
+  isActionItemStatus,
+  canTransition,
+  type ActionItemKind,
+  type ActionItemStatus,
+} from "./model/actionItem";
 export { tokenizeSearchQuery, SEARCH_MEMOS_LIMIT } from "./model/search";
 export { MemoCard } from "./ui/MemoCard";

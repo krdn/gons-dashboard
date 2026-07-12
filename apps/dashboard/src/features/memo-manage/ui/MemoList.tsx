@@ -1,15 +1,18 @@
 "use client";
 import { useState } from "react";
-import { MemoCard, type Memo, type MemoTransformation } from "@/entities/memo/client";
+import { MemoCard, type Memo, type MemoActionItem, type MemoTransformation } from "@/entities/memo/client";
 import { updateMemoAction, deleteMemoAction } from "../client";
-// features→features 허용 예외 (memo-manage가 변환 다이얼로그를 조립).
+// features→features 허용 예외 (memo-manage가 변환 다이얼로그·액션 패널을 조립).
 import { TransformDialog } from "@/features/memo-transform/ui/TransformDialog";
 import type { TransformPresetOption } from "@/features/memo-transform/client";
+import { MemoActionPanel } from "@/features/memo-actions/ui/MemoActionPanel";
 
 interface MemoListProps {
   memos: Memo[];
   transformationsByMemo: Record<string, MemoTransformation[]>;
   presets: TransformPresetOption[];
+  /** 메모별 액션 제안·할일 (proposed·accepted) — 없으면 패널 미렌더. */
+  actionItemsByMemo?: Record<string, MemoActionItem[]>;
   /** 검색어 하이라이트 — 검색 결과 렌더 시에만 전달. */
   highlightTerms?: string[];
   /** 편집·삭제 성공 후 콜백 — 검색 모드의 클라이언트 결과를 재검색으로 갱신 (revalidatePath가 못 미침). */
@@ -20,6 +23,7 @@ export function MemoList({
   memos,
   transformationsByMemo,
   presets,
+  actionItemsByMemo,
   highlightTerms,
   onMutated,
 }: MemoListProps) {
@@ -130,6 +134,11 @@ export function MemoList({
             onDelete={handleDelete}
             onTransform={setTransforming}
             highlightTerms={highlightTerms}
+            actionsSlot={
+              (actionItemsByMemo?.[memo.id]?.length ?? 0) > 0 ? (
+                <MemoActionPanel items={actionItemsByMemo?.[memo.id] ?? []} />
+              ) : undefined
+            }
           />
         ),
       )}
