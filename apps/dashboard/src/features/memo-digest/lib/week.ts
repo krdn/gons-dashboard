@@ -35,6 +35,40 @@ export function computeDigestWindow(now: Date): DigestWindow {
   };
 }
 
+/** weekEnd('YYYY-MM-DD', 일요일)에서 창 복원 — computeDigestWindow와 동일 경계 (백필용). */
+export function windowForWeekEnd(weekEnd: string): DigestWindow {
+  const sundayMidnightKstMs = Date.parse(`${weekEnd}T00:00:00Z`);
+  const toKstMs = sundayMidnightKstMs + DIGEST_HOUR_KST * 60 * 60 * 1000;
+  return {
+    weekEnd,
+    from: new Date(toKstMs - 7 * DAY_MS - KST_OFFSET_MS),
+    to: new Date(toKstMs - KST_OFFSET_MS),
+  };
+}
+
+/**
+ * 마지막 기록 주(lastWeekEnd, exclusive) 이후 누락된 weekEnd 열거 — 오래된 순.
+ * 실패(LLM 장애·컨테이너 다운)가 한 주를 넘겨도 창이 영구 누락되지 않게 하는
+ * 백필 경로 (리뷰 확정 결함 수정). maxWeeks로 최신 우선 상한 — 오래 방치된
+ * 경우에도 폭주하지 않는다. lastWeekEnd=null(첫 다이제스트)은 현재 주만 반환
+ * (신규 사용자 백필 스팸 방지).
+ */
+export function enumerateMissingWeekEnds(
+  lastWeekEnd: string | null,
+  currentWeekEnd: string,
+  maxWeeks: number,
+): string[] {
+  if (lastWeekEnd === null) return [currentWeekEnd];
+  const currentMs = Date.parse(`${currentWeekEnd}T00:00:00Z`);
+  const out: string[] = [];
+  for (let i = 0; i < maxWeeks; i += 1) {
+    const weekEnd = new Date(currentMs - i * 7 * DAY_MS).toISOString().slice(0, 10);
+    if (weekEnd <= lastWeekEnd) break;
+    out.push(weekEnd);
+  }
+  return out.reverse();
+}
+
 /** 위젯 주간 라벨 — weekEnd 'YYYY-MM-DD' → 'M/D – M/D' (locale-free, Gotcha #3). */
 export function formatWeekLabel(weekEnd: string): string {
   const end = new Date(`${weekEnd}T00:00:00Z`);

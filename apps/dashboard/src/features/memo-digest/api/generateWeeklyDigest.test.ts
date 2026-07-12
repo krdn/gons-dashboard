@@ -9,11 +9,13 @@ vi.mock("@krdn/llm-gateway/gateway", async (importOriginal) => ({
 
 const hasDigestMock = vi.hoisted(() => vi.fn());
 const insertDigestMock = vi.hoisted(() => vi.fn());
+const getLatestDigestMock = vi.hoisted(() => vi.fn());
 const listMemosBetweenMock = vi.hoisted(() => vi.fn());
 const listMemosOlderThanMock = vi.hoisted(() => vi.fn());
 vi.mock("@/entities/memo/server", () => ({
   hasDigest: hasDigestMock,
   insertDigest: insertDigestMock,
+  getLatestDigest: getLatestDigestMock,
   listMemosBetween: listMemosBetweenMock,
   listMemosOlderThan: listMemosOlderThanMock,
 }));
@@ -53,6 +55,7 @@ beforeEach(() => {
   });
   hasDigestMock.mockReset().mockResolvedValue(false);
   insertDigestMock.mockReset().mockImplementation(async (input: unknown) => input);
+  getLatestDigestMock.mockReset().mockResolvedValue(null); // 첫 다이제스트 — 현재 주만
   listMemosBetweenMock.mockReset().mockResolvedValue([memo("m1", "회의", 2)]);
   listMemosOlderThanMock.mockReset().mockResolvedValue([]);
   sendPushToUserMock.mockReset().mockResolvedValue({ total: 1, sent: 1, expired: 0, errors: 0 });
@@ -146,5 +149,40 @@ describe("generateWeeklyDigest", () => {
     await generateWeeklyDigest(USER, NOW);
     const prompt = analyzeStructuredMock.mock.calls[0][0] as string;
     expect(prompt).toContain("[할 일] 회의 준비");
+  });
+
+  it("누락 주 백필 — 과거 창은 push 억제, 현재 주만 발송", async () => {
+    // 마지막 기록이 2주 전 → 2026-07-05(누락)와 2026-07-12(현재) 두 창 생성.
+    getLatestDigestMock.mockResolvedValue({ weekEnd: "2026-06-28" });
+
+    const r = await generateWeeklyDigest(USER, NOW);
+    expect(insertDigestMock).toHaveBeenCalledTimes(2);
+    expect(insertDigestMock.mock.calls.map((c) => (c[0] as { weekEnd: string }).weekEnd)).toEqual([
+      "2026-07-05",
+      "2026-07-12",
+    ]);
+    // 과거 창(7/5)은 [6/28 19:00, 7/5 19:00) — computeDigestWindow와 동일 경계
+    expect(listMemosBetweenMock).toHaveBeenNthCalledWith(
+      1,
+      USER,
+      new Date("2026-06-28T10:00:00.000Z"),
+      new Date("2026-07-05T10:00:00.000Z"),
+    );
+    // push는 현재 주 1회만
+    expect(sendPushToUserMock).toHaveBeenCalledTimes(1);
+    expect(r.kind).toBe("generated");
+    expect(r.backfilled).toBe(1);
+  });
+
+  it("백필 중간 실패는 throw — 생성된 창까지는 남아 다음 실행이 이어간다", async () => {
+    getLatestDigestMock.mockResolvedValue({ weekEnd: "2026-06-28" });
+    // 첫 창(7/5)은 성공, 둘째 창(7/12)에서 LLM 실패.
+    analyzeStructuredMock
+      .mockResolvedValueOnce({ object: { summary: "7/5 요약" }, usage: {} })
+      .mockRejectedValueOnce(new Error("proxy down"));
+
+    await expect(generateWeeklyDigest(USER, NOW)).rejects.toThrow("proxy down");
+    expect(insertDigestMock).toHaveBeenCalledTimes(1); // 7/5만 기록
+    expect(sendPushToUserMock).not.toHaveBeenCalled(); // 과거 창이라 push 억제
   });
 });

@@ -23,7 +23,12 @@
   digest 행이 없으면 due.
 - **트리거**: cron 매일 19:05 KST — 일요일 저녁 정상 발화, 컨테이너가 그 시각에
   죽어 있었으면 다음 날 19:05에 catchup (morning-digest의 "잦은 트리거 + DB
-  due-gating" 전례의 주간 일반화). 멱등: `unique(user_id, week_start)`.
+  due-gating" 전례의 주간 일반화). 멱등: `unique(user_id, week_end)`.
+- **누락 주 백필** (리뷰 확정 결함 반영): due 판정이 최신 창 하나만 보면 실패가
+  7일 지속될 때 그 주가 영구 누락된다. `getLatestDigest`의 마지막 week_end 이후
+  누락된 창을 **오래된 순으로 최대 4주** 백필 생성하되, push는 현재(최신) 주에만
+  발송 — 회복 직후 알림 폭주 방지. 중간 실패는 throw — 생성분까지는 기록돼
+  다음 실행이 이어서 재시도.
 - KST는 고정 UTC+9 (DST 없음) — `kstTodayDate` 전례와 동일한 +9h 산술.
 
 ## 3. 파이프라인 (cron route → feature 오케스트레이션)
@@ -117,11 +122,18 @@ app/_widgets/registry.ts           # aside에 memo-digest 등록 (recent-memos �
 
 ## 10. 테스트 계획
 
-1. `lib/week.test.ts` — 일요일 19:00 전/후, 주중, 자정 경계, KST 오프셋 순수 검증.
+1. `lib/week.test.ts` — 일요일 19:00 전/후, 주중, 자정 경계, KST 오프셋, 타일링,
+   windowForWeekEnd 복원, enumerateMissingWeekEnds(백필 열거·상한) 순수 검증.
 2. `lib/resurface.test.ts` — 30일 컷, 가중치 단조성(고정 rng), 후보 0/1개 엣지.
 3. `memoDigestRepo.test.ts` — insert 충돌 멱등, getLatest 정렬, hasDigest (통합).
-4. `generateWeeklyDigest.test.ts` — skip/0건 marker/정상/LLM 실패 4경로 (mock).
+   `memoRepo.test.ts` — 창 쿼리 4개 경계([from,to) 반개구간·strict lt·distinct·
+   소유 격리) 통합 (리뷰 반영).
+4. `generateWeeklyDigest.test.ts` — skip/0건 marker/정상/LLM 실패/백필(push 억제·
+   중간 실패 재개) 경로 (mock).
 5. `MemoDigestView.test.tsx` — 요약·빈 주·재부상 목록 렌더 (jsdom).
+   `resolveResurfaced.test.ts` — 삭제 생략·스냅샷 순서 (순수, 리뷰 반영).
+6. `shared/lib/push/index.test.ts` — sendPushToUser 4경로 (성공 카운트·만료 삭제·
+   vapid-missing 중단·일반 에러) (리뷰 반영).
 
 ## 11. 비범위 (YAGNI)
 

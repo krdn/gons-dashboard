@@ -9,6 +9,7 @@ import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { gatewayDefaults, logLlmSpend } from "@/shared/lib/llm/anthropic";
 import { sendPushToUser } from "@/shared/lib/push";
 import {
+  getLatestDigest,
   hasDigest,
   insertDigest,
   listMemosBetween,
@@ -16,7 +17,12 @@ import {
   type Memo,
 } from "@/entities/memo/server";
 import { MEMO_CATEGORY_LABELS, isMemoCategory } from "@/entities/memo/client";
-import { computeDigestWindow } from "../lib/week";
+import {
+  computeDigestWindow,
+  enumerateMissingWeekEnds,
+  windowForWeekEnd,
+  type DigestWindow,
+} from "../lib/week";
 import { pickResurfaced, RESURFACE_MIN_AGE_DAYS } from "../lib/resurface";
 
 // 요약은 생성 작업 — haiku 부적합 (이메일 초안 거절 전례), cleanup-transcript의
@@ -67,7 +73,10 @@ async function summarizeWeek(weekMemos: Memo[]): Promise<string> {
   return result.object.summary;
 }
 
-export type GenerateDigestResult =
+// 백필 상한 — 오래 방치돼도 한 실행에서 최신 4주까지만 (LLM 폭주 방지).
+const MAX_BACKFILL_WEEKS = 4;
+
+type WindowResult =
   | { kind: "already-generated" }
   | { kind: "empty-week" }
   | {
@@ -78,11 +87,15 @@ export type GenerateDigestResult =
       push: { total: number; sent: number };
     };
 
-export async function generateWeeklyDigest(
+export type GenerateDigestResult = WindowResult & { backfilled?: number };
+
+/** 단일 창 생성. sendPushForThis=false(과거 주 백필)는 push 억제 — 회복 직후 알림 폭주 방지. */
+async function generateForWindow(
   userId: string,
+  window: DigestWindow,
   now: Date,
-): Promise<GenerateDigestResult> {
-  const window = computeDigestWindow(now);
+  sendPushForThis: boolean,
+): Promise<WindowResult> {
   if (await hasDigest(userId, window.weekEnd)) return { kind: "already-generated" };
 
   const weekMemos = await listMemosBetween(userId, window.from, window.to);
@@ -112,13 +125,14 @@ export async function generateWeeklyDigest(
   });
   if (!inserted) return { kind: "already-generated" }; // 동시 실행 — 상대가 push까지 책임
 
-  const firstLine = summary.split("\n")[0].slice(0, 80);
-  const push = await sendPushToUser(userId, {
-    title: "주간 메모 다이제스트",
-    body: `지난주 메모 ${weekMemos.length}개 — ${firstLine}`,
-    url: "/",
-    tag: "memo-digest",
-  });
+  const push = sendPushForThis
+    ? await sendPushToUser(userId, {
+        title: "주간 메모 다이제스트",
+        body: `지난주 메모 ${weekMemos.length}개 — ${summary.split("\n")[0].slice(0, 80)}`,
+        url: "/",
+        tag: "memo-digest",
+      })
+    : { total: 0, sent: 0 };
 
   return {
     kind: "generated",
@@ -127,4 +141,36 @@ export async function generateWeeklyDigest(
     resurfacedCount: resurfaced.length,
     push: { total: push.total, sent: push.sent },
   };
+}
+
+/**
+ * due 판정 + 누락 주 백필 — 마지막 기록 주 이후의 모든 누락 창을 오래된 순으로
+ * 생성한다 (실패가 한 주를 넘겨도 창이 영구 누락되지 않게 — 리뷰 확정 결함 수정).
+ * push는 현재(최신) 주에만. 중간 실패는 throw — 생성된 창까지는 기록돼 있어
+ * 다음 실행이 이어서 재시도한다.
+ */
+export async function generateWeeklyDigest(
+  userId: string,
+  now: Date,
+): Promise<GenerateDigestResult> {
+  const current = computeDigestWindow(now);
+  const latest = await getLatestDigest(userId);
+  const missing = enumerateMissingWeekEnds(
+    latest?.weekEnd ?? null,
+    current.weekEnd,
+    MAX_BACKFILL_WEEKS,
+  );
+  if (missing.length === 0) return { kind: "already-generated" };
+
+  let last: WindowResult = { kind: "already-generated" };
+  for (const weekEnd of missing) {
+    last = await generateForWindow(
+      userId,
+      windowForWeekEnd(weekEnd),
+      now,
+      weekEnd === current.weekEnd,
+    );
+  }
+  const backfilled = missing.length - 1;
+  return backfilled > 0 ? { ...last, backfilled } : last;
 }

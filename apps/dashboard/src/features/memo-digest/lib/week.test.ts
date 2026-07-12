@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { computeDigestWindow, formatWeekLabel } from "./week";
+import {
+  computeDigestWindow,
+  enumerateMissingWeekEnds,
+  formatWeekLabel,
+  windowForWeekEnd,
+} from "./week";
 
 // 2026-07-12 는 일요일. KST = UTC+9.
 describe("computeDigestWindow", () => {
@@ -40,6 +45,42 @@ describe("computeDigestWindow", () => {
     const thisWeek = computeDigestWindow(new Date("2026-07-12T13:00:00Z"));
     const nextWeek = computeDigestWindow(new Date("2026-07-19T13:00:00Z"));
     expect(nextWeek.from.toISOString()).toBe(thisWeek.to.toISOString());
+  });
+});
+
+describe("windowForWeekEnd", () => {
+  test("computeDigestWindow와 동일 경계를 복원한다", () => {
+    const computed = computeDigestWindow(new Date("2026-07-12T13:00:00Z"));
+    const restored = windowForWeekEnd("2026-07-12");
+    expect(restored.from.toISOString()).toBe(computed.from.toISOString());
+    expect(restored.to.toISOString()).toBe(computed.to.toISOString());
+  });
+});
+
+describe("enumerateMissingWeekEnds", () => {
+  test("첫 다이제스트(null)는 현재 주만 — 신규 사용자 백필 스팸 방지", () => {
+    expect(enumerateMissingWeekEnds(null, "2026-07-12", 4)).toEqual(["2026-07-12"]);
+  });
+  test("직전 주까지 기록됨 → 현재 주만", () => {
+    expect(enumerateMissingWeekEnds("2026-07-05", "2026-07-12", 4)).toEqual(["2026-07-12"]);
+  });
+  test("2주 누락 → 오래된 순으로 열거", () => {
+    expect(enumerateMissingWeekEnds("2026-06-21", "2026-07-12", 4)).toEqual([
+      "2026-06-28",
+      "2026-07-05",
+      "2026-07-12",
+    ]);
+  });
+  test("maxWeeks 상한 — 최신 우선 컷, 반환은 오래된 순", () => {
+    expect(enumerateMissingWeekEnds("2026-01-04", "2026-07-12", 4)).toEqual([
+      "2026-06-21",
+      "2026-06-28",
+      "2026-07-05",
+      "2026-07-12",
+    ]);
+  });
+  test("이미 최신까지 기록됨 → 빈 배열", () => {
+    expect(enumerateMissingWeekEnds("2026-07-12", "2026-07-12", 4)).toEqual([]);
   });
 });
 

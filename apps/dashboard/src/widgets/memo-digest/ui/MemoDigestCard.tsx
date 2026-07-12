@@ -1,6 +1,7 @@
 import "server-only";
 import { auth } from "@/shared/lib/auth";
 import { getLatestDigest, getMemosByIds } from "@/entities/memo/server";
+import { resolveResurfaced } from "../lib/resolveResurfaced";
 import { MemoDigestView } from "./MemoDigestView";
 
 // WIDGET_REGISTRY entry — 인자 없는 async RSC (RecentMemosCard 전례).
@@ -14,12 +15,10 @@ export async function MemoDigestCard() {
   if (!digest) return null;
 
   // 재부상 id 스냅샷 → 소유자 스코프 조회. 삭제된 메모는 자연 누락 (스펙 §5).
-  const resurfacedRows = await getMemosByIds(userId, digest.resurfacedMemoIds);
-  const byId = new Map(resurfacedRows.map((m) => [m.id, m]));
-  const resurfaced = digest.resurfacedMemoIds
-    .map((id) => byId.get(id))
-    .filter((m) => m !== undefined)
-    .map((m) => ({ id: m.id, title: m.title, createdAt: m.createdAt }));
+  const resurfaced = resolveResurfaced(
+    digest.resurfacedMemoIds,
+    await getMemosByIds(userId, digest.resurfacedMemoIds),
+  );
 
   return (
     <MemoDigestView
