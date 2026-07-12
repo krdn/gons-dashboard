@@ -174,6 +174,23 @@ describe("generateWeeklyDigest", () => {
     expect(r.backfilled).toBe(1);
   });
 
+  it("4주 초과 공백 — 오래된 4주만 생성하고 push 억제, 잔여는 다음 실행이 이어간다", async () => {
+    // 마지막 기록이 6주 전(5/31) → 누락 6주 중 오래된 4주(6/7~6/28)만 이번 실행에서.
+    getLatestDigestMock.mockResolvedValue({ weekEnd: "2026-05-31" });
+
+    const r = await generateWeeklyDigest(USER, NOW);
+    expect(insertDigestMock.mock.calls.map((c) => (c[0] as { weekEnd: string }).weekEnd)).toEqual([
+      "2026-06-07",
+      "2026-06-14",
+      "2026-06-21",
+      "2026-06-28",
+    ]);
+    // 현재 주(7/12)가 배치에 없으므로 push 없음 — 커서가 6/28로 전진해 다음 실행이 이어감.
+    expect(sendPushToUserMock).not.toHaveBeenCalled();
+    expect(r.kind).toBe("generated");
+    expect(r.backfilled).toBe(4);
+  });
+
   it("백필 중간 실패는 throw — 생성된 창까지는 남아 다음 실행이 이어간다", async () => {
     getLatestDigestMock.mockResolvedValue({ weekEnd: "2026-06-28" });
     // 첫 창(7/5)은 성공, 둘째 창(7/12)에서 LLM 실패.
