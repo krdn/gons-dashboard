@@ -21,6 +21,26 @@ export {
   getLatestDigest,
   type InsertDigestInput,
 } from "./api/memoDigestRepo";
+export { listMemosNeedingExtraction } from "./api/memoRepo";
+export {
+  insertActionItemsAndMark,
+  listActionItemsByUser,
+  updateActionItemStatus,
+  listDueReminders,
+  markActionItemReminded,
+  type NewActionItem,
+} from "./api/memoActionItemRepo";
+export {
+  ACTION_ITEM_KINDS,
+  ACTION_ITEM_STATUSES,
+  ACTION_ITEM_KIND_LABELS,
+  ACTION_ITEM_ALLOWED_FROM,
+  isActionItemKind,
+  isActionItemStatus,
+  canTransition,
+  type ActionItemKind,
+  type ActionItemStatus,
+} from "./model/actionItem";
 export {
   classifyMemoContent,
   classifyAndPersistMemoCategory,
@@ -54,6 +74,7 @@ export type {
   Memo,
   MemoSource,
   MemoDigest,
+  MemoActionItem,
   MemoTransformation,
   TransformPresetId,
   MemoModelKey,

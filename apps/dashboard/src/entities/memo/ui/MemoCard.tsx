@@ -15,6 +15,8 @@ interface MemoCardProps {
   onTransform?: (memo: Memo) => void;
   /** 검색어 하이라이트 — 제목과 현재 보이는 본문 뷰(칩 전환 포함)에 적용. */
   highlightTerms?: string[];
+  /** 액션 제안·할일 패널 슬롯 — 조립은 MemoList 담당 (entity는 features 접근 불가, onTransform과 동일 원칙). */
+  actionsSlot?: React.ReactNode;
 }
 
 // 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 slug — 빌트인·커스텀 공통).
@@ -62,6 +64,7 @@ export function MemoCard({
   onDelete,
   onTransform,
   highlightTerms = [],
+  actionsSlot,
 }: MemoCardProps) {
   // 파생 초기 뷰 + 사용자 오버라이드 — 칩 클릭 전까지는 검색어가 실제 일치한 뷰를 보여준다.
   const [userView, setUserView] = useState<MemoView | null>(null);
@@ -140,6 +143,7 @@ export function MemoCard({
       <p className="whitespace-pre-wrap text-sm text-neutral-700">
         <Highlighted text={body} terms={highlightTerms} />
       </p>
+      {actionsSlot}
       <footer className="mt-3 flex items-center gap-3 text-xs text-neutral-400">
         <time>{formatTime(memo.createdAt)}</time>
         {onTransform && (

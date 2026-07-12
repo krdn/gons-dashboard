@@ -33,6 +33,9 @@ export const memos = pgTable(
     cleanedContent: text("cleaned_content").notNull(),
     // MemoCategory slug — LLM 자동 분류. null = 미분류(분류 대기/실패, cron sweep이 회수).
     category: text("category"),
+    // 액션 추출 시도 성공 시각 (0건도 기록). null = 미추출 — 48h 내 생성분만 cron 회수
+    // (과거 백필 없음 — 오래된 메모의 상대 날짜는 기준점이 어긋남, 스펙 memo-action-extraction §3).
+    actionsExtractedAt: timestamp("actions_extracted_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
@@ -115,6 +118,40 @@ export const memoTransformPresets = pgTable(
       "memo_transform_presets_model_check",
       sql`${t.model} IS NULL OR ${t.model} IN ('claude', 'codex', 'gemini')`,
     ),
+  ],
+);
+
+// memo_action_items: 메모에서 LLM이 추출한 할일·일정 제안 (스펙 2026-07-12-memo-action-extraction).
+// user_id 비정규화 — 리마인더 cron·목록 조회가 memo JOIN 없이 사용자 스코프 질의.
+// 상태 기계는 entities/memo/model/actionItem.ts의 ACTION_ITEM_ALLOWED_FROM이 단일 정의.
+export const memoActionItems = pgTable(
+  "memo_action_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    memoId: uuid("memo_id")
+      .notNull()
+      .references(() => memos.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    // null = 기한 없음 (리마인더 없음).
+    dueAt: timestamp("due_at", { mode: "date" }),
+    allDay: boolean("all_day").notNull().default(false),
+    status: text("status").notNull().default("proposed"),
+    remindedAt: timestamp("reminded_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("memo_action_items_user_status_idx").on(t.userId, t.status),
+    check("memo_action_items_kind_check", sql`${t.kind} IN ('todo', 'event')`),
+    check(
+      "memo_action_items_status_check",
+      sql`${t.status} IN ('proposed', 'accepted', 'dismissed', 'done')`,
+    ),
+    check("memo_action_items_title_len", sql`length(${t.title}) BETWEEN 1 AND 200`),
   ],
 );
 

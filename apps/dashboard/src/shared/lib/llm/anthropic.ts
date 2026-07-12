@@ -30,6 +30,7 @@ export function logLlmSpend(
     | "memo-cleanup"
     | "memo-classify"
     | "memo-digest"
+    | "memo-extract"
     | `memo-transform:${string}`,
   model: string,
   usage: Record<string, unknown> | undefined | null,

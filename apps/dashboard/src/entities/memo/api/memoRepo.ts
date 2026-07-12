@@ -147,6 +147,25 @@ export function getMemosByIds(userId: string, ids: string[]): Promise<Memo[]> {
     .where(and(eq(memos.userId, userId), inArray(memos.id, ids)));
 }
 
+/**
+ * 액션 추출 sweep 대상 — 최근 windowHours 내 생성된 미추출 메모만.
+ * 과거 백필 없음 — 오래된 메모의 상대 날짜("다음 주 화요일")는 기준점이 어긋나
+ * 쓰레기 제안만 생성한다 (분류 backfill과 의도적으로 다른 결정, 스펙 §3).
+ */
+export function listMemosNeedingExtraction(
+  now: Date,
+  windowHours: number,
+  limit: number,
+): Promise<Memo[]> {
+  const since = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
+  return db
+    .select()
+    .from(memos)
+    .where(and(isNull(memos.actionsExtractedAt), gte(memos.createdAt, since)))
+    .orderBy(asc(memos.createdAt))
+    .limit(limit);
+}
+
 /** 다이제스트 cron 대상 — 메모를 1건이라도 가진 사용자. */
 export async function listMemoAuthorUserIds(): Promise<string[]> {
   const rows = await db.selectDistinct({ userId: memos.userId }).from(memos);

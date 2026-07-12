@@ -5,6 +5,8 @@ import { after } from "next/server";
 import { auth } from "@/shared/lib/auth";
 import { createMemo, classifyAndPersistMemoCategory } from "@/entities/memo/server";
 import { deriveTitle, type MemoSource } from "@/entities/memo/client";
+// features→features 허용 예외 — 저장 후 백그라운드 파이프라인 결합.
+import { extractAndPersistMemoActions } from "@/features/memo-actions";
 
 const MAX_MEMO_LEN = 20_000;
 
@@ -38,10 +40,15 @@ export async function createMemoAction(
   return createMemo({ userId, source: input.source, title, rawContent: raw, cleanedContent: cleaned })
     .then(
       (memo) => {
-        // 카테고리 분류는 응답 후 서버 백그라운드(after)로 — 클라이언트 Server Action
-        // 직렬 큐를 LLM 지연만큼 점유하지 않는다 (리뷰 확정 결함). 실패는 무해:
-        // category null 유지 → cron sweep(memo-classify)이 회수.
-        after(() => classifyAndPersistMemoCategory(memo).catch(() => {}));
+        // 분류·액션 추출은 응답 후 서버 백그라운드(after)로 — 클라이언트 Server Action
+        // 직렬 큐를 LLM 지연만큼 점유하지 않는다 (리뷰 확정 결함). 둘 다 best-effort,
+        // 서로 독립(allSettled) — 실패는 각각의 cron sweep이 회수.
+        after(() =>
+          Promise.allSettled([
+            classifyAndPersistMemoCategory(memo),
+            extractAndPersistMemoActions(memo, new Date()),
+          ]),
+        );
         revalidatePath("/memos");
         return { kind: "ok" as const, id: memo.id };
       },
