@@ -144,10 +144,12 @@ async function generateForWindow(
 }
 
 /**
- * due 판정 + 누락 주 백필 — 마지막 기록 주 이후의 모든 누락 창을 오래된 순으로
- * 생성한다 (실패가 한 주를 넘겨도 창이 영구 누락되지 않게 — 리뷰 확정 결함 수정).
- * push는 현재(최신) 주에만. 중간 실패는 throw — 생성된 창까지는 기록돼 있어
- * 다음 실행이 이어서 재시도한다.
+ * due 판정 + 누락 주 백필 — 마지막 기록 주 이후의 누락 창을 오래된 순으로 한
+ * 실행당 최대 MAX_BACKFILL_WEEKS개 생성한다 (실패가 한 주를 넘겨도 창이 영구
+ * 누락되지 않게). 상한보다 긴 공백의 잔여 주는 다음 실행(매일 19:05)이 이어서
+ * 소진 — 오래된 순 컷이므로 커서(getLatestDigest)가 구멍을 건너뛰지 않는다.
+ * push는 현재(최신) 주가 배치에 포함된 경우에만. 중간 실패는 throw — 생성된
+ * 창까지는 기록돼 있어 다음 실행이 이어서 재시도한다.
  */
 export async function generateWeeklyDigest(
   userId: string,
@@ -171,6 +173,6 @@ export async function generateWeeklyDigest(
       weekEnd === current.weekEnd,
     );
   }
-  const backfilled = missing.length - 1;
+  const backfilled = missing.filter((weekEnd) => weekEnd !== current.weekEnd).length;
   return backfilled > 0 ? { ...last, backfilled } : last;
 }

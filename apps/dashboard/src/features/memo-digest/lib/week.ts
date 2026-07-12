@@ -46,12 +46,20 @@ export function windowForWeekEnd(weekEnd: string): DigestWindow {
   };
 }
 
+// 열거 자체의 병적 상한 (10년) — 손상된 week_end 데이터로 인한 무한 루프 가드.
+const MAX_ENUMERATION_WEEKS = 520;
+
 /**
- * 마지막 기록 주(lastWeekEnd, exclusive) 이후 누락된 weekEnd 열거 — 오래된 순.
- * 실패(LLM 장애·컨테이너 다운)가 한 주를 넘겨도 창이 영구 누락되지 않게 하는
- * 백필 경로 (리뷰 확정 결함 수정). maxWeeks로 최신 우선 상한 — 오래 방치된
- * 경우에도 폭주하지 않는다. lastWeekEnd=null(첫 다이제스트)은 현재 주만 반환
- * (신규 사용자 백필 스팸 방지).
+ * 마지막 기록 주(lastWeekEnd, exclusive) 이후 누락된 weekEnd 열거 — 오래된 순,
+ * 한 실행당 최대 maxWeeks개. 실패(LLM 장애·컨테이너 다운)가 한 주를 넘겨도 창이
+ * 영구 누락되지 않게 하는 백필 경로.
+ *
+ * ⚠️ 반드시 "오래된 순"으로 잘라야 한다 — 최신 우선 컷은 커서(getLatestDigest =
+ * max week_end)가 배치 처리 후 구멍을 건너뛰어, maxWeeks보다 긴 공백의 나머지
+ * 주가 영구 스킵된다 (Codex 리뷰 확정 결함). 오래된 순이면 잔여 주를 다음
+ * 실행(매일 19:05)이 이어서 소진한다.
+ *
+ * lastWeekEnd=null(첫 다이제스트)은 현재 주만 반환 (신규 사용자 백필 스팸 방지).
  */
 export function enumerateMissingWeekEnds(
   lastWeekEnd: string | null,
@@ -60,13 +68,13 @@ export function enumerateMissingWeekEnds(
 ): string[] {
   if (lastWeekEnd === null) return [currentWeekEnd];
   const currentMs = Date.parse(`${currentWeekEnd}T00:00:00Z`);
-  const out: string[] = [];
-  for (let i = 0; i < maxWeeks; i += 1) {
+  const missing: string[] = [];
+  for (let i = 0; i < MAX_ENUMERATION_WEEKS; i += 1) {
     const weekEnd = new Date(currentMs - i * 7 * DAY_MS).toISOString().slice(0, 10);
     if (weekEnd <= lastWeekEnd) break;
-    out.push(weekEnd);
+    missing.push(weekEnd);
   }
-  return out.reverse();
+  return missing.reverse().slice(0, maxWeeks);
 }
 
 /** 위젯 주간 라벨 — weekEnd 'YYYY-MM-DD' → 'M/D – M/D' (locale-free, Gotcha #3). */
