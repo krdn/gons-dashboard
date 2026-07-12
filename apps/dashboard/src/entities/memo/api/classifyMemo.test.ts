@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const analyzeStructuredMock = vi.hoisted(() => vi.fn());
-vi.mock("@krdn/llm-gateway/gateway", () => ({
+// importOriginal 병합 — normalizeUsage 등 실 구현 유지 (mock 누락 시 logLlmSpend가
+// 항상 TypeError-swallow 경로로 빠져 관측 코드가 한 번도 실행되지 않는 함정, PR #161 전례).
+vi.mock("@krdn/llm-gateway/gateway", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@krdn/llm-gateway/gateway")>()),
   analyzeStructured: analyzeStructuredMock,
 }));
 

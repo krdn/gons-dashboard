@@ -34,8 +34,12 @@
 
 **저장을 절대 막지 않는다** — 분류는 전부 저장 후 비동기.
 
-1. **저장 직후 (주 경로)**: `createMemoAction` 성공 후 클라이언트(MemoComposer)가
-   `classifyMemoAction(id)`를 fire-and-forget 호출. 실패해도 침묵 (cron이 회수).
+1. **저장 직후 (주 경로)**: `createMemoAction` 성공 분기에서 `after()`(next/server)로
+   응답 후 서버 백그라운드 분류. 실패해도 침묵 (cron이 회수).
+   ~~클라이언트 fire-and-forget 액션~~ 은 리뷰에서 기각 — Next.js는 클라이언트당
+   Server Action을 직렬 큐로 실행하므로(next 16 소스로 확증), 분류 액션이 LLM
+   지연(게이트웨이 타임아웃 최악 5분)만큼 큐를 점유해 후속 저장·음성 정리를
+   블로킹한다. `after()`는 클라이언트 왕복 자체가 없어 이 문제가 원천 제거된다.
 2. **cron sweep (백필 + 안전망)**: 매시간 `/api/cron/memo-classify` —
    `category IS NULL` 메모를 오래된 순 최대 50건 분류. 기존 메모 전체 백필도
    이 경로가 자동 수행 (수백 건 규모 → 수 시간 내 완료). 멱등: 분류된 행은
@@ -75,8 +79,7 @@ entities/memo
 └── ui/MemoCard.tsx           # + 카테고리 뱃지 (source 뱃지 옆, 동일 span 어휘)
 
 features/memo-compose
-└── api/classifyMemoAction.ts # "use server" — auth → 소유권 확인 → 분류. 신설
-└── ui/MemoComposer.tsx       # 저장 성공 후 void classifyMemoAction(id)
+└── api/createMemoAction.ts   # 성공 분기에 after(() => 분류) 추가 — UI 불변
 
 features/memo-search
 └── ui/SearchableMemoList.tsx # + 카테고리 필터 칩 줄 (검색바와 목록 사이)
@@ -117,7 +120,8 @@ apps/cron/scheduler.js               # 매시간 23분 callCron 추가
    → LLM 미호출 skip, ok → 영속화, llm-unavailable → null 유지 (gateway vi.mock).
 3. `memoRepo.test.ts` 추가 — setMemoCategory, listUnclassifiedMemos 통합
    (TEST_DATABASE_URL, 0041 적용 필요).
-4. `classifyMemoAction.test.ts` — auth 가드, 타인 메모 거부.
+4. `createMemoAction.test.ts` 추가 — after() 분류 예약·콜백 계약, 분류 실패의
+   저장 비간섭, 저장 실패 시 미예약.
 5. `SearchableMemoList.test.tsx` 추가 — 칩 렌더, idle 필터, 검색 결과 필터,
    빈 필터 상태.
 6. `MemoCard.test.tsx` 추가 — 뱃지 렌더/미분류 생략.
