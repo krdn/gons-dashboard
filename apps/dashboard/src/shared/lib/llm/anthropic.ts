@@ -29,6 +29,7 @@ export function logLlmSpend(
     | "reply-draft"
     | "memo-cleanup"
     | "memo-classify"
+    | "memo-digest"
     | `memo-transform:${string}`,
   model: string,
   usage: Record<string, unknown> | undefined | null,

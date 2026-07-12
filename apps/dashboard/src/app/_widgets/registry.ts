@@ -9,6 +9,7 @@ import { FortuneCard, FortuneSkeleton } from "@/widgets/fortune";
 import { CalendarCard, CalendarSkeleton } from "@/widgets/calendar";
 import { SupplementCheckerCard } from "@/widgets/supplement-checker";
 import { RecentMemosCard } from "@/widgets/memo";
+import { MemoDigestCard } from "@/widgets/memo-digest";
 
 export interface WidgetEntry {
   id: string;
@@ -27,5 +28,6 @@ export const WIDGET_REGISTRY: WidgetEntry[] = [
   { id: "fortune", column: "aside", Component: FortuneCard, Skeleton: FortuneSkeleton },
   { id: "calendar", column: "aside", Component: CalendarCard, Skeleton: CalendarSkeleton },
   { id: "supplement-checker", column: "aside", Component: SupplementCheckerCard },
+  { id: "memo-digest", column: "aside", Component: MemoDigestCard },
   { id: "recent-memos", column: "aside", Component: RecentMemosCard },
 ];

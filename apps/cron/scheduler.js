@@ -123,6 +123,15 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 매일 19:05 KST — 주간 메모 다이제스트 (일요일 19:00 이후 due, 놓친 날은 다음 날 catchup).
+cron.schedule(
+  "5 19 * * *",
+  () => {
+    void callCron("/api/cron/memo-digest", "memo-digest");
+  },
+  { timezone: TIMEZONE },
+);
+
 // autopilot — 5분 주기로 새 이미지 감지·배포·검증·롤백 (AUTOPILOT_DEPLOY=on 일 때만).
 if (process.env.AUTOPILOT_DEPLOY === "on") {
   cron.schedule(
@@ -136,7 +145,7 @@ if (process.env.AUTOPILOT_DEPLOY === "on") {
 }
 
 console.log(
-  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST",
+  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST",
 );
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.

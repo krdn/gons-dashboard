@@ -11,6 +11,8 @@ import {
   uniqueIndex,
   check,
   boolean,
+  date,
+  integer,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
@@ -114,6 +116,30 @@ export const memoTransformPresets = pgTable(
       sql`${t.model} IS NULL OR ${t.model} IN ('claude', 'codex', 'gemini')`,
     ),
   ],
+);
+
+// memo_digests: 주간 다이제스트 — 창 [직전 일요일 19:00 KST, week_end 일요일 19:00 KST).
+// unique(user_id, week_end)가 멱등 키 (스펙 2026-07-12-memo-weekly-digest).
+export const memoDigests = pgTable(
+  "memo_digests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // 창을 닫는 일요일의 KST 날짜.
+    weekEnd: date("week_end", { mode: "string" }).notNull(),
+    // memo_count=0(빈 주 marker)이면 '' — push·LLM 없이 재평가만 차단.
+    summary: text("summary").notNull(),
+    memoCount: integer("memo_count").notNull(),
+    // 재부상 메모 id 스냅샷 — FK 없음, 표시 시점에 삭제된 메모는 조용히 생략.
+    resurfacedMemoIds: uuid("resurfaced_memo_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("memo_digests_user_week_uq").on(t.userId, t.weekEnd)],
 );
 
 // 사용자별 메모 변환 전체 기본 모델. 행 없음도 claude로 해석해 마이그레이션 전 동작을 보존한다.

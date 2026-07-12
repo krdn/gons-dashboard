@@ -12,6 +12,10 @@ import {
   searchMemos,
   setMemoCategory,
   listUnclassifiedMemos,
+  listMemosBetween,
+  listMemosOlderThan,
+  getMemosByIds,
+  listMemoAuthorUserIds,
 } from "./memoRepo";
 
 const USER_ID = "00000000-0000-0000-0000-000000000abc";
@@ -100,6 +104,50 @@ describe("memo category", () => {
     // 다른 테스트 파일의 잔여 행과 격리 — 이 유저 것만 대조.
     const ours = (await listUnclassifiedMemos(1000)).filter((m) => m.userId === USER_ID);
     expect(ours.map((m) => m.id)).toEqual([first.id, second.id]);
+  });
+});
+
+describe("digest 창 repo 쿼리", () => {
+  const base = { userId: USER_ID, source: "text" as const, title: "제목", rawContent: "원문", cleanedContent: "원문" };
+  // createdAt 명시 주입 — 경계 시맨틱을 결정적으로 검증.
+  async function insertAt(title: string, createdAt: Date) {
+    const rows = await db.insert(memos).values({ ...base, title, createdAt }).returning();
+    return rows[0];
+  }
+
+  it("listMemosBetween — [from, to) 반개구간, 오래된 순 (일요일 19:00 정각 타일링 불변식)", async () => {
+    const from = new Date("2026-07-05T10:00:00Z"); // 일 19:00 KST
+    const to = new Date("2026-07-12T10:00:00Z");
+    const atFrom = await insertAt("정각 from", from);
+    const middle = await insertAt("중간", new Date("2026-07-08T00:00:00Z"));
+    await insertAt("정각 to (다음 주)", to);
+    await insertAt("창 이전", new Date("2026-07-05T09:59:59Z"));
+
+    const hits = await listMemosBetween(USER_ID, from, to);
+    expect(hits.map((m) => m.id)).toEqual([atFrom.id, middle.id]);
+  });
+
+  it("listMemosOlderThan — before 정각은 제외 (strict lt)", async () => {
+    const before = new Date("2026-06-12T10:00:00Z");
+    const older = await insertAt("더 오래됨", new Date("2026-06-12T09:59:59Z"));
+    await insertAt("정각", before);
+
+    const hits = await listMemosOlderThan(USER_ID, before);
+    expect(hits.map((m) => m.id)).toEqual([older.id]);
+  });
+
+  it("getMemosByIds — 소유자 격리 + 빈 입력은 빈 결과", async () => {
+    const mine = await createMemo(base);
+    expect(await getMemosByIds(USER_ID, [])).toEqual([]);
+    expect((await getMemosByIds(USER_ID, [mine.id])).map((m) => m.id)).toEqual([mine.id]);
+    expect(await getMemosByIds("00000000-0000-0000-0000-000000000fff", [mine.id])).toEqual([]);
+  });
+
+  it("listMemoAuthorUserIds — 메모 여러 건이어도 사용자당 1회 (distinct)", async () => {
+    await createMemo(base);
+    await createMemo(base);
+    const ids = await listMemoAuthorUserIds();
+    expect(ids.filter((id) => id === USER_ID)).toEqual([USER_ID]);
   });
 });
 
