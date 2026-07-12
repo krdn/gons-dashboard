@@ -10,7 +10,7 @@ vi.mock("@/entities/memo/server", () => ({
 import { searchMemosAction } from "./searchMemosAction";
 
 beforeEach(() => {
-  searchMock.mockReset().mockResolvedValue([{ id: "m1" }]);
+  searchMock.mockReset().mockResolvedValue({ memos: [{ id: "m1" }], truncated: false });
   authMock.mockReset().mockResolvedValue({ user: { id: "u1" } });
 });
 
@@ -22,7 +22,7 @@ describe("searchMemosAction", () => {
 
   it("빈 쿼리는 repo 호출 없이 빈 결과", async () => {
     const r = await searchMemosAction("   ");
-    expect(r).toEqual({ kind: "ok", memos: [] });
+    expect(r).toEqual({ kind: "ok", memos: [], truncated: false });
     expect(searchMock).not.toHaveBeenCalled();
   });
 

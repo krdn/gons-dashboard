@@ -47,7 +47,7 @@ async function typeAndFlush(value: string) {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  searchMock.mockReset().mockResolvedValue({ kind: "ok", memos: [] });
+  searchMock.mockReset().mockResolvedValue({ kind: "ok", memos: [], truncated: false });
 });
 afterEach(() => {
   cleanup();
@@ -79,7 +79,11 @@ describe("SearchableMemoList", () => {
   });
 
   it("검색 결과를 하이라이트·카운트와 함께 보여준다", async () => {
-    searchMock.mockResolvedValue({ kind: "ok", memos: [makeMemo("m9", "옛날 회의록", "안건 정리")] });
+    searchMock.mockResolvedValue({
+      kind: "ok",
+      memos: [makeMemo("m9", "옛날 회의록", "안건 정리")],
+      truncated: false,
+    });
     renderList();
     await typeAndFlush("회의");
     expect(screen.getByText("1개 결과")).toBeTruthy();

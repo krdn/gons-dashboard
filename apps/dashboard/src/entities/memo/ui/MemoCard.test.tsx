@@ -28,6 +28,32 @@ const summary = {
   updatedAt: new Date("2026-07-09T10:05:00"),
 } as MemoTransformation;
 
+describe("MemoCard 검색 하이라이트 초기 뷰", () => {
+  it("정리본에 일치가 없고 변환본에만 있으면 그 변환본을 초기 표시한다", () => {
+    render(<MemoCard memo={memo} transformations={[summary]} highlightTerms={["3시"]} />);
+    // summary.content "요약: 회의 3시" 가 초기 본문 — mark 포함
+    expect(document.querySelector("mark")?.textContent).toBe("3시");
+    expect(screen.queryByText("회의는 세 시")).toBeNull();
+  });
+
+  it("원문에만 일치하면(음성) 원문을 초기 표시한다", () => {
+    render(<MemoCard memo={memo} transformations={[]} highlightTerms={["음 어"]} />);
+    expect(document.querySelector("mark")?.textContent).toBe("음 어");
+  });
+
+  it("정리본에 일치가 있으면 기본(정리본) 유지 + 하이라이트", () => {
+    render(<MemoCard memo={memo} transformations={[summary]} highlightTerms={["세 시"]} />);
+    expect(document.querySelector("mark")?.textContent).toBe("세 시");
+    expect(screen.queryByText(/요약:/)).toBeNull();
+  });
+
+  it("칩 클릭(사용자 오버라이드)이 파생 초기 뷰보다 우선한다", () => {
+    render(<MemoCard memo={memo} transformations={[summary]} highlightTerms={["3시"]} />);
+    fireEvent.click(screen.getByRole("button", { name: "정리본" }));
+    expect(screen.getByText("회의는 세 시")).toBeTruthy();
+  });
+});
+
 describe("MemoCard 칩 전환", () => {
   it("기본은 정리본을 보여준다", () => {
     render(<MemoCard memo={memo} transformations={[summary]} />);

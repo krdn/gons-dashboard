@@ -31,6 +31,29 @@ function chipLabel(t: MemoTransformation): string {
 
 const BUILTIN = TRANSFORM_PRESET_IDS as readonly string[];
 
+function containsAnyTerm(text: string, terms: string[]): boolean {
+  const lower = text.toLowerCase();
+  return terms.some((t) => lower.includes(t.toLowerCase()));
+}
+
+// 검색 일치가 정리본에 없으면(원문·변환본에서만 일치) 그 뷰를 초기 선택 —
+// 하이라이트 없는 카드가 "무관한 결과"처럼 보이는 문제 방지.
+function deriveInitialView(
+  memo: Memo,
+  transformations: MemoTransformation[],
+  terms: string[],
+): MemoView {
+  if (terms.length === 0) return { kind: "cleaned" };
+  if (containsAnyTerm(memo.title, terms) || containsAnyTerm(memo.cleanedContent, terms)) {
+    return { kind: "cleaned" };
+  }
+  if (memo.source === "voice" && containsAnyTerm(memo.rawContent, terms)) {
+    return { kind: "raw" };
+  }
+  const matched = transformations.find((t) => containsAnyTerm(t.content, terms));
+  return matched ? { kind: "preset", slug: matched.preset } : { kind: "cleaned" };
+}
+
 export function MemoCard({
   memo,
   transformations = [],
@@ -39,7 +62,10 @@ export function MemoCard({
   onTransform,
   highlightTerms = [],
 }: MemoCardProps) {
-  const [view, setView] = useState<MemoView>({ kind: "cleaned" });
+  // 파생 초기 뷰 + 사용자 오버라이드 — 칩 클릭 전까지는 검색어가 실제 일치한 뷰를 보여준다.
+  const [userView, setUserView] = useState<MemoView | null>(null);
+  const view = userView ?? deriveInitialView(memo, transformations, highlightTerms);
+  const setView = setUserView;
   const isVoice = memo.source === "voice";
 
   const body =

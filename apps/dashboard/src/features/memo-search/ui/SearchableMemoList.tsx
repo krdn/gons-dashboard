@@ -26,7 +26,7 @@ interface SearchableMemoListProps {
 export function SearchableMemoList({ memos, transformationsByMemo, presets }: SearchableMemoListProps) {
   const [query, setQuery] = useState("");
   // null = 아직 첫 응답 전 (검색 중 표시). 재검색 중엔 직전 결과를 유지해 점프를 막는다.
-  const [results, setResults] = useState<Memo[] | null>(null);
+  const [results, setResults] = useState<{ memos: Memo[]; truncated: boolean } | null>(null);
   const [status, setStatus] = useState<SearchStatus>("done");
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,7 +43,7 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
       (r) => {
         if (seq !== seqRef.current) return;
         if (r.kind === "ok") {
-          setResults(r.memos);
+          setResults({ memos: r.memos, truncated: r.truncated });
           setStatus("done");
         } else {
           setStatus("failed");
@@ -89,17 +89,17 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
   }, []);
 
   const highlightTerms = active ? tokenizeSearchQuery(trimmed) : [];
-  const hasResults = results !== null && results.length > 0;
+  const hasResults = results !== null && results.memos.length > 0;
   // 상태 라인 — 하나의 aria-live 영역이 검색 중·실패·빈 결과·카운트를 모두 알린다.
   const statusText =
     status === "failed"
       ? "검색에 실패했습니다 — 다시 시도해 주세요."
       : results === null
         ? "검색 중…"
-        : results.length === 0
+        : results.memos.length === 0
           ? `‘${trimmed}’에 대한 결과가 없습니다.`
-          : `${results.length}개 결과${results.length >= SEARCH_MEMOS_LIMIT ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`;
-  const isMessage = status === "failed" || results === null || results.length === 0;
+          : `${results.memos.length}개 결과${results.truncated ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`;
+  const isMessage = status === "failed" || results === null || results.memos.length === 0;
 
   return (
     <div className="space-y-3">
@@ -155,7 +155,7 @@ export function SearchableMemoList({ memos, transformationsByMemo, presets }: Se
           </p>
           {status !== "failed" && hasResults && (
             <MemoList
-              memos={results}
+              memos={results.memos}
               transformationsByMemo={transformationsByMemo}
               presets={presets}
               highlightTerms={highlightTerms}
