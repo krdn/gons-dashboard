@@ -19,39 +19,60 @@
 ## 아키텍처 (FSD)
 
 ```
-route:   app/(dashboard)/memos/architecture/page.tsx   # RSC. auth() 가드 + 정적 데이터 import (DB/LLM 조회 없음)
+route:   app/(dashboard)/memos/architecture/page.tsx   # RSC. auth() 가드 후 정적 그래프 데이터를 뷰에 props로 주입
 widget:  widgets/memo-architecture/
-  ui/MemoArchitectureView.tsx   # "use client" — 흐름 선택·노드 펼침·탭 전환·복사 오케스트레이션
-  ui/WorkflowGraph.tsx          # 선택된 흐름을 5개 레이어 컬럼 위에 렌더
-  ui/LayerColumns.tsx           # FSD 레이어 배경 그리드 (app→widget→feature→entity→db·cron)
+  ui/MemoArchitectureView.tsx   # "use client" — graph를 props로 받아 흐름 선택·노드 펼침·탭 전환·복사 오케스트레이션
+  ui/WorkflowGraph.tsx          # 선택된 흐름을 레이어 컬럼 위에 렌더
+  ui/LayerColumns.tsx           # 레이어 배경 그리드 (FSD 5레이어 + 운영 표식, 아래 "레이어 컬럼 정의" 참조)
   ui/FlowChips.tsx              # 8개 워크플로우 선택 레일
   ui/GraphNode.tsx              # 파일:심볼 노드 (클릭 → 상세)
   ui/GraphEdge.tsx              # 노드 간 SVG 엣지 (라벨: after()/FK/JOIN 등)
   ui/NodeDetailPanel.tsx        # 선택 노드의 역할·심볼·의존·유지보수 명령어
   ui/MaintenanceIndex.tsx       # 유지보수 색인 탭 (검색 가능 표)
   ui/CopyableCommand.tsx        # 복사 버튼 코드블록
-  model/architecture-graph.ts   # ⭐ 정적 데이터 — 진실의 원천 (조사 결과 타입화)
+  model/architecture-graph.ts   # ⭐ 정적 데이터 — 진실의 원천 (조사 결과 타입화). "server-only" 없음: 순수 데이터라 client 전달 허용
   model/types.ts                # Flow / GraphNode / Layer / MaintenanceEntry 타입
-  index.ts                      # barrel — MemoArchitectureView export
+  index.ts                      # barrel — MemoArchitectureView, ARCHITECTURE_GRAPH, 타입 export (deep import 금지)
 ```
 
 **설계 원칙**: 데이터/렌더 분리. `architecture-graph.ts`가 흐름·노드·엣지·명령어를 담고, 컴포넌트는 순수 렌더러. 메모 시스템이 바뀌면 이 데이터 파일 한 곳만 갱신한다. 그래프 데이터는 코드에서 정적 import하므로 **런타임 DB/LLM 조회가 없다**. 유일한 서버 의존은 인증 가드(아래 참조)다.
 
-**인증 가드 (필수)**: 이 페이지도 다른 dashboard 라우트와 **동일한** per-page 인증을 건다:
+**server/client 경계 (인증 이후에만 데이터 전달)**: `page.tsx`(RSC)가 먼저 `auth()` 가드를 통과한 **뒤에** barrel(`@/widgets/memo-architecture`)에서 `ARCHITECTURE_GRAPH`를 import해 `MemoArchitectureView`에 **props로** 주입한다. `MemoArchitectureView`("use client")는 데이터를 직접 import하지 않고 props로만 받는다 — 인증 게이트를 통과하지 못하면 뷰가 마운트되지 않으므로 데이터가 전달되지 않는다. 데이터는 이름·경로·명령어 문자열뿐(시크릿·PII 없음, `$VAR` 플레이스홀더만)이라 client 번들에 포함되어도 민감정보 노출은 아니지만, 접근 자체는 인증으로 차단한다. **모든 import는 barrel `index.ts` 경유** — `page.tsx`가 `model/architecture-graph.ts`를 deep import하지 않는다(FSD public API 관례).
+
+**인증 가드 (필수)**: 이 페이지도 다른 dashboard 라우트와 **동일한** per-page 인증을 건다. `memos/page.tsx`의 스켈레톤을 그대로 미러링:
 
 ```ts
-const session = await auth();
-if (!session?.user?.id) redirect("/login");
+// app/(dashboard)/memos/architecture/page.tsx
+import { redirect } from "next/navigation";
+import { auth } from "@/shared/lib/auth";
+import { MemoArchitectureView, ARCHITECTURE_GRAPH } from "@/widgets/memo-architecture";
+import { PageContainer } from "@/shared/ui/PageContainer";
+import { PageHeader } from "@/shared/ui/PageHeader";
+
+export const dynamic = "force-dynamic";   // 기존 memos/settings 페이지와 동일 관례
+
+export default async function MemoArchitecturePage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  return (
+    <PageContainer>
+      <PageHeader title="메모 시스템 아키텍처" /* ← 메모 링크 */ />
+      <MemoArchitectureView graph={ARCHITECTURE_GRAPH} />
+    </PageContainer>
+  );
+}
 ```
 
 `app/(dashboard)/layout.tsx`에는 명시적으로 auth 가드가 **없다** (주석: "공유 layout은 soft-nav에서 재렌더 안 됨 — per-page redirect 유지"). 따라서 레이아웃 인증에 의존할 수 없고, `memos/page.tsx`·`memos/settings/page.tsx`가 각자 `auth()`를 호출하는 것과 **똑같이** 이 페이지도 페이지 상단에서 세션을 확인하고 없으면 `/login`으로 redirect해야 한다. 아키텍처·유지보수 명령어(cron 경로, 내부 파일 구조)는 로그인 전용(`ALLOWLIST_EMAILS`) 사용자에게만 노출되어야 하는 내부 정보이므로 이 가드는 콘텐츠가 정적이어도 생략 불가다. 세션 사용자 데이터는 그래프에 쓰지 않는다(가드 목적으로만 `auth()` 호출).
 
-**FSD 의존 방향**: `widgets/memo-architecture`는 `entities/memo/client`(타입)와 `shared/ui`(PageContainer, PageHeader)만 참조. features 미참조 — 이 위젯은 메모 도메인을 *설명*할 뿐 *실행*하지 않으므로 실제 feature 코드를 import하지 않는다. 그래프 데이터는 코드 심볼을 **문자열로** 참조(실제 import 아님).
+**FSD 의존 방향**: `widgets/memo-architecture`는 `entities/memo/client`(타입)와 `shared/ui`(PageContainer, PageHeader)만 참조. features·entities/*/server 미참조 — 이 위젯은 메모 도메인을 *설명*할 뿐 *실행*하지 않으므로 실제 feature 코드나 server repo를 import하지 않는다. 그래프 데이터는 코드 심볼을 **문자열로** 참조(실제 import 아님). ESLint boundaries 정의(`eslint.config.mjs`)상 레이어는 `app → widgets → features → entities → shared` 순이며, 이 위젯은 `entities`·`shared`만 하위 참조하므로 규칙을 만족한다.
 
 ## 데이터 모델
 
 ```ts
-type Layer = "app" | "widget" | "feature" | "entity" | "db-cron";
+// FSD 레이어 (eslint.config.mjs boundaries 정의와 동일): app → widgets → features → entities → shared.
+// cron 라우트는 app 레이어(src/app/api/cron/*)의 진입점, DB 스키마는 shared 레이어(shared/lib/db) 하위다.
+type Layer = "app" | "widgets" | "features" | "entities" | "shared";
 
 interface GraphNode {
   id: string;              // 안정 키
@@ -68,17 +89,24 @@ interface GraphNode {
 
 interface FlowEdge { from: string; to: string; label?: string }  // label: "after()", "FK", "JOIN" 등
 
+type Trigger = "user" | "cron" | "after";           // 원자 트리거
+
 interface Flow {
   id: string;
   label: string;                                    // 칩 라벨
   summary: string;
-  trigger: "user" | "cron" | "after" | "user+cron";
+  triggers: Trigger[];                              // 조합 표현 (예: ["after","cron"] = after 즉시경로 + cron sweep 폴백)
   llm: { model: string; touchpoint: string } | null;
   async: boolean;
   idempotencyKey: string | null;                    // 🔑 재실행 안전 마커
   nodeIds: string[];                                // 흐름이 지나는 노드 순서
   edges: FlowEdge[];
 }
+```
+
+`trigger`를 단일 유니온이 아니라 **`triggers: Trigger[]` 배열**로 둔다 — 워크플로우 1(작성=`["user","after"]`), 2·4(분류·추출=`["after","cron"]`, after 즉시경로 + cron sweep 폴백)처럼 한 흐름이 여러 진입점을 갖는 실제 구조를 정확히 표현하기 위함. 칩 배지는 배열을 순회해 트리거 아이콘을 모두 표시(👆user·📨after·⏰cron).
+
+```ts
 
 interface MaintenanceEntry {
   task: string;            // "분류 프롬프트 수정"
@@ -110,37 +138,56 @@ interface MaintenanceEntry {
 │  ① 워크플로우 선택 레일 (8개 흐름 칩, 각 칩에 트리거·LLM 배지) │
 ├─────────────────────────────────────────────────────────────┤
 │  ② 계층 그래프 (선택 흐름을 FSD 레이어 컬럼 위에)             │
-│    app  │ widget │ feature   │ entity     │ db·cron          │
-│   Page ─▶ Widget ─▶ Composer ─▶ createMemo ─▶ memos          │
+│   app   │ widgets │ features  │ entities   │ shared          │
+│  Page  ─▶ Widget ─▶ Composer ─▶ createMemo ─▶ memos (db)     │
+│  cron⏰ ─────────────────────▶ classify ───▶ memo_categories │
 │                     ▼ after()                                │
-│                     classify ─────────────▶ memo_categories  │
 │   흐름 배지: 🤖모델 · ⚡async · 🔑멱등키 · ⏰트리거           │
 │   (선택 안 된 흐름 노드는 흐리게)                             │
 ├─────────────────────────────────────────────────────────────┤
 │  ③ 노드 상세 패널 (클릭 시, 접힘 가능)                        │
 │    경로 · 역할 · 주요 export · 의존 · ⚠️함정 · 유지보수 명령  │
-│    [$ curl -X POST .../memo-classify -H "Auth: Bearer $..."] │
+│    curl -X POST http://localhost:3020/api/cron/memo-classify │
+│      -H "Authorization: Bearer $CRON_BEARER_TOKEN"    [복사]  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **5개 레이어 컬럼**: FSD 의존 방향(`app→widget→feature→entity→shared/db·cron`)을 왼→오로. cron은 별도 진입점이라 db 컬럼과 묶되 시각적으로 구분(⏰ 표식).
+**레이어 컬럼 정의 (5개, ESLint boundaries와 동일)**: `app → widgets → features → entities → shared` 순으로 왼→오 배치(FSD 의존 방향). 두 가지 진입점이 `app` 레이어를 공유한다 — 사용자 라우트(`src/app/(dashboard)/…/page.tsx`)와 cron 라우트(`src/app/api/cron/*/route.ts`). cron 노드는 `app` 컬럼에 두되 ⏰ 표식으로 구분한다. **DB 테이블은 별도 컬럼이 아니라 `shared` 레이어**의 노드(`shared/lib/db/schema/memo.ts`의 각 테이블)로 표기하고, DB 노드임을 `(db)` 서브라벨로 나타낸다.
+
 - **한 번에 하나의 흐름**에 집중: 선택된 흐름 노드/엣지만 진하게, 나머지는 흐리게.
-- **흐름 배지**: LLM 모델(🤖 Haiku/Sonnet/없음), async(⚡), 멱등키(🔑), 트리거(⏰cron/👆user/📨after).
-- 노드 클릭 → 하단 상세 패널: `파일:심볼`, 역할, 주요 export, 의존, ⚠️함정(인라인), 유지보수 명령어(복사).
+- **흐름 배지**: LLM 모델(🤖 Haiku/Sonnet/없음), async(⚡), 멱등키(🔑), 트리거(⏰cron/👆user/📨after — `triggers` 배열을 모두 표시).
+- 노드 클릭 → 하단 상세 패널: `파일:심볼`, 역할, 주요 export, 의존, ⚠️함정(인라인), 유지보수 명령어(복사 버튼, `Authorization: Bearer $CRON_BEARER_TOKEN` 형식).
 
 ## 유지보수 색인 탭
 
-top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어디를(파일:심볼) / 어떻게(명령·문장) / ⚠️주의**. 각 행의 명령어는 복사 버튼. 조사가 확정한 시나리오:
+top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어디를(파일:심볼) / 어떻게(명령·문장) / ⚠️주의**. 각 행의 `command` 필드는 복사 버튼 코드블록으로 렌더하며, **완전히 복사 가능한 형태**(placeholder는 `$VAR`, 생략 없음)여야 한다 — `...` 같은 불완전 조각 금지. 조사가 확정한 시나리오와 각 `command`:
 
-- 메모 cron 4종 로컬 수동 트리거 (`curl -X POST http://localhost:3020/api/cron/<name> -H "Authorization: Bearer $CRON_BEARER_TOKEN"`)
-- 분류 프롬프트·모델·토큰 수정 (`classifyMemo.ts:buildSystemPrompt` / `HAIKU_MODEL` / ⚠️ `MemoCategoryResponseSchema`에 slug regex 금지)
-- 새 카테고리 태그 추가 코드 없이 (`INSERT INTO memo_categories (id,label_ko,is_seed) VALUES (...) ON CONFLICT DO NOTHING` — 마이그레이션 0044 참조)
-- 변환/추출/다이제스트/정리 LLM 모델 변경 (각 파일 모델 상수 / ⚠️ 생성 계열 haiku 금지)
-- 새 빌트인 프리셋 추가 (3곳 동시: `TRANSFORM_PRESET_IDS`+`PRESET_INSTRUCTIONS`+`preset-meta`)
-- 액션 상태기계 수정 (`actionItem.ts:ACTION_ITEM_ALLOWED_FROM` / DB CHECK·fixture 동기)
-- 다이제스트 백필·주차경계·재부상 (`week.ts:enumerateMissingWeekEnds` / ⚠️ 오래된 순 컷 유지 PR #297)
-- cron 스케줄 변경 (`apps/cron/scheduler.js` / ⚠️ 이미지 재배포 필요)
-- 운영 DB 마이그레이션 선적용 (⚠️ `db:migrate` 우회, psql `BEGIN/COMMIT` 수동 → 이미지 배포)
+- **메모 cron 4종 로컬 수동 트리거** — `classifyMemo` 등 route. `command`(각 cron별 4행):
+  ```bash
+  curl -X POST http://localhost:3020/api/cron/memo-classify         -H "Authorization: Bearer $CRON_BEARER_TOKEN"
+  curl -X POST http://localhost:3020/api/cron/memo-digest           -H "Authorization: Bearer $CRON_BEARER_TOKEN"
+  curl -X POST http://localhost:3020/api/cron/memo-extract-actions  -H "Authorization: Bearer $CRON_BEARER_TOKEN"
+  curl -X POST http://localhost:3020/api/cron/memo-action-reminders -H "Authorization: Bearer $CRON_BEARER_TOKEN"
+  ```
+- **분류 프롬프트·모델·토큰 수정** — `classifyMemo.ts:buildSystemPrompt` / `HAIKU_MODEL`. ⚠️ `MemoCategoryResponseSchema`에 slug regex 금지. `command`: `pnpm typecheck && pnpm lint`
+- **새 카테고리 태그 추가(코드 없이)** — `memo_categories` INSERT(마이그레이션 0044 참조). `command`:
+  ```bash
+  psql "$DATABASE_URL" -c "INSERT INTO memo_categories (id,label_ko,is_seed) VALUES ('meeting-log','회의록',false) ON CONFLICT DO NOTHING;"
+  ```
+- **변환/추출/다이제스트/정리 LLM 모델 변경** — 각 파일 모델 상수(`CLEANUP_MODEL`/`EXTRACT_MODEL`/`DIGEST_MODEL`/`HAIKU_MODEL`). ⚠️ 생성 계열 haiku 금지. `command`: `cd apps/dashboard && pnpm build`
+- **새 빌트인 프리셋 추가** — 3곳 동시: `TRANSFORM_PRESET_IDS`+`PRESET_INSTRUCTIONS`+`preset-meta`. `command`: `pnpm typecheck`
+- **액션 상태기계 수정** — `actionItem.ts:ACTION_ITEM_ALLOWED_FROM`. ⚠️ DB CHECK·fixture 동기. `command`: `pnpm typecheck && pnpm test`
+- **다이제스트 백필·주차경계·재부상** — `week.ts:enumerateMissingWeekEnds`. ⚠️ 오래된 순 컷 유지(PR #297). `command`: `pnpm test`
+- **cron 스케줄 변경** — `apps/cron/scheduler.js`. ⚠️ cron 컨테이너는 Docker로만 빌드 → 이미지 재배포 필요. `command`(빌드 트리거 대기):
+  ```bash
+  gh run watch   # GHA가 ghcr.io/krdn/gons-dashboard-cron:latest 재빌드
+  ```
+- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate` 우회. `command`(운영 psql로 BEGIN/COMMIT 수동 선적용 후 이미지 배포):
+  ```bash
+  docker exec gons-dashboard-postgres psql -U gons -c "BEGIN; <DDL>; COMMIT;"
+  ```
+
+**시크릿·연결정보 규칙**: `command` 문자열에는 `$CRON_BEARER_TOKEN`, `$DATABASE_URL` 같은 **환경변수 참조만** 넣고 실제 값·호스트·비밀번호를 평문으로 두지 않는다. `architecture-graph.ts` 데이터에도 동일 규칙 적용.
 
 ## 인라인 함정(⚠️) — 해당 노드에 경고 표시
 
