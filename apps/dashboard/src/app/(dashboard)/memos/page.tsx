@@ -44,9 +44,14 @@ export default async function MemosPage() {
         title="메모"
         subtitle="음성 또는 텍스트로 빠르게 기록해요."
         actions={
-          <Link href="/memos/settings" className="text-sm text-neutral-500 hover:text-neutral-900">
-            ⚙ AI 정리 설정
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/memos/architecture" className="text-sm text-neutral-500 hover:text-neutral-900">
+              🗺 시스템 구조
+            </Link>
+            <Link href="/memos/settings" className="text-sm text-neutral-500 hover:text-neutral-900">
+              ⚙ AI 정리 설정
+            </Link>
+          </div>
         }
       />
       <MemoWidget
