@@ -21,9 +21,9 @@ export {
 } from "./model/types";
 export { MEMO_MODEL_RECOMMENDATION_RULES } from "./model/model-recommendations";
 export {
-  MEMO_CATEGORY_IDS,
-  MEMO_CATEGORY_LABELS,
-  isMemoCategory,
+  SEED_MEMO_CATEGORIES,
+  SEED_CATEGORY_LABELS,
+  isValidCategorySlug,
   type MemoCategory,
 } from "./model/category";
 export {
