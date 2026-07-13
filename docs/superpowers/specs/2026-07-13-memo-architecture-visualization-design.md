@@ -19,7 +19,7 @@
 ## 아키텍처 (FSD)
 
 ```
-route:   app/(dashboard)/memos/architecture/page.tsx   # RSC, 정적. 데이터 import만, DB/LLM 의존 없음
+route:   app/(dashboard)/memos/architecture/page.tsx   # RSC. auth() 가드 + 정적 데이터 import (DB/LLM 조회 없음)
 widget:  widgets/memo-architecture/
   ui/MemoArchitectureView.tsx   # "use client" — 흐름 선택·노드 펼침·탭 전환·복사 오케스트레이션
   ui/WorkflowGraph.tsx          # 선택된 흐름을 5개 레이어 컬럼 위에 렌더
@@ -35,7 +35,16 @@ widget:  widgets/memo-architecture/
   index.ts                      # barrel — MemoArchitectureView export
 ```
 
-**설계 원칙**: 데이터/렌더 분리. `architecture-graph.ts`가 흐름·노드·엣지·명령어를 담고, 컴포넌트는 순수 렌더러. 메모 시스템이 바뀌면 이 데이터 파일 한 곳만 갱신한다. 페이지는 정적이라 인증 외 서버 의존이 없다 (RSC에서 데이터를 코드로 import).
+**설계 원칙**: 데이터/렌더 분리. `architecture-graph.ts`가 흐름·노드·엣지·명령어를 담고, 컴포넌트는 순수 렌더러. 메모 시스템이 바뀌면 이 데이터 파일 한 곳만 갱신한다. 그래프 데이터는 코드에서 정적 import하므로 **런타임 DB/LLM 조회가 없다**. 유일한 서버 의존은 인증 가드(아래 참조)다.
+
+**인증 가드 (필수)**: 이 페이지도 다른 dashboard 라우트와 **동일한** per-page 인증을 건다:
+
+```ts
+const session = await auth();
+if (!session?.user?.id) redirect("/login");
+```
+
+`app/(dashboard)/layout.tsx`에는 명시적으로 auth 가드가 **없다** (주석: "공유 layout은 soft-nav에서 재렌더 안 됨 — per-page redirect 유지"). 따라서 레이아웃 인증에 의존할 수 없고, `memos/page.tsx`·`memos/settings/page.tsx`가 각자 `auth()`를 호출하는 것과 **똑같이** 이 페이지도 페이지 상단에서 세션을 확인하고 없으면 `/login`으로 redirect해야 한다. 아키텍처·유지보수 명령어(cron 경로, 내부 파일 구조)는 로그인 전용(`ALLOWLIST_EMAILS`) 사용자에게만 노출되어야 하는 내부 정보이므로 이 가드는 콘텐츠가 정적이어도 생략 불가다. 세션 사용자 데이터는 그래프에 쓰지 않는다(가드 목적으로만 `auth()` 호출).
 
 **FSD 의존 방향**: `widgets/memo-architecture`는 `entities/memo/client`(타입)와 `shared/ui`(PageContainer, PageHeader)만 참조. features 미참조 — 이 위젯은 메모 도메인을 *설명*할 뿐 *실행*하지 않으므로 실제 feature 코드를 import하지 않는다. 그래프 데이터는 코드 심볼을 **문자열로** 참조(실제 import 아님).
 
@@ -148,7 +157,7 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
 - 라이트모드 고정 (`globals.css` 디자인 토큰), 기존 `PageContainer`(narrow)·`PageHeader` 재사용
 - 시각 표기는 locale-free (hydration mismatch 회피, Gotcha #3) — 이 페이지는 시각 표시 없음이라 사실상 무관하나 관례 준수
 - 시크릿(`CRON_BEARER_TOKEN` 등)은 화면·데이터·주석 어디에도 평문 금지 — `$VAR` 플레이스홀더만
-- 검증: `pnpm typecheck && pnpm lint`, `cd apps/dashboard && pnpm build`(server/client seam 확인), `/memos/architecture` 실제 렌더 확인(정적이라 DB 불필요)
+- 검증: `pnpm typecheck && pnpm lint`, `cd apps/dashboard && pnpm build`(server/client seam 확인), `/memos/architecture` 실제 렌더 확인. 그래프 데이터는 정적이라 DB 없이 렌더되지만, **인증 가드는 반드시 검증**한다 — 로그아웃 상태(또는 세션 쿠키 제거)로 접근 시 `/login` redirect 확인, 로그인 상태로 접근 시 정상 렌더 확인 (dev OAuth 세션 재사용 패턴으로 인증 상태 테스트).
 
 ## v1 범위 밖 (의도적 제외)
 
