@@ -16,6 +16,26 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
+// memo_categories: 메모 분류 태그 사전. 고정 enum이 아니라 행으로 관리 —
+// LLM이 분류 시 새 태그를 생성하면 여기 upsert되어 코드 수정 없이 목록이 늘어난다
+// (스펙 2026-07-13-memo-dynamic-categories). is_seed=true는 최초 6종.
+export const memoCategories = pgTable(
+  "memo_categories",
+  {
+    // slug — kebab-case 영문. FK 키·필터 파라미터로 안정적.
+    id: text("id").primaryKey(),
+    // 표시용 한글 라벨.
+    labelKo: text("label_ko").notNull(),
+    // 시드 6종 여부 — 표시 정렬·삭제 정책용.
+    isSeed: boolean("is_seed").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("memo_categories_slug_format", sql`${t.id} ~ '^[a-z][a-z0-9-]*$' AND length(${t.id}) BETWEEN 1 AND 40`),
+    check("memo_categories_label_len", sql`length(${t.labelKo}) BETWEEN 1 AND 20`),
+  ],
+);
+
 export const memos = pgTable(
   "memos",
   {
@@ -31,8 +51,8 @@ export const memos = pgTable(
     rawContent: text("raw_content").notNull(),
     // 음성: AI 클린업본 / 텍스트: raw와 동일. 편집 대상.
     cleanedContent: text("cleaned_content").notNull(),
-    // MemoCategory slug — LLM 자동 분류. null = 미분류(분류 대기/실패, cron sweep이 회수).
-    category: text("category"),
+    // MemoCategory slug — LLM 자동 분류. null = 미분류. FK로 존재하는 태그만 허용.
+    category: text("category").references(() => memoCategories.id, { onDelete: "set null" }),
     // 액션 추출 시도 성공 시각 (0건도 기록). null = 미추출 — 48h 내 생성분만 cron 회수
     // (과거 백필 없음 — 오래된 메모의 상대 날짜는 기준점이 어긋남, 스펙 memo-action-extraction §3).
     actionsExtractedAt: timestamp("actions_extracted_at", { mode: "date" }),
@@ -42,10 +62,6 @@ export const memos = pgTable(
   (t) => [
     index("memos_user_created_idx").on(t.userId, t.createdAt.desc()),
     check("memos_source_check", sql`${t.source} IN ('voice', 'text')`),
-    check(
-      "memos_category_check",
-      sql`${t.category} IS NULL OR ${t.category} IN ('idea', 'todo', 'journal', 'reference', 'draft', 'etc')`,
-    ),
     check("memos_raw_not_empty", sql`length(${t.rawContent}) > 0`),
     check("memos_cleaned_not_empty", sql`length(${t.cleanedContent}) > 0`),
   ],
