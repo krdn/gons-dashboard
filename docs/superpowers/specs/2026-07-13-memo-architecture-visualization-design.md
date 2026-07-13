@@ -186,12 +186,16 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
   ```
 - **고정 상수 LLM 작업 모델 변경(정리·분류·추출·다이제스트)** — 각 파일 모델 상수를 직접 교체: 정리=`cleanup-transcript.ts:CLEANUP_MODEL`, 분류=`shared/lib/llm/anthropic.ts:HAIKU_MODEL`(classifyMemo가 참조), 추출=`extractMemoActions.ts:EXTRACT_MODEL`, 다이제스트=`generateWeeklyDigest.ts:DIGEST_MODEL`. ⚠️ 생성 계열(정리·추출·다이제스트)은 haiku 금지(이메일 초안 거절 전례). ⚠️ **`HAIKU_MODEL`은 메모 전용이 아니다** — `shared/lib/llm/anthropic.ts`의 공유 상수라 메모 분류(`classifyMemo.ts`)뿐 아니라 **이메일 답장 분류(`classify-thread.ts`)·중요도 분류(`classify-important.ts`)도 함께 사용**한다. 이 상수를 바꾸면 이메일 분류 모델까지 동시에 바뀐다. 메모 분류 모델만 독립 변경하려면 먼저 메모 전용 상수(예: `MEMO_CLASSIFY_MODEL`)를 분리해 `classifyMemo.ts`만 그것을 참조하게 해야 한다. `command`: `cd apps/dashboard && pnpm build`
 - **변환(transform) 모델 변경 — 상수 아님, 프리셋 경유** — 변환은 고정 상수가 없다. 사용자 프리셋 모델(`memo_transform_presets.model`/`model_id`)을 우선 사용하고, 미지정이면 `getDefaultMemoModel`(전체 기본 모델)을 상속한다. 해석은 `features/memo-transform/lib/preset-resolver.ts:resolvePreset`, 실제 호출은 `transform-memo.ts`가 `preset.modelId`로. 기본값·폴백 조정은 프리셋 설정 UI(`/memos/settings`) 또는 폴백 env `MEMO_LLM_MODEL_{CLAUDE,CODEX,GEMINI}`. `HAIKU_MODEL`은 분류 전용이라 변환과 무관. `command`: `cd apps/dashboard && pnpm build`
-- **새 빌트인 프리셋 추가** — 3곳 동시: `TRANSFORM_PRESET_IDS`+`PRESET_INSTRUCTIONS`+`preset-meta`. `command`: `pnpm typecheck`
+- **새 빌트인 프리셋 추가** — **3개 파일, 4개 정의를 함께** 갱신: `entities/memo/model/types.ts`의 `TRANSFORM_PRESET_IDS`(ID 튜플) + `TRANSFORM_PRESET_LABELS`(라벨 레코드), `features/memo-transform/lib/prompts.ts`의 `PRESET_INSTRUCTIONS`, `features/memo-transform/lib/preset-meta.ts`의 `TRANSFORM_PRESETS`(`{minInputLen, strictPreserve}`). Record 타입이라 하나 빠뜨리면 tsc가 잡는다. `command`: `pnpm typecheck`
 - **액션 상태기계 수정** — `actionItem.ts:ACTION_ITEM_ALLOWED_FROM`. ⚠️ DB CHECK·fixture 동기. `command`: `pnpm typecheck && pnpm test`
 - **다이제스트 백필·주차경계·재부상** — `week.ts:enumerateMissingWeekEnds`. ⚠️ 오래된 순 컷 유지(PR #297). `command`: `pnpm test`
-- **cron 스케줄 변경** — `apps/cron/scheduler.js`. ⚠️ cron 컨테이너는 Docker로만 빌드 → 이미지 재배포 필요. `command`(빌드 트리거 대기):
+- **cron 스케줄 변경** — `apps/cron/scheduler.js`(crontab 문자열 + 하단 콘솔 로그 동기). ⚠️ cron 컨테이너는 Docker로만 빌드(GHA가 `apps/cron` 컨텍스트로 `ghcr.io/krdn/gons-dashboard-cron:latest` 푸시)라 로컬 pnpm으로 안 돌고 **이미지 빌드 + 운영 컨테이너 교체까지** 해야 반영됨. `gh run watch`는 빌드 대기일 뿐 — `pull` + `up -d cron`으로 실제 교체 필수(CLAUDE.md §운영 배포, RUNBOOK). `command`:
   ```bash
-  gh run watch   # GHA가 ghcr.io/krdn/gons-dashboard-cron:latest 재빌드
+  set -e
+  COMPOSE="/home/gon/projects/gon/gons-dashboard/docker-compose.yml"
+  gh run watch                                                       # GHA 이미지 빌드 완료 대기
+  docker --context home-server compose -f "$COMPOSE" pull cron       # 새 cron 이미지 받기
+  docker --context home-server compose -f "$COMPOSE" up -d cron      # 컨테이너 교체
   ```
 - **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate`가 운영 tracking 인식 못 함(우회 필수). 새 마이그레이션 SQL 파일을 psql `-f`로 트랜잭션 적용한 뒤 이미지 배포. ⚠️ **운영 daemon 대상은 반드시 `docker --context home-server`**(alias `dserver`) — plain `docker`는 로컬 context(`default`)를 대상으로 해 운영이 아닌 로컬에 적용되는 사고(CLAUDE.md §운영 배포, RUNBOOK 인프라 요약). ⚠️ psql에 **`-v ON_ERROR_STOP=1`** 필수 — 없으면 SQL 오류에도 계속 진행해 silent partial-apply. 운영 DB명은 `gons_dashboard`. `command`(`$MIGRATION_FILE`에 실제 파일 경로 지정 — 예: `apps/dashboard/drizzle/0045_*.sql`. 현재 최신은 0044이므로 다음 마이그레이션 기준):
   ```bash
