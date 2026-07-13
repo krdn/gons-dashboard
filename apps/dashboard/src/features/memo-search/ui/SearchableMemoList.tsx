@@ -3,8 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   tokenizeSearchQuery,
   SEARCH_MEMOS_LIMIT,
-  MEMO_CATEGORY_IDS,
-  MEMO_CATEGORY_LABELS,
   type Memo,
   type MemoActionItem,
   type MemoCategory,
@@ -25,6 +23,8 @@ interface SearchableMemoListProps {
   presets: TransformPresetOption[];
   /** 사용자 전체 액션 맵 — 검색 결과(200개 컷 밖 메모)에도 유효 (transformationsByMemo와 동일 원리). */
   actionItemsByMemo?: Record<string, MemoActionItem[]>;
+  /** 등록된 카테고리 목록 — 필터 칩·라벨 조회 (DB memo_categories, 서버 로드). */
+  categories: { id: string; labelKo: string }[];
 }
 
 // 검색바 + 목록 전환 — 비활성(빈 쿼리)이면 서버가 내려준 원본 목록,
@@ -34,6 +34,7 @@ export function SearchableMemoList({
   transformationsByMemo,
   presets,
   actionItemsByMemo,
+  categories,
 }: SearchableMemoListProps) {
   const [query, setQuery] = useState("");
   // null = 아직 첫 응답 전 (검색 중 표시). 재검색 중엔 직전 결과를 유지해 점프를 막는다.
@@ -45,6 +46,11 @@ export function SearchableMemoList({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 응답 순서 역전 방지 — 마지막 요청만 반영.
   const seqRef = useRef(0);
+
+  const categoryLabels: Record<string, string> = Object.fromEntries(
+    categories.map((c) => [c.id, c.labelKo]),
+  );
+  const labelOf = (id: string) => categoryLabels[id] ?? id;
 
   const trimmed = query.trim();
   const active = trimmed.length > 0;
@@ -116,7 +122,7 @@ export function SearchableMemoList({
         : results.memos.length === 0
           ? `‘${trimmed}’에 대한 결과가 없습니다.`
           : category !== null && visibleResults !== null && visibleResults.length === 0
-            ? `‘${MEMO_CATEGORY_LABELS[category]}’ 카테고리에 일치하는 결과가 없습니다.`
+            ? `‘${labelOf(category)}’ 카테고리에 일치하는 결과가 없습니다.`
             : `${visibleResults?.length ?? 0}개 결과${results.truncated ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`;
   const isMessage = status === "failed" || results === null || !hasResults;
 
@@ -175,19 +181,19 @@ export function SearchableMemoList({
         >
           전체
         </button>
-        {MEMO_CATEGORY_IDS.map((id) => (
+        {categories.map((c) => (
           <button
-            key={id}
+            key={c.id}
             type="button"
-            aria-pressed={category === id}
-            onClick={() => setCategory((cur) => (cur === id ? null : id))}
+            aria-pressed={category === c.id}
+            onClick={() => setCategory((cur) => (cur === c.id ? null : c.id))}
             className={
-              category === id
+              category === c.id
                 ? "rounded-full bg-neutral-900 px-2.5 py-0.5 text-xs text-white"
                 : "rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs text-neutral-500 hover:text-neutral-900"
             }
           >
-            {MEMO_CATEGORY_LABELS[id]}
+            {c.labelKo}
           </button>
         ))}
       </div>
@@ -210,12 +216,13 @@ export function SearchableMemoList({
               actionItemsByMemo={actionItemsByMemo}
               highlightTerms={highlightTerms}
               onMutated={() => runSearch(trimmed)}
+              categories={categories}
             />
           )}
         </>
       ) : category !== null && visibleIdle.length === 0 ? (
         <p className="py-8 text-center text-sm text-neutral-400">
-          ‘{MEMO_CATEGORY_LABELS[category]}’ 카테고리의 메모가 없습니다.
+          ‘{labelOf(category)}’ 카테고리의 메모가 없습니다.
         </p>
       ) : (
         <MemoList
@@ -223,6 +230,7 @@ export function SearchableMemoList({
           transformationsByMemo={transformationsByMemo}
           presets={presets}
           actionItemsByMemo={actionItemsByMemo}
+          categories={categories}
         />
       )}
     </div>

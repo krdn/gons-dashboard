@@ -17,6 +17,8 @@ interface MemoListProps {
   highlightTerms?: string[];
   /** 편집·삭제 성공 후 콜백 — 검색 모드의 클라이언트 결과를 재검색으로 갱신 (revalidatePath가 못 미침). */
   onMutated?: () => void;
+  /** 등록된 카테고리 목록 — 배지 라벨 조회 (DB memo_categories, 서버 로드). */
+  categories: { id: string; labelKo: string }[];
 }
 
 export function MemoList({
@@ -26,7 +28,11 @@ export function MemoList({
   actionItemsByMemo,
   highlightTerms,
   onMutated,
+  categories,
 }: MemoListProps) {
+  const categoryLabels: Record<string, string> = Object.fromEntries(
+    categories.map((c) => [c.id, c.labelKo]),
+  );
   const [editing, setEditing] = useState<Memo | null>(null);
   const [transforming, setTransforming] = useState<Memo | null>(null);
   const [draft, setDraft] = useState({ title: "", cleaned: "" });
@@ -134,6 +140,7 @@ export function MemoList({
             onDelete={handleDelete}
             onTransform={setTransforming}
             highlightTerms={highlightTerms}
+            categoryLabels={categoryLabels}
             actionsSlot={
               (actionItemsByMemo?.[memo.id]?.length ?? 0) > 0 ? (
                 <MemoActionPanel items={actionItemsByMemo?.[memo.id] ?? []} />

@@ -16,7 +16,7 @@ import {
   listMemosOlderThan,
   type Memo,
 } from "@/entities/memo/server";
-import { MEMO_CATEGORY_LABELS, isMemoCategory } from "@/entities/memo/client";
+import { SEED_CATEGORY_LABELS, isValidCategorySlug } from "@/entities/memo/client";
 import {
   computeDigestWindow,
   enumerateMissingWeekEnds,
@@ -51,8 +51,8 @@ function buildDigestPrompt(weekMemos: Memo[]): string {
   const lines: string[] = [];
   let used = 0;
   for (const memo of weekMemos) {
-    const category = isMemoCategory(memo.category)
-      ? `[${MEMO_CATEGORY_LABELS[memo.category]}] `
+    const category = isValidCategorySlug(memo.category)
+      ? `[${SEED_CATEGORY_LABELS[memo.category] ?? memo.category}] `
       : "";
     const line = `- ${category}${memo.title}: ${memo.cleanedContent.slice(0, PER_MEMO_CONTENT_LEN).replace(/\n/g, " ")}`;
     if (used + line.length > MAX_INPUT_CHARS) break;
