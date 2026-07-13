@@ -5,6 +5,7 @@ import {
   listMemos,
   listTransformationsByUser,
   listActionItemsByUser,
+  listCategories,
   type MemoActionItem,
   type MemoTransformation,
 } from "@/entities/memo/server";
@@ -19,12 +20,13 @@ export default async function MemosPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [memos, transformations, catalog, actionItems] = await Promise.all([
+  const [memos, transformations, catalog, actionItems, categories] = await Promise.all([
     listMemos(session.user.id),
     listTransformationsByUser(session.user.id),
     listPresetCatalog(session.user.id),
     // 패널은 진행 중 항목만 — dismissed/done은 숨김 (스펙 memo-action-extraction §5).
     listActionItemsByUser(session.user.id, ["proposed", "accepted"]),
+    listCategories(),
   ]);
   const transformationsByMemo: Record<string, MemoTransformation[]> = {};
   for (const t of transformations) {
@@ -52,6 +54,7 @@ export default async function MemosPage() {
         transformationsByMemo={transformationsByMemo}
         presets={presetOptions}
         actionItemsByMemo={actionItemsByMemo}
+        categories={categories.map(({ id, labelKo }) => ({ id, labelKo }))}
       />
     </PageContainer>
   );

@@ -48,11 +48,17 @@ export {
   type ClassifyAndPersistResult,
 } from "./api/classifyMemo";
 export {
-  MEMO_CATEGORY_IDS,
-  MEMO_CATEGORY_LABELS,
-  isMemoCategory,
+  SEED_MEMO_CATEGORIES,
+  SEED_CATEGORY_LABELS,
+  CATEGORY_SLUG_RE,
+  isValidCategorySlug,
   type MemoCategory,
 } from "./model/category";
+export {
+  listCategories,
+  upsertCategory,
+  type MemoCategoryRow,
+} from "./api/categoryRepo";
 export { tokenizeSearchQuery, SEARCH_MEMOS_LIMIT } from "./model/search";
 export {
   upsertTransformation,

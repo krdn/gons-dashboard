@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Highlighted } from "@/shared/ui/Highlighted";
 import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
-import { MEMO_CATEGORY_LABELS, isMemoCategory } from "../model/category";
 
 interface MemoCardProps {
   memo: Memo;
@@ -17,6 +16,8 @@ interface MemoCardProps {
   highlightTerms?: string[];
   /** 액션 제안·할일 패널 슬롯 — 조립은 MemoList 담당 (entity는 features 접근 불가, onTransform과 동일 원칙). */
   actionsSlot?: React.ReactNode;
+  /** slug→라벨 맵 — 배지 표시. 없으면 slug 그대로 표시. */
+  categoryLabels?: Record<string, string>;
 }
 
 // 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 slug — 빌트인·커스텀 공통).
@@ -65,6 +66,7 @@ export function MemoCard({
   onTransform,
   highlightTerms = [],
   actionsSlot,
+  categoryLabels = {},
 }: MemoCardProps) {
   // 파생 초기 뷰 + 사용자 오버라이드 — 칩 클릭 전까지는 검색어가 실제 일치한 뷰를 보여준다.
   const [userView, setUserView] = useState<MemoView | null>(null);
@@ -111,9 +113,9 @@ export function MemoCard({
           <Highlighted text={memo.title} terms={highlightTerms} />
         </h3>
         <div className="flex shrink-0 items-center gap-1">
-          {isMemoCategory(memo.category) && (
+          {memo.category && (
             <span className="rounded border border-neutral-200 px-1.5 py-0.5 text-xs text-neutral-500">
-              {MEMO_CATEGORY_LABELS[memo.category]}
+              {categoryLabels[memo.category] ?? memo.category}
             </span>
           )}
           <span className="rounded px-1.5 py-0.5 text-xs text-neutral-500">

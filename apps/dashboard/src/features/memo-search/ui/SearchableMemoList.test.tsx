@@ -36,6 +36,15 @@ function makeMemo(id: string, title: string, cleaned: string, category: string |
   } as Memo;
 }
 
+const CATEGORIES = [
+  { id: "idea", labelKo: "아이디어" },
+  { id: "todo", labelKo: "할 일" },
+  { id: "journal", labelKo: "일기" },
+  { id: "reference", labelKo: "참고" },
+  { id: "draft", labelKo: "초안" },
+  { id: "etc", labelKo: "기타" },
+];
+
 const initial = [makeMemo("m1", "회의 메모", "회의는 세 시"), makeMemo("m2", "장보기", "우유 사기")];
 
 async function typeAndFlush(value: string) {
@@ -59,7 +68,9 @@ afterEach(() => {
 });
 
 function renderList() {
-  render(<SearchableMemoList memos={initial} transformationsByMemo={{}} presets={[]} />);
+  render(
+    <SearchableMemoList memos={initial} transformationsByMemo={{}} presets={[]} categories={CATEGORIES} />,
+  );
 }
 
 describe("SearchableMemoList", () => {
@@ -138,7 +149,14 @@ describe("카테고리 필터", () => {
   ];
 
   function renderCategorized() {
-    render(<SearchableMemoList memos={categorized} transformationsByMemo={{}} presets={[]} />);
+    render(
+      <SearchableMemoList
+        memos={categorized}
+        transformationsByMemo={{}}
+        presets={[]}
+        categories={CATEGORIES}
+      />,
+    );
   }
 
   it("전체 + 고정 6종 칩이 렌더되고 기본 활성은 전체", () => {
@@ -201,5 +219,17 @@ describe("카테고리 필터", () => {
     await typeAndFlush("회의");
     fireEvent.click(screen.getByRole("button", { name: "일기" }));
     expect(screen.getByText("‘일기’ 카테고리에 일치하는 결과가 없습니다.")).toBeTruthy();
+  });
+
+  it("등록된 동적 태그도 필터 칩으로 렌더한다", () => {
+    render(
+      <SearchableMemoList
+        memos={[]}
+        transformationsByMemo={{}}
+        presets={[]}
+        categories={[...CATEGORIES, { id: "meeting-log", labelKo: "회의록" }]}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "회의록" })).toBeTruthy();
   });
 });

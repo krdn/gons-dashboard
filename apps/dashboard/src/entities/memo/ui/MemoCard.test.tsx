@@ -55,9 +55,18 @@ describe("MemoCard 검색 하이라이트 초기 뷰", () => {
 });
 
 describe("MemoCard 카테고리 뱃지", () => {
-  it("category가 있으면 라벨 뱃지를 표시한다", () => {
-    render(<MemoCard memo={{ ...memo, category: "idea" } as Memo} />);
-    expect(screen.getByText("아이디어")).toBeTruthy();
+  it("동적 slug 배지를 라벨 맵으로 표시한다", () => {
+    render(
+      <MemoCard
+        memo={{ ...memo, category: "meeting-log" } as Memo}
+        categoryLabels={{ "meeting-log": "회의록" }}
+      />,
+    );
+    expect(screen.getByText("회의록")).toBeTruthy();
+  });
+  it("라벨 맵에 없는 slug는 slug 그대로 표시한다", () => {
+    render(<MemoCard memo={{ ...memo, category: "unknown-tag" } as Memo} />);
+    expect(screen.getByText("unknown-tag")).toBeTruthy();
   });
   it("미분류(null)면 뱃지를 표시하지 않는다", () => {
     render(<MemoCard memo={{ ...memo, category: null } as Memo} />);
