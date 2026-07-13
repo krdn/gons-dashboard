@@ -44,19 +44,17 @@ beforeEach(() => {
 });
 
 // analyzeStructured를 mock하면 내부 Zod 검증이 사라지므로 스키마를 직접 가드.
+// category slug 형식은 스키마가 아닌 앱 계층(classifyAndPersistMemoCategory)에서 검증한다 —
+// 스키마 regex 위반은 analyzeStructured throw→llm-unavailable로 잡혀 etc fallback에 도달 못 하기 때문.
 describe("MemoCategoryResponseSchema", () => {
-  test("유효 slug + 한글 라벨을 통과시킨다", () => {
-    const r = MemoCategoryResponseSchema.safeParse({ category: "meeting-log", labelKo: "회의록" });
-    expect(r.success).toBe(true);
+  test("category·라벨이 비어있지 않으면 통과시킨다 (형식 무관하게 파싱)", () => {
+    expect(MemoCategoryResponseSchema.safeParse({ category: "meeting-log", labelKo: "회의록" }).success).toBe(true);
+    // 무효 형식 slug도 스키마는 통과 — 형식 검증은 앱 계층으로 이동.
+    expect(MemoCategoryResponseSchema.safeParse({ category: "INVALID SLUG", labelKo: "잘못됨" }).success).toBe(true);
   });
 
-  test("대문자·공백·한글 slug를 거부한다", () => {
-    expect(MemoCategoryResponseSchema.safeParse({ category: "Meeting", labelKo: "회의록" }).success).toBe(false);
-    expect(MemoCategoryResponseSchema.safeParse({ category: "meeting log", labelKo: "회의록" }).success).toBe(false);
-    expect(MemoCategoryResponseSchema.safeParse({ category: "회의록", labelKo: "회의록" }).success).toBe(false);
-  });
-
-  test("빈 라벨·20자 초과 라벨을 거부한다", () => {
+  test("빈 category·빈 라벨·20자 초과 라벨을 거부한다", () => {
+    expect(MemoCategoryResponseSchema.safeParse({ category: "", labelKo: "회의록" }).success).toBe(false);
     expect(MemoCategoryResponseSchema.safeParse({ category: "idea", labelKo: "" }).success).toBe(false);
     expect(MemoCategoryResponseSchema.safeParse({ category: "idea", labelKo: "가".repeat(21) }).success).toBe(false);
   });
@@ -139,6 +137,9 @@ describe("classifyAndPersistMemoCategory", () => {
   });
 
   test("LLM이 무효 slug를 반환하면 etc/기타로 fallback한다", async () => {
+    // 실제 analyzeStructured도 이 응답을 파싱 통과시킨다 (스키마가 category regex를 안 하므로).
+    // 형식 검증은 여기 앱 계층에서 수행 → etc 강등. 스키마에 regex를 두면 이 경로가 죽고
+    // 무효 slug가 llm-unavailable로 빠져 영원히 미분류가 된다 (Codex 리뷰 발견).
     analyzeStructuredMock.mockResolvedValue({
       object: { category: "INVALID SLUG", labelKo: "잘못됨" },
       usage: {},
