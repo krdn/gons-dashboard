@@ -18,7 +18,7 @@ export function MaintenanceIndex({ entries }: { entries: MaintenanceEntry[] }) {
     <div className="space-y-3">
       <input
         type="search"
-        role="searchbox"
+        aria-label="유지보수 작업 검색"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="유지보수 작업 검색…"

@@ -13,7 +13,17 @@ export function MemoArchitectureView({ graph }: { graph: ArchitectureGraph }) {
   const [flowId, setFlowId] = useState(graph.flows[0]?.id ?? "");
   const [nodeId, setNodeId] = useState<string | null>(null);
   const flow = graph.flows.find((f) => f.id === flowId) ?? graph.flows[0];
-  const node = graph.nodes.find((n) => n.id === nodeId) ?? null;
+  // 상세는 현재 흐름의 핵심 경로에 있는 노드만 — 흐름 전환 후 stale 선택을 걸러낸다.
+  const node =
+    nodeId && flow?.nodeIds.includes(nodeId)
+      ? (graph.nodes.find((n) => n.id === nodeId) ?? null)
+      : null;
+
+  // 흐름을 바꾸면 이전 흐름에서 고른 노드 선택을 비운다.
+  function selectFlow(id: string) {
+    setFlowId(id);
+    setNodeId(null);
+  }
 
   return (
     <div className="space-y-4">
@@ -27,7 +37,7 @@ export function MemoArchitectureView({ graph }: { graph: ArchitectureGraph }) {
       </div>
       {tab === "graph" ? (
         <div className="space-y-4">
-          <FlowChips flows={graph.flows} selectedId={flowId} onSelect={setFlowId} />
+          <FlowChips flows={graph.flows} selectedId={flowId} onSelect={selectFlow} />
           {flow && (
             <WorkflowGraph
               flow={flow}

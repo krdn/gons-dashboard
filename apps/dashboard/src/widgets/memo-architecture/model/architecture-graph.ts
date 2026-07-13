@@ -657,7 +657,7 @@ export const ARCHITECTURE_GRAPH: ArchitectureGraph = {
     id: "table-push-subscriptions",
     layer: "shared",
     label: "push_subscriptions",
-    path: "apps/dashboard/src/shared/lib/db/schema/push.ts",
+    path: "apps/dashboard/src/shared/lib/db/schema/email.ts",
     symbol: "pushSubscriptions",
     role: "웹 푸시 구독(endpoint/p256dh/auth) 테이블. sendPushToUser가 userId로 조회해 발송, 만료 구독은 DELETE로 정리.",
     keyExports: ["pushSubscriptions"],

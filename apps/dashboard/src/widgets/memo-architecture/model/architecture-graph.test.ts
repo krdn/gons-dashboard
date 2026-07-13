@@ -1,5 +1,11 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { ARCHITECTURE_GRAPH } from "./architecture-graph";
+
+// vitest cwd = apps/dashboard. 노드 path는 repo-relative(apps/dashboard/... 접두)라
+// repo 루트를 기준으로 해석한다.
+const REPO_ROOT = resolve(__dirname, "../../../../../..");
 
 describe("ARCHITECTURE_GRAPH 무결성", () => {
   const { nodes, flows, maintenance } = ARCHITECTURE_GRAPH;
@@ -48,6 +54,14 @@ describe("ARCHITECTURE_GRAPH 무결성", () => {
 
   it("유지보수 색인은 비어있지 않다", () => {
     expect(maintenance.length).toBeGreaterThan(0);
+  });
+
+  it("모든 노드 path는 실존 파일을 가리킨다", () => {
+    for (const n of nodes) {
+      // apps/cron/* 은 dashboard 밖이지만 repo 루트 기준이라 함께 해석된다.
+      const abs = resolve(REPO_ROOT, n.path);
+      expect(existsSync(abs), `${n.id}: ${n.path}`).toBe(true);
+    }
   });
 
   it("어떤 문자열에도 평문 시크릿·운영 호스트가 없다 ($VAR만)", () => {

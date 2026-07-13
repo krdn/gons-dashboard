@@ -3,12 +3,10 @@ import type { GraphNode as GraphNodeData } from "../model/types";
 
 export function GraphNode({
   node,
-  dimmed,
   selected,
   onSelect,
 }: {
   node: GraphNodeData;
-  dimmed: boolean;
   selected: boolean;
   onSelect: (id: string) => void;
 }) {
@@ -22,7 +20,6 @@ export function GraphNode({
         selected
           ? "border-[var(--color-accent)] bg-[var(--color-surface-2)]"
           : "border-[var(--color-hairline)] bg-[var(--color-surface)]",
-        dimmed ? "opacity-30" : "opacity-100",
       ].join(" ")}
     >
       <span className="font-medium text-[var(--color-text)]">{node.label}</span>

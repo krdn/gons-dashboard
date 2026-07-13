@@ -1,12 +1,19 @@
 "use client";
 import { useState } from "react";
 
+type CopyState = "idle" | "copied" | "failed";
+
 export function CopyableCommand({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<CopyState>("idle");
   async function copy() {
-    await navigator.clipboard.writeText(command);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(command);
+      setState("copied");
+    } catch {
+      // 비-secure context·권한 거부 등 — 크래시 대신 실패 표시.
+      setState("failed");
+    }
+    setTimeout(() => setState("idle"), 1500);
   }
   return (
     <div className="flex items-start gap-2 rounded-md bg-[var(--color-surface-2)] p-2">
@@ -19,7 +26,7 @@ export function CopyableCommand({ command }: { command: string }) {
         aria-label="복사"
         className="shrink-0 rounded border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
       >
-        {copied ? "복사됨" : "복사"}
+        {state === "copied" ? "복사됨" : state === "failed" ? "복사 실패" : "복사"}
       </button>
     </div>
   );

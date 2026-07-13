@@ -21,8 +21,7 @@ export function WorkflowGraph({
   selectedNodeId: string | null;
   onSelectNode: (id: string) => void;
 }) {
-  const active = new Set(flow.nodeIds);
-  // 흐름이 지나는 노드만, 흐름의 nodeIds 순서를 보존해 레이어별로 묶는다.
+  // 흐름이 지나는 핵심 경로 노드만, 흐름의 nodeIds 순서를 보존해 레이어별로 묶는다.
   const flowNodes = flow.nodeIds
     .map((id) => nodes.find((n) => n.id === id))
     .filter((n): n is GraphNodeData => Boolean(n));
@@ -44,7 +43,6 @@ export function WorkflowGraph({
               <GraphNode
                 key={n.id}
                 node={n}
-                dimmed={!active.has(n.id)}
                 selected={n.id === selectedNodeId}
                 onSelect={onSelectNode}
               />
