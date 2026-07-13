@@ -1,5 +1,6 @@
 "use client";
 import { useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { useSpeechRecognition } from "../lib/useSpeechRecognition";
 import { saveDraft, clearDraft, getDraftSnapshot, subscribeDraft } from "../lib/memoDraftStorage";
 import { cleanupTranscriptAction, createMemoAction } from "../client";
@@ -12,7 +13,13 @@ type Tab = "voice" | "text";
 // useEffect+setState 방식과 달리 순수성 위반(react-hooks/set-state-in-effect) 없이 hydration-safe.
 const subscribeNoop = () => () => {}; // 런타임 중 값이 바뀌지 않는 정적 능력이라 구독 불필요.
 
+// 저장 직후 category는 서버 백그라운드(after)로 비동기 채워진다 — 저장 시점 렌더는
+// 항상 null이라 배지가 없다. 즉시 1회 + 분류가 끝날 시간을 준 뒤 재-refresh로
+// 배지가 자연히 나타나게 한다 (개인 규모라 setTimeout 폴링으로 충분).
+const CLASSIFY_REFRESH_DELAY_MS = 4_000;
+
 export function MemoComposer() {
+  const router = useRouter();
   const speech = useSpeechRecognition();
   const voiceSupported = useSyncExternalStore(
     subscribeNoop,
@@ -103,6 +110,7 @@ export function MemoComposer() {
           clearDraft();
           resetVoice();
           setNotice("저장되었습니다.");
+          refreshMemoList();
         } else {
           setNotice(r.kind === "invalid" ? "내용이 비어 있습니다." : "저장에 실패했습니다.");
         }
@@ -112,6 +120,14 @@ export function MemoComposer() {
         setNotice("저장에 실패했습니다.");
       },
     );
+  }
+
+  // 저장 성공 시 목록 갱신 — 서버 revalidatePath는 서버 캐시만 무효화하므로
+  // 열려 있는 이 탭은 router.refresh()로 직접 RSC를 다시 받아야 새 메모가 나타난다.
+  function refreshMemoList() {
+    router.refresh();
+    // 분류(after)가 끝난 뒤 배지가 나타나도록 지연 재-refresh 1회.
+    setTimeout(() => router.refresh(), CLASSIFY_REFRESH_DELAY_MS);
   }
 
   function resetVoice() {
@@ -138,6 +154,7 @@ export function MemoComposer() {
           setTextInput("");
           setTitle("");
           setNotice("저장되었습니다.");
+          refreshMemoList();
         } else {
           setNotice("저장에 실패했습니다.");
         }

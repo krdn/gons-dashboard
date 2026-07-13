@@ -10,11 +10,18 @@ vi.mock("../client", () => ({
   createMemoAction: vi.fn(async () => ({ kind: "ok", id: "m1" })),
 }));
 
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 import { MemoComposer } from "./MemoComposer";
 import { saveDraft, clearDraft, loadDraft } from "../lib/memoDraftStorage";
 
 beforeEach(() => {
   clearDraft();
+  refresh.mockClear();
+  vi.useRealTimers();
 });
 afterEach(cleanup);
 
@@ -47,6 +54,33 @@ describe("MemoComposer — 초안 복원 배너", () => {
     fireEvent.click(screen.getByRole("button", { name: "버리기" }));
     expect(screen.queryByText("저장하지 않은 메모 초안이 있습니다.")).toBeNull();
     expect(loadDraft()).toBeNull();
+  });
+});
+
+describe("MemoComposer — 저장 후 목록 갱신", () => {
+  it("텍스트 저장 성공 시 목록을 즉시 refresh한다", async () => {
+    render(<MemoComposer />);
+    fireEvent.click(screen.getByRole("button", { name: "✍ 텍스트" }));
+    fireEvent.change(screen.getByPlaceholderText("메모 입력…"), {
+      target: { value: "새 메모 내용" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    // 저장 성공 후 즉시 1회 refresh — 새 메모가 목록에 바로 나타남.
+    expect(await screen.findByText("저장되었습니다.")).toBeTruthy();
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("저장 실패 시에는 refresh하지 않는다", async () => {
+    const { createMemoAction } = await import("../client");
+    vi.mocked(createMemoAction).mockResolvedValueOnce({ kind: "failed" });
+    render(<MemoComposer />);
+    fireEvent.click(screen.getByRole("button", { name: "✍ 텍스트" }));
+    fireEvent.change(screen.getByPlaceholderText("메모 입력…"), {
+      target: { value: "실패할 메모" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(await screen.findByText("저장에 실패했습니다.")).toBeTruthy();
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
 
