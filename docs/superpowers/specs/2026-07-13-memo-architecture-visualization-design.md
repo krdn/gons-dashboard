@@ -184,7 +184,7 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
   ```bash
   psql "$DATABASE_URL" -c "INSERT INTO memo_categories (id,label_ko,is_seed) VALUES ('meeting-log','회의록',false) ON CONFLICT DO NOTHING;"
   ```
-- **고정 상수 LLM 작업 모델 변경(정리·분류·추출·다이제스트)** — 각 파일 모델 상수를 직접 교체: 정리=`cleanup-transcript.ts:CLEANUP_MODEL`, 분류=`shared/lib/llm/anthropic.ts:HAIKU_MODEL`(classifyMemo가 참조), 추출=`extractMemoActions.ts:EXTRACT_MODEL`, 다이제스트=`generateWeeklyDigest.ts:DIGEST_MODEL`. ⚠️ 생성 계열(정리·추출·다이제스트)은 haiku 금지(이메일 초안 거절 전례). `command`: `cd apps/dashboard && pnpm build`
+- **고정 상수 LLM 작업 모델 변경(정리·분류·추출·다이제스트)** — 각 파일 모델 상수를 직접 교체: 정리=`cleanup-transcript.ts:CLEANUP_MODEL`, 분류=`shared/lib/llm/anthropic.ts:HAIKU_MODEL`(classifyMemo가 참조), 추출=`extractMemoActions.ts:EXTRACT_MODEL`, 다이제스트=`generateWeeklyDigest.ts:DIGEST_MODEL`. ⚠️ 생성 계열(정리·추출·다이제스트)은 haiku 금지(이메일 초안 거절 전례). ⚠️ **`HAIKU_MODEL`은 메모 전용이 아니다** — `shared/lib/llm/anthropic.ts`의 공유 상수라 메모 분류(`classifyMemo.ts`)뿐 아니라 **이메일 답장 분류(`classify-thread.ts`)·중요도 분류(`classify-important.ts`)도 함께 사용**한다. 이 상수를 바꾸면 이메일 분류 모델까지 동시에 바뀐다. 메모 분류 모델만 독립 변경하려면 먼저 메모 전용 상수(예: `MEMO_CLASSIFY_MODEL`)를 분리해 `classifyMemo.ts`만 그것을 참조하게 해야 한다. `command`: `cd apps/dashboard && pnpm build`
 - **변환(transform) 모델 변경 — 상수 아님, 프리셋 경유** — 변환은 고정 상수가 없다. 사용자 프리셋 모델(`memo_transform_presets.model`/`model_id`)을 우선 사용하고, 미지정이면 `getDefaultMemoModel`(전체 기본 모델)을 상속한다. 해석은 `features/memo-transform/lib/preset-resolver.ts:resolvePreset`, 실제 호출은 `transform-memo.ts`가 `preset.modelId`로. 기본값·폴백 조정은 프리셋 설정 UI(`/memos/settings`) 또는 폴백 env `MEMO_LLM_MODEL_{CLAUDE,CODEX,GEMINI}`. `HAIKU_MODEL`은 분류 전용이라 변환과 무관. `command`: `cd apps/dashboard && pnpm build`
 - **새 빌트인 프리셋 추가** — 3곳 동시: `TRANSFORM_PRESET_IDS`+`PRESET_INSTRUCTIONS`+`preset-meta`. `command`: `pnpm typecheck`
 - **액션 상태기계 수정** — `actionItem.ts:ACTION_ITEM_ALLOWED_FROM`. ⚠️ DB CHECK·fixture 동기. `command`: `pnpm typecheck && pnpm test`
@@ -193,14 +193,18 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
   ```bash
   gh run watch   # GHA가 ghcr.io/krdn/gons-dashboard-cron:latest 재빌드
   ```
-- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate`가 운영 tracking 인식 못 함(우회 필수). 새 마이그레이션 SQL 파일을 psql `-f`로 트랜잭션 적용한 뒤 이미지 배포. ⚠️ **운영 daemon 대상은 반드시 `docker --context home-server`**(alias `dserver`) — plain `docker`는 로컬 context(`default`)를 대상으로 해 운영이 아닌 로컬에 적용되는 사고(CLAUDE.md Gotcha #8, RUNBOOK). ⚠️ psql에 **`-v ON_ERROR_STOP=1`** 필수 — 없으면 SQL 오류에도 계속 진행해 silent partial-apply. 운영 DB명은 `gons_dashboard`. `command`(예: `drizzle/0045_*.sql`):
+- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate`가 운영 tracking 인식 못 함(우회 필수). 새 마이그레이션 SQL 파일을 psql `-f`로 트랜잭션 적용한 뒤 이미지 배포. ⚠️ **운영 daemon 대상은 반드시 `docker --context home-server`**(alias `dserver`) — plain `docker`는 로컬 context(`default`)를 대상으로 해 운영이 아닌 로컬에 적용되는 사고(CLAUDE.md §운영 배포, RUNBOOK 인프라 요약). ⚠️ psql에 **`-v ON_ERROR_STOP=1`** 필수 — 없으면 SQL 오류에도 계속 진행해 silent partial-apply. 운영 DB명은 `gons_dashboard`. `command`(`$MIGRATION_FILE`에 실제 파일 경로 지정 — 예: `apps/dashboard/drizzle/0045_*.sql`. 현재 최신은 0044이므로 다음 마이그레이션 기준):
   ```bash
-  docker --context home-server cp apps/dashboard/drizzle/0045_new_migration.sql \
-    gons-dashboard-postgres:/tmp/mig.sql
+  set -e
+  MIGRATION_FILE="apps/dashboard/drizzle/0045_new_migration.sql"   # ← 실제 파일로 교체
+  test -f "$MIGRATION_FILE"                                         # 없으면 여기서 중단(fail-closed)
+  REMOTE="/tmp/$(basename "$MIGRATION_FILE")"                       # 고정 /tmp/mig.sql 재사용 사고 방지
+  docker --context home-server cp "$MIGRATION_FILE" "gons-dashboard-postgres:$REMOTE"
   docker --context home-server exec gons-dashboard-postgres \
-    psql -U gons -d gons_dashboard -v ON_ERROR_STOP=1 --single-transaction -f /tmp/mig.sql
+    psql -U gons -d gons_dashboard -v ON_ERROR_STOP=1 --single-transaction -f "$REMOTE"
+  docker --context home-server exec gons-dashboard-postgres rm -f "$REMOTE"
   ```
-  (`--single-transaction`이 파일 전체를 BEGIN/COMMIT으로 감싸므로 별도 `-c "BEGIN"` 불필요. 오류 시 자동 롤백.)
+  (`set -e`로 `cp` 실패 시 psql 미실행 — 이전 작업의 잔여 `/tmp` SQL 재적용 차단. `--single-transaction`이 파일 전체를 BEGIN/COMMIT으로 감싸 오류 시 자동 롤백. 적용 후 remote 파일 삭제.)
 
 **시크릿·연결정보 규칙**: `command` 문자열에는 `$CRON_BEARER_TOKEN`, `$DATABASE_URL` 같은 **환경변수 참조만** 넣고 실제 값·호스트·비밀번호를 평문으로 두지 않는다. `architecture-graph.ts` 데이터에도 동일 규칙 적용.
 
