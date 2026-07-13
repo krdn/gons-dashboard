@@ -6,17 +6,20 @@ import { z } from "zod";
 import { analyzeStructured } from "@krdn/llm-gateway/gateway";
 import { HAIKU_MODEL, gatewayDefaults, logLlmSpend } from "@/shared/lib/llm/anthropic";
 import { logger } from "@/shared/lib/log";
-import { CATEGORY_SLUG_RE, isValidCategorySlug, SEED_MEMO_CATEGORIES } from "../model/category";
+import { isValidCategorySlug, SEED_MEMO_CATEGORIES } from "../model/category";
 import { setMemoCategory } from "./memoRepo";
 import { listCategories, upsertCategory } from "./categoryRepo";
 
 const MAX_CONTENT_LEN = 2_000;
 const MAX_OUTPUT_TOKENS = 200;
 
-// export 이유: analyzeStructured를 mock하면 내부 Zod 검증이 사라지므로
-// 스키마 자체를 직접 safeParse하는 회귀 가드 테스트가 필요 (llm-gateway mock 함정).
+// category에 slug regex를 두지 않는 이유: analyzeStructured가 스키마 위반 시 throw하는데,
+// 그 throw는 classifyMemoContent의 catch에서 llm-unavailable로 잡혀 etc fallback에 도달 못 한다
+// (무효 slug가 영원히 미분류로 남아 cron 무한 재시도). 형식 검증은 응답 파싱 뒤
+// classifyAndPersistMemoCategory에서 isValidCategorySlug로 수행해 etc로 강등한다.
+// labelKo는 등록 시 CHECK(1~20) 위반을 막아야 하므로 스키마에 유지.
 export const MemoCategoryResponseSchema = z.object({
-  category: z.string().regex(CATEGORY_SLUG_RE),
+  category: z.string().min(1),
   labelKo: z.string().min(1).max(20),
 });
 
