@@ -41,8 +41,9 @@ widget:  widgets/memo-architecture/
 
 **인증 가드 (필수)**: 이 페이지도 다른 dashboard 라우트와 **동일한** per-page 인증을 건다. `memos/page.tsx`의 스켈레톤을 그대로 미러링:
 
-```ts
+```tsx
 // app/(dashboard)/memos/architecture/page.tsx
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { MemoArchitectureView, ARCHITECTURE_GRAPH } from "@/widgets/memo-architecture";
@@ -55,13 +56,22 @@ export default async function MemoArchitecturePage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   return (
-    <PageContainer>
-      <PageHeader title="메모 시스템 아키텍처" /* ← 메모 링크 */ />
+    <PageContainer width="narrow">
+      <PageHeader
+        title="메모 시스템 아키텍처"
+        actions={
+          <Link href="/memos" className="text-sm text-[var(--color-text-muted)] hover:underline">
+            ← 메모
+          </Link>
+        }
+      />
       <MemoArchitectureView graph={ARCHITECTURE_GRAPH} />
     </PageContainer>
   );
 }
 ```
+
+`PageContainer`는 `width="narrow"`(900px), `PageHeader`의 뒤로가기 링크는 `actions` 슬롯에 `<Link href="/memos">`로 렌더 — 둘 다 `memos/settings/page.tsx`의 실제 사용 패턴과 동일하게 맞춘다(주석 아닌 실제 코드).
 
 `app/(dashboard)/layout.tsx`에는 명시적으로 auth 가드가 **없다** (주석: "공유 layout은 soft-nav에서 재렌더 안 됨 — per-page redirect 유지"). 따라서 레이아웃 인증에 의존할 수 없고, `memos/page.tsx`·`memos/settings/page.tsx`가 각자 `auth()`를 호출하는 것과 **똑같이** 이 페이지도 페이지 상단에서 세션을 확인하고 없으면 `/login`으로 redirect해야 한다. 아키텍처·유지보수 명령어(cron 경로, 내부 파일 구조)는 로그인 전용(`ALLOWLIST_EMAILS`) 사용자에게만 노출되어야 하는 내부 정보이므로 이 가드는 콘텐츠가 정적이어도 생략 불가다. 세션 사용자 데이터는 그래프에 쓰지 않는다(가드 목적으로만 `auth()` 호출).
 
@@ -174,7 +184,8 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
   ```bash
   psql "$DATABASE_URL" -c "INSERT INTO memo_categories (id,label_ko,is_seed) VALUES ('meeting-log','회의록',false) ON CONFLICT DO NOTHING;"
   ```
-- **변환/추출/다이제스트/정리 LLM 모델 변경** — 각 파일 모델 상수(`CLEANUP_MODEL`/`EXTRACT_MODEL`/`DIGEST_MODEL`/`HAIKU_MODEL`). ⚠️ 생성 계열 haiku 금지. `command`: `cd apps/dashboard && pnpm build`
+- **고정 상수 LLM 작업 모델 변경(정리·분류·추출·다이제스트)** — 각 파일 모델 상수를 직접 교체: 정리=`cleanup-transcript.ts:CLEANUP_MODEL`, 분류=`shared/lib/llm/anthropic.ts:HAIKU_MODEL`(classifyMemo가 참조), 추출=`extractMemoActions.ts:EXTRACT_MODEL`, 다이제스트=`generateWeeklyDigest.ts:DIGEST_MODEL`. ⚠️ 생성 계열(정리·추출·다이제스트)은 haiku 금지(이메일 초안 거절 전례). `command`: `cd apps/dashboard && pnpm build`
+- **변환(transform) 모델 변경 — 상수 아님, 프리셋 경유** — 변환은 고정 상수가 없다. 사용자 프리셋 모델(`memo_transform_presets.model`/`model_id`)을 우선 사용하고, 미지정이면 `getDefaultMemoModel`(전체 기본 모델)을 상속한다. 해석은 `features/memo-transform/lib/preset-resolver.ts:resolvePreset`, 실제 호출은 `transform-memo.ts`가 `preset.modelId`로. 기본값·폴백 조정은 프리셋 설정 UI(`/memos/settings`) 또는 폴백 env `MEMO_LLM_MODEL_{CLAUDE,CODEX,GEMINI}`. `HAIKU_MODEL`은 분류 전용이라 변환과 무관. `command`: `cd apps/dashboard && pnpm build`
 - **새 빌트인 프리셋 추가** — 3곳 동시: `TRANSFORM_PRESET_IDS`+`PRESET_INSTRUCTIONS`+`preset-meta`. `command`: `pnpm typecheck`
 - **액션 상태기계 수정** — `actionItem.ts:ACTION_ITEM_ALLOWED_FROM`. ⚠️ DB CHECK·fixture 동기. `command`: `pnpm typecheck && pnpm test`
 - **다이제스트 백필·주차경계·재부상** — `week.ts:enumerateMissingWeekEnds`. ⚠️ 오래된 순 컷 유지(PR #297). `command`: `pnpm test`
@@ -182,9 +193,11 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
   ```bash
   gh run watch   # GHA가 ghcr.io/krdn/gons-dashboard-cron:latest 재빌드
   ```
-- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate` 우회. `command`(운영 psql로 BEGIN/COMMIT 수동 선적용 후 이미지 배포):
+- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate`가 운영 tracking 인식 못 함(우회 필수). 새 마이그레이션 SQL 파일을 psql `-f`로 트랜잭션 적용한 뒤 이미지 배포. 운영 DB명은 `gons_dashboard`(compose 기본값). `command`(예: `drizzle/0045_*.sql`을 컨테이너로 복사 후 적용):
   ```bash
-  docker exec gons-dashboard-postgres psql -U gons -c "BEGIN; <DDL>; COMMIT;"
+  docker cp apps/dashboard/drizzle/0045_new_migration.sql gons-dashboard-postgres:/tmp/mig.sql
+  docker exec gons-dashboard-postgres psql -U gons -d gons_dashboard \
+    -c "BEGIN;" -f /tmp/mig.sql -c "COMMIT;"
   ```
 
 **시크릿·연결정보 규칙**: `command` 문자열에는 `$CRON_BEARER_TOKEN`, `$DATABASE_URL` 같은 **환경변수 참조만** 넣고 실제 값·호스트·비밀번호를 평문으로 두지 않는다. `architecture-graph.ts` 데이터에도 동일 규칙 적용.
