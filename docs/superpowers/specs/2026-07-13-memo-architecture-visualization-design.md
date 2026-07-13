@@ -37,7 +37,7 @@ widget:  widgets/memo-architecture/
 
 **설계 원칙**: 데이터/렌더 분리. `architecture-graph.ts`가 흐름·노드·엣지·명령어를 담고, 컴포넌트는 순수 렌더러. 메모 시스템이 바뀌면 이 데이터 파일 한 곳만 갱신한다. 그래프 데이터는 코드에서 정적 import하므로 **런타임 DB/LLM 조회가 없다**. 유일한 서버 의존은 인증 가드(아래 참조)다.
 
-**server/client 경계 (인증 이후에만 데이터 전달)**: `page.tsx`(RSC)가 먼저 `auth()` 가드를 통과한 **뒤에** barrel(`@/widgets/memo-architecture`)에서 `ARCHITECTURE_GRAPH`를 import해 `MemoArchitectureView`에 **props로** 주입한다. `MemoArchitectureView`("use client")는 데이터를 직접 import하지 않고 props로만 받는다 — 인증 게이트를 통과하지 못하면 뷰가 마운트되지 않으므로 데이터가 전달되지 않는다. 데이터는 이름·경로·명령어 문자열뿐(시크릿·PII 없음, `$VAR` 플레이스홀더만)이라 client 번들에 포함되어도 민감정보 노출은 아니지만, 접근 자체는 인증으로 차단한다. **모든 import는 barrel `index.ts` 경유** — `page.tsx`가 `model/architecture-graph.ts`를 deep import하지 않는다(FSD public API 관례).
+**server/client 경계 (인증 이후에만 데이터 전달)**: `ARCHITECTURE_GRAPH`는 barrel(`@/widgets/memo-architecture`)에서 정적 top-level import한다(Next.js RSC 관례상 import는 모듈 로드 시점 — 인증 이전/이후 개념 아님). 인증 게이트가 작동하는 지점은 **import가 아니라 렌더/전달 시점**이다: `page.tsx`(RSC)는 `auth()` 가드를 통과하지 못하면 `redirect("/login")`으로 **JSX를 반환하기 전에 빠져나가므로**, `MemoArchitectureView`가 마운트되지 않고 `graph` prop이 클라이언트로 전달되지 않는다. `MemoArchitectureView`("use client")는 데이터를 직접 import하지 않고 **props로만** 받는다. 데이터는 이름·경로·명령어 문자열뿐(시크릿·PII 없음, `$VAR` 플레이스홀더만)이라 client 번들에 포함되어도 민감정보 노출은 아니지만, 접근 자체(페이지 렌더)는 인증으로 차단한다. **모든 import는 barrel `index.ts` 경유** — `page.tsx`가 `model/architecture-graph.ts`를 deep import하지 않는다(FSD public API 관례).
 
 **인증 가드 (필수)**: 이 페이지도 다른 dashboard 라우트와 **동일한** per-page 인증을 건다. `memos/page.tsx`의 스켈레톤을 그대로 미러링:
 
@@ -75,7 +75,7 @@ export default async function MemoArchitecturePage() {
 
 `app/(dashboard)/layout.tsx`에는 명시적으로 auth 가드가 **없다** (주석: "공유 layout은 soft-nav에서 재렌더 안 됨 — per-page redirect 유지"). 따라서 레이아웃 인증에 의존할 수 없고, `memos/page.tsx`·`memos/settings/page.tsx`가 각자 `auth()`를 호출하는 것과 **똑같이** 이 페이지도 페이지 상단에서 세션을 확인하고 없으면 `/login`으로 redirect해야 한다. 아키텍처·유지보수 명령어(cron 경로, 내부 파일 구조)는 로그인 전용(`ALLOWLIST_EMAILS`) 사용자에게만 노출되어야 하는 내부 정보이므로 이 가드는 콘텐츠가 정적이어도 생략 불가다. 세션 사용자 데이터는 그래프에 쓰지 않는다(가드 목적으로만 `auth()` 호출).
 
-**FSD 의존 방향**: `widgets/memo-architecture`는 `entities/memo/client`(타입)와 `shared/ui`(PageContainer, PageHeader)만 참조. features·entities/*/server 미참조 — 이 위젯은 메모 도메인을 *설명*할 뿐 *실행*하지 않으므로 실제 feature 코드나 server repo를 import하지 않는다. 그래프 데이터는 코드 심볼을 **문자열로** 참조(실제 import 아님). ESLint boundaries 정의(`eslint.config.mjs`)상 레이어는 `app → widgets → features → entities → shared` 순이며, 이 위젯은 `entities`·`shared`만 하위 참조하므로 규칙을 만족한다.
+**FSD 의존 방향**: `widgets/memo-architecture`는 `entities/memo/client`(타입)와 필요 시 `shared`(공통 UI 프리미티브·유틸)만 하위 참조. features·entities/*/server 미참조 — 이 위젯은 메모 도메인을 *설명*할 뿐 *실행*하지 않으므로 실제 feature 코드나 server repo를 import하지 않는다. 그래프 데이터는 코드 심볼을 **문자열로** 참조(실제 import 아님). `PageContainer`·`PageHeader`(shared/ui)는 **위젯이 아니라 `page.tsx`(app 레이어)가** import해 위젯을 감싼다(위 스켈레톤 참조) — 위젯 자체는 그래프 렌더에만 집중한다. ESLint boundaries 정의(`eslint.config.mjs`)상 레이어는 `app → widgets → features → entities → shared` 순이며, app page는 widgets·shared를, 위젯은 entities·shared를 하위 참조하므로 규칙을 만족한다.
 
 ## 데이터 모델
 
@@ -193,12 +193,14 @@ top 유지보수 시나리오를 검색 가능한 표로. 컬럼: **작업 / 어
   ```bash
   gh run watch   # GHA가 ghcr.io/krdn/gons-dashboard-cron:latest 재빌드
   ```
-- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate`가 운영 tracking 인식 못 함(우회 필수). 새 마이그레이션 SQL 파일을 psql `-f`로 트랜잭션 적용한 뒤 이미지 배포. 운영 DB명은 `gons_dashboard`(compose 기본값). `command`(예: `drizzle/0045_*.sql`을 컨테이너로 복사 후 적용):
+- **운영 DB 마이그레이션 선적용** — ⚠️ `db:migrate`가 운영 tracking 인식 못 함(우회 필수). 새 마이그레이션 SQL 파일을 psql `-f`로 트랜잭션 적용한 뒤 이미지 배포. ⚠️ **운영 daemon 대상은 반드시 `docker --context home-server`**(alias `dserver`) — plain `docker`는 로컬 context(`default`)를 대상으로 해 운영이 아닌 로컬에 적용되는 사고(CLAUDE.md Gotcha #8, RUNBOOK). ⚠️ psql에 **`-v ON_ERROR_STOP=1`** 필수 — 없으면 SQL 오류에도 계속 진행해 silent partial-apply. 운영 DB명은 `gons_dashboard`. `command`(예: `drizzle/0045_*.sql`):
   ```bash
-  docker cp apps/dashboard/drizzle/0045_new_migration.sql gons-dashboard-postgres:/tmp/mig.sql
-  docker exec gons-dashboard-postgres psql -U gons -d gons_dashboard \
-    -c "BEGIN;" -f /tmp/mig.sql -c "COMMIT;"
+  docker --context home-server cp apps/dashboard/drizzle/0045_new_migration.sql \
+    gons-dashboard-postgres:/tmp/mig.sql
+  docker --context home-server exec gons-dashboard-postgres \
+    psql -U gons -d gons_dashboard -v ON_ERROR_STOP=1 --single-transaction -f /tmp/mig.sql
   ```
+  (`--single-transaction`이 파일 전체를 BEGIN/COMMIT으로 감싸므로 별도 `-c "BEGIN"` 불필요. 오류 시 자동 롤백.)
 
 **시크릿·연결정보 규칙**: `command` 문자열에는 `$CRON_BEARER_TOKEN`, `$DATABASE_URL` 같은 **환경변수 참조만** 넣고 실제 값·호스트·비밀번호를 평문으로 두지 않는다. `architecture-graph.ts` 데이터에도 동일 규칙 적용.
 
