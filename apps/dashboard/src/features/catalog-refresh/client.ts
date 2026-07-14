@@ -9,8 +9,6 @@ import { revalidatePath } from "next/cache";
 import type { CatalogKind, RefreshResult } from "./model/types";
 import { spawnSnapshot } from "./index";
 
-export type { CatalogKind, RefreshResult } from "./model/types";
-
 /** 버튼 클릭 시 호출되는 Server Action. 재생성 후 해당 페이지 revalidate. */
 export async function refreshCatalog(kind: CatalogKind): Promise<RefreshResult> {
   const result = await spawnSnapshot(kind);
