@@ -69,7 +69,15 @@ export function spawnSnapshot(kind: CatalogKind): Promise<RefreshResult> {
   }
 
   const script = SNAPSHOT_SCRIPTS[kind];
-  const cwd = dashboardDir();
+  let cwd: string;
+  try {
+    cwd = dashboardDir();
+  } catch (e) {
+    return Promise.resolve({
+      ok: false,
+      error: `apps/dashboard 위치를 찾지 못했습니다: ${e instanceof Error ? e.message : String(e)}`,
+    });
+  }
 
   return new Promise<RefreshResult>((resolve) => {
     const child = spawn("pnpm", [script], { cwd });
