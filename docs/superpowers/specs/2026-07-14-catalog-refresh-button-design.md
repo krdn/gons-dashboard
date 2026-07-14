@@ -85,7 +85,7 @@ features/catalog-refresh/
 │                    #   refreshCatalog(kind: CatalogKind): Promise<RefreshResult>
 ├── model/
 │   └── types.ts    #   CatalogKind = "skills" | "plugins" | "agents"
-│                    #   RefreshResult = { ok, count?, error?, warning }
+│                    #   RefreshResult = 성공/실패 discriminated union (아래 명세)
 └── ui/
     └── CatalogRefreshButton.tsx   # "use client" — 버튼 + 진행/완료/경고 표시
 ```
@@ -99,6 +99,21 @@ features/catalog-refresh/
 
 ## 컴포넌트 명세
 
+### `RefreshResult` 타입 (`model/types.ts`)
+
+성공/실패 discriminated union — `ok` 로 분기.
+
+```typescript
+type CatalogKind = "skills" | "plugins" | "agents";
+
+type RefreshResult =
+  | { ok: true; count?: number; warning: string }   // count 미확인이면 undefined
+  | { ok: false; error: string };                    // 실패 시 warning 없음
+```
+
+- 성공(`ok: true`): `count`(파싱 실패 시 undefined) + `warning`(항상 존재 — 덮어쓰기 안내).
+- 실패(`ok: false`): `error` 만. `warning`/`count` 없음.
+
 ### `spawnSnapshot(kind)` — server-only (`index.ts`)
 
 - 입력: `kind: CatalogKind`
@@ -110,7 +125,7 @@ features/catalog-refresh/
     repo root 는 `process.cwd()` 가 아니라 spawn 시점에 결정론적으로 계산
     (예: `features` 파일 기준 상대 경로 또는 알려진 앵커).
 - 완료 후 stdout 에서 `생성 (\d+)개` 정규식으로 개수 파싱.
-- 반환: `{ ok, count?, error?, warning }`.
+- 반환: `RefreshResult` (성공 시 `warning` 에 덮어쓰기 안내 문구 포함).
 
 ### `refreshCatalog(kind)` — Server Action (`client.ts`)
 
