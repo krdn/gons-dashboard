@@ -35,7 +35,7 @@
       "id": "chrome-devtools-mcp@claude-plugins-official",
       "name": "chrome-devtools-mcp",
       "marketplace": "claude-plugins-official",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "description": "Chrome DevTools와 Puppeteer로 Chrome에서 안정적인 자동화·심층 디버깅·성능 분석을 수행",
       "author": "",
       "homepage": "",
@@ -120,7 +120,7 @@
       "id": "claude-mem@thedotmack",
       "name": "claude-mem",
       "marketplace": "thedotmack",
-      "version": "13.8.1",
+      "version": "13.11.0",
       "description": "Claude Code용 메모리 압축 시스템 — 세션 간 컨텍스트를 영속화",
       "author": "Alex Newman",
       "homepage": "https://github.com/thedotmack/claude-mem#readme",
@@ -140,7 +140,7 @@
       "enabled": true,
       "resolved": true,
       "counts": {
-        "skills": 17,
+        "skills": 18,
         "agents": 0,
         "commands": 0,
         "hooks": 7,
@@ -149,6 +149,7 @@
       "components": {
         "skills": [
           "babysit",
+          "cloud-sync",
           "design-is",
           "do",
           "how-it-works",
@@ -200,7 +201,7 @@
       "id": "codex@openai-codex",
       "name": "codex",
       "marketplace": "openai-codex",
-      "version": "1.0.4",
+      "version": "1.0.6",
       "description": "Claude Code에서 Codex를 호출해 코드 리뷰하거나 작업을 위임",
       "author": "OpenAI",
       "homepage": "",
@@ -210,7 +211,7 @@
       "counts": {
         "skills": 3,
         "agents": 1,
-        "commands": 7,
+        "commands": 8,
         "hooks": 3,
         "mcp": false
       },
@@ -230,44 +231,21 @@
           "result",
           "review",
           "setup",
-          "status"
+          "status",
+          "transfer"
         ]
-      }
-    },
-    {
-      "id": "commit-commands@claude-plugins-official",
-      "name": "commit-commands",
-      "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
       }
     },
     {
       "id": "context7@claude-plugins-official",
       "name": "context7",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
+      "version": "10563b0a1166",
       "description": "Upstash Context7 MCP 서버 — 최신 문서 조회. 버전별 문서와 코드 예시를 소스 저장소에서 직접 LLM 컨텍스트로 가져옴",
       "author": "Upstash",
       "homepage": "",
       "keywords": [],
-      "enabled": false,
+      "enabled": true,
       "resolved": true,
       "counts": {
         "skills": 0,
@@ -278,48 +256,6 @@
       },
       "components": {
         "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
-      "id": "document-skills@anthropic-agent-skills",
-      "name": "document-skills",
-      "marketplace": "anthropic-agent-skills",
-      "version": "35414756ca55",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": true,
-      "counts": {
-        "skills": 17,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [
-          "algorithmic-art",
-          "brand-guidelines",
-          "canvas-design",
-          "claude-api",
-          "doc-coauthoring",
-          "docx",
-          "frontend-design",
-          "internal-comms",
-          "mcp-builder",
-          "pdf",
-          "pptx",
-          "skill-creator",
-          "slack-gif-creator",
-          "theme-factory",
-          "web-artifacts-builder",
-          "webapp-testing",
-          "xlsx"
-        ],
         "agents": [],
         "commands": []
       }
@@ -800,7 +736,7 @@
       "id": "feature-dev@claude-plugins-official",
       "name": "feature-dev",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
+      "version": "10563b0a1166",
       "description": "코드베이스 탐색·아키텍처 설계·품질 리뷰 전담 에이전트를 갖춘 종합 기능 개발 워크플로",
       "author": "Anthropic",
       "homepage": "",
@@ -827,65 +763,15 @@
       }
     },
     {
-      "id": "feature-dev@claude-code-plugins",
-      "name": "feature-dev",
-      "marketplace": "claude-code-plugins",
-      "version": "1.0.0",
-      "description": "코드베이스 탐색·아키텍처 설계·품질 리뷰 전담 에이전트를 갖춘 종합 기능 개발 워크플로",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
-      "id": "frontend-design@claude-code-plugins",
-      "name": "frontend-design",
-      "marketplace": "claude-code-plugins",
-      "version": "1.1.0",
-      "description": "UI/UX 구현을 위한 프런트엔드 디자인 스킬",
-      "author": "Prithvi Rajasekaran, Alexander Bricken",
-      "homepage": "",
-      "keywords": [],
-      "enabled": true,
-      "resolved": true,
-      "counts": {
-        "skills": 1,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [
-          "frontend-design"
-        ],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
       "id": "frontend-design@claude-plugins-official",
       "name": "frontend-design",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
+      "version": "10563b0a1166",
       "description": "UI/UX 구현을 위한 프런트엔드 디자인 스킬",
       "author": "Anthropic",
       "homepage": "",
       "keywords": [],
-      "enabled": false,
+      "enabled": true,
       "resolved": true,
       "counts": {
         "skills": 1,
@@ -907,30 +793,42 @@
       "name": "gonsautopilot",
       "marketplace": "krdn-gonsautopilot",
       "version": "1.0.0",
-      "description": "",
-      "author": "",
+      "description": "Fullstack auto test/deploy pipeline - git push one shot for analyze, test, build, deploy, verify",
+      "author": "gon",
       "homepage": "",
       "keywords": [],
       "enabled": false,
-      "resolved": false,
+      "resolved": true,
       "counts": {
         "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
+        "agents": 5,
+        "commands": 5,
+        "hooks": 2,
         "mcp": false
       },
       "components": {
         "skills": [],
-        "agents": [],
-        "commands": []
+        "agents": [
+          "build-agent",
+          "deploy-agent",
+          "monitor-agent",
+          "orchestrator",
+          "test-agent"
+        ],
+        "commands": [
+          "deploy",
+          "gonsautopilot",
+          "rollback",
+          "status",
+          "test"
+        ]
       }
     },
     {
       "id": "hookify@claude-plugins-official",
       "name": "hookify",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
+      "version": "10563b0a1166",
       "description": "대화 패턴을 분석해 원치 않는 동작을 막는 hook을 손쉽게 생성",
       "author": "Anthropic",
       "homepage": "",
@@ -1026,7 +924,7 @@
       "id": "playwright@claude-plugins-official",
       "name": "playwright",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
+      "version": "10563b0a1166",
       "description": "Microsoft의 브라우저 자동화·E2E 테스트 MCP 서버. 웹 페이지 상호작용, 스크린샷, 폼 입력, 요소 클릭, 자동 브라우저 테스트 워크플로를 지원",
       "author": "Microsoft",
       "homepage": "",
@@ -1050,24 +948,33 @@
       "id": "pr-review-toolkit@claude-plugins-official",
       "name": "pr-review-toolkit",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
-      "description": "",
-      "author": "",
+      "version": "10563b0a1166",
+      "description": "Comprehensive PR review agents specializing in comments, tests, error handling, type design, code quality, and code simplification",
+      "author": "Anthropic",
       "homepage": "",
       "keywords": [],
       "enabled": false,
-      "resolved": false,
+      "resolved": true,
       "counts": {
         "skills": 0,
-        "agents": 0,
-        "commands": 0,
+        "agents": 6,
+        "commands": 1,
         "hooks": 0,
         "mcp": false
       },
       "components": {
         "skills": [],
-        "agents": [],
-        "commands": []
+        "agents": [
+          "code-reviewer",
+          "code-simplifier",
+          "comment-analyzer",
+          "pr-test-analyzer",
+          "silent-failure-hunter",
+          "type-design-analyzer"
+        ],
+        "commands": [
+          "review-pr"
+        ]
       }
     },
     {
@@ -1270,7 +1177,7 @@
       "id": "skill-creator@claude-plugins-official",
       "name": "skill-creator",
       "marketplace": "claude-plugins-official",
-      "version": "c28be522fa85",
+      "version": "10563b0a1166",
       "description": "새 스킬 생성, 기존 스킬 개선, 스킬 성능 측정. 스킬을 처음부터 만들거나, 갱신·최적화하거나, eval로 테스트하거나, 분산 분석으로 성능을 벤치마크할 때 사용",
       "author": "Anthropic",
       "homepage": "",
@@ -1293,47 +1200,10 @@
       }
     },
     {
-      "id": "slack@claude-plugins-official",
-      "name": "slack",
-      "marketplace": "claude-plugins-official",
-      "version": "1.1.0",
-      "description": "Slack 연동 — 메시지 검색, 커뮤니케이션 발송, 캔버스 관리 등",
-      "author": "Slack",
-      "homepage": "https://github.com/slackapi/slack-mcp-cursor-plugin",
-      "keywords": [],
-      "enabled": false,
-      "resolved": true,
-      "counts": {
-        "skills": 6,
-        "agents": 0,
-        "commands": 5,
-        "hooks": 0,
-        "mcp": true
-      },
-      "components": {
-        "skills": [
-          "block-kit",
-          "create-slack-app",
-          "slack-api",
-          "slack-cli",
-          "slack-messaging",
-          "slack-search"
-        ],
-        "agents": [],
-        "commands": [
-          "channel-digest",
-          "draft-announcement",
-          "find-discussions",
-          "standup",
-          "summarize-channel"
-        ]
-      }
-    },
-    {
       "id": "superpowers@claude-plugins-official",
       "name": "superpowers",
       "marketplace": "claude-plugins-official",
-      "version": "6.0.3",
+      "version": "6.1.1",
       "description": "Claude Code 핵심 스킬 라이브러리 — TDD, 디버깅, 협업 패턴과 검증된 기법",
       "author": "Jesse Vincent",
       "homepage": "https://github.com/obra/superpowers",
@@ -1376,30 +1246,6 @@
       }
     },
     {
-      "id": "telegram@claude-plugins-official",
-      "name": "telegram",
-      "marketplace": "claude-plugins-official",
-      "version": "0.0.6",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
       "id": "typescript-lsp@claude-plugins-official",
       "name": "typescript-lsp",
       "marketplace": "claude-plugins-official",
@@ -1427,10 +1273,10 @@
       "id": "understand-anything@understand-anything",
       "name": "understand-anything",
       "marketplace": "understand-anything",
-      "version": "2.7.5",
+      "version": "2.9.1",
       "description": "AI 기반 코드베이스 이해 — 어떤 프로젝트든 분석·시각화·설명",
-      "author": "Lum1104",
-      "homepage": "https://github.com/Lum1104/Understand-Anything",
+      "author": "Egonex",
+      "homepage": "https://github.com/Egonex-AI/Understand-Anything",
       "keywords": [
         "codebase-analysis",
         "knowledge-graph",
@@ -1441,8 +1287,8 @@
       "enabled": true,
       "resolved": true,
       "counts": {
-        "skills": 8,
-        "agents": 9,
+        "skills": 9,
+        "agents": 10,
         "commands": 0,
         "hooks": 2,
         "mcp": false
@@ -1455,6 +1301,7 @@
           "understand-diff",
           "understand-domain",
           "understand-explain",
+          "understand-figma",
           "understand-knowledge",
           "understand-onboard"
         ],
@@ -1462,6 +1309,7 @@
           "architecture-analyzer",
           "article-analyzer",
           "assemble-reviewer",
+          "design-analyzer",
           "domain-analyzer",
           "file-analyzer",
           "graph-reviewer",
@@ -1473,189 +1321,21 @@
       }
     },
     {
-      "id": "vercel@claude-plugins-official",
-      "name": "vercel",
-      "marketplace": "claude-plugins-official",
-      "version": "0.44.0",
-      "description": "웹 앱과 에이전트를 빌드·배포",
-      "author": "Vercel",
-      "homepage": "",
-      "keywords": [
-        "vercel",
-        "nextjs",
-        "ai-sdk",
-        "turborepo",
-        "turbopack",
-        "workflow",
-        "deployment",
-        "serverless"
-      ],
-      "enabled": false,
+      "id": "warp@claude-code-warp",
+      "name": "warp",
+      "marketplace": "claude-code-warp",
+      "version": "2.1.0",
+      "description": "Warp terminal integration for Claude Code - native notifications, and more to come",
+      "author": "Warp",
+      "homepage": "https://github.com/warpdotdev/claude-code-warp",
+      "keywords": [],
+      "enabled": true,
       "resolved": true,
       "counts": {
-        "skills": 27,
-        "agents": 3,
-        "commands": 6,
-        "hooks": 4,
-        "mcp": true
-      },
-      "components": {
-        "skills": [
-          "ai-gateway",
-          "ai-sdk",
-          "auth",
-          "bootstrap",
-          "chat-sdk",
-          "deployments-cicd",
-          "env-vars",
-          "knowledge-update",
-          "marketplace",
-          "microfrontends",
-          "next-cache-components",
-          "next-forge",
-          "next-upgrade",
-          "nextjs",
-          "react-best-practices",
-          "routing-middleware",
-          "runtime-cache",
-          "shadcn",
-          "turbopack",
-          "vercel-agent",
-          "vercel-cli",
-          "vercel-firewall",
-          "vercel-functions",
-          "vercel-sandbox",
-          "vercel-storage",
-          "verification",
-          "workflow"
-        ],
-        "agents": [
-          "ai-architect",
-          "deployment-expert",
-          "performance-optimizer"
-        ],
-        "commands": [
-          "_conventions",
-          "bootstrap",
-          "deploy",
-          "env",
-          "marketplace",
-          "status"
-        ]
-      }
-    },
-    {
-      "id": "voltagent-core-dev@voltagent-subagents",
-      "name": "voltagent-core-dev",
-      "marketplace": "voltagent-subagents",
-      "version": "1.0.2",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
         "skills": 0,
         "agents": 0,
         "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
-      "id": "voltagent-data-ai@voltagent-subagents",
-      "name": "voltagent-data-ai",
-      "marketplace": "voltagent-subagents",
-      "version": "1.0.2",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
-      "id": "voltagent-infra@voltagent-subagents",
-      "name": "voltagent-infra",
-      "marketplace": "voltagent-subagents",
-      "version": "1.0.1",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
-      "id": "voltagent-qa-sec@voltagent-subagents",
-      "name": "voltagent-qa-sec",
-      "marketplace": "voltagent-subagents",
-      "version": "1.0.2",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
-        "mcp": false
-      },
-      "components": {
-        "skills": [],
-        "agents": [],
-        "commands": []
-      }
-    },
-    {
-      "id": "voltagent-research@voltagent-subagents",
-      "name": "voltagent-research",
-      "marketplace": "voltagent-subagents",
-      "version": "1.0.3",
-      "description": "",
-      "author": "",
-      "homepage": "",
-      "keywords": [],
-      "enabled": false,
-      "resolved": false,
-      "counts": {
-        "skills": 0,
-        "agents": 0,
-        "commands": 0,
-        "hooks": 0,
+        "hooks": 6,
         "mcp": false
       },
       "components": {
@@ -1668,7 +1348,7 @@
       "id": "watch@claude-video",
       "name": "watch",
       "marketplace": "claude-video",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "description": "Claude가 영상을 보게 함. yt-dlp로 다운로드, ffmpeg로 자동 스케일 프레임 추출, 캡션 또는 Whisper 폴백으로 자막을 가져와 프레임+트랜스크립트를 Claude에 전달해 영상 내용을 답변",
       "author": "Bradley Bonanno",
       "homepage": "https://github.com/bradautomates/claude-video",
@@ -1688,18 +1368,18 @@
       "enabled": true,
       "resolved": true,
       "counts": {
-        "skills": 0,
+        "skills": 1,
         "agents": 0,
-        "commands": 1,
+        "commands": 0,
         "hooks": 1,
         "mcp": false
       },
       "components": {
-        "skills": [],
-        "agents": [],
-        "commands": [
+        "skills": [
           "watch"
-        ]
+        ],
+        "agents": [],
+        "commands": []
       }
     }
   ],
@@ -1710,7 +1390,7 @@
     },
     "claude-plugins-official": {
       "label": "claude-plugins-official",
-      "count": 21
+      "count": 17
     },
     "thedotmack": {
       "label": "thedotmack",
@@ -1720,17 +1400,9 @@
       "label": "openai-codex",
       "count": 1
     },
-    "anthropic-agent-skills": {
-      "label": "anthropic-agent-skills",
-      "count": 1
-    },
     "everything-claude-code": {
       "label": "everything-claude-code",
       "count": 1
-    },
-    "claude-code-plugins": {
-      "label": "claude-code-plugins",
-      "count": 2
     },
     "krdn-gonsautopilot": {
       "label": "krdn-gonsautopilot",
@@ -1752,9 +1424,9 @@
       "label": "understand-anything",
       "count": 1
     },
-    "voltagent-subagents": {
-      "label": "voltagent-subagents",
-      "count": 5
+    "claude-code-warp": {
+      "label": "claude-code-warp",
+      "count": 1
     },
     "claude-video": {
       "label": "claude-video",
