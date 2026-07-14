@@ -16,6 +16,7 @@ import {
   listMemosOlderThan,
   getMemosByIds,
   listMemoAuthorUserIds,
+  listMemoFactsForInsights,
 } from "./memoRepo";
 
 const USER_ID = "00000000-0000-0000-0000-000000000abc";
@@ -74,6 +75,28 @@ describe("memoRepo", () => {
 
   it("빈 content는 CHECK 제약으로 거부된다", async () => {
     await expect(createMemo({ ...base, rawContent: "", cleanedContent: "" })).rejects.toThrow();
+  });
+
+  it("listMemoFactsForInsights는 캡(200) 없이 전량을 createdAt asc로 반환한다", async () => {
+    // 201건 삽입 — LIMIT 200 캡 회피가 load-bearing 요구이므로 명시 가드.
+    const rows = Array.from({ length: 201 }, (_, i) => ({
+      ...base,
+      title: `m${i}`,
+      rawContent: `c${i}`,
+      cleanedContent: `c${i}`,
+    }));
+    await db.insert(memos).values(rows);
+    const facts = await listMemoFactsForInsights(USER_ID);
+    expect(facts.length).toBe(201);
+    // asc 정렬
+    for (let i = 1; i < facts.length; i++) {
+      expect(facts[i].createdAt.getTime()).toBeGreaterThanOrEqual(
+        facts[i - 1].createdAt.getTime(),
+      );
+    }
+    // projection 필드만 — content 없음
+    expect(facts[0]).not.toHaveProperty("rawContent");
+    expect(facts[0].source).toBe("text");
   });
 });
 

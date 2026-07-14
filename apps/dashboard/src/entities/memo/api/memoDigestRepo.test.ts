@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { memoDigests, users } from "@/shared/lib/db/schema";
-import { insertDigest, hasDigest, getLatestDigest } from "./memoDigestRepo";
+import { insertDigest, hasDigest, getLatestDigest, listDigestsByUser } from "./memoDigestRepo";
 
 // memoRepo.test.ts 와 다른 고정 UUID — 병렬 테스트 파일 간 간섭 방지.
 const USER_ID = "00000000-0000-0000-0000-000000000d16";
@@ -59,5 +59,17 @@ describe("memoDigestRepo", () => {
 
   it("다이제스트 없는 사용자는 null", async () => {
     expect(await getLatestDigest("00000000-0000-0000-0000-000000000fff")).toBeNull();
+  });
+
+  it("listDigestsByUser는 weekEnd 오름차순 전량을 반환한다", async () => {
+    await insertDigest({ ...base, weekEnd: "2026-07-05", summary: "둘째" });
+    await insertDigest({ ...base, weekEnd: "2026-06-28", summary: "첫째" });
+    await insertDigest({ ...base, weekEnd: "2026-07-12", summary: "셋째" });
+    const list = await listDigestsByUser(USER_ID);
+    expect(list.map((d) => d.weekEnd)).toEqual(["2026-06-28", "2026-07-05", "2026-07-12"]);
+  });
+
+  it("다이제스트 없는 사용자는 빈 배열", async () => {
+    expect(await listDigestsByUser("00000000-0000-0000-0000-000000000fff")).toEqual([]);
   });
 });
