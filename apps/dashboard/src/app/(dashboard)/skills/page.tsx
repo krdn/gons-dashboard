@@ -4,6 +4,7 @@ import { getSkills, getSkillCategories } from "@/entities/skill/server";
 import { SkillCatalog } from "@/widgets/skill-catalog";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PageHeader } from "@/shared/ui/PageHeader";
+import { CatalogRefreshButton } from "@/features/catalog-refresh/ui/CatalogRefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function SkillsPage() {
       <PageHeader
         title="Claude Code 스킬"
         subtitle={`설치된 스킬의 사용법과 출처를 살펴봅니다 (${skills.length}개).`}
+        actions={<CatalogRefreshButton kind="skills" />}
       />
       <SkillCatalog skills={skills} categories={categories} />
     </PageContainer>
