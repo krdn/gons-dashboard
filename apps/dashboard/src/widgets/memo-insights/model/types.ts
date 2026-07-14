@@ -1,6 +1,6 @@
 // 인사이트 집계 결과 타입 — 중립 모듈(server.ts·client 뷰 공유, DOM/DB 의존 없음).
 // lib/aggregate.ts가 생산하고 ui/*가 소비한다.
-import type { ActionItemStatus } from "@/entities/memo/server";
+import type { ActionItemStatus } from "@/entities/memo/client";
 
 /** 히트맵 한 칸 — locale-free 날짜 + 그 날 메모 수. count:0 셀도 존재. */
 export interface DayCell {

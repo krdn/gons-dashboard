@@ -29,6 +29,14 @@ function fact(overrides: Partial<MemoFact> = {}): MemoFact {
 function kstNoon(dateStr: string): Date {
   return new Date(`${dateStr}T03:00:00Z`); // 정오 KST
 }
+// 'YYYY-MM-DD'(KST 자정 기준)에 offsetDays를 더한 날짜 키. aggregate.ts의 내부 addDaysKey와 동일 로직(테스트 fixture 전용, export 없어 로컬 재구현).
+function addDaysKeyForTest(dateStr: string, offsetDays: number): string {
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const utcMidnightKst = new Date(`${dateStr}T00:00:00Z`).getTime() - KST_OFFSET_MS;
+  const shifted = new Date(utcMidnightKst + offsetDays * DAY_MS + KST_OFFSET_MS);
+  return shifted.toISOString().slice(0, 10);
+}
 
 describe("buildActivityHeatmap", () => {
   it("빈 입력 — 26주 고정 그리드, 모든 카운트 0", () => {
@@ -61,6 +69,18 @@ describe("buildActivityHeatmap", () => {
     expect(h.totalCount).toBe(2);
     expect(h.windowCount).toBe(1);
     expect(h.dailyAvg).toBeCloseTo(1 / 182, 6);
+  });
+
+  it("183일 초과 연속 기록이어도 currentStreak이 longestStreak을 넘지 않는다 (26주=182일 창 상한 클램프)", () => {
+    // 오늘 포함 200일 연속(창 182일보다 긺) 매일 기록.
+    const facts: MemoFact[] = [];
+    for (let i = 0; i < 200; i++) {
+      facts.push(fact({ createdAt: kstNoon(addDaysKeyForTest("2026-07-14", -i)) }));
+    }
+    const h = buildActivityHeatmap(facts, NOW);
+    expect(h.currentStreak).toBeLessThanOrEqual(h.longestStreak);
+    expect(h.currentStreak).toBe(182); // HEATMAP_DAYS(26주) 상한
+    expect(h.longestStreak).toBe(182);
   });
 });
 
