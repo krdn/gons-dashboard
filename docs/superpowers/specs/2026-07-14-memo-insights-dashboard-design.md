@@ -30,27 +30,36 @@
   - `export const dynamic = "force-dynamic"`.
   - `PageContainer width="narrow"` + `PageHeader`(title "메모 인사이트",
     actions에 `← 메모` 링크).
-  - 서버에서 DB 조회 + 순수 집계 함수 호출 → 차트-ready 데이터를 위젯에 props 전달.
-- **새 위젯**: `apps/dashboard/src/widgets/memo-insights/`
-  - `index.ts` (barrel), `ui/MemoInsightsView.tsx` (`"use client"`, recharts),
-    블록별 하위 컴포넌트, `lib/aggregate.ts` (순수 집계 함수).
+  - 서버에서 DB 조회 → `widgets/memo-insights/server` 의 집계 함수 호출 →
+    차트-ready 데이터를 위젯 뷰에 props 전달.
+- **새 위젯**: `apps/dashboard/src/widgets/memo-insights/` — **server/client seam
+  분리** (Gotcha #7, entity barrel seam 미러):
+  - `server.ts` — server entrypoint. `lib/aggregate.ts` 의 순수 집계 함수 5개를
+    re-export. RSC 페이지는 **이 경로로만** import.
+  - `index.ts` — client barrel. `ui/MemoInsightsView.tsx` (`"use client"`,
+    recharts) + 블록 컴포넌트만 export. 클라이언트 뷰가 쓰는 결과 타입은
+    `model/types.ts` (중립 모듈, server/client 양쪽 import 가능)에 둔다.
+  - `lib/aggregate.ts` — 순수 함수 (DOM/DB 의존 없음). 집계 결과 타입은
+    `model/types.ts` 에서 import. 단위 테스트 대상.
   - **집계는 서버 RSC에서 끝내고, raw 메모는 클라이언트로 넘기지 않는다** —
-    위젯은 차트-ready 데이터만 받는 presentational 계층.
+    위젯 뷰는 차트-ready 데이터만 받는 presentational 계층.
 - **`/memos` 헤더 링크 추가**: 기존 `🗺 시스템 구조`·`⚙ AI 정리 설정` 옆에
   `📊 인사이트` (`/memos/insights`) 한 줄.
 
 **데이터 흐름**:
 ```
 insights/page.tsx (RSC)
+  ├─ const now = new Date()  ← 한 번 캡처, 집계에 주입 (KST 산술 고정)
   ├─ listMemoFactsForInsights(userId)   ← 신규, 캡 없음
   ├─ listDigestsByUser(userId)          ← 신규
   ├─ listActionItemsByUser(userId, [4개 상태 전부])  ← 기존 재사용
   ├─ listTransformationsByUser(userId)  ← 기존 재사용
   └─ listCategories()                   ← 기존 재사용
        ↓ (Promise.all 병렬)
-  aggregate.ts 순수 함수 4개로 차트-ready 데이터 생성
+  widgets/memo-insights/server 의 집계 함수 5개로 차트-ready 데이터 생성
+    (buildActivityHeatmap·buildDailyTrend 에는 now 주입)
        ↓ props
-  MemoInsightsView ("use client", recharts)
+  MemoInsightsView ("use client", recharts) ← widgets/memo-insights (index.ts)
 ```
 
 ## 3. 데이터 계층
@@ -71,6 +80,10 @@ insights/page.tsx (RSC)
    - **전체 텍스트(rawContent/cleanedContent/title) 제외** — 집계 축만 SELECT.
      content를 빼면 수천 행도 가볍다. 히트맵·카테고리·소스 비율·전환율 전부
      이 한 조회로 커버. 캡 없음. `orderBy(createdAt asc)`.
+   - **타입 좁히기 (Codex WARN)**: `memos.source` 는 bare `text()` 라 Drizzle
+     select 타입이 `string`. projection 시 `MemoSource`(`'voice'|'text'`) 로
+     좁혀야 한다 — repo 함수 안에서 `source as MemoSource` 단언(값은 DB CHECK로
+     보장) 또는 반환 매핑 시 명시 좁히기. `MemoFact.source: MemoSource` 계약 유지.
 2. **`listDigestsByUser(userId)`** → `entities/memo/api/memoDigestRepo.ts` 신설, `server.ts` export
    - 반환: `MemoDigest[]`, `weekEnd` 오름차순. 주간 타임라인용.
    - 기존엔 `getLatestDigest`만 있어 시계열을 못 그렸다.
@@ -79,20 +92,57 @@ insights/page.tsx (RSC)
 
 - **`listActionItemsByUser(userId, statuses)`**: **4개 상태 전부**
   (`["proposed","accepted","done","dismissed"]`) 전달 — 상태 분포용.
-  함수는 이미 `statuses[]`를 받으므로 시그니처 변경 없음.
-- **`listTransformationsByUser(userId)`**: 변환본 통계용 (프리셋별 count).
+  함수는 이미 `statuses[]`를 받으므로 시그니처 변경 없음. 반환 행의 `status` 는
+  이미 `ActionItemStatus` 로 좁혀져 있어 `Record<ActionItemStatus, number>` 집계에
+  추가 좁히기 불필요.
+- **`listTransformationsByUser(userId)`**: 변환본 통계용. **slug 기준 그룹화**
+  (Codex WARN) — `preset` (커스텀 slug 포함 일반 문자열) 을 그룹 키로 쓰고,
+  라벨은 `presetLabel → 빌트인 라벨(TRANSFORM_PRESET_LABELS) → slug` 폴백
+  (기존 `MemoCard.tsx:33` 과 동일 규칙). 결과: `{ slug, label, count }[]`.
 - **`listCategories()`**: 카테고리 slug→labelKo 매핑.
 
-### 3.4 순수 집계 함수 (`widgets/memo-insights/lib/aggregate.ts`)
+### 3.4 순수 집계 함수 (`widgets/memo-insights/lib/aggregate.ts`) — **5개**
 
 각 함수는 **빈 배열 입력에서 안전한 기본값**을 반환한다 (§5 빈 상태 요건과 연결).
+결과 타입은 `widgets/memo-insights/model/types.ts` 에 정의 (client 뷰 공유).
 
-- `buildActivityHeatmap(facts): { weeks: DayCell[][]; totalCount: number; currentStreak: number; longestStreak: number; dailyAvg: number }`
-  - 최근 ~26주 요일×주 그리드. KST 기준 일자 버킷.
-- `buildDailyTrend(facts, days): { date: string; count: number }[]`
-  - 최근 N일 일별 count (locale-free `YYYY-MM-DD`).
-- `buildCategoryDistribution(facts, categories): { byCategory: { slug: string; labelKo: string; count: number }[]; voiceCount: number; textCount: number; unclassifiedCount: number }`
-- `buildActionConversion(facts, actionItems, transformations): { totalMemos: number; extractedMemos: number; statusCounts: Record<ActionItemStatus, number>; transformCount: number; transformByPreset: { label: string; count: number }[] }`
+**KST 날짜 계약 (Codex WARN — 고정)**: 기준 시각 `now` 를 RSC 페이지에서 한 번
+캡처해 시간 의존 함수에 **주입**한다 (순수성 유지 — 함수 내부에서 `new Date()`
+금지). 모든 일자 버킷은 **KST(Asia/Seoul) 자정 경계** 기준. 날짜 산술은
+`now` 기반으로 결정적.
+
+- `buildActivityHeatmap(facts, now): { weeks: DayCell[][]; totalCount; currentStreak; longestStreak; dailyAvg }`
+  - **고정 26주(182일) 그리드** — `now` 의 KST 오늘을 마지막 열로, 과거 방향
+    26주를 채운다. **모든 날짜 셀 존재** (0건 날은 회색 `count:0` 셀). "있는
+    주만" 표현 아님 (Codex WARN 반영 — §5도 이에 맞춤).
+  - `currentStreak`: KST 오늘부터 역방향 연속 기록일. **오늘 기록이 없으면
+    어제부터** 카운트 (오늘 미기록이 streak을 즉시 0으로 만들지 않음).
+  - `longestStreak`: 26주 창 내 최장 연속 기록일.
+  - `dailyAvg`: `totalCount / 182` (그리드 기간 고정 분모).
+- `buildDailyTrend(facts, now, days): { date: string; count: number }[]`
+  - `now` 의 KST 오늘부터 과거 `days` 일 (기본 `days=30`). 각 날짜 라벨은
+    locale-free `YYYY-MM-DD`. 기록 없는 날도 `count:0` 으로 포함 (연속 축).
+- `buildCategoryDistribution(facts, categories): { byCategory: { slug; labelKo; count }[]; voiceCount; textCount; unclassifiedCount }`
+- `buildActionConversion(facts, actionItems, transformations)` — **BLOCK 1 반영,
+  메모 단위와 액션-행 단위를 분리**:
+  ```
+  {
+    // 메모 단위 퍼널 (단조 감소 보장)
+    totalMemos: number;              // facts.length
+    processedMemos: number;          // actionsExtractedAt != null 인 메모 수 (추출 시도 완료)
+    memosWithActions: number;        // 액션 행이 1개 이상 달린 고유 memoId 수
+    // 액션-행 단위 현재 상태 분포 (퍼널 밖, 별도 표시)
+    currentStatusCounts: Record<ActionItemStatus, number>;
+    // 변환본
+    transformCount: number;
+    transformByPreset: { slug: string; label: string; count: number }[];
+  }
+  ```
+  - `processedMemos`(0건도 포함하는 "추출 처리 완료")와 `memosWithActions`(실제
+    액션이 생긴 메모)를 구분 — `actionsExtractedAt` 이 액션 유무와 무관함을 반영.
+  - `accepted`는 done/dismissed로 전이하면 사라지는 **현재 상태**이므로 퍼널
+    단계로 쓰지 않고 `currentStatusCounts` 스냅샷으로만 표시. "과거 accepted 비율"
+    같은 이력 지표는 상태 이력 스키마가 없어 **이번 범위 제외** (Codex NOTE).
 - `buildDigestTimeline(digests): { weekEnd: string; memoCount: number; resurfacedCount: number }[]`
 
 ## 4. 시각화 구성 (bento 카드 그리드)
@@ -110,11 +160,14 @@ recharts 3.8.1 (이미 설치). 차트 색 팔레트는 `dataviz` 스킬로 검�
 - 도넛: recharts `PieChart`(도넛) — 카테고리별 비율, 라벨은 `labelKo`, 색 순환.
 - 작은 통계: voice vs text 가로 바 1개, 미분류 메모 수.
 
-**블록 C — 메모→액션 전환**
-- 전환 스탯/퍼널: 전체 메모 → 액션 추출 → accepted → done. 가로 `BarChart`
-  또는 스탯 타일 행.
-- 액션 상태 분포: proposed/accepted/done/dismissed 도넛 또는 스택 바.
-- 변환본 통계: 프리셋별 변환본 수 (작은 바).
+**블록 C — 메모→액션 전환** (BLOCK 1 반영 — 메모 단위 / 액션-행 단위 분리)
+- **메모 퍼널** (단조 감소): `totalMemos → processedMemos(추출 처리) →
+  memosWithActions(액션 생김)`. 가로 `BarChart` 또는 스탯 타일 행. 세 값 모두
+  메모 수 단위라 역전 불가.
+- **액션 상태 분포** (퍼널과 별개, 액션-행 단위 스냅샷):
+  `currentStatusCounts` — proposed/accepted/done/dismissed 도넛 또는 스택 바.
+  "현재 상태 스냅샷"임을 라벨로 명시 (누적 아님).
+- 변환본 통계: `transformByPreset` slug 그룹 — 프리셋별 변환본 수 (작은 바).
 
 **블록 D — 주간 회고 타임라인**
 - 주별 `LineChart`/`BarChart` — weekEnd별 memoCount 추이 + 재부상 수 오버레이.
@@ -129,8 +182,11 @@ recharts 3.8.1 (이미 설치). 차트 색 팔레트는 `dataviz` 스킬로 검�
 
 - 전체 빈 상태: 메모 0개 → 차트 대신 안내 카드 + `/memos` 링크.
 - 블록별 희소 상태: 각 블록은 자기 데이터가 비면 개별 빈 메시지
-  (다이제스트 없음 → 블록 D 안내; 액션 0건 → 블록 C는 추출률만).
-- 히트맵/streak는 ~5행에서 깨져 보이지 않도록 최소 표현 (있는 주만, 없으면 회색).
+  (다이제스트 없음 → 블록 D 안내; 액션 0건 → 블록 C는 메모 퍼널만).
+- **히트맵은 항상 고정 26주 그리드** (§3.4) — 데이터가 적어도 그리드는 유지되고
+  기록 없는 날은 회색 `count:0` 셀. "있는 주만" 표현 아님. 메모가 극히 적을 때도
+  그리드가 대부분 회색으로 보이는 게 정상 (깨진 게 아님). streak 요약 숫자는
+  0이면 "아직 연속 기록이 없어요" 같은 텍스트로 대체.
 
 **에러**: RSC 조회는 `Promise.all` 병렬, 실패 시 Next.js 표준 페이지 에러
 (기존 `/memos` 패턴과 동일).
@@ -141,27 +197,37 @@ recharts 3.8.1 (이미 설치). 차트 색 팔레트는 `dataviz` 스킬로 검�
 
 ## 6. 테스트 & 검증
 
-- **`aggregate.ts` 순수 함수 4개**: vitest 단위 테스트 (빈 배열 / 단일 행 /
-  다중 행 / streak 경계). `vitest include` 밖 조용한 스킵 방지 — 단일 경로로
-  "passed" 확인.
+- **`aggregate.ts` 순수 함수 5개 전부**: vitest 단위 테스트 (빈 배열 / 단일 행 /
+  다중 행 / streak 경계). heatmap·trend는 **주입한 `now` 를 고정**해 결정적
+  테스트 (KST 경계·오늘 미기록 streak 케이스 포함). action 집계는 `accepted >
+  processedMemos` 역전이 불가능함을 검증 (BLOCK 1 회귀). `vitest include` 밖
+  조용한 스킵 방지 — 단일 경로로 "passed" 확인.
 - **신규 repo 함수 2건**: 통합 테스트 (`TEST_DATABASE_URL` 필요).
+  `listMemoFactsForInsights` 는 **201건 이상 삽입 후 전량 반환** 회귀 케이스
+  필수 — 캡(200) 회피가 load-bearing 요구이므로 명시적으로 가드.
 - **검증 게이트**: `pnpm typecheck && pnpm lint`, 그리고 **`cd apps/dashboard &&
   pnpm build`** 필수 — features/widget barrel seam 함정(Gotcha #7)은
   typecheck/lint로 못 잡는다.
 
-## 7. FSD 경계
+## 7. FSD 경계 (Codex BLOCK 2 반영 — seam 명시)
 
-- 라우트(RSC)는 `entities/memo/server`에서 조회 함수 import.
-- 클라이언트 위젯(`MemoInsightsView`)은 raw entity barrel 대신 **props로 데이터
-  수령** — 서버-클라이언트 seam 준수.
-- 위젯 barrel(`index.ts`)은 순수 뷰/타입만 export (server-only 의존 없음).
+- 라우트(RSC)는 조회는 `entities/memo/server`, 집계는
+  `widgets/memo-insights/server` 에서 import. **집계 함수를 deep import
+  (`lib/aggregate`) 하지 않는다** — 반드시 `server.ts` entrypoint 경유.
+- 클라이언트 뷰(`MemoInsightsView`)는 `widgets/memo-insights` (index.ts) 로만
+  노출. raw entity barrel 대신 **props로 차트-ready 데이터 수령**.
+- 집계 결과 타입은 `widgets/memo-insights/model/types.ts` (중립 모듈) — server.ts
+  와 client 뷰가 공유하되 server-only/DOM 의존 없음.
+- `server.ts` 는 `import "server-only"` 없이 순수 함수만 re-export해도 되지만,
+  RSC 전용 진입점임을 계약으로 명시 (client는 index.ts만).
 
 ## 8. 구현 단계 (독립 빌드 가능한 순서)
 
-1. 데이터 계층: `listMemoFactsForInsights`, `listDigestsByUser` + 타입 +
-   server.ts export + repo 테스트.
-2. 집계 순수 함수 `aggregate.ts` + 단위 테스트 (빈 상태 포함).
-3. 위젯 스캐폴드 + 블록 A (활동/히트맵) — 가장 신호 큰 블록 먼저.
-4. 블록 B (카테고리) → C (액션 전환) → D (다이제스트 타임라인).
-5. 라우트 페이지 + `/memos` 헤더 링크.
-6. 빈 상태 마감 + build 검증 + 도그푸드 스모크.
+1. 데이터 계층: `listMemoFactsForInsights`(source 좁히기), `listDigestsByUser`
+   + 타입 + `entities/memo/server.ts` export + repo 테스트 (201건 캡 회귀 포함).
+2. 위젯 `model/types.ts`(집계 결과 타입) + `lib/aggregate.ts` 순수 함수 5개
+   + `server.ts` re-export + 단위 테스트 (now 고정·빈 상태·퍼널 역전 불가 포함).
+3. 위젯 뷰 스캐폴드(`index.ts`) + 블록 A (활동/히트맵) — 가장 신호 큰 블록 먼저.
+4. 블록 B (카테고리) → C (메모 퍼널 + 상태 스냅샷 분리) → D (다이제스트 타임라인).
+5. 라우트 페이지(`now` 캡처·`server` 집계 호출) + `/memos` 헤더 링크.
+6. 빈 상태 마감 + `pnpm build` 검증(Gotcha #7) + 도그푸드 스모크.
