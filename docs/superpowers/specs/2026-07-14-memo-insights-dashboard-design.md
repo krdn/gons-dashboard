@@ -93,12 +93,18 @@ insights/page.tsx (RSC)
 - **`listActionItemsByUser(userId, statuses)`**: **4개 상태 전부**
   (`["proposed","accepted","done","dismissed"]`) 전달 — 상태 분포용.
   함수는 이미 `statuses[]`를 받으므로 시그니처 변경 없음. 반환 행의 `status` 는
-  이미 `ActionItemStatus` 로 좁혀져 있어 `Record<ActionItemStatus, number>` 집계에
-  추가 좁히기 불필요.
+  **타입 좁히기 (Codex WARN)**: 반환 `MemoActionItem` 은 Drizzle 추론 타입이고
+  `memo_action_items.status` 는 bare `text()` 라 `status: string` 이다. 집계 전
+  `{ memoId, status: status as ActionItemStatus }` 로 명시 매핑·단언(값은 DB
+  CHECK로 보장)하거나 `isActionItemStatus` guard로 좁힌 뒤
+  `Record<ActionItemStatus, number>` 를 만든다.
 - **`listTransformationsByUser(userId)`**: 변환본 통계용. **slug 기준 그룹화**
   (Codex WARN) — `preset` (커스텀 slug 포함 일반 문자열) 을 그룹 키로 쓰고,
   라벨은 `presetLabel → 빌트인 라벨(TRANSFORM_PRESET_LABELS) → slug` 폴백
   (기존 `MemoCard.tsx:33` 과 동일 규칙). 결과: `{ slug, label, count }[]`.
+  **결정적 라벨 선택 (Codex NOTE)**: 같은 slug의 `presetLabel` 스냅샷이 행마다
+  다를 수 있으므로, 그룹 대표 라벨은 **가장 최근(createdAt desc) non-null
+  `presetLabel`** 을 쓰고, 없으면 폴백 체인. 조회 순서에 무관하게 결정적.
 - **`listCategories()`**: 카테고리 slug→labelKo 매핑.
 
 ### 3.4 순수 집계 함수 (`widgets/memo-insights/lib/aggregate.ts`) — **5개**
@@ -111,14 +117,17 @@ insights/page.tsx (RSC)
 금지). 모든 일자 버킷은 **KST(Asia/Seoul) 자정 경계** 기준. 날짜 산술은
 `now` 기반으로 결정적.
 
-- `buildActivityHeatmap(facts, now): { weeks: DayCell[][]; totalCount; currentStreak; longestStreak; dailyAvg }`
+- `buildActivityHeatmap(facts, now): { weeks: DayCell[][]; windowCount; totalCount; currentStreak; longestStreak; dailyAvg }`
   - **고정 26주(182일) 그리드** — `now` 의 KST 오늘을 마지막 열로, 과거 방향
     26주를 채운다. **모든 날짜 셀 존재** (0건 날은 회색 `count:0` 셀). "있는
     주만" 표현 아님 (Codex WARN 반영 — §5도 이에 맞춤).
+  - **분자 확정 (Codex WARN)**: 입력 `facts` 는 전체 이력이므로 카운트를 분리한다.
+    `windowCount` = 182일 그리드 창 내부 메모 수, `totalCount` = 전체 이력 수
+    (요약 표시용). `dailyAvg = windowCount / 182` (창 내부 기준 — 전체 이력을
+    182로 나누지 않는다).
   - `currentStreak`: KST 오늘부터 역방향 연속 기록일. **오늘 기록이 없으면
     어제부터** 카운트 (오늘 미기록이 streak을 즉시 0으로 만들지 않음).
   - `longestStreak`: 26주 창 내 최장 연속 기록일.
-  - `dailyAvg`: `totalCount / 182` (그리드 기간 고정 분모).
 - `buildDailyTrend(facts, now, days): { date: string; count: number }[]`
   - `now` 의 KST 오늘부터 과거 `days` 일 (기본 `days=30`). 각 날짜 라벨은
     locale-free `YYYY-MM-DD`. 기록 없는 날도 `count:0` 으로 포함 (연속 축).
@@ -151,9 +160,10 @@ insights/page.tsx (RSC)
 recharts 3.8.1 (이미 설치). 차트 색 팔레트는 `dataviz` 스킬로 검증 (접근성·일관성).
 
 **블록 A — 기록 활동 패턴**
-- 활동 히트맵: 최근 ~26주 요일×주 그리드 (GitHub 스타일). recharts 미지원이라
-  **CSS grid + 단색 명도 스케일**로 구현. 상단 요약: 총 메모 수 / 현재 streak /
-  최장 streak / 일평균.
+- 활동 히트맵: 최근 26주(182일) 요일×주 그리드 (GitHub 스타일). recharts 미지원
+  이라 **CSS grid + 단색 명도 스케일**로 구현. 상단 요약: 전체 메모 수
+  (`totalCount`) / 현재 streak / 최장 streak / 최근 26주 일평균
+  (`dailyAvg = windowCount/182`). 일평균은 26주 창 기준임을 라벨로 명시.
 - 일별 추이: recharts `BarChart` — 최근 N일 일별 메모 수.
 
 **블록 B — 카테고리 분포**
@@ -199,9 +209,15 @@ recharts 3.8.1 (이미 설치). 차트 색 팔레트는 `dataviz` 스킬로 검�
 
 - **`aggregate.ts` 순수 함수 5개 전부**: vitest 단위 테스트 (빈 배열 / 단일 행 /
   다중 행 / streak 경계). heatmap·trend는 **주입한 `now` 를 고정**해 결정적
-  테스트 (KST 경계·오늘 미기록 streak 케이스 포함). action 집계는 `accepted >
-  processedMemos` 역전이 불가능함을 검증 (BLOCK 1 회귀). `vitest include` 밖
-  조용한 스킵 방지 — 단일 경로로 "passed" 확인.
+  테스트 (KST 경계·오늘 미기록 streak 케이스 포함). action 집계 검증 (BLOCK 1
+  회귀 — 단위 혼동 방지):
+  - **퍼널 불변식** `totalMemos >= processedMemos >= memosWithActions` 만 검증
+    (세 값 모두 메모 단위). `accepted` 등 상태 카운트를 퍼널과 비교하지 않는다.
+  - 한 processed 메모에 `accepted` 액션 2개를 넣고 `currentStatusCounts.accepted
+    === 2` 검증 — 액션-행 수가 메모 수를 초과할 수 있음을 명시적으로 허용.
+  - `accepted` 가 퍼널 단계(3개 메모-단위 값)에 포함되지 않음을 검증.
+
+  `vitest include` 밖 조용한 스킵 방지 — 단일 경로로 "passed" 확인.
 - **신규 repo 함수 2건**: 통합 테스트 (`TEST_DATABASE_URL` 필요).
   `listMemoFactsForInsights` 는 **201건 이상 삽입 후 전량 반환** 회귀 케이스
   필수 — 캡(200) 회피가 load-bearing 요구이므로 명시적으로 가드.
