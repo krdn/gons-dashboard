@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, exists, gte, ilike, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { memos, memoTransformations } from "@/shared/lib/db/schema";
-import type { Memo, MemoSource } from "../model/types";
+import type { Memo, MemoSource, MemoFact } from "../model/types";
 import type { MemoCategory } from "../model/category";
 import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/search";
 
@@ -16,6 +16,26 @@ export function listMemos(userId: string): Promise<Memo[]> {
     .where(eq(memos.userId, userId))
     .orderBy(desc(memos.createdAt))
     .limit(LIST_MEMOS_LIMIT);
+}
+
+/**
+ * 인사이트 전용 조회 — 집계 축만 SELECT(전체 텍스트 제외), 캡 없음.
+ * listMemos의 LIMIT 200은 인사이트에서 히트맵·총계·비율을 조용히 잘라 틀린 값을 낸다.
+ * source는 bare text()라 select 타입이 string — MemoSource로 좁힌다(값은 DB CHECK로 보장).
+ */
+export async function listMemoFactsForInsights(userId: string): Promise<MemoFact[]> {
+  const rows = await db
+    .select({
+      id: memos.id,
+      source: memos.source,
+      category: memos.category,
+      createdAt: memos.createdAt,
+      actionsExtractedAt: memos.actionsExtractedAt,
+    })
+    .from(memos)
+    .where(eq(memos.userId, userId))
+    .orderBy(asc(memos.createdAt));
+  return rows.map((r) => ({ ...r, source: r.source as MemoSource }));
 }
 
 export interface SearchMemosOutput {

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { memoDigests } from "@/shared/lib/db/schema";
 import type { MemoDigest } from "../model/types";
@@ -38,4 +38,13 @@ export async function getLatestDigest(userId: string): Promise<MemoDigest | null
     .orderBy(desc(memoDigests.weekEnd))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** 인사이트 주간 타임라인용 — 소유자 전체 다이제스트, weekEnd 오름차순. */
+export function listDigestsByUser(userId: string): Promise<MemoDigest[]> {
+  return db
+    .select()
+    .from(memoDigests)
+    .where(eq(memoDigests.userId, userId))
+    .orderBy(asc(memoDigests.weekEnd));
 }

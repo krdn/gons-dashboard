@@ -13,12 +13,14 @@ export {
   listMemosOlderThan,
   getMemosByIds,
   listMemoAuthorUserIds,
+  listMemoFactsForInsights,
   type CreateMemoInput,
 } from "./api/memoRepo";
 export {
   insertDigest,
   hasDigest,
   getLatestDigest,
+  listDigestsByUser,
   type InsertDigestInput,
 } from "./api/memoDigestRepo";
 export { listMemosNeedingExtraction } from "./api/memoRepo";
@@ -79,6 +81,7 @@ export {
 export type {
   Memo,
   MemoSource,
+  MemoFact,
   MemoDigest,
   MemoActionItem,
   MemoTransformation,
