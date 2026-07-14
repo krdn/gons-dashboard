@@ -9,6 +9,7 @@ import type {
   DigestTimelinePoint,
 } from "../model/types";
 import { ActivityBlock } from "./ActivityBlock";
+import { CategoryBlock } from "./CategoryBlock";
 
 export interface MemoInsightsViewProps {
   heatmap: ActivityHeatmap;
@@ -18,7 +19,7 @@ export interface MemoInsightsViewProps {
   digestTimeline: DigestTimelinePoint[];
 }
 
-export function MemoInsightsView({ heatmap, trend }: MemoInsightsViewProps) {
+export function MemoInsightsView({ heatmap, trend, category }: MemoInsightsViewProps) {
   // 전체 빈 상태 — 메모 0개면 차트 대신 안내.
   if (heatmap.totalCount === 0) {
     return (
@@ -33,6 +34,7 @@ export function MemoInsightsView({ heatmap, trend }: MemoInsightsViewProps) {
   return (
     <div className="flex flex-col gap-6">
       <ActivityBlock heatmap={heatmap} trend={trend} />
+      <CategoryBlock category={category} />
     </div>
   );
 }
