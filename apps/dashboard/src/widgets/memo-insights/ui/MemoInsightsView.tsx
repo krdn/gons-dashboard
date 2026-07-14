@@ -11,6 +11,7 @@ import type {
 import { ActivityBlock } from "./ActivityBlock";
 import { CategoryBlock } from "./CategoryBlock";
 import { ConversionBlock } from "./ConversionBlock";
+import { DigestTimelineBlock } from "./DigestTimelineBlock";
 
 export interface MemoInsightsViewProps {
   heatmap: ActivityHeatmap;
@@ -20,7 +21,7 @@ export interface MemoInsightsViewProps {
   digestTimeline: DigestTimelinePoint[];
 }
 
-export function MemoInsightsView({ heatmap, trend, category, conversion }: MemoInsightsViewProps) {
+export function MemoInsightsView({ heatmap, trend, category, conversion, digestTimeline }: MemoInsightsViewProps) {
   // 전체 빈 상태 — 메모 0개면 차트 대신 안내.
   if (heatmap.totalCount === 0) {
     return (
@@ -37,6 +38,7 @@ export function MemoInsightsView({ heatmap, trend, category, conversion }: MemoI
       <ActivityBlock heatmap={heatmap} trend={trend} />
       <CategoryBlock category={category} />
       <ConversionBlock conversion={conversion} />
+      <DigestTimelineBlock digestTimeline={digestTimeline} />
     </div>
   );
 }
