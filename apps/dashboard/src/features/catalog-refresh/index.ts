@@ -9,6 +9,7 @@
 import "server-only";
 
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,12 +32,28 @@ const BODY_DIRS: Record<CatalogKind, string> = {
   agents: "public/agent-catalog/",
 };
 
-/** 이 파일 기준으로 apps/dashboard 디렉토리 절대경로를 계산. */
+/**
+ * 이 파일 기준으로 apps/dashboard 디렉토리 절대경로를 계산.
+ * spawnSnapshot 은 Next.js 서버 번들에 포함되므로 런타임 import.meta.url 이
+ * 소스 경로(src/features/catalog-refresh/)가 아니라 .next/server/... 로
+ * relocate 될 수 있다 — 고정 깊이 대신 package.json name === "@gons/dashboard"
+ * 마커를 위로 탐색해 apps/dashboard 를 식별한다.
+ */
 function dashboardDir(): string {
-  // .../apps/dashboard/src/features/catalog-refresh/index.ts
-  const here = dirname(fileURLToPath(import.meta.url));
-  // catalog-refresh → features → src → dashboard
-  return join(here, "..", "..", "..");
+  let dir = dirname(fileURLToPath(import.meta.url));
+  while (dir !== dirname(dir)) {
+    const pkg = join(dir, "package.json");
+    if (existsSync(pkg)) {
+      try {
+        const parsed = JSON.parse(readFileSync(pkg, "utf8"));
+        if (parsed?.name === "@gons/dashboard") return dir;
+      } catch {
+        // 깨진 package.json 은 건너뛰고 계속 상향 탐색
+      }
+    }
+    dir = dirname(dir);
+  }
+  throw new Error("apps/dashboard 앵커(@gons/dashboard)를 찾지 못했습니다");
 }
 
 /**
