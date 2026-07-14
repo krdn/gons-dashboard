@@ -82,6 +82,19 @@ describe("buildActivityHeatmap", () => {
     expect(h.currentStreak).toBe(182); // HEATMAP_DAYS(26주) 상한
     expect(h.longestStreak).toBe(182);
   });
+
+  it("오늘 미기록 + 어제부터 190일 연속이어도 currentStreak이 longestStreak을 넘지 않는다 (창 경계 역전 회귀)", () => {
+    // 오늘(i=0)은 넣지 않고, 어제(i=1)부터 190일 전(i=190)까지 매일 기록.
+    // 이전 fix(counts 전체 walk + HEATMAP_DAYS 클램프)는 currentStreak=182, longestStreak=181로 불변식이 깨졌다.
+    const facts: MemoFact[] = [];
+    for (let i = 1; i <= 190; i++) {
+      facts.push(fact({ createdAt: kstNoon(addDaysKeyForTest("2026-07-14", -i)) }));
+    }
+    const h = buildActivityHeatmap(facts, NOW);
+    expect(h.currentStreak).toBeLessThanOrEqual(h.longestStreak);
+    expect(h.currentStreak).toBe(181);
+    expect(h.longestStreak).toBe(181);
+  });
 });
 
 describe("buildDailyTrend", () => {

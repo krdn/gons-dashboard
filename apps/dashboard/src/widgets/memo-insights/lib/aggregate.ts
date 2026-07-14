@@ -72,13 +72,15 @@ export function buildActivityHeatmap(facts: MemoFact[], now: Date): ActivityHeat
   const totalCount = facts.length;
 
   // currentStreak: 오늘부터 역방향 연속 기록일. 오늘 미기록이면 어제부터.
-  // HEATMAP_DAYS(26주 창)로 상한 클램프 — longestStreak(창 내 스캔)와 프레이밍을 일치시켜
-  // currentStreak <= longestStreak <= HEATMAP_DAYS 불변식을 보장한다(무한 루프 방어도 겸함).
+  // longestStreak과 동일한 days 창 배열을 역방향 스캔한다 — 같은 데이터 소스라
+  // currentStreak <= longestStreak 불변식이 구조적으로 보장된다. (counts 전체 이력을
+  // walk하면 창 경계를 넘어 longestStreak을 초과할 수 있어 UI 모순이 난다.)
   let currentStreak = 0;
-  let cursor = counts.get(todayKey) ? todayKey : addDaysKey(todayKey, -1);
-  while (currentStreak < HEATMAP_DAYS && counts.get(cursor)) {
+  let idx = days.length - 1;
+  if (days[idx].count === 0) idx--; // 오늘 미기록이면 어제부터 카운트 시작
+  while (idx >= 0 && days[idx].count > 0) {
     currentStreak++;
-    cursor = addDaysKey(cursor, -1);
+    idx--;
   }
 
   // longestStreak: 26주 창 내 최장 연속(days 배열 스캔).
