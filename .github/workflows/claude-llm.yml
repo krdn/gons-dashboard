@@ -1,0 +1,86 @@
+name: Claude Code Custom LLM Integration
+
+on:
+  issue_comment:
+    types: [created] # 이슈나 PR에 댓글이 달릴 때 실행
+  pull_request_review_comment:
+    types: [created] # PR diff 라인 댓글
+  issues:
+    types: [opened, assigned] # 이슈 생성/할당
+
+jobs:
+  authorize:
+    # @claude가 포함된 요청만 최소 권한 job에서 호출자 권한을 확인한다.
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      authorized: ${{ steps.permission.outputs.authorized }}
+
+    steps:
+      - name: Check actor repository permission
+        id: permission
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          permission="$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "repos/${REPOSITORY}/collaborators/${ACTOR}/permission" \
+            --jq ".permission")"
+
+          case "${permission}" in
+            admin|maintain|write)
+              echo "authorized=true" >> "${GITHUB_OUTPUT}"
+              ;;
+            read|triage|none)
+              echo "authorized=false" >> "${GITHUB_OUTPUT}"
+              echo "::notice title=Claude invocation denied::${ACTOR} has ${permission} permission."
+              ;;
+            *)
+              echo "::error title=Permission lookup failed::Unexpected permission '${permission}' for ${ACTOR}."
+              exit 1
+              ;;
+          esac
+
+  claude_run:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # 브랜치 생성/커밋
+      pull-requests: write # PR 코멘트·생성
+      issues: write # 이슈 코멘트
+      id-token: write # 기본 Claude GitHub App 인증
+      actions: read # PR CI 결과 조회
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code with CLIProxyAPI
+        uses: anthropics/claude-code-action@f1bd27ca5b54584506e40e17884d90bdaaa1a9b3 # v1.0.173
+        with:
+          # CLIProxyAPI의 top-level api-keys 중 이 저장소 전용 키
+          anthropic_api_key: ${{ secrets.LLM_API_KEY }}
+          additional_permissions: |
+            actions: read
+          show_full_output: false
+          claude_args: |
+            --model ${{ secrets.LLM_MODEL_NAME }}
+            --max-turns 10
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.LLM_BASE_URL }}
