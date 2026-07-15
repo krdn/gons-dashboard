@@ -220,13 +220,48 @@ test -n "$issue_number"
 test -n "$run_id"
 gh issue view "$issue_number" --json comments \
   --jq '.comments[] | {author:.author.login,body}'
-external_key=$(yq -r '.api-keys[1]' /home/gon/projects/cli-proxy-api/config.yaml)
-! gh run view "$run_id" --log | grep -Fq -- "$external_key"
-gh run view "$run_id" --log | rg \
-  'ANTHROPIC_API_KEY: .*\*\*\*|ANTHROPIC_BASE_URL: .*\*\*\*|ANTHROPIC_CUSTOM_HEADERS: .*\*\*\*|show_full_output: false'
+(
+  set -euo pipefail
+  umask 077
+  log_file=$(mktemp)
+  pattern_file=$(mktemp)
+  cleanup() {
+    rm -f "$log_file" "$pattern_file"
+  }
+  trap cleanup EXIT
+  chmod 600 "$log_file" "$pattern_file"
+
+  if ! yq -er '.api-keys[1]' /home/gon/projects/cli-proxy-api/config.yaml >"$pattern_file"; then
+    printf '%s\n' 'External API key could not be loaded.' >&2
+    exit 1
+  fi
+  if [[ ! -s "$pattern_file" ]]; then
+    printf '%s\n' 'External API key pattern file is empty.' >&2
+    exit 1
+  fi
+
+  if ! gh run view "$run_id" --log >"$log_file"; then
+    printf '%s\n' 'Failed to download workflow logs.' >&2
+    exit 1
+  fi
+  if grep -Fq -f "$pattern_file" "$log_file"; then
+    printf '%s\n' 'Literal external API key found in workflow logs.' >&2
+    exit 1
+  else
+    grep_status=$?
+    if [[ "$grep_status" -ne 1 ]]; then
+      printf '%s\n' 'Failed to scan workflow logs for the external API key.' >&2
+      exit 1
+    fi
+  fi
+  rg -q 'claude_args: --model \*\*\*' "$log_file"
+  rg \
+    'ANTHROPIC_API_KEY: .*\*\*\*|ANTHROPIC_BASE_URL: .*\*\*\*|ANTHROPIC_CUSTOM_HEADERS: .*\*\*\*|claude_args: --model \*\*\*|show_full_output: false' \
+    "$log_file"
+)
 ```
 
-Expected: Claude posts `CLIProxyAPI smoke test OK`, the literal external key is absent, and sensitive environment values appear masked.
+Expected: Claude posts `CLIProxyAPI smoke test OK`, the literal external key is absent, sensitive environment values appear masked, and the model argument appears as `claude_args: --model ***`.
 
 - [ ] **Step 6: Close the temporary issue**
 
