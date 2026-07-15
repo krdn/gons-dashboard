@@ -221,7 +221,7 @@ test -n "$run_id"
 gh issue view "$issue_number" --json comments \
   --jq '.comments[] | {author:.author.login,body}'
 external_key=$(yq -r '.api-keys[1]' /home/gon/projects/cli-proxy-api/config.yaml)
-! gh run view "$run_id" --log | grep -F "$external_key"
+! gh run view "$run_id" --log | grep -Fq -- "$external_key"
 gh run view "$run_id" --log | rg \
   'ANTHROPIC_API_KEY: .*\*\*\*|ANTHROPIC_BASE_URL: .*\*\*\*|ANTHROPIC_CUSTOM_HEADERS: .*\*\*\*|show_full_output: false'
 ```
