@@ -1,7 +1,7 @@
 # Claude LLM Bearer Header Compatibility Design
 
 - **날짜**: 2026-07-15
-- **상태**: 사용자 승인, 구현 대기
+- **상태**: 구현 완료
 - **대상**: `.github/workflows/claude-llm.yml`
 
 ## 배경

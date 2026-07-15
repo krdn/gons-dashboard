@@ -84,3 +84,4 @@ jobs:
             --max-turns 10
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          ANTHROPIC_CUSTOM_HEADERS: "Authorization: Bearer ${{ secrets.LLM_API_KEY }}"
