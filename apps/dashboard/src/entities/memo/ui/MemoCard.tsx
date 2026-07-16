@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Highlighted } from "@/shared/ui/Highlighted";
 import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
+
+// 삭제 확인 상태가 원복되기까지의 유예 — 오클릭 방지와 재확인 부담 사이의 절충.
+const DELETE_CONFIRM_REVERT_MS = 3000;
 
 interface MemoCardProps {
   memo: Memo;
@@ -18,6 +21,12 @@ interface MemoCardProps {
   actionsSlot?: React.ReactNode;
   /** slug→라벨 맵 — 배지 표시. 없으면 slug 그대로 표시. */
   categoryLabels?: Record<string, string>;
+  /** 카테고리 수동 정정 — 옵션 목록과 함께 주어지면 배지가 select로 바뀐다 (조립은 MemoList 담당). */
+  onChangeCategory?: (memoId: string, category: string) => void;
+  /** 정정 select 옵션 — 등록된 카테고리 목록 (DB memo_categories, 서버 로드). */
+  categoryOptions?: { id: string; labelKo: string }[];
+  /** 카테고리 변경 진행 중 — select 비활성 (중복 제출 차단). */
+  categoryUpdating?: boolean;
 }
 
 // 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 slug — 빌트인·커스텀 공통).
@@ -67,12 +76,35 @@ export function MemoCard({
   highlightTerms = [],
   actionsSlot,
   categoryLabels = {},
+  onChangeCategory,
+  categoryOptions,
+  categoryUpdating = false,
 }: MemoCardProps) {
   // 파생 초기 뷰 + 사용자 오버라이드 — 칩 클릭 전까지는 검색어가 실제 일치한 뷰를 보여준다.
   const [userView, setUserView] = useState<MemoView | null>(null);
   const view = userView ?? deriveInitialView(memo, transformations, highlightTerms);
   const setView = setUserView;
   const isVoice = memo.source === "voice";
+
+  // 삭제 2-click 확인 — 하드 delete + cascade(변환본·액션 동반 소멸)라 원클릭 비가역을 차단.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
+  function handleDeleteClick() {
+    if (!onDelete) return;
+    if (confirmingDelete) {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmingDelete(false);
+      onDelete(memo.id);
+      return;
+    }
+    setConfirmingDelete(true);
+    confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), DELETE_CONFIRM_REVERT_MS);
+  }
 
   const body =
     view.kind === "cleaned"
@@ -113,10 +145,35 @@ export function MemoCard({
           <Highlighted text={memo.title} terms={highlightTerms} />
         </h3>
         <div className="flex shrink-0 items-center gap-1">
-          {memo.category && (
-            <span className="rounded border border-neutral-200 px-1.5 py-0.5 text-xs text-neutral-500">
-              {categoryLabels[memo.category] ?? memo.category}
-            </span>
+          {onChangeCategory && categoryOptions && categoryOptions.length > 0 ? (
+            <select
+              value={memo.category ?? ""}
+              onChange={(e) => {
+                if (e.target.value && e.target.value !== memo.category) {
+                  onChangeCategory(memo.id, e.target.value);
+                }
+              }}
+              aria-label="카테고리 변경"
+              disabled={categoryUpdating}
+              className="rounded border border-neutral-200 bg-transparent px-1 py-0.5 text-xs text-neutral-500 disabled:opacity-50"
+            >
+              {memo.category === null && <option value="">미분류</option>}
+              {/* 옵션 목록에 없는 기존 값 방어 — 방금 LLM이 만든 태그가 목록 새로고침 전일 수 있다. */}
+              {memo.category !== null && !categoryOptions.some((c) => c.id === memo.category) && (
+                <option value={memo.category}>{categoryLabels[memo.category] ?? memo.category}</option>
+              )}
+              {categoryOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.labelKo}
+                </option>
+              ))}
+            </select>
+          ) : (
+            memo.category && (
+              <span className="rounded border border-neutral-200 px-1.5 py-0.5 text-xs text-neutral-500">
+                {categoryLabels[memo.category] ?? memo.category}
+              </span>
+            )
           )}
           <span className="rounded px-1.5 py-0.5 text-xs text-neutral-500">
             {isVoice ? "🎙 음성" : "✍ 텍스트"}
@@ -159,8 +216,12 @@ export function MemoCard({
           </button>
         )}
         {onDelete && (
-          <button type="button" onClick={() => onDelete(memo.id)} className="hover:text-red-600">
-            삭제
+          <button
+            type="button"
+            onClick={handleDeleteClick}
+            className={confirmingDelete ? "font-medium text-red-600" : "hover:text-red-600"}
+          >
+            {confirmingDelete ? "정말 삭제?" : "삭제"}
           </button>
         )}
       </footer>

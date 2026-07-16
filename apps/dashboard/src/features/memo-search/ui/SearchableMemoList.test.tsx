@@ -4,13 +4,16 @@ import { render, cleanup, fireEvent, screen, act } from "@testing-library/react"
 import type { Memo } from "@/entities/memo/client";
 
 const searchMock = vi.fn();
+const deleteActionMock = vi.fn();
+const updateCategoryMock = vi.fn();
 vi.mock("../client", () => ({
   searchMemosAction: (...a: unknown[]) => searchMock(...a),
 }));
 // MemoList가 끌고 오는 server action 모듈 차단 (server-only import).
 vi.mock("@/features/memo-manage/client", () => ({
   updateMemoAction: vi.fn(),
-  deleteMemoAction: vi.fn(),
+  deleteMemoAction: (...a: unknown[]) => deleteActionMock(...a),
+  updateMemoCategoryAction: (...a: unknown[]) => updateCategoryMock(...a),
 }));
 vi.mock("@/features/memo-transform/client", () => ({
   transformMemoAction: vi.fn(),
@@ -61,6 +64,8 @@ async function typeAndFlush(value: string) {
 beforeEach(() => {
   vi.useFakeTimers();
   searchMock.mockReset().mockResolvedValue({ kind: "ok", memos: [], truncated: false });
+  deleteActionMock.mockReset().mockResolvedValue({ kind: "ok" });
+  updateCategoryMock.mockReset().mockResolvedValue({ kind: "ok" });
 });
 afterEach(() => {
   cleanup();
@@ -90,7 +95,7 @@ describe("SearchableMemoList", () => {
       await Promise.resolve();
     });
     expect(searchMock).toHaveBeenCalledTimes(1);
-    expect(searchMock).toHaveBeenCalledWith("회의");
+    expect(searchMock).toHaveBeenCalledWith("회의", null);
   });
 
   it("검색 결과를 하이라이트·카운트와 함께 보여준다", async () => {
@@ -141,7 +146,7 @@ describe("SearchableMemoList", () => {
   });
 });
 
-describe("카테고리 필터", () => {
+describe("카테고리 필터 (서버 WHERE 조회)", () => {
   const categorized = [
     makeMemo("c1", "회의 메모", "회의는 세 시", "todo"),
     makeMemo("c2", "장보기", "우유 사기", "idea"),
@@ -159,6 +164,13 @@ describe("카테고리 필터", () => {
     );
   }
 
+  async function clickAndFlush(name: string) {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name }));
+      await Promise.resolve();
+    });
+  }
+
   it("전체 + 고정 6종 칩이 렌더되고 기본 활성은 전체", () => {
     renderCategorized();
     const group = screen.getByRole("group", { name: "카테고리 필터" });
@@ -166,59 +178,140 @@ describe("카테고리 필터", () => {
     expect(screen.getByRole("button", { name: "전체" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("칩 클릭 시 idle 목록을 해당 카테고리로 거른다 (미분류 제외)", () => {
+  it("칩 클릭 시 서버 필터 조회로 전환한다 (LIMIT 컷 밖 메모도 도달)", async () => {
+    searchMock.mockResolvedValue({
+      kind: "ok",
+      // 서버가 컷 밖에서 찾아온 메모 — 클라이언트 필터였다면 보이지 않았을 행.
+      memos: [makeMemo("c2", "장보기", "우유 사기", "idea"), makeMemo("old", "컷 밖 메모", "옛날 것", "idea")],
+      truncated: false,
+    });
     renderCategorized();
-    fireEvent.click(screen.getByRole("button", { name: "아이디어" }));
+    await clickAndFlush("아이디어");
+    expect(searchMock).toHaveBeenCalledWith("", "idea");
     expect(screen.getByText("장보기")).toBeTruthy();
+    expect(screen.getByText("컷 밖 메모")).toBeTruthy();
     expect(screen.queryByText("회의 메모")).toBeNull();
-    expect(screen.queryByText("미분류 메모")).toBeNull();
     expect(screen.getByRole("button", { name: "아이디어" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("활성 칩 재클릭은 전체로 복귀한다", () => {
+  it("활성 칩 재클릭은 전체(원본 목록)로 복귀하고 재조회하지 않는다", async () => {
+    searchMock.mockResolvedValue({ kind: "ok", memos: [], truncated: false });
     renderCategorized();
-    fireEvent.click(screen.getByRole("button", { name: "아이디어" }));
-    fireEvent.click(screen.getByRole("button", { name: "아이디어" }));
+    await clickAndFlush("아이디어");
+    expect(searchMock).toHaveBeenCalledTimes(1);
+    await clickAndFlush("아이디어");
+    expect(searchMock).toHaveBeenCalledTimes(1);
     expect(screen.getByText("회의 메모")).toBeTruthy();
     expect(screen.getByText("미분류 메모")).toBeTruthy();
   });
 
-  it("해당 카테고리 메모가 없으면 전용 empty 문구를 보여준다", () => {
+  it("해당 카테고리 메모가 없으면 전용 empty 문구를 보여준다", async () => {
+    searchMock.mockResolvedValue({ kind: "ok", memos: [], truncated: false });
     renderCategorized();
-    fireEvent.click(screen.getByRole("button", { name: "일기" }));
+    await clickAndFlush("일기");
     expect(screen.getByText("‘일기’ 카테고리의 메모가 없습니다.")).toBeTruthy();
   });
 
-  it("검색 결과에도 필터가 적용되고 카운트는 필터 후 개수", async () => {
+  it("검색 중 칩 클릭 시 검색어와 카테고리를 함께 서버로 보낸다", async () => {
     // 제목에 검색어가 없어야 하이라이트 분절 없이 getByText로 찾을 수 있다.
-    searchMock.mockResolvedValue({
-      kind: "ok",
-      memos: [
-        makeMemo("s1", "안건정리", "회의 안건", "todo"),
-        makeMemo("s2", "생각모음", "회의 아이디어", "idea"),
-      ],
-      truncated: false,
-    });
+    searchMock.mockImplementation(async (_q: string, cat: string | null) =>
+      cat === "todo"
+        ? { kind: "ok", memos: [makeMemo("s1", "안건정리", "회의 안건", "todo")], truncated: false }
+        : {
+            kind: "ok",
+            memos: [
+              makeMemo("s1", "안건정리", "회의 안건", "todo"),
+              makeMemo("s2", "생각모음", "회의 아이디어", "idea"),
+            ],
+            truncated: false,
+          },
+    );
     renderCategorized();
     await typeAndFlush("회의");
     expect(screen.getByText("2개 결과")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "할 일" }));
+    await clickAndFlush("할 일");
+    expect(searchMock).toHaveBeenLastCalledWith("회의", "todo");
     expect(screen.getByText("1개 결과")).toBeTruthy();
     expect(screen.getByText("안건정리")).toBeTruthy();
     expect(screen.queryByText("생각모음")).toBeNull();
   });
 
-  it("검색 결과가 필터로 전부 걸러지면 카테고리 empty 문구를 보여준다", async () => {
-    searchMock.mockResolvedValue({
-      kind: "ok",
-      memos: [makeMemo("s1", "안건정리", "회의 안건", "todo")],
-      truncated: false,
-    });
+  it("검색 결과가 카테고리 조건으로 비면 검색용 empty 문구를 보여준다", async () => {
+    searchMock.mockImplementation(async (_q: string, cat: string | null) =>
+      cat === "journal"
+        ? { kind: "ok", memos: [], truncated: false }
+        : { kind: "ok", memos: [makeMemo("s1", "안건정리", "회의 안건", "todo")], truncated: false },
+    );
     renderCategorized();
     await typeAndFlush("회의");
-    fireEvent.click(screen.getByRole("button", { name: "일기" }));
+    await clickAndFlush("일기");
     expect(screen.getByText("‘일기’ 카테고리에 일치하는 결과가 없습니다.")).toBeTruthy();
+  });
+
+  it("검색어를 지워도 카테고리 필터는 유지되어 재조회한다", async () => {
+    searchMock.mockResolvedValue({ kind: "ok", memos: [], truncated: false });
+    renderCategorized();
+    await typeAndFlush("회의");
+    await clickAndFlush("일기");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "검색어 지우기" }));
+      await Promise.resolve();
+    });
+    expect(searchMock).toHaveBeenLastCalledWith("", "journal");
+    expect(screen.getByText("‘일기’ 카테고리의 메모가 없습니다.")).toBeTruthy();
+  });
+
+  it("지연된 mutation 완료 후 재조회는 mutation 시작 시점이 아닌 현재 필터를 쓴다", async () => {
+    // 회귀 가드(Codex 리뷰): onMutated가 렌더 시점 클로저(trimmed/category)를 캡처하면
+    // 아이디어 필터에서 시작한 삭제가 할 일 필터로 이동한 뒤 완료될 때
+    // 과거(아이디어) 조회를 더 높은 seq로 쏘아 현재(할 일) 화면을 덮는다.
+    searchMock.mockImplementation(async (_q: string, cat: string | null) => ({
+      kind: "ok",
+      memos:
+        cat === "idea"
+          ? [makeMemo("c2", "장보기", "우유 사기", "idea")]
+          : [makeMemo("c1", "회의 메모", "회의는 세 시", "todo")],
+      truncated: false,
+    }));
+    let resolveDelete: (v: { kind: string }) => void = () => {};
+    deleteActionMock.mockReturnValue(
+      new Promise((r) => {
+        resolveDelete = r;
+      }),
+    );
+
+    renderCategorized();
+    await clickAndFlush("아이디어");
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    fireEvent.click(screen.getByRole("button", { name: "정말 삭제?" }));
+    // 최악 순서: 칩 클릭과 같은 틱에서 mutation 완료 — filterRef가 passive effect
+    // 갱신이었다면 effect 실행 전이라 과거 필터(idea)를 읽는다 (핸들러 동기 기록 검증).
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "할 일" }));
+      resolveDelete({ kind: "ok" });
+      await Promise.resolve();
+    });
+    expect(searchMock).toHaveBeenCalledTimes(3);
+    expect(searchMock).toHaveBeenLastCalledWith("", "todo");
+  });
+
+  it("카테고리 변경 완료 전 추가 변경은 무시된다 (중복 제출 가드)", async () => {
+    let resolveUpdate: (v: { kind: string }) => void = () => {};
+    updateCategoryMock.mockReturnValue(
+      new Promise((r) => {
+        resolveUpdate = r;
+      }),
+    );
+    renderCategorized();
+    const selects = screen.getAllByRole("combobox", { name: "카테고리 변경" });
+    fireEvent.change(selects[0], { target: { value: "journal" } });
+    fireEvent.change(selects[1], { target: { value: "draft" } });
+    expect(updateCategoryMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveUpdate({ kind: "ok" });
+      await Promise.resolve();
+    });
   });
 
   it("등록된 동적 태그도 필터 칩으로 렌더한다", () => {

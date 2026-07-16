@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, cleanup, fireEvent, screen } from "@testing-library/react";
+import { render, cleanup, fireEvent, screen, act } from "@testing-library/react";
 import { MemoCard } from "./MemoCard";
 import type { Memo, MemoTransformation } from "../model/types";
 
@@ -150,5 +150,112 @@ describe("MemoCard 칩 전환", () => {
     render(<MemoCard memo={memo} transformations={[coaching, briefing]} />);
     const labels = screen.getAllByRole("button").map((b) => b.textContent);
     expect(labels.indexOf("브리핑")).toBeLessThan(labels.indexOf("코칭"));
+  });
+});
+
+describe("MemoCard 삭제 2-click 확인", () => {
+  it("첫 클릭은 확인 상태 전환만 하고 onDelete를 부르지 않는다", () => {
+    const onDelete = vi.fn();
+    render(<MemoCard memo={memo} onDelete={onDelete} />);
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "정말 삭제?" })).toBeTruthy();
+  });
+
+  it("확인 상태에서 두 번째 클릭이 onDelete를 호출한다", () => {
+    const onDelete = vi.fn();
+    render(<MemoCard memo={memo} onDelete={onDelete} />);
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    fireEvent.click(screen.getByRole("button", { name: "정말 삭제?" }));
+    expect(onDelete).toHaveBeenCalledWith("m1");
+  });
+
+  it("3초가 지나면 확인 상태가 원복된다", () => {
+    vi.useFakeTimers();
+    try {
+      const onDelete = vi.fn();
+      render(<MemoCard memo={memo} onDelete={onDelete} />);
+      fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(screen.getByRole("button", { name: "삭제" })).toBeTruthy();
+      expect(onDelete).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("MemoCard 카테고리 수동 정정", () => {
+  const OPTIONS = [
+    { id: "idea", labelKo: "아이디어" },
+    { id: "todo", labelKo: "할 일" },
+  ];
+
+  it("onChangeCategory + 옵션이 있으면 select를 렌더하고 변경을 위임한다", () => {
+    const onChange = vi.fn();
+    render(
+      <MemoCard
+        memo={{ ...memo, category: "idea" } as Memo}
+        onChangeCategory={onChange}
+        categoryOptions={OPTIONS}
+        categoryLabels={{ idea: "아이디어", todo: "할 일" }}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: "카테고리 변경" }) as HTMLSelectElement;
+    expect(select.value).toBe("idea");
+    fireEvent.change(select, { target: { value: "todo" } });
+    expect(onChange).toHaveBeenCalledWith("m1", "todo");
+  });
+
+  it("미분류(null) 메모는 '미분류' placeholder에서 지정할 수 있다", () => {
+    const onChange = vi.fn();
+    render(
+      <MemoCard
+        memo={{ ...memo, category: null } as Memo}
+        onChangeCategory={onChange}
+        categoryOptions={OPTIONS}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: "카테고리 변경" }) as HTMLSelectElement;
+    expect(select.value).toBe("");
+    fireEvent.change(select, { target: { value: "idea" } });
+    expect(onChange).toHaveBeenCalledWith("m1", "idea");
+  });
+
+  it("onChangeCategory가 없으면 기존 정적 배지를 유지한다", () => {
+    render(
+      <MemoCard memo={{ ...memo, category: "idea" } as Memo} categoryLabels={{ idea: "아이디어" }} />,
+    );
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByText("아이디어")).toBeTruthy();
+  });
+
+  it("categoryUpdating이면 select가 비활성화된다 (중복 제출 차단)", () => {
+    render(
+      <MemoCard
+        memo={{ ...memo, category: "idea" } as Memo}
+        onChangeCategory={vi.fn()}
+        categoryOptions={OPTIONS}
+        categoryUpdating
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: "카테고리 변경" }) as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+  });
+
+  it("옵션 목록에 없는 기존 값도 select에 방어적으로 노출한다", () => {
+    render(
+      <MemoCard
+        memo={{ ...memo, category: "meeting-log" } as Memo}
+        onChangeCategory={vi.fn()}
+        categoryOptions={OPTIONS}
+        categoryLabels={{ "meeting-log": "회의록" }}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: "카테고리 변경" }) as HTMLSelectElement;
+    expect(select.value).toBe("meeting-log");
+    expect(screen.getByRole("option", { name: "회의록" })).toBeTruthy();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { MemoCard, type Memo, type MemoActionItem, type MemoTransformation } from "@/entities/memo/client";
-import { updateMemoAction, deleteMemoAction } from "../client";
+import { updateMemoAction, deleteMemoAction, updateMemoCategoryAction } from "../client";
 // features→features 허용 예외 (memo-manage가 변환 다이얼로그·액션 패널을 조립).
 import { TransformDialog } from "@/features/memo-transform/ui/TransformDialog";
 import type { TransformPresetOption } from "@/features/memo-transform/client";
@@ -37,6 +37,9 @@ export function MemoList({
   const [transforming, setTransforming] = useState<Memo | null>(null);
   const [draft, setDraft] = useState({ title: "", cleaned: "" });
   const [busy, setBusy] = useState(false);
+  // 카테고리 변경 진행 중인 메모 id — 병렬 UPDATE는 완료 순서가 비보장이라
+  // 마지막 선택이 DB에 남는다는 보장이 없다. 완료 전 중복 제출을 차단.
+  const [categoryBusyId, setCategoryBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   function startEdit(memo: Memo) {
@@ -65,6 +68,29 @@ export function MemoList({
       () => {
         setBusy(false);
         setNotice("수정에 실패했습니다.");
+      },
+    );
+  }
+
+  // LLM 오분류 수동 정정 — 성공 시 revalidatePath(idle) 또는 onMutated(검색 모드)가 목록을 갱신.
+  function handleChangeCategory(memoId: string, category: string) {
+    if (categoryBusyId !== null) return;
+    setCategoryBusyId(memoId);
+    updateMemoCategoryAction(memoId, category).then(
+      (r) => {
+        setCategoryBusyId(null);
+        if (r.kind === "ok") {
+          setNotice(null);
+          onMutated?.();
+        } else if (r.kind === "not-found") {
+          setNotice("메모를 찾을 수 없습니다.");
+        } else {
+          setNotice("카테고리 변경에 실패했습니다.");
+        }
+      },
+      () => {
+        setCategoryBusyId(null);
+        setNotice("카테고리 변경에 실패했습니다.");
       },
     );
   }
@@ -141,6 +167,10 @@ export function MemoList({
             onTransform={setTransforming}
             highlightTerms={highlightTerms}
             categoryLabels={categoryLabels}
+            onChangeCategory={handleChangeCategory}
+            categoryOptions={categories}
+            // 가드가 전역 직렬화(하나 진행 중이면 전부 무시)이므로 비활성 범위도 전역으로 일치.
+            categoryUpdating={categoryBusyId !== null}
             actionsSlot={
               (actionItemsByMemo?.[memo.id]?.length ?? 0) > 0 ? (
                 <MemoActionPanel items={actionItemsByMemo?.[memo.id] ?? []} />

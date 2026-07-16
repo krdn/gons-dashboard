@@ -1,7 +1,21 @@
 import "server-only";
-import { and, asc, desc, eq, exists, gte, ilike, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  TransactionRollbackError,
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
-import { memos, memoTransformations } from "@/shared/lib/db/schema";
+import { memos, memoCategories, memoTransformations } from "@/shared/lib/db/schema";
 import type { Memo, MemoSource, MemoFact } from "../model/types";
 import type { MemoCategory } from "../model/category";
 import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/search";
@@ -9,11 +23,16 @@ import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/se
 // 개인 대시보드 규모 상한 — 페이지네이션 도입 전까지 unbounded 쿼리 방지.
 const LIST_MEMOS_LIMIT = 200;
 
-export function listMemos(userId: string): Promise<Memo[]> {
+export function listMemos(userId: string, category: MemoCategory | null = null): Promise<Memo[]> {
   return db
     .select()
     .from(memos)
-    .where(eq(memos.userId, userId))
+    .where(
+      and(
+        eq(memos.userId, userId),
+        ...(category === null ? [] : [eq(memos.category, category)]),
+      ),
+    )
     .orderBy(desc(memos.createdAt))
     .limit(LIST_MEMOS_LIMIT);
 }
@@ -48,8 +67,13 @@ export interface SearchMemosOutput {
  * 제목·원문·정리본·AI 변환본 대상 검색. 토큰 간 AND, 토큰별 필드 간 OR.
  * 개인 규모(사용자당 수백 행)라 인덱스 없이 user_id 필터 후 ILIKE로 충분 —
  * 임계 도달 시 pg_trgm GIN 인덱스만 추가하면 된다 (스펙 2026-07-12-memo-search).
+ * category는 WHERE 조건 — LIMIT 이후 클라이언트 필터는 false-empty를 만든다.
  */
-export async function searchMemos(userId: string, query: string): Promise<SearchMemosOutput> {
+export async function searchMemos(
+  userId: string,
+  query: string,
+  category: MemoCategory | null = null,
+): Promise<SearchMemosOutput> {
   const tokens = tokenizeSearchQuery(query);
   if (tokens.length === 0) return { memos: [], truncated: false };
 
@@ -76,7 +100,13 @@ export async function searchMemos(userId: string, query: string): Promise<Search
   const rows = await db
     .select()
     .from(memos)
-    .where(and(eq(memos.userId, userId), ...termConditions))
+    .where(
+      and(
+        eq(memos.userId, userId),
+        ...(category === null ? [] : [eq(memos.category, category)]),
+        ...termConditions,
+      ),
+    )
     .orderBy(desc(memos.createdAt))
     .limit(SEARCH_MEMOS_LIMIT + 1);
   return {
@@ -121,11 +151,60 @@ export async function updateMemo(
 }
 
 /**
- * 카테고리 영속화. userId 미요구 — 내부용 (분류 오케스트레이션 전용, 소유권은
- * 호출자가 보장). updatedAt은 건드리지 않는다 (내용 편집이 아니므로).
+ * 자동 분류 영속화 — 태그 등록 + fill-only 채움을 단일 트랜잭션으로.
+ * userId 미요구 — 내부용 (분류 오케스트레이션 전용, 소유권은 호출자가 보장).
+ * updatedAt은 건드리지 않는다 (내용 편집이 아니므로).
+ *
+ * 순서 제약: memos.category FK 때문에 태그 INSERT가 UPDATE보다 먼저여야 한다.
+ * 분류 호출자의 멱등 체크는 LLM 호출 전 read라, 응답 대기 중 수동 정정
+ * (setMemoCategoryOwned)이 끼어들면 늦은 결과가 덮는 TOCTOU가 남는다 —
+ * WHERE category IS NULL 로 write 시점에 차단하고, 패자는 rollback 으로 방금
+ * 등록한 신규 태그까지 원복한다 (버려진 분류의 고아 태그가 전역 카테고리
+ * 사전 — 필터 칩·분류 프롬프트 어휘 — 에 남는 오염 방지).
+ * 라벨은 최초 등록만 유지 (onConflictDoNothing — 기존 태그 라벨 불변 정책).
+ * 반환 false = 그 사이 이미 분류됨(수동 정정 포함) — 호출자는 skip 처리.
  */
-export async function setMemoCategory(id: string, category: MemoCategory): Promise<void> {
-  await db.update(memos).set({ category }).where(eq(memos.id, id));
+export async function fillMemoCategoryWithTag(
+  memoId: string,
+  category: MemoCategory,
+  labelKo: string,
+): Promise<boolean> {
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(memoCategories)
+        .values({ id: category, labelKo, isSeed: false })
+        .onConflictDoNothing({ target: memoCategories.id });
+      const rows = await tx
+        .update(memos)
+        .set({ category })
+        .where(and(eq(memos.id, memoId), isNull(memos.category)))
+        .returning({ id: memos.id });
+      if (rows.length === 0) tx.rollback(); // throw — 태그 INSERT까지 원복
+    });
+  } catch (error) {
+    if (error instanceof TransactionRollbackError) return false;
+    throw error;
+  }
+  return true;
+}
+
+/**
+ * 카테고리 수동 정정 — 소유자 스코프 (사용자 트리거 UI 경로 전용).
+ * updatedAt 미변경 (setMemoCategory와 동일 원칙 — 분류는 내용 편집이 아님).
+ * 존재하지 않는 slug는 FK 위반으로 reject — 호출자가 failed로 처리.
+ */
+export async function setMemoCategoryOwned(
+  userId: string,
+  id: string,
+  category: MemoCategory,
+): Promise<boolean> {
+  const rows = await db
+    .update(memos)
+    .set({ category })
+    .where(and(eq(memos.id, id), eq(memos.userId, userId)))
+    .returning({ id: memos.id });
+  return rows.length > 0;
 }
 
 /** cron sweep 대상 — 전 사용자 미분류 메모, 오래된 순 (백필이 과거부터 진행). */

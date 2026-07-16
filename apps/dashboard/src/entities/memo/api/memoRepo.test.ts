@@ -10,7 +10,7 @@ import {
   updateMemo,
   deleteMemo,
   searchMemos,
-  setMemoCategory,
+  fillMemoCategoryWithTag,
   listUnclassifiedMemos,
   listMemosBetween,
   listMemosOlderThan,
@@ -103,11 +103,11 @@ describe("memoRepo", () => {
 describe("memo category", () => {
   const base = { userId: USER_ID, source: "text" as const, title: "제목", rawContent: "원문", cleanedContent: "원문" };
 
-  it("새 메모는 미분류(null)로 생성되고 setMemoCategory로 영속화된다", async () => {
+  it("새 메모는 미분류(null)로 생성되고 fillMemoCategoryWithTag로 영속화된다", async () => {
     const created = await createMemo(base);
     expect(created.category).toBeNull();
 
-    await setMemoCategory(created.id, "idea");
+    expect(await fillMemoCategoryWithTag(created.id, "idea", "아이디어")).toBe(true);
     expect((await getMemo(USER_ID, created.id))?.category).toBe("idea");
   });
 
@@ -122,7 +122,7 @@ describe("memo category", () => {
     const first = await createMemo({ ...base, title: "먼저" });
     const second = await createMemo({ ...base, title: "나중" });
     const classified = await createMemo({ ...base, title: "분류됨" });
-    await setMemoCategory(classified.id, "todo");
+    await fillMemoCategoryWithTag(classified.id, "todo", "할 일");
 
     // 다른 테스트 파일의 잔여 행과 격리 — 이 유저 것만 대조.
     const ours = (await listUnclassifiedMemos(1000)).filter((m) => m.userId === USER_ID);
