@@ -25,6 +25,8 @@ interface MemoCardProps {
   onChangeCategory?: (memoId: string, category: string) => void;
   /** 정정 select 옵션 — 등록된 카테고리 목록 (DB memo_categories, 서버 로드). */
   categoryOptions?: { id: string; labelKo: string }[];
+  /** 카테고리 변경 진행 중 — select 비활성 (중복 제출 차단). */
+  categoryUpdating?: boolean;
 }
 
 // 표시 뷰: 정리본 | 원문 | 저장된 변환본(프리셋 slug — 빌트인·커스텀 공통).
@@ -76,6 +78,7 @@ export function MemoCard({
   categoryLabels = {},
   onChangeCategory,
   categoryOptions,
+  categoryUpdating = false,
 }: MemoCardProps) {
   // 파생 초기 뷰 + 사용자 오버라이드 — 칩 클릭 전까지는 검색어가 실제 일치한 뷰를 보여준다.
   const [userView, setUserView] = useState<MemoView | null>(null);
@@ -151,7 +154,8 @@ export function MemoCard({
                 }
               }}
               aria-label="카테고리 변경"
-              className="rounded border border-neutral-200 bg-transparent px-1 py-0.5 text-xs text-neutral-500"
+              disabled={categoryUpdating}
+              className="rounded border border-neutral-200 bg-transparent px-1 py-0.5 text-xs text-neutral-500 disabled:opacity-50"
             >
               {memo.category === null && <option value="">미분류</option>}
               {/* 옵션 목록에 없는 기존 값 방어 — 방금 LLM이 만든 태그가 목록 새로고침 전일 수 있다. */}

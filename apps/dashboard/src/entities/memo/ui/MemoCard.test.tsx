@@ -232,6 +232,19 @@ describe("MemoCard 카테고리 수동 정정", () => {
     expect(screen.getByText("아이디어")).toBeTruthy();
   });
 
+  it("categoryUpdating이면 select가 비활성화된다 (중복 제출 차단)", () => {
+    render(
+      <MemoCard
+        memo={{ ...memo, category: "idea" } as Memo}
+        onChangeCategory={vi.fn()}
+        categoryOptions={OPTIONS}
+        categoryUpdating
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: "카테고리 변경" }) as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+  });
+
   it("옵션 목록에 없는 기존 값도 select에 방어적으로 노출한다", () => {
     render(
       <MemoCard

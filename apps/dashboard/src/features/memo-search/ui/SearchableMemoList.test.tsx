@@ -4,13 +4,16 @@ import { render, cleanup, fireEvent, screen, act } from "@testing-library/react"
 import type { Memo } from "@/entities/memo/client";
 
 const searchMock = vi.fn();
+const deleteActionMock = vi.fn();
+const updateCategoryMock = vi.fn();
 vi.mock("../client", () => ({
   searchMemosAction: (...a: unknown[]) => searchMock(...a),
 }));
 // MemoList가 끌고 오는 server action 모듈 차단 (server-only import).
 vi.mock("@/features/memo-manage/client", () => ({
   updateMemoAction: vi.fn(),
-  deleteMemoAction: vi.fn(),
+  deleteMemoAction: (...a: unknown[]) => deleteActionMock(...a),
+  updateMemoCategoryAction: (...a: unknown[]) => updateCategoryMock(...a),
 }));
 vi.mock("@/features/memo-transform/client", () => ({
   transformMemoAction: vi.fn(),
@@ -61,6 +64,8 @@ async function typeAndFlush(value: string) {
 beforeEach(() => {
   vi.useFakeTimers();
   searchMock.mockReset().mockResolvedValue({ kind: "ok", memos: [], truncated: false });
+  deleteActionMock.mockReset().mockResolvedValue({ kind: "ok" });
+  updateCategoryMock.mockReset().mockResolvedValue({ kind: "ok" });
 });
 afterEach(() => {
   cleanup();
@@ -255,6 +260,56 @@ describe("카테고리 필터 (서버 WHERE 조회)", () => {
     });
     expect(searchMock).toHaveBeenLastCalledWith("", "journal");
     expect(screen.getByText("‘일기’ 카테고리의 메모가 없습니다.")).toBeTruthy();
+  });
+
+  it("지연된 mutation 완료 후 재조회는 mutation 시작 시점이 아닌 현재 필터를 쓴다", async () => {
+    // 회귀 가드(Codex 리뷰): onMutated가 렌더 시점 클로저(trimmed/category)를 캡처하면
+    // 아이디어 필터에서 시작한 삭제가 할 일 필터로 이동한 뒤 완료될 때
+    // 과거(아이디어) 조회를 더 높은 seq로 쏘아 현재(할 일) 화면을 덮는다.
+    searchMock.mockImplementation(async (_q: string, cat: string | null) => ({
+      kind: "ok",
+      memos:
+        cat === "idea"
+          ? [makeMemo("c2", "장보기", "우유 사기", "idea")]
+          : [makeMemo("c1", "회의 메모", "회의는 세 시", "todo")],
+      truncated: false,
+    }));
+    let resolveDelete: (v: { kind: string }) => void = () => {};
+    deleteActionMock.mockReturnValue(
+      new Promise((r) => {
+        resolveDelete = r;
+      }),
+    );
+
+    renderCategorized();
+    await clickAndFlush("아이디어");
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    fireEvent.click(screen.getByRole("button", { name: "정말 삭제?" }));
+    await clickAndFlush("할 일");
+    await act(async () => {
+      resolveDelete({ kind: "ok" });
+      await Promise.resolve();
+    });
+    expect(searchMock).toHaveBeenCalledTimes(3);
+    expect(searchMock).toHaveBeenLastCalledWith("", "todo");
+  });
+
+  it("카테고리 변경 완료 전 추가 변경은 무시된다 (중복 제출 가드)", async () => {
+    let resolveUpdate: (v: { kind: string }) => void = () => {};
+    updateCategoryMock.mockReturnValue(
+      new Promise((r) => {
+        resolveUpdate = r;
+      }),
+    );
+    renderCategorized();
+    const selects = screen.getAllByRole("combobox", { name: "카테고리 변경" });
+    fireEvent.change(selects[0], { target: { value: "journal" } });
+    fireEvent.change(selects[1], { target: { value: "draft" } });
+    expect(updateCategoryMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveUpdate({ kind: "ok" });
+      await Promise.resolve();
+    });
   });
 
   it("등록된 동적 태그도 필터 칩으로 렌더한다", () => {

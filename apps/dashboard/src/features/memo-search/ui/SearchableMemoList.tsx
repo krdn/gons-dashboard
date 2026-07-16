@@ -58,6 +58,21 @@ export function SearchableMemoList({
   // 서버 조회 모드 — 검색어 또는 카테고리 필터가 하나라도 걸려 있으면 results를 쓴다.
   const fetchMode = active || category !== null;
 
+  // mutation 완료 시점의 "현재" 필터 — 렌더 시점 클로저(trimmed/category)를 onMutated에
+  // 캡처하면, 지연된 mutation 콜백이 과거 필터 조회를 더 높은 seq로 시작해
+  // 사용자가 옮겨간 필터의 응답을 무효화한다 (B 칩 활성인데 A 목록 표시).
+  const filterRef = useRef({ trimmed, category });
+  useEffect(() => {
+    filterRef.current = { trimmed, category };
+  }, [trimmed, category]);
+
+  function refreshCurrent() {
+    const f = filterRef.current;
+    // idle(검색어·필터 모두 없음)이면 서버 조회 불필요 — revalidatePath가 원본 목록을 갱신.
+    if (f.trimmed.length === 0 && f.category === null) return;
+    runFetch(f.trimmed, f.category);
+  }
+
   function runFetch(q: string, cat: MemoCategory | null) {
     const seq = ++seqRef.current;
     setStatus("searching");
@@ -129,11 +144,12 @@ export function SearchableMemoList({
   const highlightTerms = active ? tokenizeSearchQuery(trimmed) : [];
   const hasResults = results !== null && results.memos.length > 0;
   // 상태 라인 — 하나의 aria-live 영역이 검색 중·실패·빈 결과·카운트를 모두 알린다.
-  // 필터 전용 모드(검색어 없음)의 결과 목록에는 카운트 라인을 붙이지 않는다 (null).
+  // searching이 최우선 분기 — 재조회 중 직전 결과의 카운트·빈 문구를 알리면 오보가 된다.
+  // 필터 전용 모드(검색어 없음)의 결과 목록에는 카운트 라인을 붙이지 않는다 (null → sr-only 유지).
   const statusText =
     status === "failed"
       ? "검색에 실패했습니다 — 다시 시도해 주세요."
-      : results === null
+      : status === "searching" || results === null
         ? "검색 중…"
         : results.memos.length === 0
           ? active
@@ -220,16 +236,19 @@ export function SearchableMemoList({
 
       {fetchMode ? (
         <>
-          {statusText !== null && (
-            <p
-              aria-live="polite"
-              className={
-                isMessage ? "py-8 text-center text-sm text-neutral-400" : "text-xs text-neutral-400"
-              }
-            >
-              {statusText}
-            </p>
-          )}
+          {/* live 영역은 fetchMode 동안 상시 mount — 사라지면 SR가 후속 상태 변화를 놓친다. */}
+          <p
+            aria-live="polite"
+            className={
+              statusText === null
+                ? "sr-only"
+                : isMessage
+                  ? "py-8 text-center text-sm text-neutral-400"
+                  : "text-xs text-neutral-400"
+            }
+          >
+            {statusText ?? ""}
+          </p>
           {status !== "failed" && results !== null && results.memos.length > 0 && (
             <MemoList
               memos={results.memos}
@@ -237,7 +256,7 @@ export function SearchableMemoList({
               presets={presets}
               actionItemsByMemo={actionItemsByMemo}
               highlightTerms={highlightTerms}
-              onMutated={() => runFetch(trimmed, category)}
+              onMutated={refreshCurrent}
               categories={categories}
             />
           )}

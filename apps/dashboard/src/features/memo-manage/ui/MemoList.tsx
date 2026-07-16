@@ -37,6 +37,9 @@ export function MemoList({
   const [transforming, setTransforming] = useState<Memo | null>(null);
   const [draft, setDraft] = useState({ title: "", cleaned: "" });
   const [busy, setBusy] = useState(false);
+  // 카테고리 변경 진행 중인 메모 id — 병렬 UPDATE는 완료 순서가 비보장이라
+  // 마지막 선택이 DB에 남는다는 보장이 없다. 완료 전 중복 제출을 차단.
+  const [categoryBusyId, setCategoryBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   function startEdit(memo: Memo) {
@@ -71,10 +74,11 @@ export function MemoList({
 
   // LLM 오분류 수동 정정 — 성공 시 revalidatePath(idle) 또는 onMutated(검색 모드)가 목록을 갱신.
   function handleChangeCategory(memoId: string, category: string) {
-    setBusy(true);
+    if (categoryBusyId !== null) return;
+    setCategoryBusyId(memoId);
     updateMemoCategoryAction(memoId, category).then(
       (r) => {
-        setBusy(false);
+        setCategoryBusyId(null);
         if (r.kind === "ok") {
           setNotice(null);
           onMutated?.();
@@ -85,7 +89,7 @@ export function MemoList({
         }
       },
       () => {
-        setBusy(false);
+        setCategoryBusyId(null);
         setNotice("카테고리 변경에 실패했습니다.");
       },
     );
@@ -165,6 +169,7 @@ export function MemoList({
             categoryLabels={categoryLabels}
             onChangeCategory={handleChangeCategory}
             categoryOptions={categories}
+            categoryUpdating={categoryBusyId === memo.id}
             actionsSlot={
               (actionItemsByMemo?.[memo.id]?.length ?? 0) > 0 ? (
                 <MemoActionPanel items={actionItemsByMemo?.[memo.id] ?? []} />
