@@ -33,7 +33,8 @@ import {
 
 beforeEach(() => {
   analyzeStructuredMock.mockReset();
-  setMemoCategoryMock.mockReset();
+  // true = 미분류 행을 채움 (fill-only UPDATE 성공) — 정상 경로 기본값.
+  setMemoCategoryMock.mockReset().mockResolvedValue(true);
   listCategoriesMock.mockReset();
   upsertCategoryMock.mockReset();
   listCategoriesMock.mockResolvedValue([
@@ -153,6 +154,22 @@ describe("classifyAndPersistMemoCategory", () => {
     expect(result).toEqual({ kind: "classified", category: "etc" });
     expect(upsertCategoryMock).toHaveBeenCalledWith("etc", "기타");
     expect(setMemoCategoryMock).toHaveBeenCalledWith(baseMemo.id, "etc");
+  });
+
+  test("LLM 대기 중 수동 정정이 먼저 도착하면 덮지 않고 skip한다 (fill-only 경합)", async () => {
+    analyzeStructuredMock.mockResolvedValue({
+      object: { category: "reference", labelKo: "참고" },
+      usage: {},
+    });
+    // read 체크(category: null) 통과 후 write 시점엔 이미 수동 정정됨 — 0-row.
+    setMemoCategoryMock.mockResolvedValue(false);
+
+    const result = await classifyAndPersistMemoCategory({
+      ...baseMemo,
+      category: null,
+    });
+
+    expect(result).toEqual({ kind: "already-classified" });
   });
 
   test("LLM 실패 시 영속화하지 않는다 (null 유지 → cron 재시도)", async () => {

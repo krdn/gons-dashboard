@@ -115,7 +115,7 @@ export const ARCHITECTURE_GRAPH: ArchitectureGraph = {
     role: "메모 분류+영속화 오케스트레이션 — 멱등(category!==null 이면 already-classified skip), LLM 결과를 upsertCategory→setMemoCategory 순으로 커밋",
     keyExports: ["classifyAndPersistMemoCategory","classifyMemoContent","MemoCategoryResponseSchema","ClassifyAndPersistResult"],
     dependsOn: ["category-isValidCategorySlug","classify-classifyMemoContent","classify-upsertCategory","memo-setMemoCategory"],
-    warning: "🔑 category IS NULL 멱등 — 이미 분류된 행은 LLM 미호출 skip. upsertCategory 가 setMemoCategory 보다 먼저(FK 위반 방지). slug 방어 재검증: isValidCategorySlug 실패 시 'etc'/'기타' 로 강등",
+    warning: "🔑 category IS NULL 멱등 2겹 — read(LLM 미호출 skip) + write(setMemoCategory fill-only, LLM 대기 중 수동 정정 경합 차단). upsertCategory 가 setMemoCategory 보다 먼저(FK 위반 방지). slug 방어 재검증: isValidCategorySlug 실패 시 'etc'/'기타' 로 강등",
   },
   {
     id: "classify-classifyMemoContent",
@@ -439,7 +439,7 @@ export const ARCHITECTURE_GRAPH: ArchitectureGraph = {
     label: "setMemoCategory",
     path: "apps/dashboard/src/entities/memo/api/memoRepo.ts",
     symbol: "setMemoCategory",
-    role: "memos.category 컬럼에 확정 slug UPDATE — 분류 결과 영속화(FK 대상 태그는 upsertCategory 로 선등록됨)",
+    role: "memos.category 컬럼에 확정 slug UPDATE — 자동 분류 영속화, fill-only(WHERE category IS NULL). LLM 응답 대기 중 수동 정정이 먼저 도착하면 false 반환으로 skip — 늦은 분류가 사용자 선택을 덮지 않는다.",
     keyExports: ["setMemoCategory"],
     dependsOn: ["table-memos"],
   },

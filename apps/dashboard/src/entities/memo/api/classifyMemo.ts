@@ -88,6 +88,8 @@ export type ClassifyAndPersistResult =
 /**
  * 로드된 메모 행 기준 분류 + 영속화. 멱등 — 이미 분류된 행은 LLM 미호출 skip.
  * 소유권 검증은 호출자 책임 (액션은 getMemo(userId, id), cron은 DB 행 자체).
+ * 아래 read 체크는 LLM 호출 전 스냅샷 — 응답 대기 중 수동 정정이 끼어드는
+ * 경합은 setMemoCategory의 WHERE category IS NULL(fill-only)이 write 시점에 차단.
  */
 export async function classifyAndPersistMemoCategory(memo: {
   id: string;
@@ -109,6 +111,8 @@ export async function classifyAndPersistMemoCategory(memo: {
 
   // upsert가 setMemoCategory보다 먼저 — FK 위반 방지 (새 태그면 먼저 사전에 등록).
   await upsertCategory(category, labelKo);
-  await setMemoCategory(memo.id, category);
+  // false = LLM 응답 대기 중 수동 정정이 먼저 도착 — 사용자 선택을 존중하고 skip.
+  const filled = await setMemoCategory(memo.id, category);
+  if (!filled) return { kind: "already-classified" };
   return { kind: "classified", category };
 }

@@ -137,11 +137,20 @@ export async function updateMemo(
 }
 
 /**
- * 카테고리 영속화. userId 미요구 — 내부용 (분류 오케스트레이션 전용, 소유권은
- * 호출자가 보장). updatedAt은 건드리지 않는다 (내용 편집이 아니므로).
+ * 자동 분류 영속화 — fill-only. userId 미요구 — 내부용 (분류 오케스트레이션 전용,
+ * 소유권은 호출자가 보장). updatedAt은 건드리지 않는다 (내용 편집이 아니므로).
+ * WHERE category IS NULL: 분류 호출자의 멱등 체크는 LLM 호출 전 read라,
+ * LLM 응답 대기 중 사용자가 수동 정정(setMemoCategoryOwned)하면 늦은 결과가
+ * 덮어쓰는 TOCTOU가 남는다 — write 시점에 미분류일 때만 채워 원자적으로 차단.
+ * 반환 false = 그 사이 이미 분류됨(수동 정정 포함) — 호출자는 skip 처리.
  */
-export async function setMemoCategory(id: string, category: MemoCategory): Promise<void> {
-  await db.update(memos).set({ category }).where(eq(memos.id, id));
+export async function setMemoCategory(id: string, category: MemoCategory): Promise<boolean> {
+  const rows = await db
+    .update(memos)
+    .set({ category })
+    .where(and(eq(memos.id, id), isNull(memos.category)))
+    .returning({ id: memos.id });
+  return rows.length > 0;
 }
 
 /**
