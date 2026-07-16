@@ -1,17 +1,24 @@
 // fillMemoCategoryWithTag 트랜잭션 통합 테스트 — 경합 패자의 rollback이 방금
 // 등록한 신규 태그까지 원복하는지(전역 카테고리 사전의 고아 태그 오염 방지)는
 // mock으로 검증할 수 없어 실 DB로 확인한다.
-// 테스트 격리: per-run sentinel 프리픽스 (host-api.test.ts 관례).
+// 프리픽스는 고정(런별 Date.now() 금지) — 크래시로 afterAll을 못 탄 실행의
+// user·태그 잔재를 beforeAll 정리가 자가 치유하고, 잔재 누적·email unique 충돌을 막는다.
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq, like } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { users, memos, memoCategories } from "@/shared/lib/db/schema";
 import { fillMemoCategoryWithTag, setMemoCategoryOwned } from "@/entities/memo/server";
 
-const PREFIX = `fillcat${Date.now()}`;
+const PREFIX = "fillcat-test";
+const EMAIL = `${PREFIX}@test.local`;
 const MANUAL_TAG = `${PREFIX}-manual`;
 
 let userId: string;
+
+async function cleanupFixtures() {
+  await db.delete(users).where(eq(users.email, EMAIL)); // cascade — memos 동반 삭제
+  await db.delete(memoCategories).where(like(memoCategories.id, `${PREFIX}%`));
+}
 
 async function insertMemo(): Promise<string> {
   const rows = await db
@@ -33,19 +40,14 @@ async function tagExists(id: string): Promise<boolean> {
 }
 
 beforeAll(async () => {
-  const rows = await db
-    .insert(users)
-    .values({ email: `${PREFIX}@test.local` })
-    .returning({ id: users.id });
+  await cleanupFixtures();
+  const rows = await db.insert(users).values({ email: EMAIL }).returning({ id: users.id });
   userId = rows[0].id;
   // 수동 정정용 태그 사전 등록 (setMemoCategoryOwned는 FK상 존재 태그만 가능).
   await db.insert(memoCategories).values({ id: MANUAL_TAG, labelKo: "수동", isSeed: false });
 });
 
-afterAll(async () => {
-  await db.delete(users).where(eq(users.id, userId)); // cascade — memos 동반 삭제
-  await db.delete(memoCategories).where(like(memoCategories.id, `${PREFIX}%`));
-});
+afterAll(cleanupFixtures);
 
 describe("fillMemoCategoryWithTag — 태그 등록+채움 단일 트랜잭션", () => {
   it("미분류 메모를 채우고 신규 태그를 등록한다", async () => {
