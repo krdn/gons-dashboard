@@ -8,16 +8,14 @@ vi.mock("@krdn/llm-gateway/gateway", async (importOriginal) => ({
   analyzeStructured: analyzeStructuredMock,
 }));
 
-const setMemoCategoryMock = vi.hoisted(() => vi.fn());
+const fillCategoryMock = vi.hoisted(() => vi.fn());
 vi.mock("./memoRepo", () => ({
-  setMemoCategory: setMemoCategoryMock,
+  fillMemoCategoryWithTag: fillCategoryMock,
 }));
 
 const listCategoriesMock = vi.hoisted(() => vi.fn());
-const upsertCategoryMock = vi.hoisted(() => vi.fn());
 vi.mock("./categoryRepo", () => ({
   listCategories: listCategoriesMock,
-  upsertCategory: upsertCategoryMock,
 }));
 
 // env 검증(Zod) 회피 — gatewayDefaults가 env를 읽는다.
@@ -33,15 +31,13 @@ import {
 
 beforeEach(() => {
   analyzeStructuredMock.mockReset();
-  // true = 미분류 행을 채움 (fill-only UPDATE 성공) — 정상 경로 기본값.
-  setMemoCategoryMock.mockReset().mockResolvedValue(true);
+  // true = 미분류 행을 채움 (fill-only 트랜잭션 성공) — 정상 경로 기본값.
+  fillCategoryMock.mockReset().mockResolvedValue(true);
   listCategoriesMock.mockReset();
-  upsertCategoryMock.mockReset();
   listCategoriesMock.mockResolvedValue([
     { id: "idea", labelKo: "아이디어" },
     { id: "todo", labelKo: "할 일" },
   ]);
-  upsertCategoryMock.mockResolvedValue(undefined);
 });
 
 // analyzeStructured를 mock하면 내부 Zod 검증이 사라지므로 스키마를 직접 가드.
@@ -114,10 +110,10 @@ describe("classifyAndPersistMemoCategory", () => {
 
     expect(result).toEqual({ kind: "already-classified" });
     expect(analyzeStructuredMock).not.toHaveBeenCalled();
-    expect(setMemoCategoryMock).not.toHaveBeenCalled();
+    expect(fillCategoryMock).not.toHaveBeenCalled();
   });
 
-  test("미분류 메모는 분류 후 upsertCategory→setMemoCategory 순서로 영속화한다", async () => {
+  test("미분류 메모는 분류 후 태그 등록+채움 트랜잭션에 라벨까지 위임한다", async () => {
     analyzeStructuredMock.mockResolvedValue({
       object: { category: "meeting-log", labelKo: "회의록" },
       usage: {},
@@ -129,12 +125,9 @@ describe("classifyAndPersistMemoCategory", () => {
     });
 
     expect(result).toEqual({ kind: "classified", category: "meeting-log" });
-    expect(upsertCategoryMock).toHaveBeenCalledWith("meeting-log", "회의록");
-    expect(setMemoCategoryMock).toHaveBeenCalledWith(baseMemo.id, "meeting-log");
-
-    const upsertOrder = upsertCategoryMock.mock.invocationCallOrder[0];
-    const setOrder = setMemoCategoryMock.mock.invocationCallOrder[0];
-    expect(upsertOrder).toBeLessThan(setOrder);
+    // 태그 INSERT(FK 선행)와 fill UPDATE의 순서·원자성은 repo 트랜잭션이 보장
+    // (memo-fill-category 통합 테스트가 rollback까지 검증).
+    expect(fillCategoryMock).toHaveBeenCalledWith(baseMemo.id, "meeting-log", "회의록");
   });
 
   test("LLM이 무효 slug를 반환하면 etc/기타로 fallback한다", async () => {
@@ -152,8 +145,7 @@ describe("classifyAndPersistMemoCategory", () => {
     });
 
     expect(result).toEqual({ kind: "classified", category: "etc" });
-    expect(upsertCategoryMock).toHaveBeenCalledWith("etc", "기타");
-    expect(setMemoCategoryMock).toHaveBeenCalledWith(baseMemo.id, "etc");
+    expect(fillCategoryMock).toHaveBeenCalledWith(baseMemo.id, "etc", "기타");
   });
 
   test("LLM 대기 중 수동 정정이 먼저 도착하면 덮지 않고 skip한다 (fill-only 경합)", async () => {
@@ -161,8 +153,8 @@ describe("classifyAndPersistMemoCategory", () => {
       object: { category: "reference", labelKo: "참고" },
       usage: {},
     });
-    // read 체크(category: null) 통과 후 write 시점엔 이미 수동 정정됨 — 0-row.
-    setMemoCategoryMock.mockResolvedValue(false);
+    // read 체크(category: null) 통과 후 write 시점엔 이미 수동 정정됨 — rollback.
+    fillCategoryMock.mockResolvedValue(false);
 
     const result = await classifyAndPersistMemoCategory({
       ...baseMemo,
@@ -181,7 +173,6 @@ describe("classifyAndPersistMemoCategory", () => {
     });
 
     expect(result).toEqual({ kind: "llm-unavailable" });
-    expect(setMemoCategoryMock).not.toHaveBeenCalled();
-    expect(upsertCategoryMock).not.toHaveBeenCalled();
+    expect(fillCategoryMock).not.toHaveBeenCalled();
   });
 });

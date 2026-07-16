@@ -7,7 +7,7 @@ export {
   updateMemo,
   deleteMemo,
   searchMemos,
-  setMemoCategory,
+  fillMemoCategoryWithTag,
   setMemoCategoryOwned,
   listUnclassifiedMemos,
   listMemosBetween,
@@ -57,11 +57,7 @@ export {
   isValidCategorySlug,
   type MemoCategory,
 } from "./model/category";
-export {
-  listCategories,
-  upsertCategory,
-  type MemoCategoryRow,
-} from "./api/categoryRepo";
+export { listCategories, type MemoCategoryRow } from "./api/categoryRepo";
 export { tokenizeSearchQuery, SEARCH_MEMOS_LIMIT } from "./model/search";
 export {
   upsertTransformation,

@@ -18,10 +18,5 @@ export function listCategories(): Promise<MemoCategoryRow[]> {
     .orderBy(desc(memoCategories.isSeed), asc(memoCategories.createdAt));
 }
 
-/** 새 태그 등록. 이미 존재하면 no-op (라벨은 최초 등록만 유지 — 난립·덮어쓰기 방지). */
-export async function upsertCategory(id: string, labelKo: string): Promise<void> {
-  await db
-    .insert(memoCategories)
-    .values({ id, labelKo, isSeed: false })
-    .onConflictDoNothing({ target: memoCategories.id });
-}
+// 태그 등록은 memoRepo.fillMemoCategoryWithTag 안의 단일 트랜잭션으로 이동 —
+// 분류 채움과 분리된 등록 경로를 남기면 경합 패자의 고아 태그가 사전에 남는다.
