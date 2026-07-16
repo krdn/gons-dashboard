@@ -8,6 +8,7 @@ export {
   deleteMemo,
   searchMemos,
   setMemoCategory,
+  setMemoCategoryOwned,
   listUnclassifiedMemos,
   listMemosBetween,
   listMemosOlderThan,

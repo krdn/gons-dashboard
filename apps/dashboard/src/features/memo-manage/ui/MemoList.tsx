@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { MemoCard, type Memo, type MemoActionItem, type MemoTransformation } from "@/entities/memo/client";
-import { updateMemoAction, deleteMemoAction } from "../client";
+import { updateMemoAction, deleteMemoAction, updateMemoCategoryAction } from "../client";
 // features→features 허용 예외 (memo-manage가 변환 다이얼로그·액션 패널을 조립).
 import { TransformDialog } from "@/features/memo-transform/ui/TransformDialog";
 import type { TransformPresetOption } from "@/features/memo-transform/client";
@@ -65,6 +65,28 @@ export function MemoList({
       () => {
         setBusy(false);
         setNotice("수정에 실패했습니다.");
+      },
+    );
+  }
+
+  // LLM 오분류 수동 정정 — 성공 시 revalidatePath(idle) 또는 onMutated(검색 모드)가 목록을 갱신.
+  function handleChangeCategory(memoId: string, category: string) {
+    setBusy(true);
+    updateMemoCategoryAction(memoId, category).then(
+      (r) => {
+        setBusy(false);
+        if (r.kind === "ok") {
+          setNotice(null);
+          onMutated?.();
+        } else if (r.kind === "not-found") {
+          setNotice("메모를 찾을 수 없습니다.");
+        } else {
+          setNotice("카테고리 변경에 실패했습니다.");
+        }
+      },
+      () => {
+        setBusy(false);
+        setNotice("카테고리 변경에 실패했습니다.");
       },
     );
   }
@@ -141,6 +163,8 @@ export function MemoList({
             onTransform={setTransforming}
             highlightTerms={highlightTerms}
             categoryLabels={categoryLabels}
+            onChangeCategory={handleChangeCategory}
+            categoryOptions={categories}
             actionsSlot={
               (actionItemsByMemo?.[memo.id]?.length ?? 0) > 0 ? (
                 <MemoActionPanel items={actionItemsByMemo?.[memo.id] ?? []} />

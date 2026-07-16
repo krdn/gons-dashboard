@@ -9,11 +9,16 @@ import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/se
 // 개인 대시보드 규모 상한 — 페이지네이션 도입 전까지 unbounded 쿼리 방지.
 const LIST_MEMOS_LIMIT = 200;
 
-export function listMemos(userId: string): Promise<Memo[]> {
+export function listMemos(userId: string, category: MemoCategory | null = null): Promise<Memo[]> {
   return db
     .select()
     .from(memos)
-    .where(eq(memos.userId, userId))
+    .where(
+      and(
+        eq(memos.userId, userId),
+        ...(category === null ? [] : [eq(memos.category, category)]),
+      ),
+    )
     .orderBy(desc(memos.createdAt))
     .limit(LIST_MEMOS_LIMIT);
 }
@@ -48,8 +53,13 @@ export interface SearchMemosOutput {
  * 제목·원문·정리본·AI 변환본 대상 검색. 토큰 간 AND, 토큰별 필드 간 OR.
  * 개인 규모(사용자당 수백 행)라 인덱스 없이 user_id 필터 후 ILIKE로 충분 —
  * 임계 도달 시 pg_trgm GIN 인덱스만 추가하면 된다 (스펙 2026-07-12-memo-search).
+ * category는 WHERE 조건 — LIMIT 이후 클라이언트 필터는 false-empty를 만든다.
  */
-export async function searchMemos(userId: string, query: string): Promise<SearchMemosOutput> {
+export async function searchMemos(
+  userId: string,
+  query: string,
+  category: MemoCategory | null = null,
+): Promise<SearchMemosOutput> {
   const tokens = tokenizeSearchQuery(query);
   if (tokens.length === 0) return { memos: [], truncated: false };
 
@@ -76,7 +86,13 @@ export async function searchMemos(userId: string, query: string): Promise<Search
   const rows = await db
     .select()
     .from(memos)
-    .where(and(eq(memos.userId, userId), ...termConditions))
+    .where(
+      and(
+        eq(memos.userId, userId),
+        ...(category === null ? [] : [eq(memos.category, category)]),
+        ...termConditions,
+      ),
+    )
     .orderBy(desc(memos.createdAt))
     .limit(SEARCH_MEMOS_LIMIT + 1);
   return {
@@ -126,6 +142,24 @@ export async function updateMemo(
  */
 export async function setMemoCategory(id: string, category: MemoCategory): Promise<void> {
   await db.update(memos).set({ category }).where(eq(memos.id, id));
+}
+
+/**
+ * 카테고리 수동 정정 — 소유자 스코프 (사용자 트리거 UI 경로 전용).
+ * updatedAt 미변경 (setMemoCategory와 동일 원칙 — 분류는 내용 편집이 아님).
+ * 존재하지 않는 slug는 FK 위반으로 reject — 호출자가 failed로 처리.
+ */
+export async function setMemoCategoryOwned(
+  userId: string,
+  id: string,
+  category: MemoCategory,
+): Promise<boolean> {
+  const rows = await db
+    .update(memos)
+    .set({ category })
+    .where(and(eq(memos.id, id), eq(memos.userId, userId)))
+    .returning({ id: memos.id });
+  return rows.length > 0;
 }
 
 /** cron sweep 대상 — 전 사용자 미분류 메모, 오래된 순 (백필이 과거부터 진행). */

@@ -27,8 +27,9 @@ interface SearchableMemoListProps {
   categories: { id: string; labelKo: string }[];
 }
 
-// 검색바 + 목록 전환 — 비활성(빈 쿼리)이면 서버가 내려준 원본 목록,
-// 활성이면 searchMemosAction 결과(전체 메모 대상, 하이라이트 포함)를 보여준다.
+// 검색바 + 목록 전환 — 검색어·카테고리 필터가 모두 비면 서버가 내려준 원본 목록,
+// 하나라도 걸리면 searchMemosAction 결과(전체 메모 대상, 서버 WHERE 필터)를 보여준다.
+// 카테고리를 클라이언트 .filter로 거르면 LIMIT 컷 밖 메모가 가려져 false-empty가 난다.
 export function SearchableMemoList({
   memos,
   transformationsByMemo,
@@ -40,7 +41,7 @@ export function SearchableMemoList({
   // null = 아직 첫 응답 전 (검색 중 표시). 재검색 중엔 직전 결과를 유지해 점프를 막는다.
   const [results, setResults] = useState<{ memos: Memo[]; truncated: boolean } | null>(null);
   const [status, setStatus] = useState<SearchStatus>("done");
-  // 카테고리 필터 — 화면에 보이는 목록(원본·검색 결과 모두)에 클라이언트 적용. null = 전체.
+  // 카테고리 필터 — 서버 WHERE 조건으로 전달. null = 전체.
   const [category, setCategory] = useState<MemoCategory | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,11 +55,13 @@ export function SearchableMemoList({
 
   const trimmed = query.trim();
   const active = trimmed.length > 0;
+  // 서버 조회 모드 — 검색어 또는 카테고리 필터가 하나라도 걸려 있으면 results를 쓴다.
+  const fetchMode = active || category !== null;
 
-  function runSearch(q: string) {
+  function runFetch(q: string, cat: MemoCategory | null) {
     const seq = ++seqRef.current;
     setStatus("searching");
-    searchMemosAction(q).then(
+    searchMemosAction(q, cat).then(
       (r) => {
         if (seq !== seqRef.current) return;
         if (r.kind === "ok") {
@@ -74,17 +77,33 @@ export function SearchableMemoList({
     );
   }
 
+  function resetToIdle() {
+    seqRef.current++; // 진행 중 응답 무효화
+    setResults(null);
+    setStatus("done");
+  }
+
   function handleQueryChange(value: string) {
     setQuery(value);
     if (timerRef.current) clearTimeout(timerRef.current);
     const next = value.trim();
     if (next.length === 0) {
-      seqRef.current++; // 진행 중 응답 무효화
-      setResults(null);
-      setStatus("done");
+      // 카테고리 필터가 걸려 있으면 필터 목록으로 즉시 복귀, 아니면 원본 목록.
+      if (category === null) resetToIdle();
+      else runFetch("", category);
       return;
     }
-    timerRef.current = setTimeout(() => runSearch(next), DEBOUNCE_MS);
+    timerRef.current = setTimeout(() => runFetch(next, category), DEBOUNCE_MS);
+  }
+
+  function handleCategoryChange(next: MemoCategory | null) {
+    setCategory(next);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (next === null && !active) {
+      resetToIdle();
+      return;
+    }
+    runFetch(trimmed, next);
   }
 
   // '/' 전역 포커스 단축키 — 다른 입력 필드에 타이핑 중이면 무시.
@@ -108,22 +127,23 @@ export function SearchableMemoList({
   }, []);
 
   const highlightTerms = active ? tokenizeSearchQuery(trimmed) : [];
-  const filterByCategory = (list: Memo[]): Memo[] =>
-    category === null ? list : list.filter((m) => m.category === category);
-  const visibleResults = results === null ? null : filterByCategory(results.memos);
-  const visibleIdle = filterByCategory(memos);
-  const hasResults = visibleResults !== null && visibleResults.length > 0;
+  const hasResults = results !== null && results.memos.length > 0;
   // 상태 라인 — 하나의 aria-live 영역이 검색 중·실패·빈 결과·카운트를 모두 알린다.
+  // 필터 전용 모드(검색어 없음)의 결과 목록에는 카운트 라인을 붙이지 않는다 (null).
   const statusText =
     status === "failed"
       ? "검색에 실패했습니다 — 다시 시도해 주세요."
       : results === null
         ? "검색 중…"
         : results.memos.length === 0
-          ? `‘${trimmed}’에 대한 결과가 없습니다.`
-          : category !== null && visibleResults !== null && visibleResults.length === 0
-            ? `‘${labelOf(category)}’ 카테고리에 일치하는 결과가 없습니다.`
-            : `${visibleResults?.length ?? 0}개 결과${results.truncated ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`;
+          ? active
+            ? category !== null
+              ? `‘${labelOf(category)}’ 카테고리에 일치하는 결과가 없습니다.`
+              : `‘${trimmed}’에 대한 결과가 없습니다.`
+            : `‘${category === null ? "" : labelOf(category)}’ 카테고리의 메모가 없습니다.`
+          : active
+            ? `${results.memos.length}개 결과${results.truncated ? ` · 최근 ${SEARCH_MEMOS_LIMIT}개만 표시` : ""}`
+            : null;
   const isMessage = status === "failed" || results === null || !hasResults;
 
   return (
@@ -149,7 +169,7 @@ export function SearchableMemoList({
           className="w-full rounded-lg border border-neutral-200 py-2 pl-9 pr-14 text-sm focus:border-neutral-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
         />
         <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
-          {active && status === "searching" && (
+          {fetchMode && status === "searching" && (
             <span
               aria-hidden
               className="h-3.5 w-3.5 animate-spin rounded-full border border-neutral-300 border-t-neutral-700"
@@ -172,7 +192,7 @@ export function SearchableMemoList({
         <button
           type="button"
           aria-pressed={category === null}
-          onClick={() => setCategory(null)}
+          onClick={() => handleCategoryChange(null)}
           className={
             category === null
               ? "rounded-full bg-neutral-900 px-2.5 py-0.5 text-xs text-white"
@@ -186,7 +206,7 @@ export function SearchableMemoList({
             key={c.id}
             type="button"
             aria-pressed={category === c.id}
-            onClick={() => setCategory((cur) => (cur === c.id ? null : c.id))}
+            onClick={() => handleCategoryChange(category === c.id ? null : c.id)}
             className={
               category === c.id
                 ? "rounded-full bg-neutral-900 px-2.5 py-0.5 text-xs text-white"
@@ -198,35 +218,33 @@ export function SearchableMemoList({
         ))}
       </div>
 
-      {active ? (
+      {fetchMode ? (
         <>
-          <p
-            aria-live="polite"
-            className={
-              isMessage ? "py-8 text-center text-sm text-neutral-400" : "text-xs text-neutral-400"
-            }
-          >
-            {statusText}
-          </p>
-          {status !== "failed" && visibleResults !== null && hasResults && (
+          {statusText !== null && (
+            <p
+              aria-live="polite"
+              className={
+                isMessage ? "py-8 text-center text-sm text-neutral-400" : "text-xs text-neutral-400"
+              }
+            >
+              {statusText}
+            </p>
+          )}
+          {status !== "failed" && results !== null && results.memos.length > 0 && (
             <MemoList
-              memos={visibleResults}
+              memos={results.memos}
               transformationsByMemo={transformationsByMemo}
               presets={presets}
               actionItemsByMemo={actionItemsByMemo}
               highlightTerms={highlightTerms}
-              onMutated={() => runSearch(trimmed)}
+              onMutated={() => runFetch(trimmed, category)}
               categories={categories}
             />
           )}
         </>
-      ) : category !== null && visibleIdle.length === 0 ? (
-        <p className="py-8 text-center text-sm text-neutral-400">
-          ‘{labelOf(category)}’ 카테고리의 메모가 없습니다.
-        </p>
       ) : (
         <MemoList
-          memos={visibleIdle}
+          memos={memos}
           transformationsByMemo={transformationsByMemo}
           presets={presets}
           actionItemsByMemo={actionItemsByMemo}
