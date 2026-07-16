@@ -45,6 +45,9 @@ export default async function MemosPage() {
         subtitle="음성 또는 텍스트로 빠르게 기록해요."
         actions={
           <div className="flex items-center gap-3">
+            <Link href="/memos/help" className="text-sm text-neutral-500 hover:text-neutral-900">
+              ❓ 도움말
+            </Link>
             <Link href="/memos/insights" className="text-sm text-neutral-500 hover:text-neutral-900">
               📊 인사이트
             </Link>
