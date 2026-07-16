@@ -285,8 +285,10 @@ describe("카테고리 필터 (서버 WHERE 조회)", () => {
     await clickAndFlush("아이디어");
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
     fireEvent.click(screen.getByRole("button", { name: "정말 삭제?" }));
-    await clickAndFlush("할 일");
+    // 최악 순서: 칩 클릭과 같은 틱에서 mutation 완료 — filterRef가 passive effect
+    // 갱신이었다면 effect 실행 전이라 과거 필터(idea)를 읽는다 (핸들러 동기 기록 검증).
     await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "할 일" }));
       resolveDelete({ kind: "ok" });
       await Promise.resolve();
     });

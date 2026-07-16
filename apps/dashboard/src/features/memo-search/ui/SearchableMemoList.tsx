@@ -61,10 +61,9 @@ export function SearchableMemoList({
   // mutation 완료 시점의 "현재" 필터 — 렌더 시점 클로저(trimmed/category)를 onMutated에
   // 캡처하면, 지연된 mutation 콜백이 과거 필터 조회를 더 높은 seq로 시작해
   // 사용자가 옮겨간 필터의 응답을 무효화한다 (B 칩 활성인데 A 목록 표시).
+  // 갱신은 passive effect가 아니라 두 입력 핸들러에서 동기 기록 — effect 실행 전에
+  // mutation이 완료되는 좁은 창까지 닫는다 (Codex 재판정 반영).
   const filterRef = useRef({ trimmed, category });
-  useEffect(() => {
-    filterRef.current = { trimmed, category };
-  }, [trimmed, category]);
 
   function refreshCurrent() {
     const f = filterRef.current;
@@ -102,6 +101,7 @@ export function SearchableMemoList({
     setQuery(value);
     if (timerRef.current) clearTimeout(timerRef.current);
     const next = value.trim();
+    filterRef.current = { trimmed: next, category };
     if (next.length === 0) {
       // 카테고리 필터가 걸려 있으면 필터 목록으로 즉시 복귀, 아니면 원본 목록.
       if (category === null) resetToIdle();
@@ -114,6 +114,7 @@ export function SearchableMemoList({
   function handleCategoryChange(next: MemoCategory | null) {
     setCategory(next);
     if (timerRef.current) clearTimeout(timerRef.current);
+    filterRef.current = { trimmed, category: next };
     if (next === null && !active) {
       resetToIdle();
       return;

@@ -169,7 +169,8 @@ export function MemoList({
             categoryLabels={categoryLabels}
             onChangeCategory={handleChangeCategory}
             categoryOptions={categories}
-            categoryUpdating={categoryBusyId === memo.id}
+            // 가드가 전역 직렬화(하나 진행 중이면 전부 무시)이므로 비활성 범위도 전역으로 일치.
+            categoryUpdating={categoryBusyId !== null}
             actionsSlot={
               (actionItemsByMemo?.[memo.id]?.length ?? 0) > 0 ? (
                 <MemoActionPanel items={actionItemsByMemo?.[memo.id] ?? []} />
