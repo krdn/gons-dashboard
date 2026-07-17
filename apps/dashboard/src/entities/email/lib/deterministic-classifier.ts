@@ -82,8 +82,4 @@ export function classifyDeterministic(
   return null;
 }
 
-/**
- * 테스트 가시성을 위한 export — 패턴 자체를 테스트할 때 사용.
- */
-export const __INTERNAL = { HIGH_PATTERNS, MED_PATTERNS };
 export type { Severity };

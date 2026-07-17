@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
-export const RELATION_ENUM = [
+const RELATION_ENUM = [
   "self",
   "spouse",
   "child",

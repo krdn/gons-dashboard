@@ -17,20 +17,12 @@ export const UNCATEGORIZED_LABEL = "기타";
 // necessity.json(committed source) 에서 snapshot 이 각 meta.necessity 로 주입.
 export type SkillTier = "high" | "medium" | "low" | "remove" | "unrated";
 
-// 표시 순서: 상(1) → 중(2) → 하(3) → 삭제(4) → 미평가(5).
 export const TIER_LABEL: Record<SkillTier, string> = {
   high: "상",
   medium: "중",
   low: "하",
   remove: "삭제 가능",
   unrated: "미평가",
-};
-export const TIER_ORDER: Record<SkillTier, number> = {
-  high: 1,
-  medium: 2,
-  low: 3,
-  remove: 4,
-  unrated: 5,
 };
 
 // 리스트(catalog.json)에 담기는 경량 메타데이터 — body 없음.

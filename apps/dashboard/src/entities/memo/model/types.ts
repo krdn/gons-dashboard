@@ -70,13 +70,6 @@ export const MEMO_MODEL_META: Record<
   },
 };
 
-export function isMemoModelKey(value: unknown): value is MemoModelKey {
-  return (
-    typeof value === "string" &&
-    (MEMO_MODEL_KEYS as readonly string[]).includes(value)
-  );
-}
-
 /** 프록시 모델 ID가 선택한 공급사 계열인지 확인한다 (공통 검증 alias). */
 export const isMemoModelIdForProvider = isLlmModelIdForProvider;
 

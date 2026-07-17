@@ -8,7 +8,6 @@ export { ContainerRow } from "./ui/ContainerRow";
 // 타입은 양쪽 barrel 에서 노출 (type-only, 비용 0).
 export type {
   ContainerSummary,
-  ContainerInspect,
   ContainerState,
   PortMapping,
 } from "./model/types";
