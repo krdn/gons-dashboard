@@ -1,84 +1,74 @@
-# MCP 구성 하드닝 설계
+# Codex 전용 MCP 구성 설계
 
 **날짜:** 2026-07-17  
-**범위:** Codex, Claude Code/Desktop, VS Code, OpenCode, mcporter의 사용자·프로젝트 MCP 구성
+**범위:** `gons-dashboard`를 신뢰된 저장소로 연 Codex CLI·IDE·앱의 프로젝트 MCP 구성
 
 ## 목표
 
-현재 5개 호스트에 분산된 MCP 등록을 최소 권한과 재현 가능한 버전으로 정리한다. 구형 서버와 과도한 파일·Docker 권한을 축소하고, 설정 및 편집기 동기화 영역에 남은 평문 자격증명을 제거한다. `gons-dashboard`의 브라우저 검증과 프로젝트 전용 캘린더 도구는 유지한다.
+현재 Codex에는 문서와 메모리 MCP만 등록되어 있다. Next.js 대시보드의 브라우저 검증을 위해 Playwright MCP를 저장소 범위로 추가하되, Claude Code CLI를 포함한 다른 MCP 호스트에는 어떤 구성 변화도 주지 않는다.
 
-## 비목표
+## 사용자 승인 제약
 
-- GitHub 또는 Tavily 웹 콘솔에서 토큰을 실제 폐기·재발급하지 않는다.
-- 사용자의 Slack, Google Drive, Zapier 연결을 사용 여부 확인 없이 해제하지 않는다.
-- PostgreSQL, Redis, Sentry, Exa 등 새로운 외부 MCP를 추측으로 추가하지 않는다.
-- 기존 저장소의 미커밋 작업을 수정하거나 정리하지 않는다.
+- Claude Code CLI에 영향을 주지 않는다.
+- Claude Desktop, VS Code, OpenCode, mcporter 설정을 수정하지 않는다.
+- Codex의 글로벌 설정 `~/.codex/config.toml`도 수정하지 않는다.
+- 저장소 범위 `.codex/config.toml`만 새로 만든다.
+- 기존 저장소 미커밋 변경을 수정하거나 정리하지 않는다.
 
-## 접근법 비교
+## 접근법
 
-### 1. 단계적 하드닝 — 채택
+### 저장소 범위 Codex MCP — 채택
 
-고위험 구성을 먼저 제거하거나 비활성화하고, 실제 사용 근거가 있는 서버는 유지한다. 토큰의 외부 회전은 별도 체크포인트로 남긴다. 변경은 가역적인 `enabled: false`와 범위 축소를 우선 사용한다.
+신뢰된 저장소의 `.codex/config.toml`에 Playwright STDIO 서버를 선언한다. Codex 공식 구성 모델에서 프로젝트 설정은 현재 저장소에만 적용되며 Claude Code는 이 파일을 MCP 설정으로 읽지 않는다.
 
-장점은 서비스 중단과 과잉 삭제 가능성이 가장 낮다는 점이다. 단점은 비활성 항목이 설정 파일에 일부 남는다는 점이다.
+글로벌 `codex mcp add`는 모든 저장소의 Codex에 영향을 주므로 사용하지 않는다. Claude의 `.mcp.json`, `~/.claude.json`, 플러그인 설정도 사용하지 않는다.
 
-### 2. 공격적 최소화
+## 구성
 
-최근 호출이 없는 모든 MCP와 사용 근거가 약한 원격 커넥터를 즉시 삭제한다. 도구 표면은 가장 작아지지만, 다른 프로젝트나 개인 워크플로에서 사용하는 연결을 끊을 위험이 크다.
+생성할 파일은 `.codex/config.toml` 하나다.
 
-### 3. 보안 항목만 수정
+```toml
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@0.0.78"]
+startup_timeout_sec = 30
+tool_timeout_sec = 120
+```
 
-평문 키와 구형 GitHub MCP만 정리한다. 중단 위험은 가장 낮지만 Docker context 오조작, 전역 프로젝트 도구, `@latest` 공급망 드리프트가 남는다.
+- `0.0.78`은 감사 시점에 확인한 공식 Playwright MCP 버전이다.
+- `@latest`를 사용하지 않아 최상위 MCP 패키지 버전이 실행 시점마다 바뀌는 드리프트를 막는다.
+- 첫 `npx` 해석 시간을 고려해 시작 제한은 30초로 둔다.
+- 브라우저 상호작용을 고려해 도구 제한은 120초로 둔다.
+- 인증정보나 환경변수는 추가하지 않는다.
 
-## 설계
+## 명시적 비변경 항목
 
-### 자격증명
+- Codex 글로벌 `openaiDeveloperDocs`, `mcp-search`, claude-mem 플러그인 상태
+- Claude Code의 PlayMCP, Slack, Gmail, Calendar, Drive, Zapier, Context7, Playwright, Chrome DevTools, claude-mem, `gons-calendar`
+- Claude Desktop의 filesystem·GitHub 구성과 PAT
+- VS Code의 GitHub·Zapier·Playwright·Tavily·Chrome DevTools 구성과 Tavily 키
+- OpenCode의 7개 MCP 구성
 
-- Claude Desktop의 구형 `@modelcontextprotocol/server-github` 등록을 제거한다.
-- 현재 GitHub PAT 문자열을 Claude Desktop 설정과 VS Code History에서 제거한다. 원격 계정의 토큰 폐기는 사용자 체크포인트로 보고한다.
-- VS Code Tavily는 평문 키 대신 secret input 참조를 사용한다. 현재 키 문자열은 `mcp.json`과 로컬 Settings Sync 사본에서 제거한다.
-- 비밀값은 백업 파일에 복제하지 않는다. 구조 백업이 필요하면 값이 제거된 설정만 보존한다.
-
-### 권한과 범위
-
-- Claude Desktop filesystem 허용 범위를 `/home/gon`에서 현재 저장소로 축소한다.
-- OpenCode Docker MCP는 삭제 대신 기본 비활성화한다. 운영 Docker는 저장소 RUNBOOK의 `docker --context home-server` CLI 경로만 사용한다.
-- `gons-calendar`는 글로벌 사용자 범위에서 현재 프로젝트의 로컬 범위로 이동한다.
-
-### 중복과 버전
-
-- Playwright를 기본 브라우저 자동화 서버로 유지한다.
-- Chrome DevTools는 Claude Code의 명시적 플러그인만 유지하고 VS Code에서는 제거, OpenCode에서는 비활성화한다.
-- Claude Code Context7는 제거하지 않고 유지한다. 다른 프로젝트 사용 가능성이 있어 이번 단계에서는 전역 플러그인 상태를 바꾸지 않는다.
-- VS Code/OpenCode의 직접 `npx` 등록은 감사 시점의 검증 버전으로 고정한다: Playwright `0.0.78`, Tavily `0.2.21`, Chrome DevTools `1.6.0`, Context7 `3.2.3`.
-
-### 필요한 추가와 복구
-
-- Codex에 Playwright `0.0.78`을 저장소 범위 `.codex/config.toml`로 추가한다.
-- claude-mem은 사용 근거가 있으므로 제거하지 않고 공식 설치 명령으로 런타임을 복구한다.
-- 공식 GitHub 원격 MCP는 VS Code/OpenCode에서 유지한다. Claude Desktop에는 자동으로 대체 등록하지 않는다. 필요 시 OAuth 연결을 별도 수행한다.
-
-## 오류 처리와 롤백
-
-- JSON/TOML 문법 검증 실패 시 해당 호스트 재시작이나 후속 변경을 중단한다.
-- 서버 비활성화는 원래 설정 항목을 보존해 `enabled: true`로 되돌릴 수 있게 한다.
-- 비밀값은 롤백 대상으로 보존하지 않는다. 토큰 재연결은 새 자격증명으로만 수행한다.
-- claude-mem 설치가 대화형 인증 또는 외부 계정 작업을 요구하면 중단하고 필요한 사용자 작업을 보고한다.
+기존 보안 감사에서 확인된 비-Codex 자격증명 문제는 이번 승인 범위 밖이므로 보고만 유지하고 수정하지 않는다.
 
 ## 검증
 
-1. 모든 변경 JSON을 `jq empty`, TOML을 Codex 자체 목록 명령으로 파싱 검증한다.
-2. `codex mcp list --json`, `claude mcp list`, `opencode mcp list`로 최종 등록·연결 상태를 확인한다.
-3. 기존 GitHub PAT와 Tavily 키의 정확 문자열이 검사 대상 설정·History·Sync에 0건인지 확인한다. 값 자체는 출력하지 않는다.
-4. Codex Playwright와 프로젝트 범위 `gons-calendar`이 보이는지 확인한다.
-5. OpenCode Docker·Chrome DevTools가 비활성이고 공식 GitHub·Playwright·Tavily가 연결되는지 확인한다.
-6. 기존 저장소 미커밋 변경은 건드리지 않았음을 변경 경로 기준으로 확인한다.
+1. 변경 전 안정적인 비-Codex 설정 파일 4개의 전체 SHA-256과 `~/.claude.json`의 전역 및 현재 프로젝트 MCP 관련 필드만 정규화한 의미 SHA-256을 기록한다.
+2. Codex 자체가 `.codex/config.toml`을 파싱하고 병합하는지 `codex mcp list --json`으로 검증한다.
+3. 프로젝트 디렉터리에서 Codex MCP 목록에 `playwright`, `mcp-search`, `openaiDeveloperDocs`가 표시되는지 확인한다.
+4. Playwright 패키지 `0.0.78`의 실행 가능 여부를 확인한다.
+5. 변경 후 안정적인 비-Codex 설정 파일의 전체 SHA-256과 `~/.claude.json`의 전역 및 현재 프로젝트 MCP 의미 SHA-256이 변경 전과 모두 같은지 비교한다.
+6. Git diff가 `.codex/config.toml`, 이 설계 문서, 구현 계획 외 기존 사용자 변경을 포함하지 않는지 경로 기준으로 확인한다.
 
-## 외부 체크포인트
+비-Codex 무변경 검증 대상은 다음과 같다. 아래의 안정적인 파일 4개는 전체 파일 SHA-256으로 비교한다.
 
-로컬 정리 완료 후 사용자가 해야 할 작업은 두 가지다.
+- `/home/gon/.claude/settings.json`
+- `/home/gon/.config/Claude/claude_desktop_config.json`
+- `/home/gon/.config/Code/User/mcp.json`
+- `/home/gon/.config/opencode/opencode.json`
 
-1. GitHub 설정에서 노출됐던 PAT를 폐기한다.
-2. Tavily 키를 회전하고 VS Code의 secret input 요청에 새 키를 입력한다.
+`/home/gon/.claude.json`은 Claude가 최상위 `pluginUsage` 텔레메트리를 실행 중 갱신하므로 전체 파일 해시로 비교하지 않는다. 기준선 직전 백업 `/home/gon/.claude/backups/.claude.json.backup.1784255546833`과 기준선을 비교했을 때도 바뀐 것은 `pluginUsage`뿐이며, 전역 `.mcpServers`와 현재 프로젝트의 `mcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`, `disabledMcpServers`, `mcpContextUris` 의미 해시는 같았다. 따라서 전역 필드 1개와 현재 프로젝트 필드 5개만 `jq -cS`로 정규화해 SHA-256을 비교한다. 다른 프로젝트의 Claude MCP 구성까지 무변경이라고 주장하지 않는다.
 
-두 작업 전까지 로컬 평문은 제거되지만 기존 토큰 자체는 외부 서비스에서 유효할 수 있다.
+## 롤백
+
+`.codex/config.toml`의 Playwright 테이블 또는 파일 자체를 제거하면 이전 Codex 구성으로 돌아간다. 다른 호스트 설정은 처음부터 변경하지 않으므로 별도 롤백이 없다.
