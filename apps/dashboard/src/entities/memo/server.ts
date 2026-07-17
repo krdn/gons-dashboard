@@ -95,6 +95,5 @@ export {
   MEMO_MODEL_KEYS,
   MEMO_MODEL_META,
   DEFAULT_MEMO_MODEL_KEY,
-  isMemoModelKey,
   isMemoModelIdForProvider,
 } from "./model/types";

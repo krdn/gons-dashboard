@@ -96,7 +96,7 @@ root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.m
 - **DB**: PostgreSQL 16 + Drizzle ORM
 - **인증**: NextAuth v5 + Drizzle adapter (Google OAuth)
 - **스타일링**: Tailwind CSS v4 + 디자인 토큰(`globals.css`) — **라이트 모드 고정** (`@variant dark (&:where(.dark, .dark *))` 로 미디어쿼리 dark variant 차단)
-- **상태**: TanStack Query, Zustand (도입 완료)
+- **상태**: RSC + 로컬 컴포넌트 상태 (TanStack Query·Zustand 는 실사용 없어 2026-07-16 의존성 제거)
 - **검증**: Zod (`shared/config/env.ts` 부팅 시점 검증)
 - **테스트**: Vitest (unit/integration) + setup hard-block (prod DB 가드)
 - **알림**: web-push (VAPID)

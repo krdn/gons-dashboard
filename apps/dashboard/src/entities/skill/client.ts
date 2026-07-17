@@ -7,7 +7,6 @@ export {
   UNCATEGORIZED,
   UNCATEGORIZED_LABEL,
   TIER_LABEL,
-  TIER_ORDER,
 } from "./model/types";
 export type {
   SkillMeta,
