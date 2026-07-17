@@ -122,7 +122,6 @@ Run with any `TEST_DATABASE_URL`; pass even without a DB host.
 | `tests/docker-parse-container.test.ts` | `parseContainer` maps `docker container ls --format json` rows to `ContainerSummary`; compose labels, port mapping, `uptimeSeconds` heuristic, IPv6 dual-stack drop, enum throw on unknown state |
 | `tests/docker-run.test.ts` | `runDocker` invokes the docker CLI with the right `--context` + args; default 10s timeout, `opts.timeoutMs` override; uses `util.promisify.custom` to model real Node `child_process` behaviour |
 | `tests/docker-list-containers.test.ts` | `listContainers` issues `container ls --all --no-trunc --format {{json .}}`, parses NDJSON, skips malformed lines with warn |
-| `tests/docker-inspect-container.test.ts` | `inspectContainer` returns `envMasked`, `mounts`, `imageDigest` (only when `sha256:`-prefixed); null labels safe; empty `[]` response throws |
 | `tests/container-actions-admin.test.ts` | `isAdmin` exact match, multi-email split, trim, case-insensitive; null/undefined → false |
 | `tests/cleanup-projects.test.ts` | `computeZombieIds` — pure set-arithmetic between live set, whitelist set, and DB rows |
 | `tests/container-list-group-by-project.test.ts` | `groupByProject` — compose-label grouping + project join, `standalone` virtual group, hidden project hidden, pinned→alpha→standalone order, `isStale=true` for empty live containers |

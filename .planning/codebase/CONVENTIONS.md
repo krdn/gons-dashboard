@@ -6,7 +6,7 @@
 
 **Files:**
 - React components / classes: `PascalCase.tsx` — e.g. `HostDashboard.tsx`, `ReplyCard.tsx`, `ActionButtons.tsx`
-- Functions / utilities / API modules: `camelCase.ts` — e.g. `runDocker.ts`, `inspectContainer.ts`, `getImportantEmails.ts`, `classifyImportant.ts`
+- Functions / utilities / API modules: `camelCase.ts` — e.g. `runDocker.ts`, `listContainers.ts`, `getImportantEmails.ts`, `classifyImportant.ts`
 - Folder-private modules (not exported via barrel): underscore prefix — e.g. `src/features/container-actions/api/_runAction.ts`
 - Test files: kebab-case mirroring the unit under test — `<feature>-<scenario>.test.ts` in `tests/` (flat)
 - Config singletons: lowercase — `eslint.config.mjs`, `vitest.config.ts`, `drizzle.config.ts`, `next.config.ts`

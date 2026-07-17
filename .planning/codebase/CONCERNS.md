@@ -17,7 +17,7 @@
   `upsertProjectFromContainer`, `_runAction` 등 → `node:child_process` / `server-only`) 와
   client UI 컴포넌트를 같은 파일에서 export 한다.
 - **트리거 파일**:
-  - `src/entities/container/index.ts:1-10` — `listContainers`, `inspectContainer` (server) +
+  - `src/entities/container/index.ts:1-10` — `listContainers` (server) +
     `ContainerStatusBadge`, `ContainerRow` (client-safe UI) 혼재
   - `src/entities/project/index.ts:1-14` — `getProjects`, `upsertProjectFromContainer` (server) +
     `ProjectCard` 혼재
