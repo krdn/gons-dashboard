@@ -65,7 +65,7 @@ async function callCron(path, label, timeoutMs = DEFAULT_TIMEOUT_MS) {
 cron.schedule(
   "*/15 * * * *",
   () => {
-    void callCron("/api/cron/poll-gmail", "poll-gmail", 60_000);
+    void callCron("/api/cron/poll-gmail", "poll-gmail", 300_000);
   },
   { timezone: TIMEZONE },
 );
@@ -99,7 +99,7 @@ cron.schedule(
     void callCron(
       "/api/cron/generate-daily-tri-fortunes",
       "generate-daily-tri-fortunes",
-      180_000,
+      120_000,
     );
   },
   { timezone: TIMEZONE },
@@ -194,7 +194,7 @@ console.log(
 
 // 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.
 setTimeout(() => {
-  void callCron("/api/cron/poll-gmail", "poll-gmail (startup)");
+  void callCron("/api/cron/poll-gmail", "poll-gmail (startup)", 300_000);
 }, 30_000);
 
 // 시작 직후 오늘 일진 catchup — 컨테이너가 00:01/00:05 KST 에 떠있지 않았던 날
@@ -216,6 +216,6 @@ setTimeout(() => {
   void callCron(
     "/api/cron/generate-daily-tri-fortunes",
     "generate-daily-tri-fortunes (startup)",
-    180_000,
+    120_000,
   );
 }, 120_000);
