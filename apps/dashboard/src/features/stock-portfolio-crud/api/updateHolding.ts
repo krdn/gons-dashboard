@@ -47,6 +47,20 @@ export async function updateHolding(input: UpdateHoldingInput): Promise<UpdateHo
     revalidatePath("/");
     return { success: true };
   } catch (err) {
+    // 23514 = check_violation. portfolio_holdings_holding_qty_check 위반은
+    // 관심종목(watchlist, quantity/avgCost NULL)을 보유(holding)로 전환하면서
+    // 수량·평균단가를 함께 채우지 않은 경우 — DB raw 에러 대신 친절한 메시지로.
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "23514"
+    ) {
+      return {
+        success: false,
+        error: "보유로 전환하려면 수량과 평균단가가 필요합니다",
+      };
+    }
     return { success: false, error: err instanceof Error ? err.message : "DB 에러" };
   }
 }

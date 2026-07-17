@@ -23,12 +23,22 @@ console.log(
   `[cron] 시작 — APP_URL=${APP_URL} TZ=${process.env.TZ} cron-tz=${TIMEZONE}`,
 );
 
-async function callCron(path, label) {
+// 라우트별 타임아웃(ms). Node fetch 의 기본 타임아웃은 무제한이라, LLM 작업이
+// hang 하면 promise 가 영구 pending → 메모리 누적·다음 주기 누락. AbortSignal 로 차단.
+const DEFAULT_TIMEOUT_MS = 60_000;
+
+/**
+ * @param {string} path
+ * @param {string} label
+ * @param {number} [timeoutMs]
+ */
+async function callCron(path, label, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const startedAt = new Date();
   try {
     const response = await fetch(`${APP_URL}${path}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${TOKEN}` },
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const text = await response.text();
     const elapsed = Date.now() - startedAt.getTime();
@@ -41,7 +51,13 @@ async function callCron(path, label) {
       );
     }
   } catch (error) {
-    console.error(`[cron] ${label} ERROR`, error);
+    const elapsed = Date.now() - startedAt.getTime();
+    // AbortSignal.timeout() 발화 시 TimeoutError(name) — 일반 네트워크 에러와 구분.
+    const isTimeout = error instanceof Error && error.name === "TimeoutError";
+    console.error(
+      `[cron] ${label} ${isTimeout ? `TIMEOUT (${timeoutMs}ms, elapsed ${elapsed}ms)` : "ERROR"}`,
+      error,
+    );
   }
 }
 
@@ -49,7 +65,7 @@ async function callCron(path, label) {
 cron.schedule(
   "*/15 * * * *",
   () => {
-    void callCron("/api/cron/poll-gmail", "poll-gmail");
+    void callCron("/api/cron/poll-gmail", "poll-gmail", 60_000);
   },
   { timezone: TIMEZONE },
 );
@@ -67,7 +83,11 @@ cron.schedule(
 cron.schedule(
   "1 0 * * *",
   () => {
-    void callCron("/api/cron/generate-daily-fortunes", "generate-daily-fortunes");
+    void callCron(
+      "/api/cron/generate-daily-fortunes",
+      "generate-daily-fortunes",
+      180_000,
+    );
   },
   { timezone: TIMEZONE },
 );
@@ -79,6 +99,7 @@ cron.schedule(
     void callCron(
       "/api/cron/generate-daily-tri-fortunes",
       "generate-daily-tri-fortunes",
+      180_000,
     );
   },
   { timezone: TIMEZONE },
@@ -88,7 +109,11 @@ cron.schedule(
 cron.schedule(
   "30 16 * * *",
   () => {
-    void callCron("/api/cron/stock-analyze?market=KR", "stock-analyze-kr");
+    void callCron(
+      "/api/cron/stock-analyze?market=KR",
+      "stock-analyze-kr",
+      300_000,
+    );
   },
   { timezone: TIMEZONE },
 );
@@ -100,6 +125,7 @@ cron.schedule(
     void callCron(
       "/api/cron/stock-analyze?market=US_GLOBAL",
       "stock-analyze-us-global",
+      300_000,
     );
   },
   { timezone: TIMEZONE },
@@ -109,7 +135,7 @@ cron.schedule(
 cron.schedule(
   "0 6 * * 0",
   () => {
-    void callCron("/api/cron/krx-master-sync", "krx-master-sync");
+    void callCron("/api/cron/krx-master-sync", "krx-master-sync", 120_000);
   },
   { timezone: TIMEZONE },
 );
@@ -118,7 +144,7 @@ cron.schedule(
 cron.schedule(
   "23 * * * *",
   () => {
-    void callCron("/api/cron/memo-classify", "memo-classify");
+    void callCron("/api/cron/memo-classify", "memo-classify", 180_000);
   },
   { timezone: TIMEZONE },
 );
@@ -127,7 +153,7 @@ cron.schedule(
 cron.schedule(
   "5 19 * * *",
   () => {
-    void callCron("/api/cron/memo-digest", "memo-digest");
+    void callCron("/api/cron/memo-digest", "memo-digest", 180_000);
   },
   { timezone: TIMEZONE },
 );
@@ -145,7 +171,7 @@ cron.schedule(
 cron.schedule(
   "41 * * * *",
   () => {
-    void callCron("/api/cron/memo-extract-actions", "memo-extract-actions");
+    void callCron("/api/cron/memo-extract-actions", "memo-extract-actions", 180_000);
   },
   { timezone: TIMEZONE },
 );
@@ -183,11 +209,13 @@ setTimeout(() => {
   void callCron(
     "/api/cron/generate-daily-fortunes",
     "generate-daily-fortunes (startup)",
+    180_000,
   );
 }, 60_000);
 setTimeout(() => {
   void callCron(
     "/api/cron/generate-daily-tri-fortunes",
     "generate-daily-tri-fortunes (startup)",
+    180_000,
   );
 }, 120_000);
