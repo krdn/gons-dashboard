@@ -34,6 +34,9 @@ const ROLLEDBACK_FILE = process.env.AUTOPILOT_ROLLEDBACK_FILE ?? "/signal/.autop
 const IMAGE_REPO = process.env.AUTOPILOT_IMAGE_REPO ?? "ghcr.io/krdn/gons-dashboard";
 const HEALTH_TIMEOUT_MS = 90_000;
 const HEALTH_POLL_MS = 5_000;
+// 개별 fetch 무제한 대기 방지 — hang 시 inFlight 가 영구 true 로 남아 이후 사이클 전부 스킵.
+const FETCH_TIMEOUT_MS = 30_000;
+const HEALTH_PROBE_TIMEOUT_MS = 10_000; // checkHealth 루프 내부 — 루프 deadline 이 살아있도록 짧게
 
 // 동시 실행 락 (단일 node 프로세스 — 5분 폴링이 최악 9분 경로와 겹치는 것 방지).
 let inFlight = false;
@@ -78,7 +81,9 @@ async function getRunningDigest() {
 /** ghcr 토큰 발급 (public package — 익명 pull-scope 토큰). */
 async function getGhcrToken() {
   const repoPath = IMAGE_REPO.replace(/^ghcr\.io\//, "");
-  const res = await fetch(`https://ghcr.io/token?scope=repository:${repoPath}:pull`);
+  const res = await fetch(`https://ghcr.io/token?scope=repository:${repoPath}:pull`, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) throw new Error(`ghcr 토큰 발급 실패: ${res.status}`);
   const json = await res.json();
   return json.token;
@@ -89,6 +94,7 @@ async function getTagDigest(token, tag) {
   const repoPath = IMAGE_REPO.replace(/^ghcr\.io\//, "");
   const res = await fetch(`https://ghcr.io/v2/${repoPath}/manifests/${tag}`, {
     method: "HEAD",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${token}`,
       Accept:
@@ -136,12 +142,19 @@ async function checkHealth() {
   const deadline = Date.now() + HEALTH_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${APP_URL}/api/health`);
+      const res = await fetch(`${APP_URL}/api/health`, {
+        signal: AbortSignal.timeout(HEALTH_PROBE_TIMEOUT_MS),
+      });
       const body = await res.text();
       if (res.ok && parseHealthBody(body)) {
         // 핵심 라우트 smoke
-        const login = await fetch(`${APP_URL}/login`);
-        const cronRoute = await fetch(`${APP_URL}/api/cron/poll-gmail`, { method: "POST" });
+        const login = await fetch(`${APP_URL}/login`, {
+          signal: AbortSignal.timeout(HEALTH_PROBE_TIMEOUT_MS),
+        });
+        const cronRoute = await fetch(`${APP_URL}/api/cron/poll-gmail`, {
+          method: "POST",
+          signal: AbortSignal.timeout(HEALTH_PROBE_TIMEOUT_MS),
+        });
         if (login.status === 200 && cronRoute.status === 401) return true;
       }
     } catch {
@@ -206,6 +219,7 @@ async function notify(title, message) {
   try {
     await fetch(`${APP_URL}/api/cron/autopilot-notify`, {
       method: "POST",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: {
         Authorization: `Bearer ${process.env.CRON_BEARER_TOKEN}`,
         "Content-Type": "application/json",
