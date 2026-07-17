@@ -172,10 +172,9 @@ ssh gon@192.168.0.5 "curl -s http://localhost:3020/api/health"
 - Code:
   - `src/shared/lib/docker/runDocker.ts` — `execFile("docker", ["--context", ctx, ...args])` with timeout from `DOCKER_CMD_TIMEOUT_MS` (default 10s) and `maxBuffer: 4MB`.
   - `src/shared/lib/docker/listContainers.ts` — `docker container ls --all --no-trunc --format "{{json .}}"`.
-  - `src/shared/lib/docker/inspectContainer.ts` — `docker inspect <id>`; output validated with Zod (`InspectShape`), env vars masked by `src/shared/lib/docker/maskEnv.ts`.
   - `src/shared/lib/docker/parseContainer.ts` — JSON-per-line parser.
   - Index/public barrel: `src/shared/lib/docker/index.ts`.
-- Higher-level wrappers: `src/entities/container/api/listContainers.ts`, `src/entities/container/api/inspectContainer.ts`.
+- Higher-level wrappers: `src/entities/container/api/listContainers.ts`.
 - Mutating actions (`restart`, `start`, `stop`) all funnel through `src/features/container-actions/api/_runAction.ts`, which enforces:
   1. NextAuth session present (`UNAUTHORIZED` otherwise),
   2. Email in `ADMIN_EMAILS` (`FORBIDDEN` otherwise),

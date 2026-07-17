@@ -85,7 +85,7 @@
 
 ### 9. 위젯별 ErrorBoundary 적용
 
-- **What**: 현재 `app/page.tsx`는 Suspense만 적용. RSC throw 시 Next.js 기본 error.tsx로 fallback. ImportantEmailsErrorState는 정의만 하고 ErrorBoundary로 감싸지 않음.
+- **What**: 현재 `app/page.tsx`는 Suspense만 적용. RSC throw 시 Next.js 기본 error.tsx로 fallback. 위젯 전용 에러 상태 컴포넌트는 없음 (구 `ImportantEmailsErrorState`는 미사용이라 2026-07-16 dead code 정리에서 삭제 — 도입 시 새로 작성).
 - **Why**: 한 위젯 실패가 다른 위젯 영향 안 받게 — 기존 디자인 §4.4의 의도.
 - **Where to start**: `react-error-boundary` 도입 후 각 Suspense를 `<ErrorBoundary fallback={...}>`로 감싸기.
 
