@@ -11,7 +11,27 @@ export type MonitoringEventRow = typeof monitoringEvents.$inferSelect;
 export type CheckResultRow = typeof checkResults.$inferSelect;
 export type NewCheckResult = typeof checkResults.$inferInsert;
 
-export type CheckKind = "service" | "timer" | "hostcron" | "http" | "ssl";
+export type CheckKind =
+  | "service"
+  | "timer"
+  | "hostcron"
+  | "http"
+  | "ssl"
+  // Phase 3 §H 보안 — root collector 관측치 기반
+  | "iptables"
+  | "fail2ban"
+  | "ufw"
+  | "portdrift"
+  | "sshfail"
+  // Phase 3 §G 데이터스토어 liveness
+  | "pg"
+  | "redis";
+
+/**
+ * 점검 detail 값 — 배열은 Phase 3 에서 추가(포트 목록·jail 목록).
+ * 판정(CheckVerdict) → DB(check_results.detail) → 조회(LatestCheck) 전 구간 동일해야 한다.
+ */
+export type CheckDetailValue = string | number | boolean | string[];
 export type CheckStatus = "ok" | "warning" | "critical" | "unknown";
 
 export type EventSeverity = "critical" | "warning" | "info";
@@ -76,6 +96,6 @@ export interface LatestCheck {
   kind: string;
   target: string;
   status: string;
-  detail: Record<string, string | number | boolean> | null;
+  detail: Record<string, CheckDetailValue> | null;
   checkedAt: Date;
 }

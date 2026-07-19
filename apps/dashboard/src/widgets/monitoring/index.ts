@@ -10,6 +10,7 @@ export { EventsTimeline } from "./ui/EventsTimeline";
 export { AvailabilityBoard } from "./ui/AvailabilityBoard";
 export { ServicesBoard } from "./ui/ServicesBoard";
 export { HostCronBoard } from "./ui/HostCronBoard";
+export { SecurityBoard } from "./ui/SecurityBoard";
 export {
   MonitoringSummaryCard,
   MonitoringSummarySkeleton,

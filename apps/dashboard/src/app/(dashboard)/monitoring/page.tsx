@@ -18,6 +18,7 @@ import {
   CronRunsBoard,
   EventsTimeline,
   HostCronBoard,
+  SecurityBoard,
   ServicesBoard,
   StatusDot,
   VitalsBoard,
@@ -58,6 +59,14 @@ export default async function MonitoringPage() {
     ]);
   const now = new Date();
   const byKind = (kind: string) => checks.filter((c) => c.kind === kind);
+  // 보안 kind 는 한 보드에 모아 표시한다 (kind 하나당 target 하나).
+  const SECURITY_KINDS = new Set([
+    "iptables",
+    "fail2ban",
+    "ufw",
+    "portdrift",
+    "sshfail",
+  ]);
 
   const status: OverallStatus =
     open.critical > 0 ? "critical" : open.warning > 0 ? "warning" : "ok";
@@ -129,6 +138,10 @@ export default async function MonitoringPage() {
           <CronRunsBoard rows={cronBoard} now={now} />
           <HostCronBoard rows={byKind("hostcron")} now={now} />
         </div>
+        <SecurityBoard
+          checks={checks.filter((c) => SECURITY_KINDS.has(c.kind))}
+          now={now}
+        />
       </div>
     </PageContainer>
   );

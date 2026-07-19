@@ -173,9 +173,28 @@ ts_to_epoch() {
   date -d "$stripped" +%s 2>/dev/null || echo ""
 }
 
+# 보안 관측치 (Phase 3 §H) — root collector 가 /run 에 쓴 JSON 을 **읽기만** 한다.
+# 에이전트는 NoNewPrivileges=yes 라 sudo 가 불가능하므로 직접 수집하지 않는다.
+# 파일이 없거나 노후(기본 15분 초과)면 빈 문자열 → security 섹션 생략 → 서버가
+# not-reported unknown 으로 판정한다 (낡은 스냅샷을 현재값으로 재사용하지 않는다).
+SECURITY_FILE="${SECURITY_FILE:-/run/gons-monitoring/security.json}"
+SECURITY_MAX_AGE_MIN="${SECURITY_MAX_AGE_MIN:-15}"
+
+read_security_json() {
+  [ -r "$SECURITY_FILE" ] || return 1
+  local mtime age_min
+  mtime=$(stat -c %Y "$SECURITY_FILE" 2>/dev/null) || return 1
+  age_min=$(((  $(date +%s) - mtime ) / 60))
+  [ "$age_min" -le "$SECURITY_MAX_AGE_MIN" ] || return 1
+  # 한 줄 JSON 이 아니면(부분 기록 등) 중계하지 않는다 — collector 는 원자적 mv 를
+  # 쓰므로 정상 상황에서 부분 파일은 관측되지 않는다.
+  head -c 100000 "$SECURITY_FILE" | tr -d '\n'
+}
+
 build_checks_payload() {
-  local svc_json="" timer_json="" cron_json=""
+  local svc_json="" timer_json="" cron_json="" sec_json=""
   local unit state nrestarts
+  sec_json=$(read_security_json) || sec_json=""
 
   for unit in $WATCH_SERVICES; do
     state=$(systemctl is-active "$unit" 2>/dev/null)
@@ -217,13 +236,15 @@ build_checks_payload() {
     fi
   done
 
-  [ -z "$svc_json$timer_json$cron_json" ] && return 1 # 감시 대상 미설정 — push 생략
+  # 감시 대상 미설정 — push 생략 (보안 스냅샷만 있어도 push 할 가치가 있다)
+  [ -z "$svc_json$timer_json$cron_json$sec_json" ] && return 1
 
   printf '{'
   printf '"host":"%s"' "$HOST_NAME"
   [ -n "$svc_json" ] && printf ',"services":[%s]' "$svc_json"
   [ -n "$timer_json" ] && printf ',"timers":[%s]' "$timer_json"
   [ -n "$cron_json" ] && printf ',"hostCron":[%s]' "$cron_json"
+  [ -n "$sec_json" ] && printf ',"security":%s' "$sec_json"
   printf '}'
 }
 

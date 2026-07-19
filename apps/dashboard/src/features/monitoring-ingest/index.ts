@@ -14,7 +14,9 @@ import {
 } from "@/entities/monitoring/server";
 import { flattenVitals } from "./lib/flattenVitals";
 import { evaluateVitals } from "./lib/evaluateVitals";
-import { judgeChecks } from "./lib/judgeChecks";
+import { judgeChecks, type CheckVerdict } from "./lib/judgeChecks";
+import { sourceForKind } from "./lib/sourceForKind";
+import { judgeSecurity } from "@/features/monitoring-security";
 import {
   vitalsPayloadSchema,
   type VitalsPayload,
@@ -23,9 +25,15 @@ import {
   checksPayloadSchema,
   type ChecksPayload,
 } from "./model/checksSchema";
+import {
+  securityPayloadSchema,
+  type SecurityPayload,
+} from "./model/securitySchema";
 
-export { vitalsPayloadSchema, checksPayloadSchema };
-export type { VitalsPayload, ChecksPayload };
+export { vitalsPayloadSchema, checksPayloadSchema, securityPayloadSchema };
+export type { VitalsPayload, ChecksPayload, SecurityPayload };
+export type { CheckVerdict };
+export { sourceForKind };
 export { VITALS_TIERS, type VitalsTier } from "./lib/evaluateVitals";
 
 /** payload.host 가 hosts.name 에 없을 때 — route 가 404 로 매핑. */
@@ -99,7 +107,12 @@ export async function ingestChecks(
   const checkedAt = payload.collectedAt
     ? new Date(payload.collectedAt)
     : new Date();
-  const verdicts = judgeChecks(payload, checkedAt);
+  // Phase 2 판정 + Phase 3 보안 판정. security 섹션이 없는 호스트는 보안 verdict 없음
+  // (판정 자체를 건너뛴다 — 감시 대상이 아닌 호스트에 unknown 행을 만들지 않기 위해).
+  const verdicts: CheckVerdict[] = [
+    ...judgeChecks(payload, checkedAt),
+    ...(payload.security ? judgeSecurity(payload.security) : []),
+  ];
 
   const inserted = await insertCheckResults(
     verdicts.map(
@@ -120,7 +133,7 @@ export async function ingestChecks(
       const dedupKey = `host:${hostId}:${v.dedupKeySuffix}`;
       if (v.status === "critical" || v.status === "warning") {
         await recordEvent({
-          source: v.kind === "service" ? "service" : "cron",
+          source: sourceForKind(v.kind),
           severity: v.status,
           title: v.title,
           detail: JSON.stringify(v.detail),

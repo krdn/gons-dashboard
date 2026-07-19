@@ -1,0 +1,28 @@
+[Unit]
+Description=gons-dashboard security observation collector (root, oneshot)
+Documentation=https://github.com/krdn/gons-dashboard/tree/main/scripts/monitoring-agent
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/gons/monitoring-agent/gons-security-collect.sh
+
+# --- 샌드박스 (운영 서버 systemd-run 실증 기반) ---
+#
+# ⚠️ PrivateNetwork=yes 를 쓰면 안 된다. 네트워크 네임스페이스는 인터페이스뿐 아니라
+#    netfilter 규칙 테이블 전체를 격리해서, 격리된 네임스페이스에는 DOCKER-USER 가
+#    없다 → "규칙 0개 = 방어선 붕괴" 로 오판한다.
+#    실측: PrivateNetwork=yes → `iptables -S DOCKER-USER` 1줄(오류) / 미격리 → 6줄.
+#    외부 통신 차단 목적은 IPAddressDeny 로 달성한다 (호스트 netns 는 보존, 실측 6줄).
+IPAddressDeny=any
+
+ProtectHome=yes
+ProtectSystem=strict
+PrivateTmp=yes
+
+# ⚠️ RuntimeDirectory 단독이면 서비스 중지 시 디렉토리가 삭제된다. Type=oneshot 은
+#    종료가 곧 중지라 **파일을 쓰자마자 사라진다**. 실측으로 확인 — Preserve 필수.
+#    (RemainAfterExit=yes 는 타이머 후속 실행을 막을 수 있어 해결책으로 쓰지 않는다.)
+RuntimeDirectory=gons-monitoring
+RuntimeDirectoryPreserve=yes
+RuntimeDirectoryMode=0750

@@ -1,0 +1,14 @@
+[Unit]
+Description=gons-dashboard security collector — 5분 주기 (이슈 #323 §H)
+
+[Timer]
+# 부팅 1분 후 첫 실행, 이후 5분 간격.
+OnBootSec=1min
+OnUnitActiveSec=5min
+# 재부팅으로 놓친 실행을 즉시 보충 (에이전트가 15분 노후 판정을 하므로
+# 이 보충이 없으면 부팅 직후 보안 보드가 unknown 으로 뜬다).
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

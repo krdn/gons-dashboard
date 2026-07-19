@@ -2,6 +2,7 @@
 // scripts/monitoring-agent/agent.sh 의 checks 사이클(60초)이 조립하는 JSON 과 1:1.
 // 판정 원자료만 push — 판정은 서버(judgeChecks)가 한다.
 import { z } from "zod";
+import { securityPayloadSchema } from "./securitySchema";
 
 export const checksPayloadSchema = z.object({
   // hosts.name 과 일치해야 함 (예: "home-server")
@@ -50,6 +51,9 @@ export const checksPayloadSchema = z.object({
     )
     .max(30)
     .optional(),
+  // Phase 3 §H — root collector 산출물(/run/gons-monitoring/security.json)을
+  // 에이전트가 읽어 그대로 중계한다. 미설정 호스트에서는 생략.
+  security: securityPayloadSchema.optional(),
 });
 
 export type ChecksPayload = z.infer<typeof checksPayloadSchema>;
