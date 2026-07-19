@@ -148,6 +148,11 @@ export async function ingestChecks(
         await resolveEvent(dedupKey);
       }
       // unknown: no-op — 관찰 불가는 위반도 정상 복귀도 아니다.
+      //
+      // 결과적으로 collector 가 죽으면 보드는 회색(unknown)이 되지만 직전에 열린
+      // critical 이벤트는 타임라인에 그대로 남는다. 보드/타임라인 불일치처럼
+      // 보이지만 의도된 동작이다 — 방화벽이 복구됐는지 **확인할 수 없는** 상태에서
+      // 이벤트를 해소하면 실제로 뚫린 채로 알림만 사라진다.
     }
   } catch (err) {
     logger.warn("monitoring-ingest", "check-event-record-failed", {
