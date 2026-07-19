@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Highlighted } from "@/shared/ui/Highlighted";
-import type { Memo, MemoSource, MemoTransformation, TransformPresetId } from "../model/types";
+import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
 
 // 삭제 확인 상태가 원복되기까지의 유예 — 오클릭 방지와 재확인 부담 사이의 절충.
