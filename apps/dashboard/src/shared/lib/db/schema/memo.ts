@@ -61,7 +61,7 @@ export const memos = pgTable(
   },
   (t) => [
     index("memos_user_created_idx").on(t.userId, t.createdAt.desc()),
-    check("memos_source_check", sql`${t.source} IN ('voice', 'text')`),
+    check("memos_source_check", sql`${t.source} IN ('voice', 'text', 'agent')`),
     check("memos_raw_not_empty", sql`length(${t.rawContent}) > 0`),
     check("memos_cleaned_not_empty", sql`length(${t.cleanedContent}) > 0`),
   ],

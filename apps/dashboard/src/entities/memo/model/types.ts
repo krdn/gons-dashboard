@@ -15,7 +15,7 @@ import {
 } from "@/shared/lib/llm/provider-model-catalog";
 
 export type Memo = typeof memos.$inferSelect;
-export type MemoSource = "voice" | "text";
+export type MemoSource = "voice" | "text" | "agent";
 
 // 인사이트 집계 축만 담은 경량 projection — 전체 텍스트(raw/cleaned/title) 제외.
 // content를 빼면 수천 행도 가볍다. 캡 없이 전량 조회하는 listMemoFactsForInsights의 반환 원소.
