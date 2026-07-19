@@ -12,11 +12,13 @@ import {
   PersonalIcon,
   ServerIcon,
   MemoIcon,
+  MonitoringIcon,
 } from "@/shared/ui/icons";
 import { type NavIconKey } from "@/shared/config/navigation";
 
 const MAP: Record<NavIconKey, (p: { size?: number; className?: string }) => ReactNode> = {
   home: HomeIcon,
+  monitoring: MonitoringIcon,
   chart: ChartIcon,
   skill: SkillIcon,
   plugin: PluginIcon,

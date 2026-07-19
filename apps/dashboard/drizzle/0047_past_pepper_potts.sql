@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "monitoring_events_open_dedup_uq" ON "monitoring_events" USING btree ("dedup_key") WHERE resolved_at is null;

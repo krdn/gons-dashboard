@@ -51,6 +51,7 @@ ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
     ANTHROPIC_API_KEY=placeholder \
     CRON_BEARER_TOKEN=a-placeholder-cron-token-of-at-least-32-characters \
     MCP_DASHBOARD_TOKEN=a-placeholder-mcp-token-of-at-least-32-characters \
+    METRICS_INGEST_TOKEN=a-placeholder-metrics-token-of-at-least-32-chars \
     ALLOWLIST_EMAILS=build@placeholder.local \
     ADMIN_EMAILS=build@placeholder.local \
     PG_ENCRYPTION_KEY=a-placeholder-pg-encryption-key-of-at-least-32-chars \

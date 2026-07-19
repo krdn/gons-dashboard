@@ -79,6 +79,7 @@ jobs:
           ALLOWLIST_EMAILS: build@placeholder.local
           ADMIN_EMAILS: build@placeholder.local
           MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
+          METRICS_INGEST_TOKEN: a-placeholder-metrics-token-of-at-least-32-chars
           PG_ENCRYPTION_KEY: a-placeholder-pg-encryption-key-of-at-least-32-chars
           PLAYMCP_CLIENT_ID: placeholder-playmcp-client-id
           KRX_OPENAPI_AUTH_KEY: placeholder-krx-key
@@ -103,6 +104,7 @@ jobs:
           ALLOWLIST_EMAILS: build@placeholder.local
           ADMIN_EMAILS: build@placeholder.local
           MCP_DASHBOARD_TOKEN: a-placeholder-mcp-token-of-at-least-32-characters
+          METRICS_INGEST_TOKEN: a-placeholder-metrics-token-of-at-least-32-chars
           PG_ENCRYPTION_KEY: a-placeholder-pg-encryption-key-of-at-least-32-chars
           PLAYMCP_CLIENT_ID: placeholder-playmcp-client-id
           KRX_OPENAPI_AUTH_KEY: placeholder-krx-key
