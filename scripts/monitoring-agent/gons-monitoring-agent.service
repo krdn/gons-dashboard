@@ -6,15 +6,21 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# METRICS_INGEST_TOKEN / DASHBOARD_URL / HOST_NAME / INTERVAL_SEC
+# METRICS_INGEST_TOKEN / DASHBOARD_URL / HOST_NAME / INTERVAL_SEC / WATCH_* / HOSTCRON_SPECS
 EnvironmentFile=/etc/default/gons-monitoring-agent
 ExecStart=/opt/gons/monitoring-agent/agent.sh
 Restart=always
 RestartSec=10
-# 수집 대상이 /proc·hwmon·nvidia-smi 뿐이라 비권한 실행 (DynamicUser —
-# PrivateTmp 포함). Phase 2~3 에서 journalctl·iptables 수집이 추가되면
-# 그때 전용 사용자 + 최소 권한(capabilities/그룹)으로 재설계한다.
-DynamicUser=yes
+# Phase 2: systemctl 조회(checks)가 필요한데 DynamicUser 의 임시 UID 는 D-Bus
+# 시스템 버스 연결이 거부된다("Transport endpoint is not connected") — 고정
+# 시스템 유저로 전환하고 DynamicUser 가 주던 격리는 명시 옵션으로 유지.
+# 설치 시 유저 생성 필요: sudo useradd --system --no-create-home --shell /usr/sbin/nologin gons-agent
+User=gons-agent
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=full
+# 호스트 cron 로그(/home/gon/...) 읽기는 필요 — read-only 로 제한
+ProtectHome=read-only
 
 [Install]
 WantedBy=multi-user.target

@@ -91,7 +91,11 @@ export function AvailabilityBoard({
                             : "var(--color-text-muted)",
                       }}
                     >
-                      {daysLeft != null ? `D-${daysLeft}` : "–"}
+                      {daysLeft == null
+                        ? "–"
+                        : daysLeft < 0
+                          ? "만료됨"
+                          : `D-${daysLeft}`}
                     </td>
                     <td className="px-3 py-1.5 text-right text-xs tabular-nums text-[var(--color-text-subtle)]">
                       {formatAgo(c.checkedAt, now)}
