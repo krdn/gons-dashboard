@@ -18,6 +18,7 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY scheduler.js ./
+COPY waitForAppReady.js ./
 COPY autopilot ./autopilot
 
 # 주의: docker.sock 접근 + /signal 디렉토리 쓰기 권한은 운영 통합 검증(Task 11)에서 확인.
