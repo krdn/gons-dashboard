@@ -205,6 +205,16 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 매일 03:17 KST — 관제 데이터 보존 purge (metric_samples 48h / cron_runs 30d /
+// resolved 이벤트 90d). 하루 놓쳐도 다음 날 회수되므로 catchup 불필요.
+cron.schedule(
+  "17 3 * * *",
+  () => {
+    void callCron("/api/cron/monitoring-purge", "monitoring-purge", 120_000);
+  },
+  { timezone: TIMEZONE },
+);
+
 // autopilot — 5분 주기로 새 이미지 감지·배포·검증·롤백 (AUTOPILOT_DEPLOY=on 일 때만).
 if (process.env.AUTOPILOT_DEPLOY === "on") {
   cron.schedule(
