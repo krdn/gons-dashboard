@@ -1,0 +1,142 @@
+// /api/agent/checks-ingest 라우트 통합 테스트 (metrics-ingest 테스트 미러 — db mock).
+// 검증: 401 · 400 · 404 · 200(판정→check_results insert + 이벤트 record/resolve/무발행)
+const TEST_BEARER = vi.hoisted(() => {
+  const token = "test-metrics-token-aaaaaaaaaaaaaaaaaaaaaaaaaa"; // min 32자
+  process.env.METRICS_INGEST_TOKEN = token;
+  process.env.MCP_DASHBOARD_TOKEN ??= "test-bearer-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  process.env.ADMIN_EMAILS ??= "krdn.net@gmail.com";
+  process.env.DATABASE_URL ??= "postgres://test:test@127.0.0.1:5999/test_dummy";
+  process.env.REDIS_URL ??= "redis://localhost:6379";
+  process.env.NEXTAUTH_SECRET ??= "test-secret-at-least-32-chars-padded!!";
+  process.env.NEXTAUTH_URL ??= "http://localhost:3020";
+  process.env.GOOGLE_CLIENT_ID ??= "test-google-client-id";
+  process.env.GOOGLE_CLIENT_SECRET ??= "test-google-client-secret";
+  process.env.ANTHROPIC_BASE_URL ??= "http://localhost:8317";
+  process.env.ANTHROPIC_API_KEY ??= "test-anthropic-key";
+  process.env.CRON_BEARER_TOKEN ??= "test-cron-bearer-token-padded-aaaaaaaaaa";
+  process.env.ALLOWLIST_EMAILS ??= "krdn.net@gmail.com";
+  return token;
+});
+
+let hostRow: { id: string }[] = [];
+vi.mock("@/shared/lib/db/client", () => {
+  const selectChain = {
+    from: () => selectChain,
+    where: () => selectChain,
+    limit: () => Promise.resolve(hostRow),
+  };
+  return { db: { select: () => selectChain } };
+});
+
+const insertChecksMock = vi.hoisted(() => vi.fn());
+const insertSamplesMock = vi.hoisted(() => vi.fn());
+const recordEventMock = vi.hoisted(() => vi.fn());
+const resolveEventMock = vi.hoisted(() => vi.fn());
+vi.mock("@/entities/monitoring/server", () => ({
+  insertCheckResults: insertChecksMock,
+  insertMetricSamples: insertSamplesMock,
+  recordEvent: recordEventMock,
+  resolveEvent: resolveEventMock,
+}));
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { POST } from "@/app/api/agent/checks-ingest/route";
+
+function makeReq(bearer: string | null, body: BodyInit | null): Request {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (bearer !== null) headers.set("Authorization", `Bearer ${bearer}`);
+  return new Request("https://gons.krdn.kr/api/agent/checks-ingest", {
+    method: "POST",
+    headers,
+    body,
+  });
+}
+const json = (o: unknown) => JSON.stringify(o);
+
+describe("/api/agent/checks-ingest", () => {
+  beforeEach(() => {
+    hostRow = [{ id: "h1" }];
+    insertChecksMock.mockReset().mockImplementation((rows: unknown[]) =>
+      Promise.resolve(rows.length),
+    );
+    recordEventMock.mockReset().mockResolvedValue(undefined);
+    resolveEventMock.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("bearer 누락/오답 → 401", async () => {
+    const body = json({ host: "home-server" });
+    expect((await POST(makeReq(null, body))).status).toBe(401);
+    expect((await POST(makeReq("wrong", body))).status).toBe(401);
+  });
+
+  it("malformed JSON / 스키마 불통 → 400", async () => {
+    expect((await POST(makeReq(TEST_BEARER, "not-json{"))).status).toBe(400);
+    expect(
+      (
+        await POST(
+          makeReq(TEST_BEARER, json({ host: "h", services: [{ unit: "" }] })),
+        )
+      ).status,
+    ).toBe(400);
+  });
+
+  it("미등록 host → 404", async () => {
+    hostRow = [];
+    const res = await POST(makeReq(TEST_BEARER, json({ host: "ghost" })));
+    expect(res.status).toBe(404);
+  });
+
+  it("정상 → 200 {inserted} + failed 서비스는 critical record, active 는 resolve", async () => {
+    const res = await POST(
+      makeReq(
+        TEST_BEARER,
+        json({
+          host: "home-server",
+          services: [
+            { unit: "nginx", active: "active" },
+            { unit: "ollama", active: "failed" },
+          ],
+        }),
+      ),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).inserted).toBe(2);
+    expect(recordEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "service",
+        severity: "critical",
+        dedupKey: "host:h1:svc:ollama",
+        hostId: "h1",
+      }),
+    );
+    expect(resolveEventMock).toHaveBeenCalledWith("host:h1:svc:nginx");
+  });
+
+  it("unknown 판정(readable=false)은 record/resolve 무발행", async () => {
+    await POST(
+      makeReq(
+        TEST_BEARER,
+        json({
+          host: "home-server",
+          hostCron: [{ name: "x", readable: false, maxAgeMin: 60 }],
+        }),
+      ),
+    );
+    expect(recordEventMock).not.toHaveBeenCalled();
+    expect(resolveEventMock).not.toHaveBeenCalled();
+  });
+
+  it("이벤트 기록 실패해도 200 (best-effort)", async () => {
+    recordEventMock.mockRejectedValue(new Error("event db down"));
+    const res = await POST(
+      makeReq(
+        TEST_BEARER,
+        json({
+          host: "home-server",
+          services: [{ unit: "ollama", active: "failed" }],
+        }),
+      ),
+    );
+    expect(res.status).toBe(200);
+  });
+});

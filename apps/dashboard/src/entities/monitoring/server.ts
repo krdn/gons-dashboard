@@ -6,6 +6,11 @@ export {
   resolveEvent,
   listRecentEvents,
   countOpenEvents,
+  listUnnotifiedCriticalEvents,
+  listUnnotifiedResolvedEvents,
+  hasRecentNotification,
+  claimEventNotification,
+  claimEventResolvedNotification,
 } from "./api/events";
 export {
   insertMetricSamples,
@@ -14,6 +19,11 @@ export {
   getLatestContainerStats,
 } from "./api/samples";
 export { listCronRunBoard } from "./api/cronRuns";
+export {
+  insertCheckResults,
+  listLatestChecks,
+  getRecentChecks,
+} from "./api/checks";
 export type {
   MetricSampleRow,
   NewMetricSample,
@@ -26,4 +36,9 @@ export type {
   HostMetricsSnapshot,
   ContainerStatRow,
   CronRunBoardRow,
+  CheckResultRow,
+  NewCheckResult,
+  CheckKind,
+  CheckStatus,
+  LatestCheck,
 } from "./model/types";

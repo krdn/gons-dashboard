@@ -337,6 +337,13 @@
       "when": 1784449516052,
       "tag": "0047_past_pepper_potts",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1784453066255,
+      "tag": "0048_narrow_banshee",
+      "breakpoints": true
     }
   ]
 }

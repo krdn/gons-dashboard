@@ -8,13 +8,17 @@ import {
   getLatestContainerStats,
   getLatestHostMetrics,
   listCronRunBoard,
+  listLatestChecks,
   listRecentEvents,
 } from "@/entities/monitoring/server";
 import {
   AutoRefresh,
+  AvailabilityBoard,
   ContainerStatsBoard,
   CronRunsBoard,
   EventsTimeline,
+  HostCronBoard,
+  ServicesBoard,
   StatusDot,
   VitalsBoard,
   type OverallStatus,
@@ -43,14 +47,17 @@ export default async function MonitoringPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [snapshots, containers, cronBoard, events, open] = await Promise.all([
-    getLatestHostMetrics(),
-    getLatestContainerStats(),
-    listCronRunBoard(),
-    listRecentEvents(50),
-    countOpenEvents(),
-  ]);
+  const [snapshots, containers, cronBoard, events, open, checks] =
+    await Promise.all([
+      getLatestHostMetrics(),
+      getLatestContainerStats(),
+      listCronRunBoard(),
+      listRecentEvents(50),
+      countOpenEvents(),
+      listLatestChecks(),
+    ]);
   const now = new Date();
+  const byKind = (kind: string) => checks.filter((c) => c.kind === kind);
 
   const status: OverallStatus =
     open.critical > 0 ? "critical" : open.warning > 0 ? "warning" : "ok";
@@ -106,11 +113,22 @@ export default async function MonitoringPage() {
 
       {/* 드릴다운 표 */}
       <div className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <AvailabilityBoard http={byKind("http")} ssl={byKind("ssl")} now={now} />
+          <ServicesBoard
+            services={byKind("service")}
+            timers={byKind("timer")}
+            now={now}
+          />
+        </div>
         <ContainerStatsBoard
           rows={containers}
           multiHost={new Set(containers.map((c) => c.hostName)).size > 1}
         />
-        <CronRunsBoard rows={cronBoard} now={now} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <CronRunsBoard rows={cronBoard} now={now} />
+          <HostCronBoard rows={byKind("hostcron")} now={now} />
+        </div>
       </div>
     </PageContainer>
   );

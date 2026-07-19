@@ -206,11 +206,40 @@ cron.schedule(
 );
 
 // 매일 03:17 KST — 관제 데이터 보존 purge (metric_samples 48h / cron_runs 30d /
-// resolved 이벤트 90d). 하루 놓쳐도 다음 날 회수되므로 catchup 불필요.
+// resolved 이벤트 90d / check_results 48h). 하루 놓쳐도 다음 날 회수되므로 catchup 불필요.
 cron.schedule(
   "17 3 * * *",
   () => {
     void callCron("/api/cron/monitoring-purge", "monitoring-purge", 120_000);
+  },
+  { timezone: TIMEZONE },
+);
+
+// 매분 — nginx 사이트 synthetic HTTP 체크 (관제 #323 Phase 2 §E).
+// 수집 잡: 놓친 주기는 다음 분이 대체 — catchup·retry 제외 (이슈 주의점 7).
+cron.schedule(
+  "* * * * *",
+  () => {
+    void callCron("/api/cron/check-http", "check-http", 50_000);
+  },
+  { timezone: TIMEZONE },
+);
+
+// 매분 — 관제 critical 알림 sweep (발생/회복 통지, cooldown 30분은 app 레이어).
+// 재실행 안전: notified_at 마킹으로 멱등 — 그래도 catchup 불필요 (다음 분이 대체).
+cron.schedule(
+  "* * * * *",
+  () => {
+    void callCron("/api/cron/monitoring-notify", "monitoring-notify", 50_000);
+  },
+  { timezone: TIMEZONE },
+);
+
+// 매일 10:40 KST — SSL 인증서 만료 D-day 점검 (관제 #323 Phase 2 §F).
+cron.schedule(
+  "40 10 * * *",
+  () => {
+    void callCron("/api/cron/check-ssl", "check-ssl", 120_000);
   },
   { timezone: TIMEZONE },
 );
@@ -228,7 +257,7 @@ if (process.env.AUTOPILOT_DEPLOY === "on") {
 }
 
 console.log(
-  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST",
+  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST, check-http=* * * * * KST, monitoring-notify=* * * * * KST, check-ssl=40 10 * * * KST",
 );
 
 // 시작 직후 catchup — 컨테이너가 정규 스케줄 시각에 떠있지 않았던 날(배포·재시작)
