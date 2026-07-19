@@ -3,6 +3,7 @@
 // 신규 라우트 추가 = 여기 한 줄 + icons.tsx 아이콘 1개 + navIcon.tsx 매핑 1줄.
 export type NavIconKey =
   | "home"
+  | "monitoring"
   | "chart"
   | "skill"
   | "plugin"
@@ -35,6 +36,8 @@ export type NavNode = NavLeaf | NavGroup;
 
 export const NAV_TREE: NavNode[] = [
   { kind: "leaf", href: "/", label: "홈", icon: "home" },
+  // 관제는 고빈도 operational 조회 — 그룹에 숨기지 않고 홈 직하 top-level (이슈 #323).
+  { kind: "leaf", href: "/monitoring", label: "관제", icon: "monitoring" },
   {
     kind: "group",
     id: "claude-code",

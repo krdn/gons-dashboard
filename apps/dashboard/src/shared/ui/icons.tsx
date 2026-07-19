@@ -192,6 +192,15 @@ export function AgentIcon({ size = 18, className }: IconProps) {
   );
 }
 
+// 관제 — activity pulse 모티프
+export function MonitoringIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
 // 메모 — 문서+펜 모티프
 export function MemoIcon({ size = 18, className }: IconProps) {
   return (
