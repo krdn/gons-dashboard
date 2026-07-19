@@ -360,26 +360,35 @@ UI 동작:
 
 ## MCP — Calendar 파일럿
 
-### 토큰 회전 (MCP_DASHBOARD_TOKEN) — 3곳 동시
+### 토큰 회전 (MCP_DASHBOARD_TOKEN) — 4곳 동시
 
-이 토큰은 세 소비처를 함께 연다 — **MCP mediator(Google credential 발급)**,
+이 토큰은 여러 소비처를 함께 연다 — **MCP mediator(Google credential 발급)**,
 **gons-calendar MCP 등록**, **memo ingest(gon:memo-save 스킬)**. 유출 의심 시
-즉시 회전하고 아래 3곳을 **동시에** 교체한다. 한 곳이라도 빠지면 그 경로가
+즉시 회전하고 아래 **4곳을 동시에** 교체한다. 한 곳이라도 빠지면 그 경로가
 401로 끊긴다. 특히 `ingest.env` 유출은 메모 쓰기뿐 아니라 mediator를 통한
 Gmail/Calendar access token 발급까지 노출하므로 회전 누락이 위험하다.
+
+memo ingest 스킬은 **데스크톱과 192.168.0.5 서버 두 곳**에 각각 배치돼 있어
+`ingest.env`도 두 벌이다(값은 동일). 아래 3·4번을 모두 갱신해야 한다.
 
 ```bash
 NEW_TOKEN=$(openssl rand -hex 32)
 # 1. 운영 .env 갱신 (192.168.0.5의 compose .env) — app 재기동
+#    (working_dir이 root 소유라 sudo sed 필요할 수 있음)
 ssh gon@192.168.0.5 "cd /home/gon/projects/gon/gons-dashboard && \
-  sed -i 's/^MCP_DASHBOARD_TOKEN=.*/MCP_DASHBOARD_TOKEN='\"$NEW_TOKEN\"'/' .env && \
+  sudo sed -i 's/^MCP_DASHBOARD_TOKEN=.*/MCP_DASHBOARD_TOKEN='\"$NEW_TOKEN\"'/' .env && \
   docker --context home-server compose up -d --no-deps --force-recreate app"
 
 # 2. 사용자 머신의 Claude Code MCP 설정 갱신 (~/.claude.json의 gons-calendar env)
 
-# 3. memo ingest 스킬의 접속 정보 (gon:memo-save) — 에디터로 교체
-#    ~/.config/gons-dashboard/ingest.env 의 MEMO_INGEST_TOKEN 값을 $NEW_TOKEN 으로.
+# 3. 데스크톱 memo ingest 스킬 접속 정보 (gon:memo-save) — 에디터로 교체
+#    로컬 ~/.config/gons-dashboard/ingest.env 의 MEMO_INGEST_TOKEN 값을 $NEW_TOKEN 으로.
 #    (파일 mode 600 유지. 운영 .env의 MCP_DASHBOARD_TOKEN과 같은 값이어야 함.)
+
+# 4. 192.168.0.5 서버 memo ingest 스킬 접속 정보 (gon:memo-save)
+#    ssh gon@192.168.0.5 로 접속해 ~/.config/gons-dashboard/ingest.env 의
+#    MEMO_INGEST_TOKEN 값을 $NEW_TOKEN 으로 교체 (mode 600 유지).
+#    이 파일은 gon 소유라 sudo 불필요. MEMO_INGEST_URL=http://localhost:3020 (서버는 자기 자신).
 ```
 
 ### Calendar 위젯이 안 보일 때
