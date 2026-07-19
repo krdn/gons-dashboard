@@ -26,6 +26,17 @@ const TEMP: Tier = { warn: 80, crit: 90 };
 const GPU_VRAM: Tier = { warn: 90, crit: 97 };
 const GPU_TEMP: Tier = { warn: 85, crit: 90 };
 
+// 위젯 게이지 색상이 평가와 같은 기준을 쓰도록 단일 소스로 노출.
+export const VITALS_TIERS = {
+  cpu: CPU,
+  mem: MEM,
+  disk: DISK,
+  temp: TEMP,
+  gpuVram: GPU_VRAM,
+  gpuTemp: GPU_TEMP,
+} as const;
+export type VitalsTier = Tier;
+
 function tiered(
   suffix: string,
   value: number,

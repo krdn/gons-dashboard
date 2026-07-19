@@ -19,6 +19,7 @@ import {
 
 export { vitalsPayloadSchema };
 export type { VitalsPayload };
+export { VITALS_TIERS, type VitalsTier } from "./lib/evaluateVitals";
 
 /** payload.host 가 hosts.name 에 없을 때 — route 가 404 로 매핑. */
 export class UnknownHostError extends Error {
