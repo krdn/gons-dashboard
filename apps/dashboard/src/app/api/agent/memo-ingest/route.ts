@@ -49,28 +49,39 @@ export async function POST(req: Request) {
 
   const adminEmail = env.ADMIN_EMAILS.split(",")[0]?.trim().toLowerCase();
   if (!adminEmail) {
-    return new Response("ADMIN_EMAILS 미설정", { status: 500, headers: NO_STORE });
-  }
-  const row = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, adminEmail))
-    .limit(1);
-  if (row.length === 0) {
-    return new Response("User not found", { status: 404, headers: NO_STORE });
+    return Response.json({ error: "ADMIN_EMAILS 미설정" }, { status: 500, headers: NO_STORE });
   }
 
   const { content } = parsed.data;
   const title = parsed.data.title ?? deriveTitle(content);
 
+  // 오류 경계를 저장 시점까지로 좁힌다 — DB 조회·createMemo 실패는 여기서 500.
+  // (조회를 이 try 밖에 두면 throw 시 unhandled로 새 나가는 결함이 있었음.)
+  let memo: Awaited<ReturnType<typeof createMemo>>;
   try {
-    const memo = await createMemo({
+    const row = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, adminEmail))
+      .limit(1);
+    if (row.length === 0) {
+      return new Response("User not found", { status: 404, headers: NO_STORE });
+    }
+    memo = await createMemo({
       userId: row[0].id,
       source: "agent",
       title,
       rawContent: content,
       cleanedContent: content,
     });
+  } catch (err) {
+    console.error("[memo-ingest] 저장 실패", err);
+    return Response.json({ error: "Transient error" }, { status: 500, headers: NO_STORE });
+  }
+
+  // 저장은 이미 성공 — 이후 후처리 예약 실패가 응답을 뒤집으면 클라이언트가
+  // 500으로 오인해 재시도하고(비멱등) 메모가 중복 저장될 수 있다. 별도 try로 격리.
+  try {
     // createMemoAction 성공 분기와 동일 — best-effort, 실패는 cron sweep이 회수.
     after(() =>
       Promise.allSettled([
@@ -79,9 +90,8 @@ export async function POST(req: Request) {
       ]),
     );
     revalidatePath("/memos");
-    return Response.json({ id: memo.id }, { headers: NO_STORE });
   } catch (err) {
-    console.error("[memo-ingest] createMemo failed", err);
-    return new Response("Transient error", { status: 500, headers: NO_STORE });
+    console.error("[memo-ingest] 후처리 예약 실패(저장은 성공)", err);
   }
+  return Response.json({ id: memo.id }, { headers: NO_STORE });
 }

@@ -19,11 +19,12 @@ const TEST_BEARER = vi.hoisted(() => {
 });
 
 let userRow: { id: string }[] = [];
+let selectError: Error | null = null;
 vi.mock("@/shared/lib/db/client", () => {
   const selectChain = {
     from: () => selectChain,
     where: () => selectChain,
-    limit: () => Promise.resolve(userRow),
+    limit: () => (selectError ? Promise.reject(selectError) : Promise.resolve(userRow)),
   };
   return { db: { select: () => selectChain } };
 });
@@ -45,7 +46,8 @@ vi.mock("@/features/memo-actions", () => ({
 vi.mock("@/entities/memo/client", () => ({
   deriveTitle: (s: string) => s.trim().split(/[.!?。\n]/)[0].trim() || "(제목 없음)",
 }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const revalidatePathMock = vi.hoisted(() => vi.fn());
+vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 vi.mock("next/server", () => ({
   after: (cb: () => unknown) => afterCallbacks.push(cb),
 }));
@@ -67,9 +69,11 @@ const json = (o: unknown) => JSON.stringify(o);
 describe("/api/agent/memo-ingest", () => {
   beforeEach(() => {
     userRow = [{ id: "u1" }];
+    selectError = null;
     createMemoMock.mockReset().mockResolvedValue({ id: "m1", category: null });
     classifyMock.mockReset().mockResolvedValue({ kind: "classified" });
     extractMock.mockReset().mockResolvedValue({ kind: "extracted", count: 0 });
+    revalidatePathMock.mockReset();
     afterCallbacks.length = 0;
   });
 
@@ -103,6 +107,25 @@ describe("/api/agent/memo-ingest", () => {
     createMemoMock.mockRejectedValue(new Error("db down"));
     const res = await POST(makeReq(TEST_BEARER, json({ content: "본문" })));
     expect(res.status).toBe(500);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(await res.json()).toEqual({ error: expect.any(String) });
+  });
+  it("DB 조회(user select) 실패 → 500 (unhandled로 새지 않음)", async () => {
+    selectError = new Error("connection refused");
+    const res = await POST(makeReq(TEST_BEARER, json({ content: "본문" })));
+    expect(res.status).toBe(500);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(await res.json()).toEqual({ error: expect.any(String) });
+    expect(createMemoMock).not.toHaveBeenCalled();
+  });
+  it("저장 성공 후 후처리(revalidatePath) throw해도 200 유지 (재시도로 인한 중복 저장 방지)", async () => {
+    revalidatePathMock.mockImplementation(() => {
+      throw new Error("revalidate boom");
+    });
+    const res = await POST(makeReq(TEST_BEARER, json({ content: "본문" })));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: "m1" });
+    expect(createMemoMock).toHaveBeenCalledTimes(1);
   });
   it("정상 → 200 {id} + no-store + trim 저장 + title 파생 + after 예약", async () => {
     const res = await POST(
