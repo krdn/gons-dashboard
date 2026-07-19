@@ -9,7 +9,7 @@
 
 import cron from "node-cron";
 import { runDeployCycle } from "./autopilot/deploy-watcher.js";
-import { waitForAppReady } from "./waitForAppReady.js";
+import { waitForAppReady, retryUntilOk } from "./waitForAppReady.js";
 
 const APP_URL = process.env.APP_URL ?? "http://app:3020";
 const TOKEN = process.env.CRON_BEARER_TOKEN;
@@ -32,6 +32,7 @@ const DEFAULT_TIMEOUT_MS = 60_000;
  * @param {string} path
  * @param {string} label
  * @param {number} [timeoutMs]
+ * @returns {Promise<boolean>} HTTP 2xx 면 true, 그 외(non-2xx/네트워크/타임아웃) false.
  */
 async function callCron(path, label, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const startedAt = new Date();
@@ -46,11 +47,12 @@ async function callCron(path, label, timeoutMs = DEFAULT_TIMEOUT_MS) {
     if (response.ok) {
       console.log(`[cron] ${label} OK ${response.status} (${elapsed}ms)`);
       console.log(`[cron] ${label} body: ${text.slice(0, 2000)}`);
-    } else {
-      console.error(
-        `[cron] ${label} FAIL ${response.status} (${elapsed}ms) ${text.slice(0, 2000)}`,
-      );
+      return true;
     }
+    console.error(
+      `[cron] ${label} FAIL ${response.status} (${elapsed}ms) ${text.slice(0, 2000)}`,
+    );
+    return false;
   } catch (error) {
     const elapsed = Date.now() - startedAt.getTime();
     // AbortSignal.timeout() 발화 시 TimeoutError(name) — 일반 네트워크 에러와 구분.
@@ -59,7 +61,23 @@ async function callCron(path, label, timeoutMs = DEFAULT_TIMEOUT_MS) {
       `[cron] ${label} ${isTimeout ? `TIMEOUT (${timeoutMs}ms, elapsed ${elapsed}ms)` : "ERROR"}`,
       error,
     );
+    return false;
   }
+}
+
+/**
+ * catchup 전용 — callCron 을 retryUntilOk 로 감싼다. 정규 스케줄 cron 은 사용 금지
+ * (알림 cron 은 재시도 시 이중 발송). catchup 대상(poll-gmail·daily-fortunes·
+ * daily-tri)은 재실행 안전: 일진 두 엔드포인트는 for_date unique index 로 row
+ * idempotent, poll-gmail 은 다음 정시 재실행이 있어 무해.
+ *
+ * @param {string} path
+ * @param {string} label
+ * @param {number} timeoutMs
+ * @returns {Promise<boolean>}
+ */
+function callCronWithRetry(path, label, timeoutMs) {
+  return retryUntilOk(() => callCron(path, label, timeoutMs), label);
 }
 
 // 15분마다 — Gmail polling. 사용자별 동기화 주기는 app 레이어가 isSyncDue로 판정.
@@ -210,15 +228,17 @@ console.log(
 setTimeout(() => {
   void (async () => {
     await waitForAppReady(`${APP_URL}/api/health`);
-    await callCron("/api/cron/poll-gmail", "poll-gmail (startup)", 300_000);
+    // ready-guard 예산 초과(app 이 120s 안에 못 뜬 경우)에도 callCronWithRetry 의
+    // backoff 재시도가 그날 작업을 회수한다 — #133 MEDIUM #1 의 잔여 창을 닫음.
+    await callCronWithRetry("/api/cron/poll-gmail", "poll-gmail (startup)", 300_000);
     await new Promise((resolve) => setTimeout(resolve, 30_000));
-    await callCron(
+    await callCronWithRetry(
       "/api/cron/generate-daily-fortunes",
       "generate-daily-fortunes (startup)",
       180_000,
     );
     await new Promise((resolve) => setTimeout(resolve, 30_000));
-    await callCron(
+    await callCronWithRetry(
       "/api/cron/generate-daily-tri-fortunes",
       "generate-daily-tri-fortunes (startup)",
       120_000,

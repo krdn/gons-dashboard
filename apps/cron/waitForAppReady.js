@@ -69,3 +69,41 @@ export async function waitForAppReady(healthUrl, options = {}) {
     await sleepFn(intervalMs);
   }
 }
+
+/**
+ * @typedef {object} RetryOptions
+ * @property {number} [maxAttempts] 총 시도 횟수. 기본 3.
+ * @property {number} [backoffMs] 재시도 사이 대기. 기본 15초.
+ * @property {(ms: number) => Promise<void>} [sleepFn] 테스트 주입용 sleep.
+ * @property {(msg: string) => void} [log] 로거. 기본 console.error.
+ */
+
+/**
+ * callFn 이 true 를 줄 때까지 backoff 재시도한다. catchup 전용 — 정규 스케줄 cron
+ * 에는 쓰지 말 것(알림 cron 은 재시도 시 이중 발송). ready-guard 예산 초과로 app 이
+ * 늦게 뜬 경우에도 이 재시도가 그날 작업을 회수한다(#133 MEDIUM #1 잔여 창).
+ *
+ * @param {() => Promise<boolean>} callFn 1회 실행. 성공 시 true.
+ * @param {string} label 로깅용.
+ * @param {RetryOptions} [options]
+ * @returns {Promise<boolean>} 한 번이라도 성공하면 true, 전부 실패하면 false.
+ */
+export async function retryUntilOk(callFn, label, options = {}) {
+  const {
+    maxAttempts = 3,
+    backoffMs = 15_000,
+    sleepFn = defaultSleep,
+    log = console.error,
+  } = options;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const ok = await callFn();
+    if (ok) return true;
+    if (attempt < maxAttempts) {
+      log(`[cron] ${label} 재시도 ${attempt}/${maxAttempts - 1} — ${backoffMs}ms 후`);
+      await sleepFn(backoffMs);
+    }
+  }
+  log(`[cron] ${label} ${maxAttempts}회 모두 실패 — 그날 작업 소실 가능 (수동 확인 필요)`);
+  return false;
+}

@@ -1,6 +1,6 @@
 // apps/cron/waitForAppReady.test.js
 import { describe, it, expect, vi } from "vitest";
-import { waitForAppReady } from "./waitForAppReady.js";
+import { waitForAppReady, retryUntilOk } from "./waitForAppReady.js";
 
 const noop = () => {};
 const HEALTH_URL = "http://app:3020/api/health";
@@ -69,5 +69,52 @@ describe("waitForAppReady", () => {
     expect(ready).toBe(false);
     expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(sleepFn).not.toHaveBeenCalled();
+  });
+});
+
+describe("retryUntilOk", () => {
+  it("첫 시도 성공이면 재시도·sleep 없음", async () => {
+    const callFn = vi.fn().mockResolvedValue(true);
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+
+    const ok = await retryUntilOk(callFn, "job", { sleepFn, log: noop });
+
+    expect(ok).toBe(true);
+    expect(callFn).toHaveBeenCalledTimes(1);
+    expect(sleepFn).not.toHaveBeenCalled();
+  });
+
+  it("실패 후 성공하면 backoff 대기 뒤 true — ready-guard 예산 초과 회수 경로", async () => {
+    const callFn = vi
+      .fn()
+      .mockResolvedValueOnce(false) // app 아직 미준비(예산 초과 후 첫 시도)
+      .mockResolvedValueOnce(true); // backoff 뒤 ready
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+
+    const ok = await retryUntilOk(callFn, "daily-fortunes", {
+      sleepFn,
+      log: noop,
+      backoffMs: 100,
+    });
+
+    expect(ok).toBe(true);
+    expect(callFn).toHaveBeenCalledTimes(2);
+    expect(sleepFn).toHaveBeenCalledTimes(1);
+    expect(sleepFn).toHaveBeenCalledWith(100);
+  });
+
+  it("maxAttempts 모두 실패면 false — 시도 사이에만 sleep(마지막 후 없음)", async () => {
+    const callFn = vi.fn().mockResolvedValue(false);
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+
+    const ok = await retryUntilOk(callFn, "job", {
+      sleepFn,
+      log: noop,
+      maxAttempts: 3,
+    });
+
+    expect(ok).toBe(false);
+    expect(callFn).toHaveBeenCalledTimes(3);
+    expect(sleepFn).toHaveBeenCalledTimes(2); // 시도 사이 2번, 마지막 후 0번
   });
 });
