@@ -114,7 +114,12 @@ export async function listUnnotifiedCriticalEvents(
     .limit(limit);
 }
 
-/** 발생 알림은 나갔는데 해소 통지가 안 나간 critical — 회복 알림 대상. */
+/**
+ * 발생 알림은 나갔는데 해소 통지가 안 나간 이벤트 — 회복 알림 대상.
+ * severity 조건은 걸지 않는다: notified_at 은 critical 통지에만 세팅되므로
+ * 그 자체가 "critical 로 통지했던 이력"이다. severity='critical' 을 추가하면
+ * critical→warning 완화 후 해소된 이벤트의 회복 알림이 누락된다 (Codex P1).
+ */
 export async function listUnnotifiedResolvedEvents(
   limit = 20,
 ): Promise<MonitoringEventRow[]> {
@@ -123,7 +128,6 @@ export async function listUnnotifiedResolvedEvents(
     .from(monitoringEvents)
     .where(
       and(
-        eq(monitoringEvents.severity, "critical"),
         isNotNull(monitoringEvents.resolvedAt),
         isNotNull(monitoringEvents.notifiedAt),
         isNull(monitoringEvents.resolvedNotifiedAt),
@@ -154,16 +158,35 @@ export async function hasRecentNotification(
   return rows.length > 0;
 }
 
-export async function markEventNotified(id: string): Promise<void> {
-  await db
+/**
+ * 발생 통지 원자적 claim — notified_at IS NULL 인 row 만 마킹하고 성공 여부를
+ * 반환한다. 동시 sweep 이 같은 이벤트를 읽어도 한쪽만 true 를 받아 발송하므로
+ * 이중 발송이 없다 (SELECT→발송→마킹 순서의 race 방어 — Codex P1).
+ */
+export async function claimEventNotification(id: string): Promise<boolean> {
+  const rows = await db
     .update(monitoringEvents)
     .set({ notifiedAt: new Date() })
-    .where(eq(monitoringEvents.id, id));
+    .where(
+      and(eq(monitoringEvents.id, id), isNull(monitoringEvents.notifiedAt)),
+    )
+    .returning({ id: monitoringEvents.id });
+  return rows.length > 0;
 }
 
-export async function markEventResolvedNotified(id: string): Promise<void> {
-  await db
+/** 해소 통지 원자적 claim — resolved_notified_at IS NULL 인 row 만. */
+export async function claimEventResolvedNotification(
+  id: string,
+): Promise<boolean> {
+  const rows = await db
     .update(monitoringEvents)
     .set({ resolvedNotifiedAt: new Date() })
-    .where(eq(monitoringEvents.id, id));
+    .where(
+      and(
+        eq(monitoringEvents.id, id),
+        isNull(monitoringEvents.resolvedNotifiedAt),
+      ),
+    )
+    .returning({ id: monitoringEvents.id });
+  return rows.length > 0;
 }

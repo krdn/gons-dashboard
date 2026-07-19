@@ -26,6 +26,9 @@ HOST_NAME="${HOST_NAME:-$(hostname)}"
 HOST_NAME="${HOST_NAME//[^A-Za-z0-9._-]/}" # JSON 안전 문자만
 INTERVAL_SEC="${INTERVAL_SEC:-15}"
 CHECKS_EVERY_N="${CHECKS_EVERY_N:-4}"
+# 양의 정수가 아니면 기본값 — 0 은 나머지 연산 오류, 비정수는 산술 오류로
+# 에이전트가 재시작 루프에 빠진다 (Codex P2).
+[[ "$CHECKS_EVERY_N" =~ ^[1-9][0-9]*$ ]] || CHECKS_EVERY_N=4
 WATCH_SERVICES="${WATCH_SERVICES:-}"
 WATCH_TIMERS="${WATCH_TIMERS:-}"
 HOSTCRON_SPECS="${HOSTCRON_SPECS:-}"

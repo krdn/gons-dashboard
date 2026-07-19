@@ -9,8 +9,8 @@ export {
   listUnnotifiedCriticalEvents,
   listUnnotifiedResolvedEvents,
   hasRecentNotification,
-  markEventNotified,
-  markEventResolvedNotified,
+  claimEventNotification,
+  claimEventResolvedNotification,
 } from "./api/events";
 export {
   insertMetricSamples,
