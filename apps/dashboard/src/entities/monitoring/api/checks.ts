@@ -6,6 +6,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { checkResults } from "@/shared/lib/db/schema";
 import {
+  type CheckDetailValue,
   type CheckResultRow,
   type LatestCheck,
   type NewCheckResult,
@@ -28,7 +29,7 @@ export async function listLatestChecks(): Promise<LatestCheck[]> {
     kind: string;
     target: string;
     status: string;
-    detail: Record<string, string | number | boolean> | null;
+    detail: Record<string, CheckDetailValue> | null;
     checked_at: Date | string;
   }>(sql`
     SELECT DISTINCT ON (kind, target) kind, target, status, detail, checked_at

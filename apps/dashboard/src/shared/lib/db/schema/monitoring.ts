@@ -110,7 +110,10 @@ export const checkResults = pgTable(
     // 'ok' | 'warning' | 'critical' | 'unknown'
     status: text("status").notNull(),
     // kind별 부가 정보 (예: { latencyMs, httpStatus } / { daysLeft } / { active, nRestarts })
-    detail: jsonb("detail").$type<Record<string, string | number | boolean>>(),
+    // string[] 은 Phase 3 §H — 포트 목록·fail2ban jail 목록.
+    detail: jsonb("detail").$type<
+      Record<string, string | number | boolean | string[]>
+    >(),
     hostId: uuid("host_id").references(() => hosts.id, { onDelete: "cascade" }),
     checkedAt: timestamp("checked_at", { withTimezone: true })
       .notNull()

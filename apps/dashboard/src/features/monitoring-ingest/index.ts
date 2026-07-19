@@ -14,7 +14,9 @@ import {
 } from "@/entities/monitoring/server";
 import { flattenVitals } from "./lib/flattenVitals";
 import { evaluateVitals } from "./lib/evaluateVitals";
-import { judgeChecks } from "./lib/judgeChecks";
+import { judgeChecks, type CheckVerdict } from "./lib/judgeChecks";
+import { sourceForKind } from "./lib/sourceForKind";
+import { judgeSecurity } from "@/features/monitoring-security";
 import {
   vitalsPayloadSchema,
   type VitalsPayload,
@@ -23,9 +25,15 @@ import {
   checksPayloadSchema,
   type ChecksPayload,
 } from "./model/checksSchema";
+import {
+  securityPayloadSchema,
+  type SecurityPayload,
+} from "./model/securitySchema";
 
-export { vitalsPayloadSchema, checksPayloadSchema };
-export type { VitalsPayload, ChecksPayload };
+export { vitalsPayloadSchema, checksPayloadSchema, securityPayloadSchema };
+export type { VitalsPayload, ChecksPayload, SecurityPayload };
+export type { CheckVerdict };
+export { sourceForKind };
 export { VITALS_TIERS, type VitalsTier } from "./lib/evaluateVitals";
 
 /** payload.host 가 hosts.name 에 없을 때 — route 가 404 로 매핑. */
@@ -99,7 +107,16 @@ export async function ingestChecks(
   const checkedAt = payload.collectedAt
     ? new Date(payload.collectedAt)
     : new Date();
-  const verdicts = judgeChecks(payload, checkedAt);
+  // Phase 2 판정 + Phase 3 보안 판정.
+  //
+  // ⚠️ security 섹션이 없어도 judgeSecurity 를 건너뛰지 않는다. 에이전트는 collector
+  // 산출물이 없거나 노후(15분)면 섹션을 생략하는데, 그때 판정까지 건너뛰면
+  // check_results 에 새 행이 안 생겨 보드가 **직전 상태(ok/critical)를 계속 표시**한다.
+  // 빈 객체를 넘기면 5종 모두 not-reported unknown 행이 생겨 관측 공백이 드러난다.
+  const verdicts: CheckVerdict[] = [
+    ...judgeChecks(payload, checkedAt),
+    ...judgeSecurity(payload.security ?? {}, payload.host),
+  ];
 
   const inserted = await insertCheckResults(
     verdicts.map(
@@ -120,7 +137,7 @@ export async function ingestChecks(
       const dedupKey = `host:${hostId}:${v.dedupKeySuffix}`;
       if (v.status === "critical" || v.status === "warning") {
         await recordEvent({
-          source: v.kind === "service" ? "service" : "cron",
+          source: sourceForKind(v.kind),
           severity: v.status,
           title: v.title,
           detail: JSON.stringify(v.detail),
@@ -131,6 +148,11 @@ export async function ingestChecks(
         await resolveEvent(dedupKey);
       }
       // unknown: no-op — 관찰 불가는 위반도 정상 복귀도 아니다.
+      //
+      // 결과적으로 collector 가 죽으면 보드는 회색(unknown)이 되지만 직전에 열린
+      // critical 이벤트는 타임라인에 그대로 남는다. 보드/타임라인 불일치처럼
+      // 보이지만 의도된 동작이다 — 방화벽이 복구됐는지 **확인할 수 없는** 상태에서
+      // 이벤트를 해소하면 실제로 뚫린 채로 알림만 사라진다.
     }
   } catch (err) {
     logger.warn("monitoring-ingest", "check-event-record-failed", {

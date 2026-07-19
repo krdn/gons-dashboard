@@ -32,3 +32,14 @@ export function detailStr(check: LatestCheck, key: string): string | null {
   const v = check.detail?.[key];
   return typeof v === "string" ? v : null;
 }
+
+export function detailBool(check: LatestCheck, key: string): boolean | null {
+  const v = check.detail?.[key];
+  return typeof v === "boolean" ? v : null;
+}
+
+/** 문자열 배열 detail (Phase 3 — 포트 목록·fail2ban jail 목록). */
+export function detailArr(check: LatestCheck, key: string): string[] | null {
+  const v = check.detail?.[key];
+  return Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
+}

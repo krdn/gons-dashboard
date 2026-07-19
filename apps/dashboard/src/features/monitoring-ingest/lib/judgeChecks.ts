@@ -8,13 +8,18 @@
 //             / age>2×maxAge→critical / age>maxAge→warning / 그 외 ok
 //
 // status 소비 규칙: critical|warning→recordEvent, ok→resolveEvent, unknown→no-op.
+import {
+  type CheckDetailValue,
+  type CheckKind,
+} from "@/entities/monitoring/model/types";
 import { type ChecksPayload } from "../model/checksSchema";
 
 export interface CheckVerdict {
-  kind: "service" | "timer" | "hostcron";
+  /** Phase 3 에서 보안(§H)·데이터스토어(§G) kind 가 추가됐다 — entities 의 CheckKind 와 동치. */
+  kind: Exclude<CheckKind, "http" | "ssl">;
   target: string;
   status: "ok" | "warning" | "critical" | "unknown";
-  detail: Record<string, string | number | boolean>;
+  detail: Record<string, CheckDetailValue>;
   /** recordEvent dedupKey 접미 — hostId 는 호출부가 접두한다. */
   dedupKeySuffix: string;
   /** 위반 시 이벤트 제목. */

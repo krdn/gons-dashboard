@@ -23,7 +23,7 @@ METRICS_INGEST_TOKEN=<운영 .env 의 METRICS_INGEST_TOKEN 값>
 DASHBOARD_URL=http://localhost:3020
 HOST_NAME=home-server
 INTERVAL_SEC=15
-# --- Phase 2 checks (미설정 시 checks push 생략 — vitals 만 동작) ---
+# --- Phase 2 checks (미설정 시 해당 관측 배열만 생략 — heartbeat 는 계속 전송) ---
 # ⚠️ 공백·파이프 포함 값은 반드시 따옴표 — 검증 절차가 이 파일을 셸에서
 # source 하므로 따옴표 없으면 두 번째 단어부터 명령으로 해석된다.
 # (systemd EnvironmentFile 도 따옴표를 벗겨 읽으므로 양쪽 다 안전.)
@@ -46,6 +46,28 @@ sudo useradd --system --no-create-home --shell /usr/sbin/nologin gons-agent || t
 sudo cp gons-monitoring-agent.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now gons-monitoring-agent
+
+# 5. 보안 수집기 (Phase 3 §H — 선택. 미설치 시 보안 보드가 "관찰 불가")
+sudo cp gons-security-collect.sh /opt/gons/monitoring-agent/
+sudo chmod 755 /opt/gons/monitoring-agent/gons-security-collect.sh
+sudo cp gons-security-collect.service gons-security-collect.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gons-security-collect.timer
+```
+
+### 보안 baseline 갱신 (Phase 3 §H)
+
+`features/monitoring-security/config/baseline.ts` 의 `EXPECTED_IPTABLES` 와
+`ALLOWED_PORTS` 는 **2026-07-20 운영 실측값이 이미 들어있다** — 설치 시 별도 작업 불필요.
+
+갱신이 필요한 때는 **방화벽 규칙이나 노출 포트를 의도적으로 바꿨을 때뿐**이다.
+그 경우 관제가 critical/warning 을 띄우는 것이 정상 동작이므로, **변경이 의도된
+것인지 감사한 뒤에** baseline 을 새 실측값으로 올린다. 경고를 없애려고 무조건
+baseline 을 덮어쓰면 관제가 무력화된다.
+
+```bash
+sudo /opt/gons/monitoring-agent/gons-security-collect.sh --stdout
+# → iptables.ruleCount / iptables.specHash / ports.entries 를 확인 후 반영
 ```
 
 ## 검증
@@ -72,7 +94,10 @@ journalctl -u gons-monitoring-agent -n 20 --no-pager
 - 대시보드가 내려가 있어도 에이전트는 종료하지 않는다 — push 실패는 stderr 1줄,
   다음 주기에 자동 회복.
 - checks 관련 (Phase 2):
-  - `WATCH_SERVICES`/`WATCH_TIMERS`/`HOSTCRON_SPECS` 셋 다 비면 checks push 자체를 생략.
+  - `WATCH_SERVICES`/`WATCH_TIMERS`/`HOSTCRON_SPECS` 셋 다 비어도 **checks push 는
+    계속된다** (`{"host":"..."}` heartbeat). 개별 관측 배열만 생략된다 — push 를
+    멈추면 서버가 보안 판정을 갱신하지 못해 보드에 직전 상태가 남기 때문
+    (Phase 3: security 미보고 시 서버가 5종을 unknown 으로 기록).
   - `HOSTCRON_SPECS` 의 로그 파일은 gons-agent 유저가 읽을 수 있어야 한다
     (world-readable 권장) — 읽기 불가면 대시보드에 "unknown" 으로 표시
     (오탐 대신 관찰 불가 표기). 필요 시 `chmod o+r <로그>`.
@@ -82,3 +107,15 @@ journalctl -u gons-monitoring-agent -n 20 --no-pager
     2026-07-19 운영 가동에서 telegram-* 3건으로 실증).
   - oneshot 유닛(docker-user-rules 등)은 `WATCH_SERVICES` 에 넣지 말 것 —
     inactive 가 정상이라 상시 warning 오탐이 된다 (Phase 3 에서 별도 판정).
+- 보안 수집 관련 (Phase 3 §H):
+  - **에이전트는 특권 명령을 직접 실행하지 않는다.** 유닛의 `NoNewPrivileges=yes` 가
+    setuid 를 차단해 `sudo` 자체가 동작하지 않기 때문 (실측: `systemd-run -p
+    NoNewPrivileges=yes` → "sudo: The 'no new privileges' flag is set"). 대신 root
+    oneshot collector 가 `/run/gons-monitoring/security.json` 에 쓰고 에이전트는 읽기만 한다.
+  - collector 유닛에 **`PrivateNetwork=yes` 를 넣지 말 것** — 네트워크 네임스페이스가
+    netfilter 규칙까지 격리해 DOCKER-USER 가 안 보인다 (실측: 격리 시 1줄 / 미격리 6줄).
+    외부 통신 차단은 `IPAddressDeny=any` 로 (호스트 netns 보존).
+  - `RuntimeDirectory=` 는 **`RuntimeDirectoryPreserve=yes` 와 함께** 써야 한다 —
+    `Type=oneshot` 은 종료가 곧 중지라 파일을 쓰자마자 디렉토리가 삭제된다 (실측 확인).
+  - 스냅샷이 15분 넘게 낡으면 에이전트가 중계하지 않는다 — 낡은 값을 현재값으로
+    재사용하지 않기 위함. 보드에는 "관찰 불가" 로 뜬다.

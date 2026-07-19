@@ -173,9 +173,28 @@ ts_to_epoch() {
   date -d "$stripped" +%s 2>/dev/null || echo ""
 }
 
+# 보안 관측치 (Phase 3 §H) — root collector 가 /run 에 쓴 JSON 을 **읽기만** 한다.
+# 에이전트는 NoNewPrivileges=yes 라 sudo 가 불가능하므로 직접 수집하지 않는다.
+# 파일이 없거나 노후(기본 15분 초과)면 빈 문자열 → security 섹션 생략 → 서버가
+# not-reported unknown 으로 판정한다 (낡은 스냅샷을 현재값으로 재사용하지 않는다).
+SECURITY_FILE="${SECURITY_FILE:-/run/gons-monitoring/security.json}"
+SECURITY_MAX_AGE_MIN="${SECURITY_MAX_AGE_MIN:-15}"
+
+read_security_json() {
+  [ -r "$SECURITY_FILE" ] || return 1
+  local mtime age_min
+  mtime=$(stat -c %Y "$SECURITY_FILE" 2>/dev/null) || return 1
+  age_min=$(((  $(date +%s) - mtime ) / 60))
+  [ "$age_min" -le "$SECURITY_MAX_AGE_MIN" ] || return 1
+  # 한 줄 JSON 이 아니면(부분 기록 등) 중계하지 않는다 — collector 는 원자적 mv 를
+  # 쓰므로 정상 상황에서 부분 파일은 관측되지 않는다.
+  head -c 100000 "$SECURITY_FILE" | tr -d '\n'
+}
+
 build_checks_payload() {
-  local svc_json="" timer_json="" cron_json=""
+  local svc_json="" timer_json="" cron_json="" sec_json=""
   local unit state nrestarts
+  sec_json=$(read_security_json) || sec_json=""
 
   for unit in $WATCH_SERVICES; do
     state=$(systemctl is-active "$unit" 2>/dev/null)
@@ -217,13 +236,16 @@ build_checks_payload() {
     fi
   done
 
-  [ -z "$svc_json$timer_json$cron_json" ] && return 1 # 감시 대상 미설정 — push 생략
-
+  # ⚠️ 관측치가 하나도 없어도 push 를 생략하지 않는다. 서버는 checks 를 받을 때마다
+  # 보안 5종 판정을 갱신하는데(관측 없으면 unknown), push 자체가 없으면 갱신이 멈춰
+  # check_results 에 직전 상태(ok/critical)가 그대로 남는다 — collector 가 죽어도
+  # 보드는 "정상"으로 보이는 미탐. 빈 payload 라도 heartbeat 로 보낸다.
   printf '{'
   printf '"host":"%s"' "$HOST_NAME"
   [ -n "$svc_json" ] && printf ',"services":[%s]' "$svc_json"
   [ -n "$timer_json" ] && printf ',"timers":[%s]' "$timer_json"
   [ -n "$cron_json" ] && printf ',"hostCron":[%s]' "$cron_json"
+  [ -n "$sec_json" ] && printf ',"security":%s' "$sec_json"
   printf '}'
 }
 
@@ -264,7 +286,7 @@ push_vitals() { push "/api/agent/metrics-ingest" "$(build_payload)"; }
 
 push_checks() {
   local payload
-  payload=$(build_checks_payload) || return 0 # 감시 대상 미설정 — 무해
+  payload=$(build_checks_payload) # 관측치가 없어도 heartbeat 로 push 한다
   push "/api/agent/checks-ingest" "$payload"
 }
 
@@ -277,7 +299,8 @@ case "$MODE" in
     collect
     build_payload
     echo
-    build_checks_payload && echo || echo "(checks: 감시 대상 미설정)"
+    build_checks_payload
+    echo
     ;;
   once)
     sleep 1
