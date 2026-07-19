@@ -23,7 +23,7 @@ METRICS_INGEST_TOKEN=<운영 .env 의 METRICS_INGEST_TOKEN 값>
 DASHBOARD_URL=http://localhost:3020
 HOST_NAME=home-server
 INTERVAL_SEC=15
-# --- Phase 2 checks (미설정 시 checks push 생략 — vitals 만 동작) ---
+# --- Phase 2 checks (미설정 시 해당 관측 배열만 생략 — heartbeat 는 계속 전송) ---
 # ⚠️ 공백·파이프 포함 값은 반드시 따옴표 — 검증 절차가 이 파일을 셸에서
 # source 하므로 따옴표 없으면 두 번째 단어부터 명령으로 해석된다.
 # (systemd EnvironmentFile 도 따옴표를 벗겨 읽으므로 양쪽 다 안전.)
@@ -94,7 +94,10 @@ journalctl -u gons-monitoring-agent -n 20 --no-pager
 - 대시보드가 내려가 있어도 에이전트는 종료하지 않는다 — push 실패는 stderr 1줄,
   다음 주기에 자동 회복.
 - checks 관련 (Phase 2):
-  - `WATCH_SERVICES`/`WATCH_TIMERS`/`HOSTCRON_SPECS` 셋 다 비면 checks push 자체를 생략.
+  - `WATCH_SERVICES`/`WATCH_TIMERS`/`HOSTCRON_SPECS` 셋 다 비어도 **checks push 는
+    계속된다** (`{"host":"..."}` heartbeat). 개별 관측 배열만 생략된다 — push 를
+    멈추면 서버가 보안 판정을 갱신하지 못해 보드에 직전 상태가 남기 때문
+    (Phase 3: security 미보고 시 서버가 5종을 unknown 으로 기록).
   - `HOSTCRON_SPECS` 의 로그 파일은 gons-agent 유저가 읽을 수 있어야 한다
     (world-readable 권장) — 읽기 불가면 대시보드에 "unknown" 으로 표시
     (오탐 대신 관찰 불가 표기). 필요 시 `chmod o+r <로그>`.
