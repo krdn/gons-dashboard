@@ -235,9 +235,11 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
-// 매일 10:40 KST — SSL 인증서 만료 D-day 점검 (관제 #323 Phase 2 §F).
+// 매시간 53분 KST — SSL 인증서 만료 D-day 점검 (관제 #323 Phase 2 §F).
+// 하루 1회(40 10 * * *)였으나 갱신 직후 최대 24시간 낡은 "만료됨"이 표시되어
+// 거짓 경보를 유발 — 매시간으로 단축. 만료일은 일 단위 값이라 이보다 잦을 필요 없음.
 cron.schedule(
-  "40 10 * * *",
+  "53 * * * *",
   () => {
     void callCron("/api/cron/check-ssl", "check-ssl", 120_000);
   },
@@ -257,7 +259,7 @@ if (process.env.AUTOPILOT_DEPLOY === "on") {
 }
 
 console.log(
-  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST, check-http=* * * * * KST, monitoring-notify=* * * * * KST, check-ssl=40 10 * * * KST",
+  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST, check-http=* * * * * KST, monitoring-notify=* * * * * KST, check-ssl=53 * * * * KST",
 );
 
 // 시작 직후 catchup — 컨테이너가 정규 스케줄 시각에 떠있지 않았던 날(배포·재시작)
