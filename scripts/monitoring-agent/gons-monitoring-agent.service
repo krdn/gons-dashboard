@@ -1,0 +1,19 @@
+[Unit]
+Description=gons-dashboard monitoring agent (host vitals push)
+Documentation=https://github.com/krdn/gons-dashboard/tree/main/scripts/monitoring-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# METRICS_INGEST_TOKEN / DASHBOARD_URL / HOST_NAME / INTERVAL_SEC
+EnvironmentFile=/etc/default/gons-monitoring-agent
+ExecStart=/opt/gons/monitoring-agent/agent.sh
+Restart=always
+RestartSec=10
+# 수집 대상이 /proc·hwmon·nvidia-smi 뿐이라 root 불필요하지만,
+# 향후 journalctl·iptables 수집(Phase 2~3) 확장을 고려해 root 로 둔다.
+User=root
+
+[Install]
+WantedBy=multi-user.target
