@@ -150,7 +150,7 @@ Phase 2 의 0바이트 로그 오탐을 되풀이하지 않기 위해, **모든 
 
 ```jsonc
 "security": {
-  "iptables": { "observed": true,  "ruleCount": 6, "specHash": "ab12…" },
+  "iptables": { "observed": true, "present": true, "ruleCount": 6, "specHash": "ab12…" },
   "fail2ban": { "observed": false, "reason": "command-failed" },   // ← 빈 값 아님
   //           observed:true 일 때는 → { "observed": true, "jails": ["sshd", …] }
   "ufw":      { "observed": true,  "active": true },
@@ -172,10 +172,12 @@ kernel.` 로 나온다 — **"체인 없음"으로 읽히지 않는다**(nf_tabl
 → **`iptables -S`(전체)를 먼저 조회**하고, 그 성공 여부로 observed 를 판정한 뒤
 `^-N DOCKER-USER` 매칭으로 체인 존재를 따로 판정한다. 실측 확인: 존재 시 grep -c = 1.
 
+Zod 계약은 **판별 유니온** (`observed` → `present` 순으로 분기, 필드 유실 시 파싱 실패):
+
 ```jsonc
-"iptables": { "observed": true, "present": false }              // 체인 삭제 → critical
-"iptables": { "observed": true, "present": true, "ruleCount": 6, "specHash": "…" }
-"iptables": { "observed": false, "reason": "permission-denied" } // → unknown
+{ "observed": false, "reason": "permission-denied" }                    // → unknown
+{ "observed": true,  "present": false }                                 // 체인 삭제 → critical
+{ "observed": true,  "present": true, "ruleCount": 6, "specHash": "…" } // → 기대값 대조
 ```
 
 규칙:
@@ -247,22 +249,35 @@ DATASTORE_SPECS="pg|gons-dashboard|5440 pg|ais-prod|5438 … pg|sms-insights| re
 (`/etc/default/gons-monitoring-agent`, 포트 빈 값 = 미노출 → 에이전트가
 `observed:false, reason:"not-exposed"` 로 행 생성)
 
-**드리프트 방어**: env 와 `instances.ts` 가 갈릴 수 있으므로 —
-`judgeDatastores` 는 **`instances.ts` 를 기준**으로 순회하고, payload 에 없는 target 은
-`unknown`(`reason:"not-reported"`) 행을 **생성한다**. 에이전트 env 가 낡아 일부가 누락돼도
-보드에서 관측 공백으로 드러난다. README 에 두 곳을 함께 갱신하도록 명시.
+**드리프트 방어**: env 와 `instances.ts` 가 갈릴 수 있다. 판정은 항상 `instances.ts` 를
+기준으로 순회하며, 누락(`not-reported`)·포트 불일치(`spec-mismatch`)를 모두 `unknown` 으로
+드러낸다 (판정표는 아래). 에이전트 env 가 낡으면 보드에 관측 공백으로 보인다.
+README 에 두 곳을 함께 갱신하도록 명시.
 
 **수집·판정·결선 계약** (§H 와 동일 구조):
 
 - 수집: collector 가 아닌 **에이전트**가 실행 (특권 불요).
   `pg_isready -h 127.0.0.1 -p <port>` / `redis-cli -p <port> ping`, 각각 `timeout 5`.
   부재 시 `nc -z` 폴백. exit status 를 변환 전 확인.
-- payload: checks 에 `datastores: [{ target, kind, observed, reachable?, reason? }]` 섹션 추가.
+- payload: checks 에 `datastores: [{ kind, target, port, observed, reachable?, reason? }]` 추가.
   Zod 스키마는 `checksSchema.ts` 에 확장.
-- 판정: `judgeDatastores.ts` 순수 함수 — `observed:false` → **unknown** /
-  `reachable:false` → **critical** / `reachable:true` → ok.
-  포트 미노출 대상은 에이전트가 `observed:false, reason:"not-exposed"` 로 **항상 행을 낸다**
-  (제외하면 관측 공백이 사용자에게 안 보인다 — Codex P1 #7).
+  **`port` 를 반드시 싣는다** — 에이전트가 *실제로 점검한* 포트를 서버가 대조해야 한다.
+
+**식별자는 `(kind, target)` 복합** — `gons-dashboard`·`ais-prod`·`voice` 는 PG 와 Redis
+양쪽에 같은 이름으로 존재한다. `target` 만으로 매칭하면 Redis 관측치가 PG 행에 붙는다.
+(`check_results` 인덱스가 `(kind, target)` 복합인 이유와 동일.)
+
+- 판정: `judgeDatastores.ts` 순수 함수 — **`instances.ts` 를 기준으로 순회**하며
+  `(kind, target)` 으로 payload 를 조회:
+
+| 상황 | 판정 |
+|---|---|
+| `instances.ts` 에 `port` 없음 | **항상 unknown** (`not-exposed`) — payload 무관 |
+| payload 에 해당 `(kind,target)` 없음 | unknown (`not-reported`) — 낡은 env 노출 |
+| payload `port` ≠ 기대 `port` | **unknown (`spec-mismatch`)** — 엉뚱한 포트 점검이 ok 로 보이는 것 차단 |
+| `observed:false` | unknown (에이전트가 실은 reason) |
+| `reachable:false` | **critical** |
+| `reachable:true` | ok |
 - 결선: `ingestChecks` 에서 `judgeChecks()` 와 함께 호출, `sourceForKind` 로 `host` 매핑.
 - 표시: `/monitoring` 에 **데이터스토어 보드** 추가 (`page.tsx` 의 `byKind("pg"/"redis")`).
   `unknown` 회색 표시로 "관측 공백 ≠ 정상" 을 시각적으로 구분.
