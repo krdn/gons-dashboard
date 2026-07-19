@@ -38,21 +38,59 @@ describe("waitForAppReady", () => {
     expect(sleepFn).toHaveBeenCalledTimes(2);
   });
 
-  it("예산 소진까지 계속 실패면 false (best-effort 진행)", async () => {
+  it("안전 상한 소진까지 계속 실패면 false (주입 시계로 시간 경과 결정적 재현)", async () => {
     const fetchFn = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
     const sleepFn = vi.fn().mockResolvedValue(undefined);
+    // 주입 시계: 매 호출마다 5초 전진. sleepFn 이 mock 이라 실시간은 안 흐르므로
+    // nowFn 없이는 벽시계 기반 deadline 이 절대 소진되지 않는다(이 함수의 계약).
+    let clock = 0;
+    const nowFn = () => {
+      clock += 5_000;
+      return clock;
+    };
 
     const ready = await waitForAppReady(HEALTH_URL, {
       fetchFn,
       sleepFn,
+      nowFn,
       log: noop,
-      intervalMs: 10,
-      timeoutMs: 25, // 첫 시도 후 10+10 지나면 deadline 근접 → 종료
+      intervalMs: 5_000,
+      timeoutMs: 60_000, // 주입 시계로 60초 지나면 소진 → false
     });
 
     expect(ready).toBe(false);
-    // 마지막 시도 후에는 sleep 하지 않고 즉시 false — 무한 대기 방지.
     expect(fetchFn.mock.calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("옛 120초 예산을 훨씬 넘겨(≈200초) 실패하다 ready 되면 결국 true — 느린 부팅 창 차단", async () => {
+    // #133 핵심 계약: app 부팅이 오래 걸려도(마이그레이션 지연 등) catchup 은
+    // 결국 실행돼야 한다. 주입 시계로 매 폴링 5초 전진 → 40회 실패면 200초 경과.
+    // 옛 120s 예산이면 24회째(≈120초)에 false 반환해 catchup 소실. 기본 30분
+    // 상한이면 200초는 상한 안이라 40회째까지 폴링 후 ready → true.
+    let calls = 0;
+    const fetchFn = vi.fn().mockImplementation(async () => {
+      calls += 1;
+      if (calls <= 40) return { ok: false, status: 503 }; // 40회 ≈ 200초 경과
+      return { ok: true, status: 200 };
+    });
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+    let clock = 0;
+    const nowFn = () => {
+      clock += 5_000;
+      return clock;
+    };
+
+    // timeoutMs 미지정 → 기본 30분 상한. 주입 시계로 200초 경과 재현.
+    const ready = await waitForAppReady(HEALTH_URL, {
+      fetchFn,
+      sleepFn,
+      nowFn,
+      log: noop,
+      intervalMs: 5_000,
+    });
+
+    expect(ready).toBe(true);
+    expect(calls).toBe(41);
   });
 
   it("timeout 0 이면 1회만 시도하고 실패 시 false", async () => {

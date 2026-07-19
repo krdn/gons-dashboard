@@ -214,10 +214,15 @@ console.log(
 // 시작 직후 catchup — 컨테이너가 정규 스케줄 시각에 떠있지 않았던 날(배포·재시작)
 // 의 작업이 node-cron 미재생으로 소실되는 것을 방지.
 //
-// #133 MEDIUM #1 — app 미준비 시 catchup 의 silent fail 을 막기 위해, catchup 을
-// 실행하기 전 waitForAppReady 로 /api/health(DB SELECT 1 포함 readiness probe)가
-// 200 을 줄 때까지 폴링한다. ready 못 해도(false) best-effort 로 catchup 은 시도
-// 한다 — 기존 동작(무조건 시도)보다 나빠지지 않게.
+// #133 MEDIUM #1 — app 미준비 시 catchup 의 silent fail 을 막는다. 핵심 방어는
+// waitForAppReady 가 /api/health(DB SELECT 1 포함 readiness probe) 200 을 확인할
+// 때까지 "대기"하는 것 — 유한 재시도가 아니라, app 부팅이 아무리 오래 걸려도
+// (마이그레이션 지연 등) 안전 상한(30분) 안이면 결국 catchup 이 실행된다. 상한을
+// 넘기면(=인프라 장애 의심) false 지만, 이 setTimeout 코루틴만 폴링할 뿐 이미
+// 등록된 정규 스케줄 잡·이벤트 루프는 막지 않는다(스케줄 등록 후 fire).
+//
+// callCronWithRetry(=retryUntilOk∘callCron)는 이제 "ready 이후의 드문 transient"
+// (health 200 직후 라우트가 순간 5xx) 만 담당 — 느린 부팅은 위 대기가 처리.
 //
 // 일진 두 엔드포인트는 chart_id+for_date unique index 로 row 는 안전(UPSERT/
 // onConflictDoNothing). tri 는 LLM 없는 순수 계산이라 완전 idempotent.
@@ -228,8 +233,6 @@ console.log(
 setTimeout(() => {
   void (async () => {
     await waitForAppReady(`${APP_URL}/api/health`);
-    // ready-guard 예산 초과(app 이 120s 안에 못 뜬 경우)에도 callCronWithRetry 의
-    // backoff 재시도가 그날 작업을 회수한다 — #133 MEDIUM #1 의 잔여 창을 닫음.
     await callCronWithRetry("/api/cron/poll-gmail", "poll-gmail (startup)", 300_000);
     await new Promise((resolve) => setTimeout(resolve, 30_000));
     await callCronWithRetry(
