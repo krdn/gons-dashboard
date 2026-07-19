@@ -1,11 +1,17 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Highlighted } from "@/shared/ui/Highlighted";
-import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
+import type { Memo, MemoSource, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
 
 // 삭제 확인 상태가 원복되기까지의 유예 — 오클릭 방지와 재확인 부담 사이의 절충.
 const DELETE_CONFIRM_REVERT_MS = 3000;
+
+const SOURCE_BADGE: Record<MemoSource, string> = {
+  voice: "🎙 음성",
+  text: "✍ 텍스트",
+  agent: "🤖 에이전트",
+};
 
 interface MemoCardProps {
   memo: Memo;
@@ -176,7 +182,7 @@ export function MemoCard({
             )
           )}
           <span className="rounded px-1.5 py-0.5 text-xs text-neutral-500">
-            {isVoice ? "🎙 음성" : "✍ 텍스트"}
+            {SOURCE_BADGE[memo.source]}
           </span>
         </div>
       </header>
