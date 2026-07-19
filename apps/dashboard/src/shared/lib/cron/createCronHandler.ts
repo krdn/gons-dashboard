@@ -22,6 +22,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { verifyCronBearer } from "@/shared/lib/auth/cron";
 import { logger } from "@/shared/lib/log";
+import { recordCronRun } from "./recordCronRun";
 
 const ERROR_MAX_LEN = 200;
 
@@ -145,6 +146,7 @@ export function createCronHandler<TTarget, TPayload>(
     if (!verifyCronBearer(request)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
+    const startedAt = new Date(); // cron_runs 계측 기준 시각 (인증 이후)
 
     // 2. 활성 대상 select. throw 는 catch 안 함 (운영 fatal).
     const targets = await def.targetSelect();
@@ -196,6 +198,17 @@ export function createCronHandler<TTarget, TPayload>(
     if (failed > 0) {
       logger.warn(def.name, "partial-failure", { total: results.length, failed });
     }
+    // 관제 계측 (#323) — recordCronRun 은 절대 throw 하지 않는 계약 (best-effort).
+    // 401·targetSelect/extra fatal 경로는 기록하지 않는다 (완주한 실행만).
+    await recordCronRun({
+      job: def.name,
+      startedAt,
+      finishedAt: new Date(),
+      status: failed === 0 ? "ok" : succeeded > 0 ? "partial" : "error",
+      total: results.length,
+      succeeded,
+      failed,
+    });
     return NextResponse.json(envelope);
   };
 }
