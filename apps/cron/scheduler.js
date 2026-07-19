@@ -195,6 +195,16 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 매분 — 활성 호스트 docker stats 1사이클 수집 (관제 #323 Phase 1).
+// 수집 잡: 놓친 주기는 다음 분이 대체하므로 catchup·retry 대상 아님 (이슈 주의점 7).
+cron.schedule(
+  "* * * * *",
+  () => {
+    void callCron("/api/cron/collect-docker-stats", "collect-docker-stats", 50_000);
+  },
+  { timezone: TIMEZONE },
+);
+
 // autopilot — 5분 주기로 새 이미지 감지·배포·검증·롤백 (AUTOPILOT_DEPLOY=on 일 때만).
 if (process.env.AUTOPILOT_DEPLOY === "on") {
   cron.schedule(
@@ -208,7 +218,7 @@ if (process.env.AUTOPILOT_DEPLOY === "on") {
 }
 
 console.log(
-  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST",
+  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST",
 );
 
 // 시작 직후 catchup — 컨테이너가 정규 스케줄 시각에 떠있지 않았던 날(배포·재시작)
