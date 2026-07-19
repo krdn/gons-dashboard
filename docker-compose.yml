@@ -92,6 +92,10 @@ services:
       MCP_DASHBOARD_TOKEN: ${MCP_DASHBOARD_TOKEN}
       # 관제 metrics-ingest bearer (#323) — 호스트 에이전트 인증
       METRICS_INGEST_TOKEN: ${METRICS_INGEST_TOKEN}
+      # 관제 Phase 2 (#323) — 전부 optional (빈 값이면 해당 기능만 비활성)
+      HTTP_CHECK_CONNECT_IP: ${HTTP_CHECK_CONNECT_IP:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       # KRX OpenAPI (한국거래소) — 종목 마스터 주 1회 cron 시드
       KRX_OPENAPI_AUTH_KEY: ${KRX_OPENAPI_AUTH_KEY}
       # DART OpenAPI (PR #122) — KR 종목 PBR/배당/EPS/BPS overlay

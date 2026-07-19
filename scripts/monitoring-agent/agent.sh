@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # gons-monitoring-agent — 호스트 vitals 수집 → dashboard /api/agent/metrics-ingest push.
-# 이슈 #323 Phase 1. 컨테이너 격리로 앱이 직접 못 읽는 /proc·hwmon·GPU 지표를
-# 호스트에서 수집해 Bearer 인증으로 push 한다 (memo-ingest 패턴의 에이전트 push).
+# 이슈 #323 Phase 1·2. 컨테이너 격리로 앱이 직접 못 읽는 /proc·hwmon·GPU 지표와
+# systemd·cron 관찰치를 호스트에서 수집해 Bearer 인증으로 push 한다.
 #
 # 사용:
 #   agent.sh            # 루프 모드 (systemd 서비스용, INTERVAL_SEC 주기)
-#   agent.sh --once     # 1회 수집·전송 후 종료 (설치 스모크)
+#   agent.sh --once     # 1회 수집·전송 후 종료 (설치 스모크 — checks 포함)
 #   agent.sh --dry-run  # 1회 수집·payload 출력만 (전송 없음)
 #
 # env:
@@ -13,6 +13,11 @@
 #   DASHBOARD_URL         기본 http://localhost:3020
 #   HOST_NAME             기본 hostname — 대시보드 hosts.name 과 일치해야 함
 #   INTERVAL_SEC          기본 15
+#   CHECKS_EVERY_N        기본 4 — N사이클(기본 60초)마다 checks payload push
+#   WATCH_SERVICES        공백 구분 systemd 서비스 목록 (예: "nginx docker fail2ban")
+#   WATCH_TIMERS          공백 구분 타이머 유닛 목록 (예: "n8n-backup.timer certbot.timer")
+#   HOSTCRON_SPECS        공백 구분 "이름|로그경로|maxAge분" (예: "self-healing|/var/log/self-healing.log|75")
+#                         — maxAge분: 이 시간 넘게 로그 mtime 정지면 실행 흔적 없음 판정(서버측)
 set -u
 LC_ALL=C # awk printf 소수점이 로케일에 따라 콤마가 되는 것 방지
 
@@ -20,6 +25,10 @@ DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:3020}"
 HOST_NAME="${HOST_NAME:-$(hostname)}"
 HOST_NAME="${HOST_NAME//[^A-Za-z0-9._-]/}" # JSON 안전 문자만
 INTERVAL_SEC="${INTERVAL_SEC:-15}"
+CHECKS_EVERY_N="${CHECKS_EVERY_N:-4}"
+WATCH_SERVICES="${WATCH_SERVICES:-}"
+WATCH_TIMERS="${WATCH_TIMERS:-}"
+HOSTCRON_SPECS="${HOSTCRON_SPECS:-}"
 
 MODE="loop"
 case "${1:-}" in
@@ -150,6 +159,71 @@ collect() {
   if [ -f /var/run/reboot-required ]; then REBOOT=true; else REBOOT=false; fi
 }
 
+# ---------- checks 수집 (Phase 2 — systemd 서비스/타이머·호스트 cron 관찰치) ----------
+# systemd 타임스탬프 문자열("Sun 2026-07-19 03:00:05 KST" 등) → epoch 초.
+# 직접 파싱 실패 시 요일·타임존 어간을 떼고 호스트 로컬타임으로 재시도.
+ts_to_epoch() {
+  local s="$1" stripped
+  [ -n "$s" ] && [ "$s" != "n/a" ] || { echo ""; return; }
+  if date -d "$s" +%s 2>/dev/null; then return; fi
+  stripped=$(echo "$s" | sed 's/^[A-Za-z]\+ //; s/ [A-Z]\+$//')
+  date -d "$stripped" +%s 2>/dev/null || echo ""
+}
+
+build_checks_payload() {
+  local svc_json="" timer_json="" cron_json=""
+  local unit state nrestarts
+
+  for unit in $WATCH_SERVICES; do
+    state=$(systemctl is-active "$unit" 2>/dev/null)
+    [ -n "$state" ] || state="unknown"
+    nrestarts=$(systemctl show "$unit" -p NRestarts --value 2>/dev/null)
+    svc_json="${svc_json:+$svc_json,}{\"unit\":\"${unit//[^A-Za-z0-9@._-]/}\",\"active\":\"${state//[^a-z-]/}\""
+    [ -n "$nrestarts" ] && [[ "$nrestarts" =~ ^[0-9]+$ ]] && svc_json="$svc_json,\"nRestarts\":$nrestarts"
+    svc_json="$svc_json}"
+  done
+
+  local last next result last_e next_e
+  for unit in $WATCH_TIMERS; do
+    last=$(systemctl show "$unit" -p LastTriggerUSec --value 2>/dev/null)
+    next=$(systemctl show "$unit" -p NextElapseUSecRealtime --value 2>/dev/null)
+    result=$(systemctl show "${unit%.timer}.service" -p Result --value 2>/dev/null)
+    last_e=$(ts_to_epoch "$last")
+    next_e=$(ts_to_epoch "$next")
+    timer_json="${timer_json:+$timer_json,}{\"unit\":\"${unit//[^A-Za-z0-9@._-]/}\""
+    [ -n "$last_e" ] && timer_json="$timer_json,\"lastTriggerEpoch\":$last_e"
+    [ -n "$next_e" ] && timer_json="$timer_json,\"nextElapseEpoch\":$next_e"
+    [ -n "$result" ] && timer_json="$timer_json,\"result\":\"${result//[^a-z-]/}\""
+    timer_json="$timer_json}"
+  done
+
+  local spec name path maxage mtime size
+  for spec in $HOSTCRON_SPECS; do
+    IFS='|' read -r name path maxage <<<"$spec"
+    [ -n "$name" ] && [ -n "$path" ] && [[ "$maxage" =~ ^[0-9]+$ ]] || continue
+    name="${name//[^A-Za-z0-9._-]/}"
+    if [ -r "$path" ]; then
+      mtime=$(stat -c %Y "$path" 2>/dev/null)
+      size=$(stat -c %s "$path" 2>/dev/null)
+      cron_json="${cron_json:+$cron_json,}{\"name\":\"$name\",\"readable\":true,\"maxAgeMin\":$maxage"
+      [ -n "$mtime" ] && cron_json="$cron_json,\"mtimeEpoch\":$mtime"
+      [ -n "$size" ] && cron_json="$cron_json,\"sizeBytes\":$size"
+      cron_json="$cron_json}"
+    else
+      cron_json="${cron_json:+$cron_json,}{\"name\":\"$name\",\"readable\":false,\"maxAgeMin\":$maxage}"
+    fi
+  done
+
+  [ -z "$svc_json$timer_json$cron_json" ] && return 1 # 감시 대상 미설정 — push 생략
+
+  printf '{'
+  printf '"host":"%s"' "$HOST_NAME"
+  [ -n "$svc_json" ] && printf ',"services":[%s]' "$svc_json"
+  [ -n "$timer_json" ] && printf ',"timers":[%s]' "$timer_json"
+  [ -n "$cron_json" ] && printf ',"hostCron":[%s]' "$cron_json"
+  printf '}'
+}
+
 build_payload() {
   printf '{'
   printf '"host":"%s",' "$HOST_NAME"
@@ -165,23 +239,30 @@ build_payload() {
   printf '}'
 }
 
-push() {
-  local payload http_code
-  payload=$(build_payload)
+push() { # $1=API 경로, $2=payload
+  local http_code
   http_code=$(curl -sS -m 10 -o "$RESP_FILE" -w '%{http_code}' \
     -X POST \
     -H @"$HDR_FILE" \
     -H "Content-Type: application/json" \
-    -d "$payload" \
-    "$DASHBOARD_URL/api/agent/metrics-ingest" 2>&1) || {
-    echo "[agent] push 실패 (네트워크): $http_code" >&2
+    -d "$2" \
+    "$DASHBOARD_URL$1" 2>&1) || {
+    echo "[agent] push 실패 (네트워크, $1): $http_code" >&2
     return 1
   }
   if [ "$http_code" != "200" ]; then
-    echo "[agent] push 실패 HTTP $http_code: $(head -c 300 "$RESP_FILE")" >&2
+    echo "[agent] push 실패 HTTP $http_code ($1): $(head -c 300 "$RESP_FILE")" >&2
     return 1
   fi
   return 0
+}
+
+push_vitals() { push "/api/agent/metrics-ingest" "$(build_payload)"; }
+
+push_checks() {
+  local payload
+  payload=$(build_checks_payload) || return 0 # 감시 대상 미설정 — 무해
+  push "/api/agent/checks-ingest" "$payload"
 }
 
 # ---------- 실행 ----------
@@ -193,18 +274,28 @@ case "$MODE" in
     collect
     build_payload
     echo
+    build_checks_payload && echo || echo "(checks: 감시 대상 미설정)"
     ;;
   once)
     sleep 1
     collect
-    if push; then echo "[agent] OK ($HOST_NAME → $DASHBOARD_URL)"; else exit 1; fi
+    if push_vitals && push_checks; then
+      echo "[agent] OK ($HOST_NAME → $DASHBOARD_URL)"
+    else
+      exit 1
+    fi
     ;;
   loop)
-    echo "[agent] 시작 — host=$HOST_NAME url=$DASHBOARD_URL interval=${INTERVAL_SEC}s"
+    echo "[agent] 시작 — host=$HOST_NAME url=$DASHBOARD_URL interval=${INTERVAL_SEC}s checks=매${CHECKS_EVERY_N}사이클"
+    CYCLE=0
     while :; do
       sleep "$INTERVAL_SEC"
       collect
-      push || true # 일시 실패는 다음 주기에 회복 — 프로세스는 유지
+      push_vitals || true # 일시 실패는 다음 주기에 회복 — 프로세스는 유지
+      CYCLE=$((CYCLE + 1))
+      if [ $((CYCLE % CHECKS_EVERY_N)) -eq 0 ]; then
+        push_checks || true
+      fi
     done
     ;;
 esac
