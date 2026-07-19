@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Highlighted } from "@/shared/ui/Highlighted";
+import { MarkdownBody } from "@/shared/ui/MarkdownBody";
 import type { Memo, MemoTransformation, TransformPresetId } from "../model/types";
 import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
 
@@ -205,9 +206,15 @@ export function MemoCard({
           ))}
         </div>
       )}
-      <p className="whitespace-pre-wrap text-sm text-neutral-700">
-        <Highlighted text={body} terms={highlightTerms} />
-      </p>
+      {/* 하이라이트는 문자열 치환, 마크다운은 문자열→트리 변환이라 동시 적용 불가 —
+          검색 중엔 평문+mark 우선, 음성 원문은 받아쓰기라 마크다운이 아님. */}
+      {view.kind === "raw" || highlightTerms.length > 0 ? (
+        <p className="whitespace-pre-wrap text-sm text-neutral-700">
+          <Highlighted text={body} terms={highlightTerms} />
+        </p>
+      ) : (
+        <MarkdownBody>{body}</MarkdownBody>
+      )}
       {actionsSlot}
       <footer className="mt-3 flex items-center gap-3 text-xs text-neutral-400">
         <time>{formatTime(memo.createdAt)}</time>
