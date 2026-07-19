@@ -8,6 +8,7 @@
 - **도메인 (현재)**:
   - **Email 분석** — Gmail 폴링 → LLM 분류(important/reply-needed) → 위젯 표시·푸시
   - **Server Infra Monitor** — 등록된 Docker host들의 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그)
+  - **실시간 관제 (Monitoring)** — 호스트 에이전트 push(vitals) + docker stats cron + `cron_runs` 계측 + 이벤트 타임라인 → `/monitoring` (이슈 #323 Phase 1, 에이전트: `scripts/monitoring-agent/`)
   - **Saju (사주)** — 외부 빌더 `@krdn/saju` (github:krdn/saju) 소비 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
   - **Stock Analysis (증권 종목)** — `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 (Phase 1~8 진행 중)
   - **Memo** — 메모 작성·관리 + LLM 변환 프리셋 (`features/memo-{compose,manage,preset-manage,transform}`, `MEMO_LLM_MODEL_*`)
@@ -254,6 +255,7 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | Stock | `KRX_OPENAPI_AUTH_KEY` (KRX 종목 마스터) | ✓ (stock-analysis 활성 시) |
 | Stock 펀더멘털 | `DART_OPENAPI_AUTH_KEY`, `STOCK_FUNDAMENTALS_SOURCES`, `STOCK_WATCHLIST_MAX_PER_USER` | 선택 (DART 키 없으면 skip, 기본 `yahoo+dart` / 10) |
 | MCP / PlayMCP | `MCP_DASHBOARD_TOKEN`, `PLAYMCP_GATEWAY_URL`, `PLAYMCP_CLIENT_ID`, `PLAYMCP_BOOTSTRAP_OTT` | ✓ (MCP stdio + PlayMCP 게이트웨이 사용 시) |
+| 관제 | `METRICS_INGEST_TOKEN` | ✓ (호스트 에이전트 → metrics-ingest 인증, 회전 시 호스트 `/etc/default/gons-monitoring-agent` 동시 교체) |
 
 **시크릿은 어떤 형태로도 저장소에 커밋 금지** — README, 주석, 마크다운 본문 포함.
 
