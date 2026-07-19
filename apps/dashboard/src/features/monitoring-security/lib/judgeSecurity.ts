@@ -26,6 +26,10 @@ import {
  * kind 당 대상이 하나라 target 을 kind 와 같게 두면 **여러 호스트가 같은 행을 공유**해
  * 나중에 push 한 호스트가 앞선 호스트의 판정을 덮어쓴다. Phase 2 의 service/timer 는
  * target 이 unit 명이라 자연히 갈렸지만 보안은 그렇지 않다 — host 로 한정한다.
+ *
+ * legacy(target=kind) 행 마이그레이션은 불필요하다: 보안 kind 는 이 PR 이 첫 배포라
+ * 운영 DB 에 해당 행이 0건임을 확인했다 (2026-07-20). 만약 미배포 빌드로 행이 생겼다면
+ * check_results 는 48h 보존이라 자연 소멸한다.
  */
 function securityTarget(host: string, kind: string): string {
   return `${host}:${kind}`;

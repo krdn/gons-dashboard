@@ -73,13 +73,15 @@ export function SecurityBoard({
   now: Date;
 }) {
   // target 은 "<host>:<kind>" — 호스트가 여럿이면 같은 kind 가 여러 행으로 온다.
+  // 정렬은 호스트 → ORDER(심각도) 순. target 전체를 비교하면 문자열 순서가
+  // ORDER 를 덮어써 같은 호스트 안에서도 순서가 깨진다.
+  const hostOf = (c: LatestCheck) => c.target.split(":")[0];
   const rows = [...checks].sort(
     (a, b) =>
-      a.target.localeCompare(b.target) ||
+      hostOf(a).localeCompare(hostOf(b)) ||
       ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind),
   );
-  const hosts = new Set(rows.map((c) => c.target.split(":")[0]));
-  const multiHost = hosts.size > 1;
+  const multiHost = new Set(rows.map(hostOf)).size > 1;
 
   return (
     <section
@@ -122,7 +124,7 @@ export function SecurityBoard({
                       {LABELS[c.kind] ?? c.kind}
                       {multiHost && (
                         <span className="ml-1.5 font-mono text-[10px] text-[var(--color-text-subtle)]">
-                          {c.target.split(":")[0]}
+                          {hostOf(c)}
                         </span>
                       )}
                     </td>

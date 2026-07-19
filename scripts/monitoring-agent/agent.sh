@@ -236,9 +236,10 @@ build_checks_payload() {
     fi
   done
 
-  # 감시 대상 미설정 — push 생략 (보안 스냅샷만 있어도 push 할 가치가 있다)
-  [ -z "$svc_json$timer_json$cron_json$sec_json" ] && return 1
-
+  # ⚠️ 관측치가 하나도 없어도 push 를 생략하지 않는다. 서버는 checks 를 받을 때마다
+  # 보안 5종 판정을 갱신하는데(관측 없으면 unknown), push 자체가 없으면 갱신이 멈춰
+  # check_results 에 직전 상태(ok/critical)가 그대로 남는다 — collector 가 죽어도
+  # 보드는 "정상"으로 보이는 미탐. 빈 payload 라도 heartbeat 로 보낸다.
   printf '{'
   printf '"host":"%s"' "$HOST_NAME"
   [ -n "$svc_json" ] && printf ',"services":[%s]' "$svc_json"
@@ -285,7 +286,7 @@ push_vitals() { push "/api/agent/metrics-ingest" "$(build_payload)"; }
 
 push_checks() {
   local payload
-  payload=$(build_checks_payload) || return 0 # 감시 대상 미설정 — 무해
+  payload=$(build_checks_payload) # 관측치가 없어도 heartbeat 로 push 한다
   push "/api/agent/checks-ingest" "$payload"
 }
 
@@ -298,7 +299,8 @@ case "$MODE" in
     collect
     build_payload
     echo
-    build_checks_payload && echo || echo "(checks: 감시 대상 미설정)"
+    build_checks_payload
+    echo
     ;;
   once)
     sleep 1

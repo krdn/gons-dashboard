@@ -25,10 +25,14 @@ ProtectSystem=strict
 PrivateTmp=yes
 
 # `ufw status` 는 조회만 해도 /run/ufw.lock 을 생성한다 — ProtectSystem=strict 아래서는
-# 락 생성이 실패해 ufw 가 traceback 으로 죽고, 관측이 영구 unknown 이 된다
-# (2026-07-20 실측). 락 파일 **하나만** 열어 최소 권한을 유지한다
-# (/run 전체나 ProtectSystem=full 로 완화하면 불필요하게 넓어진다).
-ReadWritePaths=/run/ufw.lock
+# 락 생성이 실패해 ufw 가 traceback 으로 죽고, 관측이 영구 unknown 이 된다(2026-07-20 실측).
+#
+# ⚠️ ReadWritePaths=/run/ufw.lock 처럼 **파일 자체**를 지정하면 안 된다 — systemd 는 그
+#    경로를 bind-mount 하므로 파일이 없으면 유닛이 시작조차 못 한다. 재부팅 직후처럼
+#    락이 아직 없는 상태에서 collector 전체가 죽는다 (실측: 락 삭제 후 무출력·rc0 이지만
+#    ufw 미실행). 부모 디렉토리를 열어야 "없으면 생성" 경로가 성립한다.
+#    (락 있음/없음 두 상태 모두 /run 으로 실증 완료.)
+ReadWritePaths=/run
 
 # ⚠️ RuntimeDirectory 단독이면 서비스 중지 시 디렉토리가 삭제된다. Type=oneshot 은
 #    종료가 곧 중지라 **파일을 쓰자마자 사라진다**. 실측으로 확인 — Preserve 필수.
