@@ -22,7 +22,7 @@ export function RecentMemos({ memos }: RecentMemosProps) {
         <ul className="space-y-2">
           {recent.map((m) => (
             <li key={m.id} className="truncate text-sm text-neutral-700">
-              <span className="text-neutral-400">{m.source === "voice" ? "🎙" : "✍"}</span> {m.title}
+              <span className="text-neutral-400">{m.source === "voice" ? "🎙" : m.source === "agent" ? "🤖" : "✍"}</span> {m.title}
             </li>
           ))}
         </ul>

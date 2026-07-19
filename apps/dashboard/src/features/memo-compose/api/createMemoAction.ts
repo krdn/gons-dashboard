@@ -11,7 +11,7 @@ import { extractAndPersistMemoActions } from "@/features/memo-actions";
 const MAX_MEMO_LEN = 20_000;
 
 export interface CreateMemoInputAction {
-  source: MemoSource;
+  source: Exclude<MemoSource, "agent">;
   rawContent: string;
   cleanedContent: string;
   title?: string;

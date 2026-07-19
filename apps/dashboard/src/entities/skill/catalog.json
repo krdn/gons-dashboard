@@ -193,6 +193,18 @@
       "bodyPath": "/skill-catalog/gon-maintain.json"
     },
     {
+      "name": "gon:memo-save",
+      "description": "Gons Dashboard 메모로 작업 산출물 저장. 수동 — 사용자가 \"/gon:memo-save\", \"메모에 저장해줘\", \"대시보드 메모로 보내줘\"라고 할 때. 자동 — 작업을 마무리·정리하는 시점에, 지금 실행하지 않는 후속 작업이나 재사용 가치가 있는 아이디어·패턴·결정이 남았다고 판단되면 호출해 최대 2건까지 배치 저장 (best-effort — 세션 종료를 보장 후킹하지 않음).",
+      "version": null,
+      "model": null,
+      "source": "standalone",
+      "category": "uncategorized",
+      "necessity": "unrated",
+      "necessityReason": "",
+      "filePath": "~/.claude/skills/gon:memo-save/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-memo-save.json"
+    },
+    {
       "name": "gon:save-issue",
       "description": "이슈 저장 스킬 (Save Issue). 작업 완료 후 커밋, 푸시, GitHub 이슈 등록을 자동화합니다. \"/gon:save-issue\", \"이슈 저장\", \"작업 저장\", \"커밋해줘\", \"커밋하고 푸시\", \"변경사항 저장\", \"작업 끝\", \"이슈 등록\", \"push 해줘\", \"푸시해줘\", \"저장하고 이슈\", \"이거 올려줘\" 요청 시 사용.",
       "version": "2.1.0",

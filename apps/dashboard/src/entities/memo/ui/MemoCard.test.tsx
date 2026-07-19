@@ -187,6 +187,23 @@ describe("MemoCard 삭제 2-click 확인", () => {
   });
 });
 
+describe("MemoCard source 뱃지", () => {
+  it("agent 메모는 🤖 에이전트로 표시하고 텍스트 뱃지를 겸용하지 않는다", () => {
+    render(
+      <MemoCard memo={{ ...memo, source: "agent" } as Memo} transformations={[]} highlightTerms={[]} />,
+    );
+    expect(screen.getByText("🤖 에이전트")).toBeTruthy();
+    expect(screen.queryByText("✍ 텍스트")).toBeNull();
+  });
+
+  it("text 메모는 ✍ 텍스트 뱃지를 유지한다 (회귀)", () => {
+    render(
+      <MemoCard memo={{ ...memo, source: "text" } as Memo} transformations={[]} highlightTerms={[]} />,
+    );
+    expect(screen.getByText("✍ 텍스트")).toBeTruthy();
+  });
+});
+
 describe("MemoCard 카테고리 수동 정정", () => {
   const OPTIONS = [
     { id: "idea", labelKo: "아이디어" },

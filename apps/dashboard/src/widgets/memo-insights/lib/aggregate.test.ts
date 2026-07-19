@@ -127,6 +127,7 @@ describe("buildCategoryDistribution", () => {
     expect(d.byCategory).toEqual([]);
     expect(d.voiceCount).toBe(0);
     expect(d.textCount).toBe(0);
+    expect(d.agentCount).toBe(0);
     expect(d.unclassifiedCount).toBe(0);
   });
   it("카테고리·소스·미분류 집계 + labelKo 매핑", () => {
@@ -140,6 +141,18 @@ describe("buildCategoryDistribution", () => {
     expect(d.voiceCount).toBe(1);
     expect(d.textCount).toBe(2);
     expect(d.unclassifiedCount).toBe(1);
+  });
+  it("agent 소스는 textCount가 아니라 agentCount로 집계한다", () => {
+    const facts = [
+      fact({ source: "voice" }),
+      fact({ source: "text" }),
+      fact({ source: "agent" }),
+      fact({ source: "agent" }),
+    ];
+    const d = buildCategoryDistribution(facts, []);
+    expect(d.voiceCount).toBe(1);
+    expect(d.textCount).toBe(1);
+    expect(d.agentCount).toBe(2);
   });
 });
 
