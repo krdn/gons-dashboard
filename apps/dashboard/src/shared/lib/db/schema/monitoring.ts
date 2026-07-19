@@ -5,6 +5,7 @@
 // cron_runs: createCronHandler 계측 결과 (30d 보존).
 // monitoring_events: 임계값 위반 이벤트. dedup_key 로 open(resolvedAt null)
 //   이벤트 중복을 억제하고, 정상 복귀 시 resolvedAt 을 채운다.
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -12,6 +13,7 @@ import {
   integer,
   uuid,
   index,
+  uniqueIndex,
   jsonb,
   real,
 } from "drizzle-orm/pg-core";
@@ -83,5 +85,10 @@ export const monitoringEvents = pgTable(
   (t) => [
     index("monitoring_events_dedup_idx").on(t.dedupKey, t.occurredAt.desc()),
     index("monitoring_events_time_idx").on(t.occurredAt.desc()),
+    // 동시 recordEvent 가 동일 dedupKey 의 open 이벤트를 중복 생성하는 것을
+    // DB 레벨에서 차단 (SELECT-then-INSERT race 방어 — Codex 리뷰 P1).
+    uniqueIndex("monitoring_events_open_dedup_uq")
+      .on(t.dedupKey)
+      .where(sql`resolved_at is null`),
   ],
 );

@@ -11,9 +11,10 @@ EnvironmentFile=/etc/default/gons-monitoring-agent
 ExecStart=/opt/gons/monitoring-agent/agent.sh
 Restart=always
 RestartSec=10
-# 수집 대상이 /proc·hwmon·nvidia-smi 뿐이라 root 불필요하지만,
-# 향후 journalctl·iptables 수집(Phase 2~3) 확장을 고려해 root 로 둔다.
-User=root
+# 수집 대상이 /proc·hwmon·nvidia-smi 뿐이라 비권한 실행 (DynamicUser —
+# PrivateTmp 포함). Phase 2~3 에서 journalctl·iptables 수집이 추가되면
+# 그때 전용 사용자 + 최소 권한(capabilities/그룹)으로 재설계한다.
+DynamicUser=yes
 
 [Install]
 WantedBy=multi-user.target

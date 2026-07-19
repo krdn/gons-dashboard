@@ -62,6 +62,16 @@ describe("monitoring events", () => {
     expect(rows[0].title).toBe("crit");
   });
 
+  it("동시 recordEvent 5건 → open 1건만 (partial unique index 방어)", async () => {
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        recordEvent({ source: "host", severity: "warning", title: "race", dedupKey: KEY }),
+      ),
+    );
+    const rows = await openEvents(KEY);
+    expect(rows.filter((r) => r.resolvedAt === null)).toHaveLength(1);
+  });
+
   it("resolveEvent 후 재record 는 새 open row", async () => {
     await recordEvent({ source: "host", severity: "warning", title: "w", dedupKey: KEY });
     await resolveEvent(KEY);

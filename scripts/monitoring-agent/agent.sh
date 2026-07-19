@@ -30,6 +30,16 @@ if [ "$MODE" != "dry-run" ]; then
   : "${METRICS_INGEST_TOKEN:?METRICS_INGEST_TOKEN 환경변수가 필요합니다}"
 fi
 
+# 임시 파일 — 예측 불가 경로(mktemp) + 종료 시 정리 (고정 /tmp 경로의 symlink 공격 방지).
+# 토큰은 curl 인자가 아닌 헤더 파일(-H @file, mode 600)로 전달 — /proc cmdline 노출 방지.
+RESP_FILE=$(mktemp)
+HDR_FILE=$(mktemp)
+trap 'rm -f "$RESP_FILE" "$HDR_FILE"' EXIT
+if [ "$MODE" != "dry-run" ]; then
+  chmod 600 "$HDR_FILE"
+  printf 'Authorization: Bearer %s\n' "$METRICS_INGEST_TOKEN" >"$HDR_FILE"
+fi
+
 # ---------- 스냅샷 상태 (delta 기반 지표: cpu, net) ----------
 PREV_CPU_IDLE=""
 PREV_CPU_TOTAL=""
@@ -90,10 +100,12 @@ collect() {
       printf "%.1f %.0f", pct, (st-sf)/1024;
     }' /proc/meminfo)"
 
-  # 디스크 (used% + inode%) — 실 파일시스템만, mount 는 JSON 안전 문자만, 최대 20개
+  # 디스크 (used% + inode%) — 실 파일시스템만, mount 는 JSON 안전 문자만, 최대 20개.
+  # NF!=6 skip: 공백 포함 마운트/장치명이 잘린 이름으로 기록되는 것을 방지.
   DISKS_JSON=$(awk '
-    FNR==NR { p=$5; gsub(/%/,"",p); if (p ~ /^[0-9]+$/) inode[$6]=p; next }
+    FNR==NR { if (NF != 6) next; p=$5; gsub(/%/,"",p); if (p ~ /^[0-9]+$/) inode[$6]=p; next }
     FNR>1 {
+      if (NF != 6) next;
       p=$5; gsub(/%/,"",p); m=$6;
       if (m !~ /^[A-Za-z0-9\/._-]+$/ || p !~ /^[0-9]+$/ || n>=20) next;
       printf "%s{\"mount\":\"%s\",\"usedPct\":%s", (n++?",":""), m, p;
@@ -156,9 +168,9 @@ build_payload() {
 push() {
   local payload http_code
   payload=$(build_payload)
-  http_code=$(curl -sS -m 10 -o /tmp/gons-monitoring-agent.last -w '%{http_code}' \
+  http_code=$(curl -sS -m 10 -o "$RESP_FILE" -w '%{http_code}' \
     -X POST \
-    -H "Authorization: Bearer $METRICS_INGEST_TOKEN" \
+    -H @"$HDR_FILE" \
     -H "Content-Type: application/json" \
     -d "$payload" \
     "$DASHBOARD_URL/api/agent/metrics-ingest" 2>&1) || {
@@ -166,7 +178,7 @@ push() {
     return 1
   }
   if [ "$http_code" != "200" ]; then
-    echo "[agent] push 실패 HTTP $http_code: $(head -c 300 /tmp/gons-monitoring-agent.last)" >&2
+    echo "[agent] push 실패 HTTP $http_code: $(head -c 300 "$RESP_FILE")" >&2
     return 1
   fi
   return 0
