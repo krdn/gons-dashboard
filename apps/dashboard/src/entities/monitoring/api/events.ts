@@ -8,7 +8,7 @@
 // unique index) 가 중복 open 생성을 DB 레벨에서 차단 — insert 를 먼저 시도하고
 // unique 충돌(23505)이면 "이미 open 존재" 경로로 전환한다 (SELECT-then-INSERT
 // race 방어, Codex 리뷰 P1).
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { monitoringEvents } from "@/shared/lib/db/schema";
 import {
@@ -92,4 +92,78 @@ export async function countOpenEvents(): Promise<OpenEventCounts> {
     critical: bySeverity.get("critical") ?? 0,
     warning: bySeverity.get("warning") ?? 0,
   };
+}
+
+// ---------- 알림 sweep (monitoring-notify cron, Phase 2 §K) ----------
+
+/** 미통지 critical open 이벤트 — 발생 알림 대상. */
+export async function listUnnotifiedCriticalEvents(
+  limit = 20,
+): Promise<MonitoringEventRow[]> {
+  return db
+    .select()
+    .from(monitoringEvents)
+    .where(
+      and(
+        eq(monitoringEvents.severity, "critical"),
+        isNull(monitoringEvents.resolvedAt),
+        isNull(monitoringEvents.notifiedAt),
+      ),
+    )
+    .orderBy(desc(monitoringEvents.occurredAt))
+    .limit(limit);
+}
+
+/** 발생 알림은 나갔는데 해소 통지가 안 나간 critical — 회복 알림 대상. */
+export async function listUnnotifiedResolvedEvents(
+  limit = 20,
+): Promise<MonitoringEventRow[]> {
+  return db
+    .select()
+    .from(monitoringEvents)
+    .where(
+      and(
+        eq(monitoringEvents.severity, "critical"),
+        isNotNull(monitoringEvents.resolvedAt),
+        isNotNull(monitoringEvents.notifiedAt),
+        isNull(monitoringEvents.resolvedNotifiedAt),
+      ),
+    )
+    .orderBy(desc(monitoringEvents.occurredAt))
+    .limit(limit);
+}
+
+/**
+ * cooldown 판정 — 같은 dedupKey 로 since 이후 통지된 row 존재 여부.
+ * (플래핑: resolve→재발생으로 새 row 가 생겨도 30분 내 재발송 억제.)
+ */
+export async function hasRecentNotification(
+  dedupKey: string,
+  since: Date,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: monitoringEvents.id })
+    .from(monitoringEvents)
+    .where(
+      and(
+        eq(monitoringEvents.dedupKey, dedupKey),
+        gt(monitoringEvents.notifiedAt, since),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function markEventNotified(id: string): Promise<void> {
+  await db
+    .update(monitoringEvents)
+    .set({ notifiedAt: new Date() })
+    .where(eq(monitoringEvents.id, id));
+}
+
+export async function markEventResolvedNotified(id: string): Promise<void> {
+  await db
+    .update(monitoringEvents)
+    .set({ resolvedNotifiedAt: new Date() })
+    .where(eq(monitoringEvents.id, id));
 }

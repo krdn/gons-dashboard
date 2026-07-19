@@ -1,10 +1,12 @@
-// 관제(monitoring) 도메인 — 이슈 #323 Phase 1.
+// 관제(monitoring) 도메인 — 이슈 #323 Phase 1·2.
 //
 // metric_samples: 시계열 원본. 호스트 에이전트(15초)와 docker stats cron(1분)이
 //   쓰기 — 쓰기 빈도가 높아 48h 보존 후 monitoring-purge cron 이 삭제한다.
 // cron_runs: createCronHandler 계측 결과 (30d 보존).
 // monitoring_events: 임계값 위반 이벤트. dedup_key 로 open(resolvedAt null)
 //   이벤트 중복을 억제하고, 정상 복귀 시 resolvedAt 을 채운다.
+// check_results: 판정형 점검 결과 (Phase 2 — systemd 서비스/타이머, 호스트 cron,
+//   HTTP, SSL). (kind, target) 최신 row 가 현재 상태, 48h 보존.
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -81,6 +83,10 @@ export const monitoringEvents = pgTable(
       .defaultNow(),
     // null = 미해소(open). 정상 복귀 시 채움.
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    // 알림 sweep(monitoring-notify cron) 마킹 — critical 발생/해소 통지 시각.
+    // null = 미통지. cooldown 판정과 이중 발송 억제의 단일 소스.
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    resolvedNotifiedAt: timestamp("resolved_notified_at", { withTimezone: true }),
   },
   (t) => [
     index("monitoring_events_dedup_idx").on(t.dedupKey, t.occurredAt.desc()),
@@ -90,5 +96,34 @@ export const monitoringEvents = pgTable(
     uniqueIndex("monitoring_events_open_dedup_uq")
       .on(t.dedupKey)
       .where(sql`resolved_at is null`),
+  ],
+);
+
+export const checkResults = pgTable(
+  "check_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // 'service' | 'timer' | 'hostcron' | 'http' | 'ssl'
+    kind: text("kind").notNull(),
+    // 점검 대상 식별자 (unit명 / cron잡명 / 도메인)
+    target: text("target").notNull(),
+    // 'ok' | 'warning' | 'critical' | 'unknown'
+    status: text("status").notNull(),
+    // kind별 부가 정보 (예: { latencyMs, httpStatus } / { daysLeft } / { active, nRestarts })
+    detail: jsonb("detail").$type<Record<string, string | number | boolean>>(),
+    hostId: uuid("host_id").references(() => hosts.id, { onDelete: "cascade" }),
+    checkedAt: timestamp("checked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // 보드(최신 상태) + 연속 실패 판정(직전 N회) 조회용
+    index("check_results_kind_target_time_idx").on(
+      t.kind,
+      t.target,
+      t.checkedAt.desc(),
+    ),
+    // purge (checked_at < now()-48h) 스캔용
+    index("check_results_time_idx").on(t.checkedAt),
   ],
 );

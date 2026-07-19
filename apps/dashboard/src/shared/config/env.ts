@@ -131,8 +131,16 @@ const schema = z.object({
   MCP_DASHBOARD_TOKEN: z.string().min(32, "openssl rand -hex 32 로 생성"),
 
   // 관제 metrics-ingest bearer — 호스트 에이전트(scripts/monitoring-agent) →
-  // /api/agent/metrics-ingest 인증. mediator 토큰과 분리해 회전 반경 최소화.
+  // /api/agent/metrics-ingest·checks-ingest 인증. mediator 토큰과 분리해 회전 반경 최소화.
   METRICS_INGEST_TOKEN: z.string().min(32, "openssl rand -hex 32 로 생성"),
+
+  // 관제 Phase 2 (전부 선택 — 미설정 시 해당 기능만 조용히 비활성/우회):
+  // HTTP 프로브 connect IP — 같은 호스트의 nginx 를 공인 IP 로 돌아가는
+  // hairpin NAT 실패 회피 (운영=192.168.0.5). 미설정 시 도메인 DNS 로 접속.
+  HTTP_CHECK_CONNECT_IP: z.string().min(1).optional(),
+  // critical 이벤트 텔레그램 발송 (기존 호스트 봇 재사용). 미설정 시 skip.
+  TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+  TELEGRAM_CHAT_ID: z.string().min(1).optional(),
 
   // 타임존 (cron + DB 쿼리에 결정적)
   TZ: z.literal("Asia/Seoul").default("Asia/Seoul"),

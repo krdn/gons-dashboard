@@ -19,6 +19,8 @@ function makeEvent(overrides: Partial<MonitoringEventRow>): MonitoringEventRow {
     hostId: "h1",
     occurredAt: new Date("2026-07-19T12:00:00+09:00"),
     resolvedAt: null,
+    notifiedAt: null,
+    resolvedNotifiedAt: null,
     ...overrides,
   };
 }

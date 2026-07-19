@@ -2,11 +2,13 @@
 //   metric_samples: 48h (쓰기 빈도 최고 — 자기 참조 관제의 디스크 증가 억제)
 //   cron_runs: 30d
 //   monitoring_events: resolved 만 90d (open 이벤트는 보존)
+//   check_results: 48h (최신 row 가 현재 상태 — 일 1회 kind 도 창 안에 남는다)
 // 다운샘플(5분 집계)은 Phase 4.
 import { and, isNotNull, lt } from "drizzle-orm";
 import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
 import { db } from "@/shared/lib/db/client";
 import {
+  checkResults,
   cronRuns,
   metricSamples,
   monitoringEvents,
@@ -21,6 +23,7 @@ const TARGETS = [
   { id: "metric_samples" },
   { id: "cron_runs" },
   { id: "monitoring_events" },
+  { id: "check_results" },
 ] as const;
 type PurgeTarget = (typeof TARGETS)[number];
 
@@ -48,6 +51,12 @@ async function purge(target: PurgeTarget): Promise<number> {
             lt(monitoringEvents.occurredAt, new Date(now - 90 * DAY_MS)),
           ),
         );
+      return res.count;
+    }
+    case "check_results": {
+      const res = await db
+        .delete(checkResults)
+        .where(lt(checkResults.checkedAt, new Date(now - 48 * HOUR_MS)));
       return res.count;
     }
   }
