@@ -9,7 +9,7 @@ import {
   resolveEvent,
 } from "@/entities/monitoring/server";
 import { MONITORED_SITES, type SiteCheck } from "./config/sites";
-import { probeSite } from "./lib/probeSite";
+import { probeCertDaysLeft, probeSite } from "./lib/probeSite";
 import {
   HTTP_FAIL_STREAK_FOR_CRITICAL,
   judgeHttp,
@@ -82,15 +82,16 @@ export interface SslCheckSummary {
 }
 
 export async function runSslCheck(site: SiteCheck): Promise<SslCheckSummary> {
-  const probe = await probeSite({
+  // HTTP 경유(probeSite) 대신 전용 tls.connect — keep-alive 재사용으로
+  // getPeerCertificate 가 빈 객체를 주는 문제 회피 (probeCertDaysLeft 주석).
+  const probe = await probeCertDaysLeft({
     domain: site.domain,
-    path: "/",
     connectIp: env.HTTP_CHECK_CONNECT_IP,
   });
 
-  // TLS 자체가 실패하면 인증서 정보 없음 — 다운 자체는 HTTP 체크(매분)가
+  // TLS 접속 자체가 실패하면 인증서 정보 없음 — 다운 자체는 HTTP 체크(매분)가
   // 잡으므로 여기선 unknown row 만 남긴다.
-  if (probe.certDaysLeft == null) {
+  if (probe.daysLeft == null) {
     await insertCheckResults([
       {
         kind: "ssl",
@@ -102,7 +103,7 @@ export async function runSslCheck(site: SiteCheck): Promise<SslCheckSummary> {
     return { status: "unknown" };
   }
 
-  const daysLeft = probe.certDaysLeft;
+  const daysLeft = probe.daysLeft;
   const status = judgeSsl(daysLeft);
   await insertCheckResults([
     { kind: "ssl", target: site.domain, status, detail: { daysLeft } },
@@ -115,7 +116,10 @@ export async function runSslCheck(site: SiteCheck): Promise<SslCheckSummary> {
     await recordEvent({
       source: "ssl",
       severity: status,
-      title: `${site.domain} 인증서 만료 D-${daysLeft}`,
+      title:
+        daysLeft < 0
+          ? `${site.domain} 인증서 만료됨 (${-daysLeft}일 경과)`
+          : `${site.domain} 인증서 만료 D-${daysLeft}`,
       dedupKey,
     });
   }

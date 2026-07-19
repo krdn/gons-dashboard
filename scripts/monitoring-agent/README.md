@@ -38,7 +38,11 @@ HOSTCRON_SPECS="self-healing|/var/log/self-healing.log|75"
 EOF
 sudo chmod 600 /etc/default/gons-monitoring-agent
 
-# 3. 서비스 등록
+# 3. 전용 시스템 유저 (최초 1회 — systemctl 조회에 D-Bus 가 필요해
+#    DynamicUser 불가, 서비스 파일 주석 참조)
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin gons-agent || true
+
+# 4. 서비스 등록
 sudo cp gons-monitoring-agent.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now gons-monitoring-agent
@@ -69,8 +73,12 @@ journalctl -u gons-monitoring-agent -n 20 --no-pager
   다음 주기에 자동 회복.
 - checks 관련 (Phase 2):
   - `WATCH_SERVICES`/`WATCH_TIMERS`/`HOSTCRON_SPECS` 셋 다 비면 checks push 자체를 생략.
-  - 서비스는 `DynamicUser=yes` 로 돌므로 `HOSTCRON_SPECS` 의 로그 파일은
-    world-readable 이어야 한다 — 읽기 불가면 대시보드에 "unknown" 으로 표시
+  - `HOSTCRON_SPECS` 의 로그 파일은 gons-agent 유저가 읽을 수 있어야 한다
+    (world-readable 권장) — 읽기 불가면 대시보드에 "unknown" 으로 표시
     (오탐 대신 관찰 불가 표기). 필요 시 `chmod o+r <로그>`.
+  - **성공 시 아무 출력도 없는 스크립트는 HOSTCRON_SPECS 에 넣지 말 것** —
+    `>>` 리다이렉트는 출력이 있을 때만 mtime 을 갱신하므로 0바이트 로그가
+    "실행 흔적 없음" critical 오탐이 된다 (이슈 #323 §C 판정 규칙의 한계 케이스,
+    2026-07-19 운영 가동에서 telegram-* 3건으로 실증).
   - oneshot 유닛(docker-user-rules 등)은 `WATCH_SERVICES` 에 넣지 말 것 —
     inactive 가 정상이라 상시 warning 오탐이 된다 (Phase 3 에서 별도 판정).
