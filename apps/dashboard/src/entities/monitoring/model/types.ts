@@ -31,3 +31,36 @@ export interface OpenEventCounts {
   critical: number;
   warning: number;
 }
+
+/** 특정 (metric, labels 차원)의 최신 샘플. */
+export interface LatestMetric {
+  metric: string;
+  value: number;
+  labels: Record<string, string> | null;
+  collectedAt: Date;
+}
+
+export interface HostMetricsSnapshot {
+  hostId: string;
+  hostName: string;
+  metrics: LatestMetric[];
+  lastCollectedAt: Date | null;
+}
+
+export interface ContainerStatRow {
+  hostName: string;
+  container: string;
+  cpuPct: number;
+  memPct: number;
+  memUsedMb: number;
+  collectedAt: Date;
+}
+
+export interface CronRunBoardRow {
+  job: string;
+  lastRunAt: Date;
+  lastStatus: string;
+  lastDurationMs: number;
+  runs24h: number;
+  failures24h: number;
+}

@@ -7,7 +7,13 @@ export {
   listRecentEvents,
   countOpenEvents,
 } from "./api/events";
-export { insertMetricSamples, getRecentSamples } from "./api/samples";
+export {
+  insertMetricSamples,
+  getRecentSamples,
+  getLatestHostMetrics,
+  getLatestContainerStats,
+} from "./api/samples";
+export { listCronRunBoard } from "./api/cronRuns";
 export type {
   MetricSampleRow,
   NewMetricSample,
@@ -16,4 +22,8 @@ export type {
   EventSeverity,
   EventSource,
   OpenEventCounts,
+  LatestMetric,
+  HostMetricsSnapshot,
+  ContainerStatRow,
+  CronRunBoardRow,
 } from "./model/types";
