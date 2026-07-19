@@ -207,13 +207,14 @@ export function MemoCard({
         </div>
       )}
       {/* 하이라이트는 문자열 치환, 마크다운은 문자열→트리 변환이라 동시 적용 불가 —
-          검색 중엔 평문+mark 우선, 음성 원문은 받아쓰기라 마크다운이 아님. */}
-      {view.kind === "raw" || highlightTerms.length > 0 ? (
+          현재 본문에 실제 일치가 있을 때만 평문+mark 우선(제목만 일치하면 마크다운 유지),
+          음성 원문은 받아쓰기라 마크다운이 아님. */}
+      {view.kind === "raw" || containsAnyTerm(body, highlightTerms) ? (
         <p className="whitespace-pre-wrap text-sm text-neutral-700">
           <Highlighted text={body} terms={highlightTerms} />
         </p>
       ) : (
-        <MarkdownBody>{body}</MarkdownBody>
+        <MarkdownBody preserveLineBreaks>{body}</MarkdownBody>
       )}
       {actionsSlot}
       <footer className="mt-3 flex items-center gap-3 text-xs text-neutral-400">

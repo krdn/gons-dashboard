@@ -231,6 +231,19 @@ describe("MemoCard 마크다운 렌더링", () => {
     expect(screen.queryByRole("heading", { name: "받아쓰기 원문" })).toBeNull();
     expect(screen.getByText("## 받아쓰기 원문")).toBeTruthy();
   });
+
+  it("검색어가 제목에만 일치하면 본문은 마크다운을 유지한다", () => {
+    // mdMemo.title "회의 메모"에는 "회의"가 있지만 본문에는 없다 — 본문 평문 강등 금지.
+    render(<MemoCard memo={mdMemo} highlightTerms={["회의"]} />);
+    expect(document.querySelector("mark")?.textContent).toBe("회의");
+    expect(screen.getByRole("heading", { name: "오늘 할 일" })).toBeTruthy();
+  });
+
+  it("텍스트 메모의 단일 줄바꿈을 <br>로 보존한다 (textarea 입력 회귀)", () => {
+    const multiline = { ...memo, source: "text", cleanedContent: "첫 줄\n둘째 줄" } as Memo;
+    const { container } = render(<MemoCard memo={multiline} />);
+    expect(container.querySelector("br")).toBeTruthy();
+  });
 });
 
 describe("MemoCard 카테고리 수동 정정", () => {
