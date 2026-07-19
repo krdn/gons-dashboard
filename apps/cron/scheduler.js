@@ -9,6 +9,7 @@
 
 import cron from "node-cron";
 import { runDeployCycle } from "./autopilot/deploy-watcher.js";
+import { waitForAppReady } from "./waitForAppReady.js";
 
 const APP_URL = process.env.APP_URL ?? "http://app:3020";
 const TOKEN = process.env.CRON_BEARER_TOKEN;
@@ -192,30 +193,35 @@ console.log(
   "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST",
 );
 
-// 시작 직후 1회 polling — 컨테이너 재시작 시 catchup.
-setTimeout(() => {
-  void callCron("/api/cron/poll-gmail", "poll-gmail (startup)", 300_000);
-}, 30_000);
-
-// 시작 직후 오늘 일진 catchup — 컨테이너가 00:01/00:05 KST 에 떠있지 않았던 날
-// (배포·재시작) 의 일진이 node-cron 미재생으로 영구 소실되는 것을 방지.
-// 두 엔드포인트 모두 chart_id+for_date unique index 로 row 는 안전(UPSERT/
+// 시작 직후 catchup — 컨테이너가 정규 스케줄 시각에 떠있지 않았던 날(배포·재시작)
+// 의 작업이 node-cron 미재생으로 소실되는 것을 방지.
+//
+// #133 MEDIUM #1 — app 미준비 시 catchup 의 silent fail 을 막기 위해, catchup 을
+// 실행하기 전 waitForAppReady 로 /api/health(DB SELECT 1 포함 readiness probe)가
+// 200 을 줄 때까지 폴링한다. ready 못 해도(false) best-effort 로 catchup 은 시도
+// 한다 — 기존 동작(무조건 시도)보다 나빠지지 않게.
+//
+// 일진 두 엔드포인트는 chart_id+for_date unique index 로 row 는 안전(UPSERT/
 // onConflictDoNothing). tri 는 LLM 없는 순수 계산이라 완전 idempotent.
 // daily-fortunes 는 row 만 idempotent — 자정±수십초 재시작으로 정규 cron(00:01)
-// 과 이 catchup 이 cache-miss 창에서 겹치면 LLM spend 가 이중 기록될 수 있다
-// (좁은 창, 당일 예산 집계만 영향). app 미준비 시 catchup silent fail 과 함께
-// 후속 이슈로 health-guard 검토. 정규 스케줄(00:01/00:05) 의 stagger 미러.
+// 과 이 catchup 이 cache-miss 창에서 겹치면 LLM spend 가 이중 기록될 수 있으나
+// (좁은 창, 당일 예산 집계만 영향), ready 대기가 그 race 창도 자연 축소한다.
+// stagger(0→30s→60s)로 정규 스케줄(00:01/00:05)의 LLM 부하 분산을 미러.
 setTimeout(() => {
-  void callCron(
-    "/api/cron/generate-daily-fortunes",
-    "generate-daily-fortunes (startup)",
-    180_000,
-  );
-}, 60_000);
-setTimeout(() => {
-  void callCron(
-    "/api/cron/generate-daily-tri-fortunes",
-    "generate-daily-tri-fortunes (startup)",
-    120_000,
-  );
-}, 120_000);
+  void (async () => {
+    await waitForAppReady(`${APP_URL}/api/health`);
+    await callCron("/api/cron/poll-gmail", "poll-gmail (startup)", 300_000);
+    await new Promise((resolve) => setTimeout(resolve, 30_000));
+    await callCron(
+      "/api/cron/generate-daily-fortunes",
+      "generate-daily-fortunes (startup)",
+      180_000,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 30_000));
+    await callCron(
+      "/api/cron/generate-daily-tri-fortunes",
+      "generate-daily-tri-fortunes (startup)",
+      120_000,
+    );
+  })();
+}, 30_000);
