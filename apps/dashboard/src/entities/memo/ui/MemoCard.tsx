@@ -7,7 +7,7 @@ import { TRANSFORM_PRESET_IDS, TRANSFORM_PRESET_LABELS } from "../model/types";
 // 삭제 확인 상태가 원복되기까지의 유예 — 오클릭 방지와 재확인 부담 사이의 절충.
 const DELETE_CONFIRM_REVERT_MS = 3000;
 
-const SOURCE_BADGE: Record<MemoSource, string> = {
+const SOURCE_BADGE: Record<string, string> = {
   voice: "🎙 음성",
   text: "✍ 텍스트",
   agent: "🤖 에이전트",
@@ -182,7 +182,7 @@ export function MemoCard({
             )
           )}
           <span className="rounded px-1.5 py-0.5 text-xs text-neutral-500">
-            {SOURCE_BADGE[memo.source]}
+            {SOURCE_BADGE[memo.source] ?? memo.source}
           </span>
         </div>
       </header>
