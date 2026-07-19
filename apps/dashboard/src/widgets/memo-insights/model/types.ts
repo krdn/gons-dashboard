@@ -26,6 +26,7 @@ export interface CategoryDistribution {
   byCategory: { slug: string; labelKo: string; count: number }[];
   voiceCount: number;
   textCount: number;
+  agentCount: number;
   unclassifiedCount: number;
 }
 

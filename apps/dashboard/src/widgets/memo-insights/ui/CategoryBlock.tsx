@@ -11,8 +11,8 @@ interface Props {
 const PALETTE = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6", "#ef4444", "#64748b"];
 
 export function CategoryBlock({ category }: Props) {
-  const { byCategory, voiceCount, textCount, unclassifiedCount } = category;
-  const total = voiceCount + textCount;
+  const { byCategory, voiceCount, textCount, agentCount, unclassifiedCount } = category;
+  const total = voiceCount + textCount + agentCount;
 
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-6">
@@ -41,17 +41,19 @@ export function CategoryBlock({ category }: Props) {
         </ResponsiveContainer>
       )}
 
-      {/* voice vs text 가로 바 + 미분류 수. */}
+      {/* voice vs text vs agent 가로 바 + 미분류 수. */}
       <div className="mt-4">
         <div className="mb-1 flex justify-between text-xs text-[var(--color-text-muted)]">
           <span>음성 {voiceCount}</span>
           <span>텍스트 {textCount}</span>
+          <span>에이전트 {agentCount}</span>
         </div>
         <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
           {total > 0 && (
             <>
               <div className="bg-violet-400" style={{ width: `${(voiceCount / total) * 100}%` }} />
               <div className="bg-sky-400" style={{ width: `${(textCount / total) * 100}%` }} />
+              <div className="bg-amber-400" style={{ width: `${(agentCount / total) * 100}%` }} />
             </>
           )}
         </div>

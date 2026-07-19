@@ -125,10 +125,12 @@ export function buildCategoryDistribution(
   const bySlug = new Map<string, number>();
   let voiceCount = 0;
   let textCount = 0;
+  let agentCount = 0;
   let unclassifiedCount = 0;
 
   for (const f of facts) {
     if (f.source === "voice") voiceCount++;
+    else if (f.source === "agent") agentCount++;
     else textCount++;
     if (f.category === null) unclassifiedCount++;
     else bySlug.set(f.category, (bySlug.get(f.category) ?? 0) + 1);
@@ -138,7 +140,7 @@ export function buildCategoryDistribution(
     .map(([slug, count]) => ({ slug, labelKo: labelBySlug.get(slug) ?? slug, count }))
     .sort((a, b) => b.count - a.count);
 
-  return { byCategory, voiceCount, textCount, unclassifiedCount };
+  return { byCategory, voiceCount, textCount, agentCount, unclassifiedCount };
 }
 
 export function buildActionConversion(
