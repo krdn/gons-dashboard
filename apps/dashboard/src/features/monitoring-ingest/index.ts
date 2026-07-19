@@ -107,11 +107,15 @@ export async function ingestChecks(
   const checkedAt = payload.collectedAt
     ? new Date(payload.collectedAt)
     : new Date();
-  // Phase 2 판정 + Phase 3 보안 판정. security 섹션이 없는 호스트는 보안 verdict 없음
-  // (판정 자체를 건너뛴다 — 감시 대상이 아닌 호스트에 unknown 행을 만들지 않기 위해).
+  // Phase 2 판정 + Phase 3 보안 판정.
+  //
+  // ⚠️ security 섹션이 없어도 judgeSecurity 를 건너뛰지 않는다. 에이전트는 collector
+  // 산출물이 없거나 노후(15분)면 섹션을 생략하는데, 그때 판정까지 건너뛰면
+  // check_results 에 새 행이 안 생겨 보드가 **직전 상태(ok/critical)를 계속 표시**한다.
+  // 빈 객체를 넘기면 5종 모두 not-reported unknown 행이 생겨 관측 공백이 드러난다.
   const verdicts: CheckVerdict[] = [
     ...judgeChecks(payload, checkedAt),
-    ...(payload.security ? judgeSecurity(payload.security) : []),
+    ...judgeSecurity(payload.security ?? {}, payload.host),
   ];
 
   const inserted = await insertCheckResults(

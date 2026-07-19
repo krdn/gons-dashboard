@@ -72,9 +72,14 @@ export function SecurityBoard({
   checks: LatestCheck[];
   now: Date;
 }) {
+  // target 은 "<host>:<kind>" — 호스트가 여럿이면 같은 kind 가 여러 행으로 온다.
   const rows = [...checks].sort(
-    (a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind),
+    (a, b) =>
+      a.target.localeCompare(b.target) ||
+      ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind),
   );
+  const hosts = new Set(rows.map((c) => c.target.split(":")[0]));
+  const multiHost = hosts.size > 1;
 
   return (
     <section
@@ -110,11 +115,16 @@ export function SecurityBoard({
                 const s = checkStatusStyle(c.status);
                 return (
                   <tr
-                    key={c.kind}
+                    key={c.target}
                     className="border-b border-[var(--color-hairline)] last:border-b-0 hover:bg-[var(--color-surface-2)]"
                   >
                     <td className="px-3 py-1.5 text-xs">
                       {LABELS[c.kind] ?? c.kind}
+                      {multiHost && (
+                        <span className="ml-1.5 font-mono text-[10px] text-[var(--color-text-subtle)]">
+                          {c.target.split(":")[0]}
+                        </span>
+                      )}
                     </td>
                     <td
                       className="px-3 py-1.5 text-xs font-semibold"

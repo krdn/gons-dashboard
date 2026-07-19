@@ -100,7 +100,10 @@ describe("/api/agent/checks-ingest", () => {
       ),
     );
     expect(res.status).toBe(200);
-    expect((await res.json()).inserted).toBe(2);
+    // 서비스 2 + 보안 5. Phase 3 부터 security 섹션이 없어도 judgeSecurity 가
+    // not-reported unknown 5종을 낸다 — verdict 를 건너뛰면 새 행이 안 생겨
+    // 보드에 직전 상태가 남기 때문(관측 공백이 정상으로 보이는 미탐).
+    expect((await res.json()).inserted).toBe(7);
     expect(recordEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         source: "service",
@@ -110,6 +113,19 @@ describe("/api/agent/checks-ingest", () => {
       }),
     );
     expect(resolveEventMock).toHaveBeenCalledWith("host:h1:svc:nginx");
+  });
+
+  it("security 섹션이 없어도 보안 5종 unknown 행을 남긴다 (stale 방지)", async () => {
+    // collector 미설치·산출물 노후로 에이전트가 security 를 생략했을 때,
+    // 판정까지 건너뛰면 check_results 에 새 행이 안 생겨 보드가 직전 상태
+    // (ok 또는 critical)를 계속 표시한다.
+    const res = await POST(
+      makeReq(TEST_BEARER, json({ host: "home-server" })),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).inserted).toBe(5);
+    // unknown 이므로 이벤트는 발행하지 않는다 (위반도 정상 복귀도 아님).
+    expect(recordEventMock).not.toHaveBeenCalled();
   });
 
   it("unknown 판정(readable=false)은 record/resolve 무발행", async () => {

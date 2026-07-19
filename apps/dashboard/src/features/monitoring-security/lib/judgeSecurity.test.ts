@@ -4,8 +4,10 @@ import { EXPECTED_IPTABLES, SSH_FAIL_THRESHOLD } from "../config/baseline";
 import { type SecurityPayload } from "@/features/monitoring-ingest";
 
 /** (kind, status) 로 verdict 를 뽑는 헬퍼 — 순서에 의존하지 않기 위해. */
+const HOST = "home-server";
+
 function byKind(payload: SecurityPayload, kind: string) {
-  const v = judgeSecurity(payload).find((x) => x.kind === kind);
+  const v = judgeSecurity(payload, HOST).find((x) => x.kind === kind);
   if (!v) throw new Error(`verdict 없음: ${kind}`);
   return v;
 }
@@ -14,12 +16,21 @@ describe("judgeSecurity — 관측 공백", () => {
   test("빈 payload 에도 5종 verdict 를 모두 생성한다", () => {
     // 관측치가 없다고 verdict 를 건너뛰면 check_results 에 새 행이 안 생겨
     // 보드에 이전 상태가 남는다 (관측 공백이 정상으로 보이는 미탐).
-    const verdicts = judgeSecurity({});
+    const verdicts = judgeSecurity({}, HOST);
     expect(verdicts).toHaveLength(5);
     expect(verdicts.every((v) => v.status === "unknown")).toBe(true);
     expect(new Set(verdicts.map((v) => v.kind))).toEqual(
       new Set(["iptables", "fail2ban", "ufw", "portdrift", "sshfail"]),
     );
+  });
+
+  test("target 은 호스트별로 갈린다 (보드 행 충돌 방지)", () => {
+    // check_results 현재 상태는 (kind, target) 최신 행이다. target 이 kind 와 같으면
+    // collector 없는 호스트의 unknown 이 정상 호스트의 판정을 덮어쓴다.
+    const a = judgeSecurity({}, "home-server").map((v) => v.target);
+    const b = judgeSecurity({}, "krdn-lenovo").map((v) => v.target);
+    expect(a.some((t) => b.includes(t))).toBe(false);
+    expect(a).toContain("home-server:iptables");
   });
 
   test("observed:false 는 unknown 이고 reason 을 detail 에 싣는다", () => {

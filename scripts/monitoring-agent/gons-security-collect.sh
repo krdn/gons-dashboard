@@ -79,9 +79,16 @@ collect_fail2ban() {
     return
   fi
   # "Jail list:\tsshd, nginx-limit" → JSON 배열
-  jails=$(printf '%s\n' "$out" | awk -F: '/Jail list/ { print $2 }' |
-    tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' |
-    awk 'NF { printf "%s\"%s\"", (n++?",":""), $0 }')
+  # jail 이름은 json_escape 를 거친다 — 특수문자가 있으면 checks 요청 전체가
+  # 깨진 JSON 이 되어 이 호스트의 모든 판정이 사라진다.
+  local jails="" name
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    jails="${jails:+$jails,}\"$(json_escape "$name")\""
+  done <<EOF
+$(printf '%s\n' "$out" | awk -F: '/Jail list/ { print $2 }' |
+    tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+EOF
   printf '{"observed":true,"jails":[%s]}' "$jails"
 }
 
@@ -109,7 +116,10 @@ collect_ports() {
   local out rc entries
   out=$(timeout "$CMD_TIMEOUT" ss -tlnH 2>/dev/null)
   rc=$?
-  if [ $rc -ne 0 ]; then
+  # 빈 출력을 observed:true, entries:[] 로 싣지 않는다 — portdrift 가 ok 로 판정돼
+  # "리스닝 소켓 관측 실패"가 "정상"으로 보인다 (0바이트 로그 오탐과 같은 구조).
+  # 실제로 리스너가 0개인 호스트는 이 서버에 존재하지 않는다.
+  if [ $rc -ne 0 ] || [ -z "$out" ]; then
     obs_fail "ss-failed-rc$rc"
     return
   fi
@@ -117,6 +127,11 @@ collect_ports() {
   entries=$(printf '%s\n' "$out" | awk '{ print $4 }' |
     awk 'NF { printf "tcp:%s\n", $0 }' | sort -u |
     awk 'NF && n<300 { printf "%s\"%s\"", (n++?",":""), $0 }')
+  # 파싱 결과가 비어도 관측 실패로 — 출력 형식이 바뀐 경우다.
+  if [ -z "$entries" ]; then
+    obs_fail "ss-parse-empty"
+    return
+  fi
   printf '{"observed":true,"entries":[%s]}' "$entries"
 }
 
@@ -157,6 +172,11 @@ TMP=$(mktemp "$OUT_DIR/.security.XXXXXX") || exit 1
 trap 'rm -f "$TMP"' EXIT
 build_json >"$TMP" || exit 1
 chmod 0640 "$TMP"
-chgrp gons-agent "$TMP" 2>/dev/null || true # 그룹 부재 시에도 수집은 계속
+# 그룹 부여 실패는 치명 — 에이전트가 읽지 못하는 파일을 남기면 "수집은 되는데
+# 보드는 관찰 불가" 라는 진단 어려운 상태가 된다. 차라리 실패를 드러낸다.
+if ! chgrp gons-agent "$TMP"; then
+  echo "[security-collect] chgrp gons-agent 실패 — 유저가 없거나 권한 부족" >&2
+  exit 1
+fi
 mv -f "$TMP" "$OUT_FILE"
 trap - EXIT

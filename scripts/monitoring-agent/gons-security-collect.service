@@ -5,6 +5,10 @@ Documentation=https://github.com/krdn/gons-dashboard/tree/main/scripts/monitorin
 [Service]
 Type=oneshot
 User=root
+# ⚠️ Group 이 없으면 systemd 가 RuntimeDirectory 를 root:root 0750 으로 만들어
+#    gons-agent 가 **디렉토리 탐색(x 비트)** 부터 막힌다 — 파일이 0640
+#    root:gons-agent 여도 읽을 수 없다 (2026-07-20 실측: "허가 거부").
+Group=gons-agent
 ExecStart=/opt/gons/monitoring-agent/gons-security-collect.sh
 
 # --- 샌드박스 (운영 서버 systemd-run 실증 기반) ---
@@ -19,6 +23,12 @@ IPAddressDeny=any
 ProtectHome=yes
 ProtectSystem=strict
 PrivateTmp=yes
+
+# `ufw status` 는 조회만 해도 /run/ufw.lock 을 생성한다 — ProtectSystem=strict 아래서는
+# 락 생성이 실패해 ufw 가 traceback 으로 죽고, 관측이 영구 unknown 이 된다
+# (2026-07-20 실측). 락 파일 **하나만** 열어 최소 권한을 유지한다
+# (/run 전체나 ProtectSystem=full 로 완화하면 불필요하게 넓어진다).
+ReadWritePaths=/run/ufw.lock
 
 # ⚠️ RuntimeDirectory 단독이면 서비스 중지 시 디렉토리가 삭제된다. Type=oneshot 은
 #    종료가 곧 중지라 **파일을 쓰자마자 사라진다**. 실측으로 확인 — Preserve 필수.

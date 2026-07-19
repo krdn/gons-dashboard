@@ -55,15 +55,19 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now gons-security-collect.timer
 ```
 
-### 보안 baseline 채우기 (Phase 3 §H — 설치 직후 1회 필수)
+### 보안 baseline 갱신 (Phase 3 §H)
 
-`features/monitoring-security/config/baseline.ts` 의 `EXPECTED_IPTABLES.specHash`
-와 `ALLOWED_PORTS` 는 placeholder 로 배포된다. **실측값으로 교체하지 않으면 매
-사이클 critical 오탐**이 난다.
+`features/monitoring-security/config/baseline.ts` 의 `EXPECTED_IPTABLES` 와
+`ALLOWED_PORTS` 는 **2026-07-20 운영 실측값이 이미 들어있다** — 설치 시 별도 작업 불필요.
+
+갱신이 필요한 때는 **방화벽 규칙이나 노출 포트를 의도적으로 바꿨을 때뿐**이다.
+그 경우 관제가 critical/warning 을 띄우는 것이 정상 동작이므로, **변경이 의도된
+것인지 감사한 뒤에** baseline 을 새 실측값으로 올린다. 경고를 없애려고 무조건
+baseline 을 덮어쓰면 관제가 무력화된다.
 
 ```bash
 sudo /opt/gons/monitoring-agent/gons-security-collect.sh --stdout
-# → iptables.ruleCount / iptables.specHash / ports.entries 를 baseline.ts 에 반영
+# → iptables.ruleCount / iptables.specHash / ports.entries 를 확인 후 반영
 ```
 
 ## 검증

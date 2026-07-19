@@ -21,15 +21,26 @@ import {
   SSH_FAIL_THRESHOLD,
 } from "../config/baseline";
 
+/**
+ * check_results 의 현재 상태는 (kind, target) 최신 행이다(DISTINCT ON). 보안 kind 는
+ * kind 당 대상이 하나라 target 을 kind 와 같게 두면 **여러 호스트가 같은 행을 공유**해
+ * 나중에 push 한 호스트가 앞선 호스트의 판정을 덮어쓴다. Phase 2 의 service/timer 는
+ * target 이 unit 명이라 자연히 갈렸지만 보안은 그렇지 않다 — host 로 한정한다.
+ */
+function securityTarget(host: string, kind: string): string {
+  return `${host}:${kind}`;
+}
+
 /** 관측 실패 verdict — 모든 kind 공통. */
 function unknownVerdict(
+  host: string,
   kind: CheckVerdict["kind"],
   reason: string,
   label: string,
 ): CheckVerdict {
   return {
     kind,
-    target: kind,
+    target: securityTarget(host, kind),
     status: "unknown",
     detail: { reason },
     dedupKeySuffix: `sec:${kind}`,
@@ -37,26 +48,33 @@ function unknownVerdict(
   };
 }
 
-export function judgeSecurity(payload: SecurityPayload): CheckVerdict[] {
+/**
+ * 보안 관측치 판정. payload 가 비어도(collector 미설치·산출물 노후) **항상 5종을
+ * 반환**한다 — verdict 를 건너뛰면 새 행이 안 생겨 보드에 직전 상태가 남는다.
+ */
+export function judgeSecurity(
+  payload: SecurityPayload,
+  host: string,
+): CheckVerdict[] {
   return [
-    judgeIptables(payload.iptables),
-    judgeFail2ban(payload.fail2ban),
-    judgeUfw(payload.ufw),
-    judgePortDrift(payload.ports),
-    judgeSshFail(payload.sshFail),
+    judgeIptables(host, payload.iptables),
+    judgeFail2ban(host, payload.fail2ban),
+    judgeUfw(host, payload.ufw),
+    judgePortDrift(host, payload.ports),
+    judgeSshFail(host, payload.sshFail),
   ];
 }
 
-function judgeIptables(o: SecurityPayload["iptables"]): CheckVerdict {
+function judgeIptables(host: string, o: SecurityPayload["iptables"]): CheckVerdict {
   const label = "DOCKER-USER 방화벽";
-  if (!o) return unknownVerdict("iptables", "not-reported", label);
-  if (!o.observed) return unknownVerdict("iptables", o.reason, label);
+  if (!o) return unknownVerdict(host, "iptables", "not-reported", label);
+  if (!o.observed) return unknownVerdict(host, "iptables", o.reason, label);
 
   // 체인 삭제 = 인터넷 방어선 소멸. 관측 실패가 아니라 최악의 위반이다.
   if (!o.present) {
     return {
       kind: "iptables",
-      target: "iptables",
+      target: securityTarget(host, "iptables"),
       status: "critical",
       detail: { present: false },
       dedupKeySuffix: "sec:iptables",
@@ -75,7 +93,7 @@ function judgeIptables(o: SecurityPayload["iptables"]): CheckVerdict {
   if (!countDrift && !hashDrift) {
     return {
       kind: "iptables",
-      target: "iptables",
+      target: securityTarget(host, "iptables"),
       status: "ok",
       detail,
       dedupKeySuffix: "sec:iptables",
@@ -84,7 +102,7 @@ function judgeIptables(o: SecurityPayload["iptables"]): CheckVerdict {
   }
   return {
     kind: "iptables",
-    target: "iptables",
+    target: securityTarget(host, "iptables"),
     status: "critical",
     detail,
     dedupKeySuffix: "sec:iptables",
@@ -94,10 +112,10 @@ function judgeIptables(o: SecurityPayload["iptables"]): CheckVerdict {
   };
 }
 
-function judgeFail2ban(o: SecurityPayload["fail2ban"]): CheckVerdict {
+function judgeFail2ban(host: string, o: SecurityPayload["fail2ban"]): CheckVerdict {
   const label = "fail2ban";
-  if (!o) return unknownVerdict("fail2ban", "not-reported", label);
-  if (!o.observed) return unknownVerdict("fail2ban", o.reason, label);
+  if (!o) return unknownVerdict(host, "fail2ban", "not-reported", label);
+  if (!o.observed) return unknownVerdict(host, "fail2ban", o.reason, label);
 
   // 개수가 아니라 "기대 jail 의 존재"를 본다 — jailCount>0 만 보면
   // sshd 가 빠지고 다른 jail 이 늘어난 상황을 정상으로 오판한다.
@@ -106,7 +124,7 @@ function judgeFail2ban(o: SecurityPayload["fail2ban"]): CheckVerdict {
   return missing.length > 0
     ? {
         kind: "fail2ban",
-        target: "fail2ban",
+        target: securityTarget(host, "fail2ban"),
         status: "warning",
         detail,
         dedupKeySuffix: "sec:fail2ban",
@@ -114,7 +132,7 @@ function judgeFail2ban(o: SecurityPayload["fail2ban"]): CheckVerdict {
       }
     : {
         kind: "fail2ban",
-        target: "fail2ban",
+        target: securityTarget(host, "fail2ban"),
         status: "ok",
         detail,
         dedupKeySuffix: "sec:fail2ban",
@@ -122,13 +140,13 @@ function judgeFail2ban(o: SecurityPayload["fail2ban"]): CheckVerdict {
       };
 }
 
-function judgeUfw(o: SecurityPayload["ufw"]): CheckVerdict {
+function judgeUfw(host: string, o: SecurityPayload["ufw"]): CheckVerdict {
   const label = "ufw";
-  if (!o) return unknownVerdict("ufw", "not-reported", label);
-  if (!o.observed) return unknownVerdict("ufw", o.reason, label);
+  if (!o) return unknownVerdict(host, "ufw", "not-reported", label);
+  if (!o.observed) return unknownVerdict(host, "ufw", o.reason, label);
   return {
     kind: "ufw",
-    target: "ufw",
+    target: securityTarget(host, "ufw"),
     status: o.active ? "ok" : "critical",
     detail: { active: o.active },
     dedupKeySuffix: "sec:ufw",
@@ -136,10 +154,10 @@ function judgeUfw(o: SecurityPayload["ufw"]): CheckVerdict {
   };
 }
 
-function judgePortDrift(o: SecurityPayload["ports"]): CheckVerdict {
+function judgePortDrift(host: string, o: SecurityPayload["ports"]): CheckVerdict {
   const label = "리스닝 포트";
-  if (!o) return unknownVerdict("portdrift", "not-reported", label);
-  if (!o.observed) return unknownVerdict("portdrift", o.reason, label);
+  if (!o) return unknownVerdict(host, "portdrift", "not-reported", label);
+  if (!o.observed) return unknownVerdict(host, "portdrift", o.reason, label);
 
   // 사라진 포트는 무이벤트 — 서비스 중단은 service/http 체크가 잡는다.
   // 여기서 보는 것은 "의도하지 않은 노출 확대" 뿐이다.
@@ -148,7 +166,7 @@ function judgePortDrift(o: SecurityPayload["ports"]): CheckVerdict {
   return unexpected.length > 0
     ? {
         kind: "portdrift",
-        target: "portdrift",
+        target: securityTarget(host, "portdrift"),
         status: "warning",
         detail,
         dedupKeySuffix: "sec:portdrift",
@@ -156,7 +174,7 @@ function judgePortDrift(o: SecurityPayload["ports"]): CheckVerdict {
       }
     : {
         kind: "portdrift",
-        target: "portdrift",
+        target: securityTarget(host, "portdrift"),
         status: "ok",
         detail,
         dedupKeySuffix: "sec:portdrift",
@@ -164,14 +182,14 @@ function judgePortDrift(o: SecurityPayload["ports"]): CheckVerdict {
       };
 }
 
-function judgeSshFail(o: SecurityPayload["sshFail"]): CheckVerdict {
+function judgeSshFail(host: string, o: SecurityPayload["sshFail"]): CheckVerdict {
   const label = "SSH 인증 실패";
-  if (!o) return unknownVerdict("sshfail", "not-reported", label);
-  if (!o.observed) return unknownVerdict("sshfail", o.reason, label);
+  if (!o) return unknownVerdict(host, "sshfail", "not-reported", label);
+  if (!o.observed) return unknownVerdict(host, "sshfail", o.reason, label);
   const over = o.failCount1h > SSH_FAIL_THRESHOLD;
   return {
     kind: "sshfail",
-    target: "sshfail",
+    target: securityTarget(host, "sshfail"),
     status: over ? "warning" : "ok",
     detail: { failCount1h: o.failCount1h, threshold: SSH_FAIL_THRESHOLD },
     dedupKeySuffix: "sec:sshfail",
