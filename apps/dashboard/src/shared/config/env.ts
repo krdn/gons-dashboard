@@ -153,6 +153,19 @@ const schema = z.object({
     z.string().min(1).optional(),
   ),
 
+  // GitHub 관제 (이슈 #323) — 둘 다 선택. 토큰 미설정 시 동기화 cron 이
+  // skip 하고 보드는 "동기화 비활성" 배지를 표시한다(기존 스냅샷은 유지).
+  // 토큰 누락이 앱 부팅을 막으면 안 되므로 필수로 만들지 않는다.
+  // compose 가 `${VAR:-}` 로 빈 문자열을 넘기므로 preprocess 로 "" → undefined.
+  GITHUB_MONITOR_TOKEN: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().min(1).optional(),
+  ),
+  GITHUB_MONITOR_ORG: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().min(1).default("krdn"),
+  ),
+
   // 타임존 (cron + DB 쿼리에 결정적)
   TZ: z.literal("Asia/Seoul").default("Asia/Seoul"),
 });
