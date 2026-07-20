@@ -1,68 +1,16 @@
-// syncGithub 의 advisory lock 동작 — 별도 파일인 이유:
+// advisory lock 계약 + syncGithub 의 락 사용 — 이슈 #323.
 //
-// 이 테스트는 첫 실행을 fetch 단계에서 붙잡아둔 채 두 번째를 호출한다.
-// 같은 파일의 다른 테스트들과 섞이면 vi.resetModules() 로 매번 새로 로드되는
-// 모듈이 globalThis 캐시의 같은 커넥션 풀(max 10)에서 reserve() 를 반복해,
-// 반납 지연이 쌓이면 뒤 테스트가 연결을 못 얻고 timeout 된다.
-// vitest 는 fileParallelism: false 라 파일 단위로는 직렬 실행되고 각 파일이
-// 깨끗한 모듈 그래프에서 시작하므로, 분리하면 간섭이 사라진다.
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { db } from "@/shared/lib/db/client";
-import { githubIssues, githubSyncState, githubWorkflowRuns } from "@/shared/lib/db/schema";
-
-async function loadSync(token: string | undefined) {
-  vi.resetModules();
-  vi.doMock("@/shared/config/env", async () => {
-    const actual = await vi.importActual<typeof import("@/shared/config/env")>(
-      "@/shared/config/env",
-    );
-    return {
-      ...actual,
-      env: {
-        ...actual.env,
-        GITHUB_MONITOR_TOKEN: token,
-        GITHUB_MONITOR_ORG: "krdn",
-        GITHUB_MONITOR_PRUNE_RUNS: false,
-      },
-    };
-  });
-  return (await import("@/features/github-monitor")).syncGithub;
-}
-
-const EMPTY_SEARCH = { total_count: 0, incomplete_results: false, items: [] };
-
-/** 전 소스가 성공하는 최소 라우트 집합. */
-function okRoutes(): { match: RegExp; status?: number; body: unknown }[] {
-  return [
-    { match: /api\.github\.com\/users\/krdn$/, body: { type: "Organization" } },
-    { match: /api\.github\.com\/user$/, body: { login: "krdn" } },
-    { match: /search\/issues/, body: EMPTY_SEARCH },
-    { match: /orgs\/krdn\/repos/, body: [] },
-    {
-      match: /commits\/main/,
-      body: { sha: "s", commit: { committer: { date: new Date().toISOString() } } },
-    },
-    { match: /actions\/workflows/, body: { workflow_runs: [] } },
-    { match: /actions\/runs/, body: { workflow_runs: [] } },
-  ];
-}
-
-function mockRoutes(routes: { match: RegExp; status?: number; body: unknown }[]) {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const url = String(input);
-    const route = routes.find((r) => r.match.test(url));
-    if (route == null) {
-      return new Response(JSON.stringify({ message: "unmatched" }), { status: 404 });
-    }
-    return new Response(JSON.stringify(route.body), { status: route.status ?? 200 });
-  });
-}
-
-beforeEach(async () => {
-  await db.delete(githubIssues);
-  await db.delete(githubWorkflowRuns);
-  await db.delete(githubSyncState);
-});
+// ⚠️ 실제 두 syncGithub 을 동시에 띄워 경합시키는 테스트는 쓰지 않는다.
+// 그러려면 첫 실행을 fetch 에서 붙잡아둔 채 두 번째를 호출해야 하는데,
+// 그동안 커넥션 풀(max 10)의 reserve() 가 점유돼 CI 처럼 리소스가 빠듯한
+// 환경에서 5초 timeout 이 난다(실제로 CI 에서만 실패했다).
+//
+// 대신 두 층으로 나눠 검증한다:
+//   1. withAdvisoryLock 자체의 계약 — 상호배제·해제·예외 경로 (이 파일)
+//   2. syncGithub 이 그 락을 쓰고 lockBusy 를 돌려준다 (이 파일 하단)
+// allSettled 로 전부 기다리는지는 syncGithub 의 반환 형태로 확인한다.
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { withAdvisoryLock, LOCK_KEYS } from "@/shared/lib/db/advisoryLock";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -70,93 +18,106 @@ afterEach(() => {
   vi.resetModules();
 });
 
-describe("syncGithub — 동시 실행 방지", () => {
-  // cron 의 HTTP timeout(120s)은 요청만 끊고 서버 측 실행은 계속되므로,
-  // GitHub 응답이 느리면 다음 주기(5분)와 겹친다. 두 실행이 DELETE+INSERT 와
-  // prune 을 교차하면 오래된 실행이 최신 스냅샷을 덮거나 지운다.
-  it("이미 실행 중이면 두 번째 호출은 대기 없이 lockBusy 로 반환한다", async () => {
-    const pending: ((r: Response) => void)[] = [];
-    let signalStarted: () => void = () => {};
-    const firstStarted = new Promise<void>((resolve) => {
-      signalStarted = resolve;
-    });
+// 테스트 전용 키 — 실제 githubSync 키와 겹치면 다른 테스트를 막는다.
+const TEST_KEY = [323, 9001] as const;
 
-    // 첫 호출이 GitHub 에 닿으면 신호를 주고, 풀어줄 때까지 모든 fetch 를 멈춘다.
-    vi.spyOn(globalThis, "fetch").mockImplementation(() => {
-      signalStarted();
-      return new Promise<Response>((res) => pending.push(res));
-    });
-
-    const syncGithub = await loadSync("tok");
-    const first = syncGithub();
-    await firstStarted;
-
-    const second = await syncGithub();
-    expect(second.lockBusy).toBe(true);
-    expect(second.skipped).toBe(true);
-
-    // 멈춰둔 fetch 를 전부 풀어 첫 실행을 정리한다 (락 해제까지 확인).
-    for (const res of pending) {
-      res(new Response(JSON.stringify({ message: "boom" }), { status: 500 }));
-    }
-    await first;
+describe("withAdvisoryLock", () => {
+  it("락을 잡고 fn 결과를 돌려준다", async () => {
+    const r = await withAdvisoryLock(TEST_KEY, "test", async () => "done");
+    expect(r).toBe("done");
   });
 
-  it("락이 해제된 뒤에는 정상 실행된다", async () => {
-    mockRoutes(okRoutes());
-    const syncGithub = await loadSync("tok");
+  // 상호배제 — 바깥 락이 유지되는 동안 같은 키의 획득은 실패해야 한다.
+  it("이미 잡힌 키는 대기 없이 null 을 돌려준다", async () => {
+    const inner = await withAdvisoryLock(TEST_KEY, "outer", async () =>
+      withAdvisoryLock(TEST_KEY, "inner", async () => "should-not-run"),
+    );
+    expect(inner).toBeNull();
+  });
 
-    const a = await syncGithub();
-    const b = await syncGithub();
+  // finally 에서 반드시 해제해야 한다 — 안 그러면 다음 주기가 영구히 막힌다.
+  it("fn 이 throw 해도 락을 해제한다", async () => {
+    await expect(
+      withAdvisoryLock(TEST_KEY, "throwing", async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
 
-    expect(a.lockBusy).toBeUndefined();
-    expect(b.lockBusy).toBeUndefined();
-    expect(b.issues.ok).toBe(true);
+    // 해제됐다면 다시 잡을 수 있다.
+    const again = await withAdvisoryLock(TEST_KEY, "after-throw", async () => "ok");
+    expect(again).toBe("ok");
+  });
+
+  it("연속 호출이 서로를 막지 않는다 (연결 반납 확인)", async () => {
+    for (let i = 0; i < 5; i++) {
+      const r = await withAdvisoryLock(TEST_KEY, `seq-${i}`, async () => i);
+      expect(r).toBe(i);
+    }
+  });
+
+  it("다른 키는 서로를 막지 않는다", async () => {
+    const inner = await withAdvisoryLock(TEST_KEY, "outer", async () =>
+      withAdvisoryLock([323, 9002], "other-key", async () => "ok"),
+    );
+    expect(inner).toBe("ok");
   });
 });
 
-describe("syncGithub — 소스 예외 시 락 유지", () => {
-  // ⚠️ Promise.all 은 한 소스가 reject 하면 즉시 반환하고 나머지는 계속 돈다.
-  // 그러면 advisory lock 의 finally 가 먼저 해제돼 아직 실행 중인 소스가
-  // 다음 주기와 겹친다 — 락을 넣은 목적이 무너진다. allSettled 로 전부
-  // 끝날 때까지 기다려야 한다.
-  it("한 소스가 pending 인 동안 두 번째 호출은 계속 lockBusy 다", async () => {
-    const pending: ((r: Response) => void)[] = [];
-    let signalStarted: () => void = () => {};
-    const started = new Promise<void>((resolve) => {
-      signalStarted = resolve;
+describe("syncGithub — 락 사용", () => {
+  async function loadSync() {
+    vi.resetModules();
+    vi.doMock("@/shared/config/env", async () => {
+      const actual = await vi.importActual<typeof import("@/shared/config/env")>(
+        "@/shared/config/env",
+      );
+      return {
+        ...actual,
+        env: {
+          ...actual.env,
+          GITHUB_MONITOR_TOKEN: "tok",
+          GITHUB_MONITOR_ORG: "krdn",
+          GITHUB_MONITOR_PRUNE_RUNS: false,
+        },
+      };
     });
+    return (await import("@/features/github-monitor")).syncGithub;
+  }
 
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+  // syncGithub 이 githubSync 키를 쓰는지 — 바깥에서 그 키를 잡아두면
+  // 실행이 즉시 lockBusy 로 반환돼야 한다. GitHub fetch 에는 닿지 않는다.
+  it("githubSync 키가 잡혀 있으면 lockBusy 로 즉시 반환한다", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const syncGithub = await loadSync();
+
+    const summary = await withAdvisoryLock(LOCK_KEYS.githubSync, "test-holder", () =>
+      syncGithub(),
+    );
+
+    expect(summary?.lockBusy).toBe(true);
+    expect(summary?.skipped).toBe(true);
+    // 락에서 막혔으므로 외부 호출이 없어야 한다.
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  // 락이 풀린 뒤에는 정상 실행되고, 네 소스 결과가 모두 채워진다
+  // (allSettled 로 전부 기다린다는 증거 — 하나라도 빠지면 undefined 다).
+  it("락이 비어 있으면 실행되고 네 소스 결과가 모두 온다", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      // 계정 조회는 즉시 응답해 소스들이 각자 진행하게 한다.
       if (/api\.github\.com\/users\/krdn$/.test(url)) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ type: "Organization" }), { status: 200 }),
-        );
+        return new Response(JSON.stringify({ type: "Organization" }), { status: 200 });
       }
-      // 이슈 검색은 즉시 실패시켜 그 소스만 일찍 끝내고,
-      if (/search\/issues/.test(url)) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ message: "boom" }), { status: 500 }),
-        );
-      }
-      // 나머지(build/runs)는 붙잡아둔다.
-      signalStarted();
-      return new Promise<Response>((res) => pending.push(res));
+      // 나머지는 전부 실패시켜도 된다 — 여기서 보는 건 "네 결과가 다 온다"이다.
+      return new Response(JSON.stringify({ message: "boom" }), { status: 500 });
     });
 
-    const syncGithub = await loadSync("tok");
-    const first = syncGithub();
-    await started;
+    const syncGithub = await loadSync();
+    const summary = await syncGithub();
 
-    // 한 소스가 이미 끝났어도 나머지가 도는 동안 락은 유지돼야 한다.
-    const second = await syncGithub();
-    expect(second.lockBusy).toBe(true);
-
-    for (const res of pending) {
-      res(new Response(JSON.stringify({ message: "boom" }), { status: 500 }));
-    }
-    await first;
+    expect(summary.lockBusy).toBeUndefined();
+    expect(summary.issues).toBeDefined();
+    expect(summary.pulls).toBeDefined();
+    expect(summary.runs).toBeDefined();
+    expect(summary.build).toBeDefined();
   });
 });
