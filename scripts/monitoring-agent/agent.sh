@@ -251,7 +251,10 @@ build_datastore_json() {
       continue
     fi
     # 1..65535 밖이면 Zod 가 거부한다 — 0·65536 은 숫자 검사만으로는 통과한다.
-    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+    # 선행 0 도 막는다: "05440" 을 그대로 실으면 `"port":05440` 이 되어 **유효한
+    # JSON 이 아니라** payload 전체가 400 으로 죽는다(heartbeat 까지 중단).
+    # 자릿수를 먼저 제한해 산술 확장이 거대 입력을 만나지 않게 한다.
+    if ! [[ "$port" =~ ^[1-9][0-9]{0,4}$ ]] || [ "$port" -gt 65535 ]; then
       echo "[agent] DATASTORE_SPECS: 잘못된 포트 '$spec' — 건너뜀" >&2
       continue
     fi

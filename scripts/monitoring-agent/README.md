@@ -79,13 +79,17 @@ sudo /opt/gons/monitoring-agent/gons-security-collect.sh --stdout
 
 ```bash
 # 설치 스모크 — 1회 수집·전송
-sudo sh -c '. /etc/default/gons-monitoring-agent; \
-  METRICS_INGEST_TOKEN=$METRICS_INGEST_TOKEN DASHBOARD_URL=$DASHBOARD_URL \
-  HOST_NAME=$HOST_NAME /opt/gons/monitoring-agent/agent.sh --once'
+# ⚠️ `set -a` 로 env 파일 전체를 export 한다. 변수를 손으로 나열하면 거기 없는
+# WATCH_*·HOSTCRON_SPECS·DATASTORE_SPECS 가 에이전트에 전달되지 않아, 스모크가
+# "통과"해도 해당 관측을 **전혀 검증하지 못한다**.
+sudo sh -c 'set -a; . /etc/default/gons-monitoring-agent; set +a; \
+  /opt/gons/monitoring-agent/agent.sh --once'
 # → "[agent] OK (home-server → http://localhost:3020)"
 
-# payload 만 확인 (전송 없음, 토큰 불필요)
-/opt/gons/monitoring-agent/agent.sh --dry-run | head -c 500
+# payload 만 확인 (전송 없음, 토큰 불필요) — 관측 섹션이 실제로 실리는지 확인
+sudo sh -c 'set -a; . /etc/default/gons-monitoring-agent; set +a; \
+  /opt/gons/monitoring-agent/agent.sh --dry-run' | tr ',' '\n' | grep -c datastores
+# → 1 (0 이면 DATASTORE_SPECS 가 전달되지 않은 것)
 
 # 서비스 로그
 journalctl -u gons-monitoring-agent -n 20 --no-pager

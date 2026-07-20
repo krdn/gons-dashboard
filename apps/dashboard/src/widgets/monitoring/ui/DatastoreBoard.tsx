@@ -13,6 +13,7 @@ const REASON_LABEL: Record<string, string> = {
   "not-exposed": "포트 미노출 (설계상 점검 불가)",
   "not-reported": "에이전트가 보고하지 않음 (env 확인)",
   "spec-mismatch": "점검 포트 불일치 (env 확인)",
+  "duplicate-report": "동일 대상 중복 보고 (DATASTORE_SPECS 중복 확인)",
   "nc-missing": "프로브 도구 없음",
   "no-result": "결과 누락",
 };
