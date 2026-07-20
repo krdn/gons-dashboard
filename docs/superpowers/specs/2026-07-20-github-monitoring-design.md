@@ -26,7 +26,7 @@ GHA Build 가 실패하면 ghcr 에 새 이미지가 올라가지 않고, deploy
   판정하려면 운영 digest 가 DB 에 있어야 한다. 확인 결과 `autopilot_cycles` 에는
   digest 컬럼이 없고 deploy-watcher 는 digest 를 메모리·파일로만 다룬다.
   DB 기록을 추가하는 것은 배포 오케스트레이션 도메인 변경이라 이번 범위 밖.
-  → 후속 과제 (§9)
+  → 후속 과제 (§11)
 - 이슈·PR 에 대한 쓰기 액션 (닫기·라벨링·머지). 읽기 전용 보드.
 - PR/이슈 정체에 대한 알림. 노이즈 억제를 위해 보드 표시만.
 
@@ -138,7 +138,8 @@ Search 응답의 `incomplete_results: true` 는 GitHub 가 쿼리를 타임아�
   headSha: text notNull,
   headBranch: text,
   event: text,                    // push | pull_request | schedule ...
-  runAttempt: integer notNull default 1,  // 재실행 판별 — 같은 run 의 최신 attempt 만 유효
+  runNumber: integer notNull,     // 워크플로 내 실행 순번 — 서로 다른 run 간 순서 결정
+  runAttempt: integer notNull default 1,  // 같은 run 의 재시도 번호
   url: text notNull,
   startedAt: timestamptz,
   completedAt: timestamptz,
@@ -211,8 +212,26 @@ Search 응답의 `incomplete_results: true` 는 GitHub 가 쿼리를 타임아�
 | `lastSuccessAt` 이 null | "아직 동기화된 적 없음" (empty state) |
 | `lastSuccessAt` 이 15분 이내 | 정상 |
 | `lastSuccessAt` 이 15분 초과 | **stale 배지 + `lastError` 표시** |
+| 토큰 미설정 + `lastSuccessAt` null | "동기화 비활성" (empty state) |
+| 토큰 미설정 + `lastSuccessAt` 있음 | 이전 스냅샷 + **"동기화 비활성" 배지** |
 
 이 구분이 없으면 "이슈가 0건"과 "동기화가 죽어서 안 보임"을 혼동한다.
+
+### 4.3 `runs` 소스의 부분 성공 처리
+
+Actions 는 레포 단위로 독립 갱신되므로(§4.2 규칙 2), `source = "runs"` 단일 행의
+`lastSuccessAt` 이 무엇을 뜻하는지 정의가 필요하다.
+
+**`lastSuccessAt` 은 대상 레포 전체가 성공했을 때만 갱신한다.** 일부 레포가
+실패하면:
+- 성공한 레포의 run 은 정상 교체된다 (데이터는 최신).
+- `lastAttemptAt` 만 갱신하고 `lastSuccessAt` 은 그대로 둔다.
+- `lastError` 에 실패한 레포 목록을 기록한다 (예: `"3개 레포 실패: a, b, c"`).
+
+결과적으로 보드는 부분 실패를 stale 로 표시한다. 이는 보수적 선택이다 —
+"일부만 낡았다"를 행 단위로 표현하려면 `(source, repo)` 복합키가 필요한데,
+현재 레포 수(N ≤ 10)에서 그 복잡도는 정당화되지 않는다. 레포별 정밀 표시가
+필요해지면 그때 복합키로 전환한다 (§11 후속).
 
 ## 5. 판정 규칙 (순수 함수)
 
@@ -253,9 +272,16 @@ GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 
 **대상 run 선택 규칙** (다중 run 처리):
 1. `workflowId` 가 설정된 Build 워크플로와 일치하는 run 만 본다 (이름 아님).
 2. `headSha === mainHeadSha` 인 run 만 본다.
-3. 그중 **`runAttempt` 가 가장 큰 것 하나**를 택한다 — 재실행이 있으면
-   최신 시도가 현재 진실이다. 실패 후 재실행 중이면 `building` 이 되며,
-   이는 의도된 동작이다 (사람이 이미 조치 중).
+3. 그중 **`(runNumber, runAttempt)` 사전순 최대인 것 하나**를 택한다.
+
+3번에서 `runAttempt` 만으로는 부족하다. `runAttempt` 는 **개별 run 안에서의
+재시도 번호**라서, 같은 workflow·같은 SHA 에 대해 서로 다른 run 이 여러 개
+존재하면(워크플로 파일 수정 후 재푸시, 서로 다른 트리거 중복 등) 모두
+`runAttempt = 1` 이 되어 순서를 정할 수 없다. `runNumber` 가 워크플로 전체에서
+단조 증가하므로 이것을 1차 키로 쓴다.
+
+실패 후 재실행 중이면 `building` 이 되며, 이는 의도된 동작이다
+(사람이 이미 조치 중이므로 알림을 유지할 필요가 없다).
 
 | 상태 | 조건 | severity |
 |---|---|---|
@@ -284,7 +310,8 @@ GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 
 - `run.headSha === pr.headSha` (저장된 PR HEAD 와 정확히 일치)
 - `run.event ∈ {push, pull_request}` — `pull_request_target` 등은 제외
 
-집계는 **workflow 별로 최신 `runAttempt` 하나씩** 취한 뒤 정규화 결과로 판정:
+집계는 **workflow 별로 `(runNumber, runAttempt)` 최대인 run 하나씩** 취한 뒤
+정규화 결과로 판정한다 (§5.1 과 동일한 선택 규칙):
 
 | 결과 | 조건 |
 |---|---|
@@ -437,7 +464,7 @@ GitHub 는 외부 SaaS 를 폴링하는 완전히 다른 도메인이며 스키�
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
-| `GITHUB_MONITOR_TOKEN` | 선택 | Fine-grained PAT (org krdn, read-only: Issues·PR·Actions·Metadata). 빈 값이면 동기화 cron 이 skip 하고 보드는 empty state 를 표시한다. |
+| `GITHUB_MONITOR_TOKEN` | 선택 | Fine-grained PAT (org krdn, read-only: Issues·PR·Actions·Metadata). 빈 값이면 동기화 cron 이 skip 한다. 보드 표시는 §4.2 표를 따른다 — 성공 이력이 없으면 empty state, 있으면 **이전 스냅샷 + "동기화 비활성" 배지**(기존 행을 지우지 않는다). |
 | `GITHUB_MONITOR_ORG` | 선택 | 기본값 `krdn` |
 
 `env.ts` 의 Zod 스키마에 optional 로 추가한다. **필수로 만들지 않는 이유**: 토큰
@@ -461,12 +488,22 @@ compose 파일은 git 미동기화이므로 scp + sudo cp 선행 (메모리 `pro
 
 **반드시 포함할 회귀 가드** (이번 리뷰에서 드러난 결함들):
 
-1. `judgeBuildState` 가 `build-failed` 인 상태에서 `runs: []` (API 실패 재현)를
-   받으면 `unknown` 을 반환하고 **해소로 이어지지 않는다.**
-2. 동기화 실패 시 기존 이슈 행이 **삭제되지 않는다** (§4.2 규칙 1).
-3. `incomplete_results: true` 응답으로 스냅샷이 교체되지 않는다.
-4. `conclusion: "cancelled"` 가 `failure` 로 분류되지 않는다.
-5. PR 의 `headSha` 와 다른 sha 의 run 이 CI 상태에 영향을 주지 않는다.
+순수 함수 단위:
+1. `runs: []` + 커밋 10분 이내 → `unknown`, 10분 초과 → `no-run`.
+   (`runs: []` 는 **API 실패가 아니라 "정상 응답인데 run 이 없음"** 이다.
+   API 실패는 판정 함수에 도달하지 않으므로 §6의 no-op 계약과 층이 다르다.)
+2. 같은 workflow·같은 SHA 에 **서로 다른 run ID 가 모두 `runAttempt = 1`** 로
+   존재할 때 `runNumber` 가 큰 쪽이 선택된다.
+3. `conclusion: "cancelled"` 가 `failure` 로 분류되지 않는다.
+4. PR 의 `headSha` 와 다른 sha 의 run 이 CI 상태에 영향을 주지 않는다.
+
+통합 (동기화 라우트):
+5. GitHub API 가 실패하면 **판정·`recordEvent`·`resolveEvent` 가 호출되지 않고**,
+   기존 `build` 행과 open 이벤트가 그대로 유지된다.
+6. 동기화 실패 시 기존 이슈 행이 **삭제되지 않는다** (§4.2 규칙 1).
+7. `incomplete_results: true` 응답으로 스냅샷이 교체되지 않는다.
+8. 일부 레포 Actions 조회 실패 시 그 레포 run 은 유지되고 나머지는 갱신되며,
+   `runs` 의 `lastSuccessAt` 은 갱신되지 않는다 (§4.3).
 
 `judgeBuildState` 의 10분 유예는 **시각 주입**으로 테스트한다 (`nowFn` 파라미터).
 메모리 `cron-catchup-wait-not-finite-retry` 의 교훈 — wall-clock 의존 로직은
