@@ -17,6 +17,7 @@ import { evaluateVitals } from "./lib/evaluateVitals";
 import { judgeChecks, type CheckVerdict } from "./lib/judgeChecks";
 import { sourceForKind } from "./lib/sourceForKind";
 import { judgeSecurity } from "@/features/monitoring-security";
+import { judgeDatastores } from "@/features/monitoring-datastore";
 import {
   vitalsPayloadSchema,
   type VitalsPayload,
@@ -113,9 +114,13 @@ export async function ingestChecks(
   // 산출물이 없거나 노후(15분)면 섹션을 생략하는데, 그때 판정까지 건너뛰면
   // check_results 에 새 행이 안 생겨 보드가 **직전 상태(ok/critical)를 계속 표시**한다.
   // 빈 객체를 넘기면 5종 모두 not-reported unknown 행이 생겨 관측 공백이 드러난다.
+  // datastores 도 같은 이유로 무조건 호출한다 — 목록의 단일 소스는 서버측
+  // instances.ts 라, payload 가 비어도 전 인스턴스에 unknown 행이 생겨야
+  // "에이전트 env 가 낡아 점검이 빠졌다" 는 사실이 보드에 드러난다.
   const verdicts: CheckVerdict[] = [
     ...judgeChecks(payload, checkedAt),
     ...judgeSecurity(payload.security ?? {}, payload.host),
+    ...judgeDatastores(payload.datastores),
   ];
 
   const inserted = await insertCheckResults(

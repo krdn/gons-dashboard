@@ -41,6 +41,7 @@ vi.mock("@/entities/monitoring/server", () => ({
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/agent/checks-ingest/route";
+import { DATASTORE_INSTANCES } from "@/features/monitoring-datastore";
 
 function makeReq(bearer: string | null, body: BodyInit | null): Request {
   const headers = new Headers({ "Content-Type": "application/json" });
@@ -100,10 +101,13 @@ describe("/api/agent/checks-ingest", () => {
       ),
     );
     expect(res.status).toBe(200);
-    // 서비스 2 + 보안 5. Phase 3 부터 security 섹션이 없어도 judgeSecurity 가
-    // not-reported unknown 5종을 낸다 — verdict 를 건너뛰면 새 행이 안 생겨
-    // 보드에 직전 상태가 남기 때문(관측 공백이 정상으로 보이는 미탐).
-    expect((await res.json()).inserted).toBe(7);
+    // 서비스 2 + 보안 5 + 데이터스토어 전량. Phase 3 부터 섹션이 없어도 판정을
+    // 건너뛰지 않는다 — verdict 가 없으면 새 행이 안 생겨 보드에 직전 상태가
+    // 남기 때문(관측 공백이 정상으로 보이는 미탐). 데이터스토어 개수는
+    // instances.ts 에서 파생시킨다(하드코딩하면 목록 변경 시 조용히 어긋난다).
+    expect((await res.json()).inserted).toBe(
+      2 + 5 + DATASTORE_INSTANCES.length,
+    );
     expect(recordEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         source: "service",
@@ -115,15 +119,15 @@ describe("/api/agent/checks-ingest", () => {
     expect(resolveEventMock).toHaveBeenCalledWith("host:h1:svc:nginx");
   });
 
-  it("security 섹션이 없어도 보안 5종 unknown 행을 남긴다 (stale 방지)", async () => {
-    // collector 미설치·산출물 노후로 에이전트가 security 를 생략했을 때,
+  it("빈 payload 에도 보안 5종 + 데이터스토어 전량 unknown 행을 남긴다 (stale 방지)", async () => {
+    // collector 미설치·산출물 노후로 에이전트가 섹션을 생략했을 때,
     // 판정까지 건너뛰면 check_results 에 새 행이 안 생겨 보드가 직전 상태
     // (ok 또는 critical)를 계속 표시한다.
     const res = await POST(
       makeReq(TEST_BEARER, json({ host: "home-server" })),
     );
     expect(res.status).toBe(200);
-    expect((await res.json()).inserted).toBe(5);
+    expect((await res.json()).inserted).toBe(5 + DATASTORE_INSTANCES.length);
     // unknown 이므로 이벤트는 발행하지 않는다 (위반도 정상 복귀도 아님).
     expect(recordEventMock).not.toHaveBeenCalled();
   });

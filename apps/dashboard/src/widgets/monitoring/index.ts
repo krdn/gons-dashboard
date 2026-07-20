@@ -11,6 +11,8 @@ export { AvailabilityBoard } from "./ui/AvailabilityBoard";
 export { ServicesBoard } from "./ui/ServicesBoard";
 export { HostCronBoard } from "./ui/HostCronBoard";
 export { SecurityBoard } from "./ui/SecurityBoard";
+export { DatastoreBoard } from "./ui/DatastoreBoard";
+export { LlmCostCard } from "./ui/LlmCostCard";
 export {
   MonitoringSummaryCard,
   MonitoringSummarySkeleton,

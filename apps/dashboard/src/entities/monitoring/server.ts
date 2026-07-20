@@ -19,6 +19,7 @@ export {
   getLatestContainerStats,
 } from "./api/samples";
 export { listCronRunBoard } from "./api/cronRuns";
+export { getSajuLlmSpend, type LlmSpendSummary } from "./api/llmSpend";
 export {
   insertCheckResults,
   listLatestChecks,

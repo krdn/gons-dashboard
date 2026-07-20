@@ -54,6 +54,24 @@ export const checksPayloadSchema = z.object({
   // Phase 3 §H — root collector 산출물(/run/gons-monitoring/security.json)을
   // 에이전트가 읽어 그대로 중계한다. 미설정 호스트에서는 생략.
   security: securityPayloadSchema.optional(),
+  // Phase 3 §G — DB/Redis liveness 관측치. 특권 불요라 에이전트가 직접 프로브한다.
+  //
+  // ⚠️ port 를 반드시 싣는다 — 서버가 instances.ts 의 기대 포트와 대조해
+  // "엉뚱한 포트를 점검하고 ok" 를 차단한다(spec-mismatch). 에이전트 env 가
+  // 낡아 포트가 갈리면 unknown 으로 드러나야 한다.
+  datastores: z
+    .array(
+      z.object({
+        kind: z.enum(["pg", "redis"]),
+        target: z.string().min(1).max(60),
+        port: z.number().int().min(1).max(65535).optional(),
+        observed: z.boolean(),
+        reachable: z.boolean().optional(),
+        reason: z.string().min(1).max(60).optional(),
+      }),
+    )
+    .max(40)
+    .optional(),
 });
 
 export type ChecksPayload = z.infer<typeof checksPayloadSchema>;

@@ -3,10 +3,12 @@
 // 갱신: AutoRefresh 15초 폴링 (RSC 재요청 — SSE 는 폴링 한계 도달 시에만, §3).
 import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
+import { env } from "@/shared/config/env";
 import {
   countOpenEvents,
   getLatestContainerStats,
   getLatestHostMetrics,
+  getSajuLlmSpend,
   listCronRunBoard,
   listLatestChecks,
   listRecentEvents,
@@ -18,6 +20,8 @@ import {
   CronRunsBoard,
   EventsTimeline,
   HostCronBoard,
+  DatastoreBoard,
+  LlmCostCard,
   SecurityBoard,
   ServicesBoard,
   StatusDot,
@@ -48,7 +52,8 @@ export default async function MonitoringPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [snapshots, containers, cronBoard, events, open, checks] =
+  const now = new Date();
+  const [snapshots, containers, cronBoard, events, open, checks, llmSpend] =
     await Promise.all([
       getLatestHostMetrics(),
       getLatestContainerStats(),
@@ -56,8 +61,8 @@ export default async function MonitoringPage() {
       listRecentEvents(50),
       countOpenEvents(),
       listLatestChecks(),
+      getSajuLlmSpend(now),
     ]);
-  const now = new Date();
   const byKind = (kind: string) => checks.filter((c) => c.kind === kind);
   // 보안 kind 는 한 보드에 모아 표시한다 (kind 하나당 target 하나).
   const SECURITY_KINDS = new Set([
@@ -142,6 +147,13 @@ export default async function MonitoringPage() {
           checks={checks.filter((c) => SECURITY_KINDS.has(c.kind))}
           now={now}
         />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DatastoreBoard
+            checks={checks.filter((c) => c.kind === "pg" || c.kind === "redis")}
+            now={now}
+          />
+          <LlmCostCard spend={llmSpend} budgetKrw={env.SAJU_LLM_DAILY_BUDGET_KRW} />
+        </div>
       </div>
     </PageContainer>
   );
