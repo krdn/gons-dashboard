@@ -92,6 +92,10 @@ export const checksPayloadSchema = z.object({
         sizeBytes: z.number().int().min(0).optional(),
         /** Redis used_memory. */
         memBytes: z.number().int().min(0).optional(),
+        /** Redis maxmemory — 0 이면 상한 없음. 비율 판정의 분모. */
+        maxMemBytes: z.number().int().min(0).optional(),
+        /** Redis maxmemory-policy — noeviction 이면 상한 도달 시 쓰기 실패. */
+        evictionPolicy: z.string().min(1).max(40).optional(),
       }),
     )
     .max(40)

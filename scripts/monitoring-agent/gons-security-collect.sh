@@ -205,9 +205,34 @@ collect_datastore_stats() {
       rc=$?
       mem=$(printf '%s' "$out" | grep -E '^used_memory:' | head -1 | tr -d ' \r' | cut -d: -f2)
       conns=$(printf '%s' "$out" | grep -E '^connected_clients:' | head -1 | tr -d ' \r' | cut -d: -f2)
+      # maxmemory·정책은 INFO 에 없다 — CONFIG GET 으로 따로 조회한다.
+      # 이 둘이 있어야 "상한 대비 몇 %"와 "가득 차면 축출인가 쓰기 실패인가"를
+      # 판정할 수 있다. 절대 크기만으로는 위험도를 알 수 없다.
+      # ⚠️ 각 CONFIG GET 의 종료 상태를 따로 확인한다. 실패를 무시하면 필드만 빠진
+      # observed:true 가 나가고, 서버는 그것을 "상한 없음"·"축출 정책"으로 읽어
+      # **상한이 있는 인스턴스가 ok 로 강등**된다(위험을 숨기는 오판).
+      # ⚠️ 파이프라인 뒤의 $? 는 **마지막 명령(tr)** 의 상태다. docker exec 가
+      # 실패해도 tr 이 성공하면 0 이 되어 실패를 놓친다(pipefail 미설정).
+      # 원출력을 먼저 변수에 담아 상태를 보존한 뒤 별도로 파싱한다.
+      raw_max=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory 2>/dev/null)
+      rc_max=$?
+      raw_pol=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory-policy 2>/dev/null)
+      rc_pol=$?
+      maxmem=$(printf '%s' "$raw_max" | tail -1 | tr -d ' \r')
+      policy=$(printf '%s' "$raw_pol" | tail -1 | tr -d ' \r')
+      if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]] \
+         && { [ $rc_max -ne 0 ] || [ $rc_pol -ne 0 ] \
+              || ! [[ "$maxmem" =~ ^[0-9]+$ ]] || ! [[ "$policy" =~ ^[a-z-]+$ ]]; }; then
+        # INFO 는 됐지만 CONFIG 조회가 실패 — 판정 근거가 불완전하므로 관측 실패로 낸다.
+        entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":false,\"reason\":\"config-get-failed\"}"
+        acc="${acc:+$acc,}$entry"
+        continue
+      fi
       if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]]; then
         entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":true,\"memBytes\":$mem"
         [[ "$conns" =~ ^[0-9]+$ ]] && entry="$entry,\"conns\":$conns"
+        [[ "$maxmem" =~ ^[0-9]+$ ]] && entry="$entry,\"maxMemBytes\":$maxmem"
+        [[ "$policy" =~ ^[a-z-]+$ ]] && entry="$entry,\"evictionPolicy\":\"$policy\""
         entry="$entry}"
       else
         entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":false,\"reason\":\"exec-failed-rc$rc\"}"

@@ -103,12 +103,82 @@ describe("judgeDatastoreStats — Redis 메모리 임계", () => {
     expect(v.status).toBe("ok");
   });
 
-  it("실측 이상치(799.8MiB)를 warning 으로 잡는다", () => {
-    // ⚠️ 이 테스트가 임계값 설계의 핵심 가드다. 임계를 1GiB 로 올리면 이 케이스가
-    // ok 로 바뀌어, 현재 유일한 이상 인스턴스를 놓친 채 배포된다.
+  it("상한이 있으면 비율로 판정한다 — 절대 크기가 같아도 위험도가 다르다", () => {
+    // 1GiB 상한의 799MiB(78%)와 무제한의 799MiB 는 전혀 다른 상황이다.
+    // 절대 임계만 쓰면 이 차이를 표현할 수 없다(2026-07-20 재실측으로 발견).
+    const capped = find(
+      judgeDatastoreStats([
+        { kind: "redis", target: REDIS.target, observed: true, memBytes: 100 * MIB,
+          maxMemBytes: 1024 * MIB, evictionPolicy: "allkeys-lru" },
+      ]),
+      "redisstat",
+      REDIS.target,
+    );
+    expect(capped.status).toBe("ok"); // 9.7% — 절대값은 크지만 여유 있음
+    expect(capped.detail.usedPct).toBe(10);
+  });
+
+  it("noeviction 은 같은 사용률이라도 critical — 상한 도달 시 쓰기가 실패한다", () => {
+    // allkeys-lru 는 오래된 키를 버리며 정상 동작하지만 noeviction 은 장애다.
+    const base = { kind: "redis" as const, target: REDIS.target, observed: true as const,
+      memBytes: 800 * MIB, maxMemBytes: 1024 * MIB };
+    const evict = find(
+      judgeDatastoreStats([{ ...base, evictionPolicy: "allkeys-lru" }]),
+      "redisstat", REDIS.target,
+    );
+    const noEvict = find(
+      judgeDatastoreStats([{ ...base, evictionPolicy: "noeviction" }]),
+      "redisstat", REDIS.target,
+    );
+    expect(evict.status).toBe("warning");
+    expect(noEvict.status).toBe("critical");
+  });
+
+  it("90% 이상은 정책과 무관하게 critical (allkeys-lru 포함)", () => {
+    // 축출 정책이라도 상한에 근접한 것 자체가 위험이다. warn/critical 정책
+    // (0.75/0.9)을 noeviction 분기가 덮어써 90%가 warning 이 되면 안 된다.
+    for (const policy of ["allkeys-lru", "volatile-lru"]) {
+      const v = find(
+        judgeDatastoreStats([
+          { kind: "redis", target: REDIS.target, observed: true,
+            memBytes: 950 * MIB, maxMemBytes: 1024 * MIB, evictionPolicy: policy },
+        ]),
+        "redisstat", REDIS.target,
+      );
+      expect(v.status).toBe("critical");
+    }
+  });
+
+  it("정책이 누락돼도 90% 이상은 critical", () => {
     const v = find(
       judgeDatastoreStats([
-        { kind: "redis", target: REDIS.target, observed: true, memBytes: 838679592 },
+        { kind: "redis", target: REDIS.target, observed: true,
+          memBytes: 950 * MIB, maxMemBytes: 1024 * MIB },
+      ]),
+      "redisstat", REDIS.target,
+    );
+    expect(v.status).toBe("critical");
+  });
+
+  it("운영 실측 ais-prod(799MiB/1GiB noeviction)은 critical 이다", () => {
+    // 2026-07-20 실측 그대로. 절대 임계 방식에서는 warning 이었으나, 상한 78% +
+    // noeviction 이라 실제로는 쓰기 실패가 임박한 상태다.
+    const v = find(
+      judgeDatastoreStats([
+        { kind: "redis", target: REDIS.target, observed: true, memBytes: 838679592,
+          maxMemBytes: 1073741824, evictionPolicy: "noeviction" },
+      ]),
+      "redisstat",
+      REDIS.target,
+    );
+    expect(v.status).toBe("critical");
+  });
+
+  it("상한 없으면(maxmemory=0) 절대 임계로 판정한다", () => {
+    // 분모가 없을 때만 쓰는 폴백 경로 — 무제한이라도 호스트 메모리를 잠식하면 알아야 한다.
+    const v = find(
+      judgeDatastoreStats([
+        { kind: "redis", target: REDIS.target, observed: true, memBytes: 838679592, maxMemBytes: 0 },
       ]),
       "redisstat",
       REDIS.target,

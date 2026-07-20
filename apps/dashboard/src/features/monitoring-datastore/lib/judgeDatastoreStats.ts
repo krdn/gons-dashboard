@@ -18,7 +18,10 @@ import { DATASTORE_INSTANCES, type DatastoreInstance } from "../config/instances
 import {
   PG_CONN_CRITICAL_RATIO,
   PG_CONN_WARN_RATIO,
+  REDIS_MEM_CRITICAL_RATIO,
   REDIS_MEM_WARN_BYTES,
+  REDIS_MEM_WARN_RATIO,
+  REDIS_NO_EVICTION_POLICY,
 } from "../config/thresholds";
 
 type StatObservation = NonNullable<ChecksPayload["datastoreStats"]>[number];
@@ -123,10 +126,20 @@ function judgePg(inst: DatastoreInstance, o: StatObservation): CheckVerdict {
 function judgeRedis(inst: DatastoreInstance, o: StatObservation): CheckVerdict {
   if (o.memBytes == null) return unknownVerdict(inst, "no-metrics");
   const mib = Math.round(o.memBytes / (1024 * 1024));
+  // 상한이 있으면 비율이 1차 근거다 — 절대 크기는 위험도를 표현하지 못한다
+  // (1GiB 상한의 799MiB 와 무제한의 799MiB 는 전혀 다른 상황).
+  const hasCap = o.maxMemBytes != null && o.maxMemBytes > 0;
+  const ratio = hasCap ? o.memBytes / o.maxMemBytes! : null;
+  const pct = ratio != null ? Math.round(ratio * 100) : null;
+  // noeviction 은 상한 도달 시 축출이 아니라 쓰기 실패 — 같은 사용률이라도 더 위험.
+  const noEvict = o.evictionPolicy === REDIS_NO_EVICTION_POLICY;
+
   const detail = {
     memBytes: o.memBytes,
     memMib: mib,
-    // maxclients 는 사실상 무제한(10000)이라 판정에 쓰지 않지만 참고용으로 남긴다.
+    ...(o.maxMemBytes != null ? { maxMemBytes: o.maxMemBytes } : {}),
+    ...(pct != null ? { usedPct: pct } : {}),
+    ...(o.evictionPolicy != null ? { evictionPolicy: o.evictionPolicy } : {}),
     ...(o.conns != null ? { conns: o.conns } : {}),
   };
   const base = {
@@ -135,12 +148,38 @@ function judgeRedis(inst: DatastoreInstance, o: StatObservation): CheckVerdict {
     detail,
     dedupKeySuffix: dedupSuffix(inst),
   };
+  const cap = hasCap ? `${Math.round(o.maxMemBytes! / (1024 * 1024))}MiB` : "무제한";
 
+  if (ratio != null) {
+    // 0.9 이상은 정책과 무관하게 critical — 상한에 근접한 것 자체가 위험이다.
+    // noeviction 은 상한 도달이 곧 쓰기 실패라 0.75 부터 critical 로 앞당긴다.
+    const criticalByRatio = ratio >= REDIS_MEM_CRITICAL_RATIO;
+    const criticalByPolicy = noEvict && ratio >= REDIS_MEM_WARN_RATIO;
+    if (criticalByRatio || criticalByPolicy) {
+      return {
+        ...base,
+        status: "critical",
+        title: criticalByPolicy && !criticalByRatio
+          ? `${label(inst)} 메모리 ${pct}% (${mib}/${cap}) — noeviction 이라 상한 도달 시 쓰기 실패`
+          : `${label(inst)} 메모리 ${pct}% (${mib}/${cap})`,
+      };
+    }
+    if (ratio >= REDIS_MEM_WARN_RATIO) {
+      return {
+        ...base,
+        status: "warning",
+        title: `${label(inst)} 메모리 ${pct}% (${mib}/${cap})`,
+      };
+    }
+    return { ...base, status: "ok", title: `${label(inst)} 정상 (${mib}/${cap}, ${pct}%)` };
+  }
+
+  // 상한 없음 — 분모가 없어 절대 임계로만 본다.
   return o.memBytes >= REDIS_MEM_WARN_BYTES
     ? {
         ...base,
         status: "warning",
-        title: `${label(inst)} 메모리 ${mib}MiB (임계 ${Math.round(REDIS_MEM_WARN_BYTES / (1024 * 1024))}MiB)`,
+        title: `${label(inst)} 메모리 ${mib}MiB (상한 없음, 임계 ${Math.round(REDIS_MEM_WARN_BYTES / (1024 * 1024))}MiB)`,
       }
-    : { ...base, status: "ok", title: `${label(inst)} 정상 (${mib}MiB)` };
+    : { ...base, status: "ok", title: `${label(inst)} 정상 (${mib}MiB, 상한 없음)` };
 }

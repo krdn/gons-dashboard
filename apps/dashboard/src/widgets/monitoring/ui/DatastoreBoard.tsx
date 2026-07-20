@@ -89,6 +89,23 @@ export function DatastoreBoard({
   const rows = [...checks].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.target.localeCompare(b.target),
   );
+  // 헤더 배지용 — 지표 이상 건수(liveness 상태 열이 표현하지 못하는 위험).
+  // ⚠️ 집계는 **rows 를 기준으로 한 번씩** 순회한다. stats 배열을 직접 세면
+  // 행과 매칭되지 않는 stale/orphan stat 이나 중복 보고가 건수를 부풀리거나
+  // (미확인 계산에서) 음수를 만든다. 표시되는 행과 헤더가 항상 일치해야 한다.
+  const statAlert = rows.reduce(
+    (acc, c) => {
+      const st = statOf.get(`${c.kind}\u0000${c.target}`);
+      if (!st || st.status === "unknown") acc.unknown += 1;
+      else if (st.status === "critical") {
+        acc.critical += 1;
+        acc.total += 1;
+      } else if (st.status === "warning") acc.total += 1;
+      return acc;
+    },
+    { critical: 0, total: 0, unknown: 0 },
+  );
+
 
   return (
     <section
@@ -103,6 +120,33 @@ export function DatastoreBoard({
         <span className="font-mono text-xs font-medium tabular-nums text-[var(--color-text-muted)]">
           {rows.length}
         </span>
+        {/*
+          ⚠️ 심층지표의 warning/critical 은 liveness 상태 열에 나타나지 않는다
+          (liveness 는 "응답하나"만 본다). 헤더에 건수만 있으면 800MiB 경고가
+          떠 있어도 보드 전체가 "12개 정상"으로 읽힌다 — 집계가 실제 판정을
+          가리지 않도록 지표 이상 건수를 헤더에 노출한다.
+        */}
+        {statAlert.total > 0 && (
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-semibold"
+            style={{
+              color: statAlert.critical > 0
+                ? "var(--color-severity-high)"
+                : "var(--color-warn)",
+              backgroundColor: "var(--color-surface-2)",
+            }}
+          >
+            지표 이상 {statAlert.total}
+          </span>
+        )}
+        {statAlert.unknown > 0 && (
+          <span
+            className="rounded-full bg-[var(--color-surface-2)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-muted)]"
+            title="심층지표를 확인하지 못한 인스턴스 — collector env(DATASTORE_CONTAINERS) 확인"
+          >
+            지표 미확인 {statAlert.unknown}
+          </span>
+        )}
       </h2>
       {rows.length === 0 ? (
         <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">
