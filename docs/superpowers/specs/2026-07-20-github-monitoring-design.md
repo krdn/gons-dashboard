@@ -238,7 +238,8 @@ Actions 는 레포 단위로 독립 갱신되므로(§4.2 규칙 2), `source = "
 - `lastAttemptAt` 만 갱신하고 `lastSuccessAt` 은 그대로 둔다.
 - `lastError` 에 실패한 레포 목록을 기록한다 (예: `"3개 레포 실패: a, b, c"`).
 
-결과적으로 보드는 부분 실패를 stale 로 표시한다. 이는 보수적 선택이다 —
+결과적으로 보드는 **`runs` 소스 전체에 오류 배지**를 표시한다(§4.2 순서 3).
+성공한 레포의 run 은 최신인데도 배지가 붙으므로 보수적 선택이다 —
 "일부만 낡았다"를 행 단위로 표현하려면 `(source, repo)` 복합키가 필요한데,
 현재 레포 수(N ≤ 10)에서 그 복잡도는 정당화되지 않는다. 레포별 정밀 표시가
 필요해지면 그때 복합키로 전환한다 (§11 후속).
@@ -318,7 +319,9 @@ GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 
 - `pull_request` 이벤트 run 의 `head_sha` 는 **합성 merge SHA** 일 수 있다.
 - `pull_request_target` 은 base SHA 를 가리킨다.
 
-따라서 조인은 다음 조건을 모두 만족하는 run 만 대상으로 한다:
+따라서 조인은 다음 조건을 **모두** 만족하는 run 만 대상으로 한다:
+- **`run.repo === pr.repo`** — sha 만으로 조인하면 같은 커밋이 fork 에 존재할 때
+  다른 레포의 run 이 섞인다.
 - `run.headSha === pr.headSha` (저장된 PR HEAD 와 정확히 일치)
 - `run.event ∈ {push, pull_request}` — `pull_request_target` 등은 제외
 
@@ -332,12 +335,16 @@ GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 
 |---|---|---|
 | 1 | `failing` | 하나라도 `failure` |
 | 2 | `running` | (`failure` 없음) 하나라도 `running` |
-| 3 | `passing` | (위 둘 아님) 전부 `success` |
+| 3 | `passing` | (위 둘 아님) **대상 run 이 1개 이상이고** 전부 `success` |
 | 4 | `unknown` | **그 외 전부** — 대상 run 없음, `pr.headSha` 미취득, 전부 `inconclusive`, `success`+`inconclusive` 혼합 |
 
 `success` + `inconclusive` 혼합이 `passing` 이 아닌 이유: 취소·스킵된 워크플로가
 있으면 그 검증은 수행되지 않았으므로 "통과"라 단정할 수 없다. 보수적으로
 `unknown` 으로 둔다 (§5.0 의 `inconclusive` 취급과 일관).
+
+3번의 **"1개 이상"은 구현상 필수**다. `runs.every(isSuccess)` 는 빈 배열에서
+`true` 를 반환하므로, 이 조건이 없으면 **run 이 하나도 없는 PR 이 `passing`
+으로 표시**된다 (4번 catch-all 에 도달하지 못한다).
 
 `unknown` 은 경고로 취급하지 않는다 — PR 브랜치가 Actions 트리거 대상이
 아닌 정상 상태일 수 있기 때문.
@@ -515,6 +522,8 @@ compose 파일은 git 미동기화이므로 scp + sudo cp 선행 (메모리 `pro
    존재할 때 `runNumber` 가 큰 쪽이 선택된다.
 3. `conclusion: "cancelled"` 가 `failure` 로 분류되지 않는다.
 4. PR 의 `headSha` 와 다른 sha 의 run 이 CI 상태에 영향을 주지 않는다.
+4a. **대상 run 이 0건이면 `passing` 이 아니라 `unknown`** (`every()` 빈 배열 함정).
+4b. **같은 sha·다른 repo 의 run 이 PR CI 에 섞이지 않는다** (fork 시나리오).
 
 통합 (동기화 라우트):
 5. GitHub API 가 실패하면 **판정·`recordEvent`·`resolveEvent` 가 호출되지 않고**,
@@ -544,8 +553,8 @@ UI 상태 판정 (§4.2 표):
    기록하도록 확장한 뒤, main HEAD ↔ Build ↔ 운영 digest 3자 비교로 승격.
    이것이 완성되면 "CI Build success ≠ 운영 배포" 함정이 완전히 관제로 편입된다.
 2. **`(source, repo)` 복합키 sync state** — 현재 `runs` 는 단일 행이라 한 레포만
-   실패해도 전체가 stale 로 표시된다(§4.3). 레포 수가 늘어 이 보수적 표시가
-   실용성을 해치면 레포 단위 상태로 전환한다.
+   실패해도 소스 전체에 오류 배지가 붙는다(§4.3). 레포 수가 늘어 이 보수적
+   표시가 실용성을 해치면 레포 단위 상태로 전환한다.
 3. **레포별 필터** — 레포 수가 늘어 보드가 붐비면 레포 선택 UI 추가.
 4. **추세** — 주간 이슈 유입/해소 비율. 현재 스냅샷 모델로는 불가하며
    히스토리 테이블이 필요하다. 실제 필요가 생기기 전까지 보류 (YAGNI).
