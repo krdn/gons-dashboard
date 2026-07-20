@@ -23,6 +23,7 @@ import {
   listUnnotifiedResolvedEvents,
   type MonitoringEventRow,
 } from "@/entities/monitoring/server";
+import { linkForSource } from "./lib/notifyLink";
 
 const COOLDOWN_MS = 30 * 60_000;
 
@@ -52,13 +53,15 @@ async function broadcast(
   title: string,
   body: string,
   tag: string,
+  source: string,
 ): Promise<void> {
   await sendTelegram(`${title}\n${body}`);
   for (const userId of await adminUserIds()) {
     await sendPushToUser(userId, {
       title,
       body,
-      url: "/monitoring",
+      // 소스별 분기 — github 이벤트는 GitHub 탭으로 직행한다.
+      url: linkForSource(source),
       // dedupKey 기반 태그 — 고정 태그면 SW 가 같은 태그 알림을 교체해
       // 한 sweep 의 다중 장애 중 마지막만 남는다 (Codex P2).
       tag,
@@ -67,7 +70,7 @@ async function broadcast(
 }
 
 function eventBody(event: MonitoringEventRow): string {
-  return [event.detail, `${env.NEXTAUTH_URL}/monitoring`]
+  return [event.detail, `${env.NEXTAUTH_URL}${linkForSource(event.source)}`]
     .filter(Boolean)
     .join("\n");
 }
@@ -89,6 +92,7 @@ export async function notifyOpenCriticals(): Promise<NotifySweepSummary> {
         `🔴 [관제] ${event.title}`,
         eventBody(event),
         `monitoring-${event.dedupKey}`,
+        event.source,
       );
       sent += 1;
     }
@@ -105,6 +109,7 @@ export async function notifyResolvedCriticals(): Promise<NotifySweepSummary> {
       `✅ [관제] 해소: ${event.title}`,
       eventBody(event),
       `monitoring-${event.dedupKey}`,
+      event.source,
     );
     sent += 1;
   }
