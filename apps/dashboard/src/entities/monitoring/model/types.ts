@@ -25,7 +25,10 @@ export type CheckKind =
   | "sshfail"
   // Phase 3 §G 데이터스토어 liveness
   | "pg"
-  | "redis";
+  | "redis"
+  // Phase 4 §J 데이터스토어 심층지표 — liveness 와 별개 행(별개 dedup)
+  | "pgstat"
+  | "redisstat";
 
 /**
  * 점검 detail 값 — 배열은 Phase 3 에서 추가(포트 목록·jail 목록).

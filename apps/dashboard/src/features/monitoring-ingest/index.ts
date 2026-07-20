@@ -17,7 +17,10 @@ import { evaluateVitals } from "./lib/evaluateVitals";
 import { judgeChecks, type CheckVerdict } from "./lib/judgeChecks";
 import { sourceForKind } from "./lib/sourceForKind";
 import { judgeSecurity } from "@/features/monitoring-security";
-import { judgeDatastores } from "@/features/monitoring-datastore";
+import {
+  judgeDatastores,
+  judgeDatastoreStats,
+} from "@/features/monitoring-datastore";
 import {
   vitalsPayloadSchema,
   type VitalsPayload,
@@ -120,7 +123,9 @@ export async function ingestChecks(
   const verdicts: CheckVerdict[] = [
     ...judgeChecks(payload, checkedAt),
     ...judgeSecurity(payload.security ?? {}, payload.host),
-    ...judgeDatastores(payload.datastores),
+    // 심층지표를 함께 넘긴다 — 포트 미노출 인스턴스의 liveness 승격 근거(§J).
+    ...judgeDatastores(payload.datastores, payload.datastoreStats),
+    ...judgeDatastoreStats(payload.datastoreStats),
   ];
 
   const inserted = await insertCheckResults(

@@ -150,6 +150,74 @@ collect_sshfail() {
   printf '{"observed":true,"failCount1h":%s}' "$n"
 }
 
+# ---------- 데이터스토어 심층지표 (Phase 4 §J) ----------
+# ⚠️ 이 채널은 **네트워크 노출과 무관**하다. 컨테이너 내부 로컬 소켓 trust 인증을
+# 쓰므로 포트 미노출 인스턴스(sms-insights·n8n)도 동일하게 관측된다.
+# 자격증명을 새로 만들지 않는다 — 필요한 것은 계정이 아니라 컨테이너 진입 권한이고,
+# 그것은 이 collector 가 root 라서 이미 있다.
+#
+# 대상은 "kind|target|container" 목록. 서버 instances.ts 가 단일 소스이며
+# 여기 목록이 낡으면 서버가 not-reported unknown 으로 드러낸다.
+DATASTORE_CONTAINERS="${DATASTORE_CONTAINERS:-}"
+
+# 컨테이너 env 에서 값 추출 — POSTGRES_USER/DB 는 인스턴스마다 다르다(실측).
+# ⚠️ timeout 필수 — docker daemon 이 멈추면 이 호출이 무기한 대기해 collector 전체가
+# 정지하고, 보안 5종 관측까지 갱신이 끊긴다(지표 하나 때문에 방화벽 감시가 멎는다).
+# exit status 를 파싱 전에 확인하고 실패 시 빈 값 → 호출부가 기본값으로 폴백한다.
+container_env() {
+  local out rc
+  out=$(timeout "$CMD_TIMEOUT" docker inspect "$1" \
+    --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+  rc=$?
+  [ $rc -eq 0 ] || return 0
+  printf '%s' "$out" | grep "^$2=" | head -1 | cut -d= -f2-
+}
+
+collect_datastore_stats() {
+  local spec kind target cont out rc user db conns maxc size mem entry acc=""
+  for spec in $DATASTORE_CONTAINERS; do
+    IFS='|' read -r kind target cont <<<"$spec"
+    [ -n "$kind" ] && [ -n "$target" ] && [ -n "$cont" ] || continue
+    [ "$kind" = "pg" ] || [ "$kind" = "redis" ] || continue
+    target="${target//[^A-Za-z0-9._-]/}"
+    cont="${cont//[^A-Za-z0-9._-]/}"
+    [ -n "$target" ] && [ -n "$cont" ] || continue
+
+    entry=""
+    if [ "$kind" = "pg" ]; then
+      # -U 만 주면 user 와 같은 이름의 DB 에 붙으려다 실패한다 — -d 필수(실측).
+      user=$(container_env "$cont" POSTGRES_USER); user="${user:-postgres}"
+      db=$(container_env "$cont" POSTGRES_DB);     db="${db:-postgres}"
+      out=$(timeout "$CMD_TIMEOUT" docker exec "$cont" psql -U "$user" -d "$db" \
+        -tAF, -c "SELECT (SELECT count(*) FROM pg_stat_activity),(SELECT setting FROM pg_settings WHERE name='max_connections'),pg_database_size(current_database())" 2>/dev/null)
+      rc=$?
+      IFS=, read -r conns maxc size <<<"$(printf '%s' "$out" | tr -d ' \r' | head -1)"
+      # 빈 출력·비수치는 관측 실패로 — 0 으로 실으면 "연결 0개"라는 거짓 정상이 된다.
+      if [ $rc -eq 0 ] && [[ "$conns" =~ ^[0-9]+$ ]] && [[ "$maxc" =~ ^[0-9]+$ ]]; then
+        entry="{\"kind\":\"pg\",\"target\":\"$target\",\"observed\":true,\"conns\":$conns,\"maxConns\":$maxc"
+        [[ "$size" =~ ^[0-9]+$ ]] && entry="$entry,\"sizeBytes\":$size"
+        entry="$entry}"
+      else
+        entry="{\"kind\":\"pg\",\"target\":\"$target\",\"observed\":false,\"reason\":\"exec-failed-rc$rc\"}"
+      fi
+    else
+      out=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli INFO 2>/dev/null)
+      rc=$?
+      mem=$(printf '%s' "$out" | grep -E '^used_memory:' | head -1 | tr -d ' \r' | cut -d: -f2)
+      conns=$(printf '%s' "$out" | grep -E '^connected_clients:' | head -1 | tr -d ' \r' | cut -d: -f2)
+      if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]]; then
+        entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":true,\"memBytes\":$mem"
+        [[ "$conns" =~ ^[0-9]+$ ]] && entry="$entry,\"conns\":$conns"
+        entry="$entry}"
+      else
+        entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":false,\"reason\":\"exec-failed-rc$rc\"}"
+      fi
+    fi
+    acc="${acc:+$acc,}$entry"
+  done
+  printf '[%s]' "$acc"
+}
+
 build_json() {
   printf '{'
   printf '"iptables":%s,' "$(collect_iptables)"
@@ -157,6 +225,7 @@ build_json() {
   printf '"ufw":%s,' "$(collect_ufw)"
   printf '"ports":%s,' "$(collect_ports)"
   printf '"sshFail":%s' "$(collect_sshfail)"
+  printf ',"datastoreStats":%s' "$(collect_datastore_stats)"
   printf '}\n'
 }
 

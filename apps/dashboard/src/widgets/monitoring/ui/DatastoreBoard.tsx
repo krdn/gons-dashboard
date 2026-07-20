@@ -36,15 +36,56 @@ function summarize(c: LatestCheck): string {
   return c.status === "ok" ? `응답 정상 ${at}`.trim() : `응답 없음 ${at}`.trim();
 }
 
+/** 심층지표 unknown 사유 → 운영자가 읽고 조치할 수 있는 설명. */
+const STAT_REASON_LABEL: Record<string, string> = {
+  "not-reported": "미보고 (collector env 확인)",
+  "no-metrics": "수치 없음 (쿼리 실패)",
+  "duplicate-report": "중복 보고 (목록 중복 확인)",
+  "not-observed": "관측 불가",
+};
+
+/** 심층지표(pgstat/redisstat) 한 줄 요약 — 연결 사용률·메모리. */
+function summarizeStat(c: LatestCheck | undefined): string {
+  if (!c) return "–";
+  if (c.status === "unknown") {
+    // unknown 은 이벤트를 발행하지 않으므로 **여기가 유일한 진단 경로**다.
+    // 사유를 뭉뚱그리면 운영자가 원인을 확인할 방법이 없다.
+    const reason = detailStr(c, "reason");
+    if (reason == null) return "관측 불가";
+    const known = STAT_REASON_LABEL[reason];
+    if (known) return known;
+    // exec-failed-rc1 같은 미등록 사유는 원문을 그대로 노출한다.
+    return `관측 불가 (${reason})`;
+  }
+  const pct = detailNum(c, "usedPct");
+  const conns = detailNum(c, "conns");
+  const maxConns = detailNum(c, "maxConns");
+  const mib = detailNum(c, "memMib");
+  if (pct != null && conns != null && maxConns != null) {
+    const size = detailNum(c, "sizeBytes");
+    const gb = size != null ? ` · ${(size / 1024 ** 3).toFixed(1)}GB` : "";
+    return `연결 ${conns}/${maxConns} (${pct}%)${gb}`;
+  }
+  if (mib != null) return `메모리 ${mib}MiB`;
+  return "–";
+}
+
 export function DatastoreBoard({
   checks,
+  stats = [],
   now,
 }: {
   checks: LatestCheck[];
+  /** Phase 4 §J 심층지표 — kind pgstat/redisstat. */
+  stats?: LatestCheck[];
   now: Date;
 }) {
   // PG 먼저, 그 안에서 target 알파벳순 — kind 가 섞이면 같은 이름의 PG/Redis 가
   // 붙어 보여 어느 쪽 판정인지 헷갈린다.
+  // liveness 행에 심층지표를 붙인다 — 같은 인스턴스가 두 줄로 갈리면 읽기 어렵다.
+  const statOf = new Map(
+    stats.map((s) => [`${s.kind === "pgstat" ? "pg" : "redis"}\u0000${s.target}`, s]),
+  );
   const rows = [...checks].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.target.localeCompare(b.target),
   );
@@ -76,6 +117,7 @@ export function DatastoreBoard({
                 <th className="px-3 py-1.5 text-left font-medium">종류</th>
                 <th className="px-3 py-1.5 text-left font-medium">상태</th>
                 <th className="px-3 py-1.5 text-left font-medium">요약</th>
+                <th className="px-3 py-1.5 text-left font-medium">지표</th>
                 <th className="px-3 py-1.5 text-right font-medium">확인</th>
               </tr>
             </thead>
@@ -99,6 +141,22 @@ export function DatastoreBoard({
                     </td>
                     <td className="px-3 py-1.5 font-mono text-xs text-[var(--color-text-muted)]">
                       {summarize(c)}
+                    </td>
+                    <td className="px-3 py-1.5 font-mono text-xs text-[var(--color-text-muted)]">
+                      {(() => {
+                        const st = statOf.get(`${c.kind}\u0000${c.target}`);
+                        const warn =
+                          st?.status === "warning" || st?.status === "critical";
+                        return (
+                          <span
+                            style={
+                              warn ? { color: checkStatusStyle(st.status).color } : undefined
+                            }
+                          >
+                            {summarizeStat(st)}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-1.5 text-right text-xs tabular-nums text-[var(--color-text-subtle)]">
                       {formatAgo(c.checkedAt, now)}

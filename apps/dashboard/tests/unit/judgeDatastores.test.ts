@@ -176,6 +176,52 @@ describe("judgeDatastores", () => {
     }
   });
 
+  it("미노출 인스턴스는 docker exec 관측이 있으면 ok 로 승격된다 (§J)", () => {
+    // Phase 3 에서는 영구 not-exposed 였다. Phase 4 의 docker exec 채널이
+    // 실제 liveness 근거를 주므로 "살아있는데 회색"을 해소한다.
+    const v = find(
+      judgeDatastores([], [
+        { kind: NOT_EXPOSED.kind, target: NOT_EXPOSED.target, observed: true, conns: 6, maxConns: 100 },
+      ]),
+      NOT_EXPOSED.kind,
+      NOT_EXPOSED.target,
+    );
+    expect(v.status).toBe("ok");
+    expect(v.detail.via).toBe("docker-exec");
+  });
+
+  it("승격 근거가 실패 관측이면 not-exposed 를 유지한다", () => {
+    // observed:false 는 근거가 아니다 — 관측 실패로 ok 를 만들면 최악의 오탐.
+    const v = find(
+      judgeDatastores([], [
+        { kind: NOT_EXPOSED.kind, target: NOT_EXPOSED.target, observed: false, reason: "exec-failed-rc1" },
+      ]),
+      NOT_EXPOSED.kind,
+      NOT_EXPOSED.target,
+    );
+    expect(v.status).toBe("unknown");
+    expect(v.detail.reason).toBe("not-exposed");
+  });
+
+  it("심층지표가 아예 없으면 종전대로 not-exposed", () => {
+    const v = find(judgeDatastores([], undefined), NOT_EXPOSED.kind, NOT_EXPOSED.target);
+    expect(v.status).toBe("unknown");
+    expect(v.detail.reason).toBe("not-exposed");
+  });
+
+  it("승격은 노출 인스턴스의 판정을 바꾸지 않는다", () => {
+    // 노출 인스턴스는 네트워크 프로브가 1차 근거다 — stat 이 있다고 덮으면 안 된다.
+    const v = find(
+      judgeDatastores(
+        [{ kind: EXPOSED.kind, target: EXPOSED.target, port: EXPOSED.port, observed: true, reachable: false }],
+        [{ kind: EXPOSED.kind, target: EXPOSED.target, observed: true, conns: 5, maxConns: 100 }],
+      ),
+      EXPOSED.kind,
+      EXPOSED.target,
+    );
+    expect(v.status).toBe("critical");
+  });
+
   it("dedupKeySuffix 가 인스턴스마다 유일하다", () => {
     // 겹치면 한 인스턴스의 복구가 다른 인스턴스의 이벤트를 해소한다.
     const keys = judgeDatastores(undefined).map((v) => v.dedupKeySuffix);

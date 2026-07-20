@@ -57,10 +57,20 @@ function label(inst: DatastoreInstance): string {
  */
 export function judgeDatastores(
   observations: ChecksPayload["datastores"],
+  /**
+   * Phase 4 §J 심층지표 관측치. 포트 미노출 인스턴스는 네트워크로 프로브할 수
+   * 없지만 docker exec 로는 관측되므로, 그 관측이 있으면 liveness 를 승격한다.
+   */
+  statObservations?: ChecksPayload["datastoreStats"],
 ): CheckVerdict[] {
   // 같은 (kind,target) 이 두 번 오면 마지막 값이 앞선 값을 조용히 덮는다 —
   // observed:false 와 reachable:true 가 함께 오면 배열 순서가 판정을 가른다.
   // 충돌은 근거가 모순된 상태이므로 ok/critical 어느 쪽으로도 밀지 않고 unknown 이다.
+  // 미노출 인스턴스 승격용 — docker exec 로 실제 관측된 (kind,target) 집합.
+  // observed:true 만 인정한다(관측 실패는 근거가 아니다).
+  const statObserved = new Set(
+    (statObservations ?? []).filter((o) => o.observed).map((o) => keyOf(o.kind, o.target)),
+  );
   const byKey = new Map<string, DatastoreObservation>();
   const duplicated = new Set<string>();
   for (const o of observations ?? []) {
@@ -70,9 +80,22 @@ export function judgeDatastores(
   }
 
   return DATASTORE_INSTANCES.map((inst) => {
-    // 미노출은 payload 와 무관하게 항상 unknown — 에이전트가 어떤 값을 보내든
-    // 호스트에서 도달할 수 없는 대상이라 판정 근거가 없다.
-    if (inst.port == null) return unknownVerdict(inst, "not-exposed");
+    // 미노출: 네트워크 프로브로는 판정 근거가 없다. 다만 Phase 4 부터는
+    // docker exec 채널이 같은 인스턴스를 관측하므로, 그 관측이 있으면 승격한다 —
+    // "살아있다는 증거가 있는데 보드는 회색"이 되지 않도록.
+    // 승격 근거가 없으면 종전대로 not-exposed unknown 을 유지한다.
+    if (inst.port == null) {
+      return statObserved.has(keyOf(inst.kind, inst.target))
+        ? {
+            kind: inst.kind,
+            target: inst.target,
+            status: "ok",
+            detail: { reachable: true, via: "docker-exec" },
+            dedupKeySuffix: `ds:${inst.kind}:${inst.target}`,
+            title: `${label(inst)} 정상 (docker exec)`,
+          }
+        : unknownVerdict(inst, "not-exposed");
+    }
 
     const key = keyOf(inst.kind, inst.target);
     if (duplicated.has(key)) return unknownVerdict(inst, "duplicate-report");
