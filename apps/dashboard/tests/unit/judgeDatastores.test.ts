@@ -203,6 +203,40 @@ describe("judgeDatastores", () => {
     expect(v.detail.reason).toBe("not-exposed");
   });
 
+  it("수치 없는 observed:true 는 승격 근거가 아니다 (모순 방지)", () => {
+    // 스키마상 합법인 조합이지만 심층 판정은 이를 unknown(no-metrics)으로 본다.
+    // 승격하면 liveness=ok / 지표=unknown 이라는 모순된 한 줄이 나온다.
+    const v = find(
+      judgeDatastores([], [
+        { kind: NOT_EXPOSED.kind, target: NOT_EXPOSED.target, observed: true },
+      ]),
+      NOT_EXPOSED.kind,
+      NOT_EXPOSED.target,
+    );
+    expect(v.status).toBe("unknown");
+    expect(v.detail.reason).toBe("not-exposed");
+  });
+
+  it("maxConns=0 도 승격 근거가 아니다", () => {
+    const v = find(
+      judgeDatastores([], [
+        { kind: NOT_EXPOSED.kind, target: NOT_EXPOSED.target, observed: true, conns: 0, maxConns: 0 },
+      ]),
+      NOT_EXPOSED.kind,
+      NOT_EXPOSED.target,
+    );
+    expect(v.status).toBe("unknown");
+  });
+
+  it("모순되는 중복 stat 보고는 순서와 무관하게 승격하지 않는다", () => {
+    const good = { kind: NOT_EXPOSED.kind, target: NOT_EXPOSED.target, observed: true as const, conns: 6, maxConns: 100 };
+    const bad = { kind: NOT_EXPOSED.kind, target: NOT_EXPOSED.target, observed: false as const, reason: "exec-failed-rc1" };
+    for (const obs of [[good, bad], [bad, good]]) {
+      const v = find(judgeDatastores([], obs), NOT_EXPOSED.kind, NOT_EXPOSED.target);
+      expect(v.status).toBe("unknown");
+    }
+  });
+
   it("심층지표가 아예 없으면 종전대로 not-exposed", () => {
     const v = find(judgeDatastores([], undefined), NOT_EXPOSED.kind, NOT_EXPOSED.target);
     expect(v.status).toBe("unknown");

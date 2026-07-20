@@ -36,10 +36,6 @@ WATCH_TIMERS="n8n-backup.timer n8n-update.timer certbot.timer"
 # ⚠️ 판정의 단일 소스는 서버측 features/monitoring-datastore/config/instances.ts —
 # 이 env 와 갈리면 보드에 not-reported / spec-mismatch 로 뜬다. 둘을 함께 갱신할 것.
 DATASTORE_SPECS="pg|gons-dashboard|5440 pg|ais-prod|5438 pg|krdn-timescaledb|5435 pg|voice|5437 pg|n8n|5434 pg|ais|5436 pg|sms-insights| redis|gons-dashboard|6390 redis|ais-prod|6385 redis|news-prod|6380 redis|voice|6382 redis|n8n|"
-# Phase 4 §J — 심층지표(연결 수·크기) 수집 대상 "kind|이름|컨테이너".
-# ⚠️ liveness(DATASTORE_SPECS)와 달리 docker exec 채널이라 **포트 미노출도 관측된다**.
-# collector(root)가 실행하므로 이 값은 /etc/default 가 아니라 collector 유닛에 준다.
-DATASTORE_CONTAINERS="pg|gons-dashboard|gons-dashboard-postgres pg|ais-prod|ais-prod-postgres pg|krdn-timescaledb|krdn-timescaledb pg|voice|voice-postgres pg|n8n|n8n-postgres pg|ais|ais-postgres pg|sms-insights|sms-insights-postgres redis|gons-dashboard|gons-dashboard-redis redis|ais-prod|ais-prod-redis redis|news-prod|news-prod-redis redis|voice|voice-redis redis|n8n|n8n-redis"
 # 호스트 cron 판정 스펙 "이름|로그경로|maxAge분" (§C-2)
 # maxAge분 = 주기 + 여유 (매시 잡=75, 매일 잡=1500). 로그가 이 시간 넘게
 # 갱신 안 되면 서버가 "실행 흔적 없음" 판정 (warning, 2배 초과 시 critical).
@@ -62,6 +58,19 @@ sudo chmod 755 /opt/gons/monitoring-agent/gons-security-collect.sh
 sudo cp gons-security-collect.service gons-security-collect.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now gons-security-collect.timer
+
+# 5-1. 심층지표 수집 대상 (Phase 4 §J) — **collector 전용 env 파일**
+#      ⚠️ 에이전트의 /etc/default/gons-monitoring-agent 가 아니다. 그 파일에는
+#      METRICS_INGEST_TOKEN 이 있어 root collector 에 읽힐 이유가 없다(최소권한).
+#      이 파일에는 컨테이너 이름만 있어 시크릿이 없으므로 644 로 둔다.
+sudo tee /etc/default/gons-security-collect >/dev/null <<'EOF'
+DATASTORE_CONTAINERS="pg|gons-dashboard|gons-dashboard-postgres pg|ais-prod|ais-prod-postgres pg|krdn-timescaledb|krdn-timescaledb pg|voice|voice-postgres pg|n8n|n8n-postgres pg|ais|ais-postgres pg|sms-insights|sms-insights-postgres redis|gons-dashboard|gons-dashboard-redis redis|ais-prod|ais-prod-redis redis|news-prod|news-prod-redis redis|voice|voice-redis redis|n8n|n8n-redis"
+EOF
+sudo chmod 644 /etc/default/gons-security-collect
+sudo systemctl restart gons-security-collect.service
+
+# 검증 — 목록이 전달됐는지 (0 이면 env 파일 경로/이름 확인)
+sudo python3 -c "import json;print(len(json.load(open('/run/gons-monitoring/security.json')).get('datastoreStats',[])),'건')"
 ```
 
 ### 보안 baseline 갱신 (Phase 3 §H)
