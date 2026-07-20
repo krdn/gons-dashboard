@@ -17,3 +17,4 @@ export {
   MonitoringSummaryCard,
   MonitoringSummarySkeleton,
 } from "./ui/MonitoringSummaryCard";
+export { MonitoringTabs } from "./ui/MonitoringTabs";
