@@ -211,10 +211,15 @@ collect_datastore_stats() {
       # ⚠️ 각 CONFIG GET 의 종료 상태를 따로 확인한다. 실패를 무시하면 필드만 빠진
       # observed:true 가 나가고, 서버는 그것을 "상한 없음"·"축출 정책"으로 읽어
       # **상한이 있는 인스턴스가 ok 로 강등**된다(위험을 숨기는 오판).
-      maxmem=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory 2>/dev/null | tail -1 | tr -d ' \r')
+      # ⚠️ 파이프라인 뒤의 $? 는 **마지막 명령(tr)** 의 상태다. docker exec 가
+      # 실패해도 tr 이 성공하면 0 이 되어 실패를 놓친다(pipefail 미설정).
+      # 원출력을 먼저 변수에 담아 상태를 보존한 뒤 별도로 파싱한다.
+      raw_max=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory 2>/dev/null)
       rc_max=$?
-      policy=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory-policy 2>/dev/null | tail -1 | tr -d ' \r')
+      raw_pol=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory-policy 2>/dev/null)
       rc_pol=$?
+      maxmem=$(printf '%s' "$raw_max" | tail -1 | tr -d ' \r')
+      policy=$(printf '%s' "$raw_pol" | tail -1 | tr -d ' \r')
       if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]] \
          && { [ $rc_max -ne 0 ] || [ $rc_pol -ne 0 ] \
               || ! [[ "$maxmem" =~ ^[0-9]+$ ]] || ! [[ "$policy" =~ ^[a-z-]+$ ]]; }; then

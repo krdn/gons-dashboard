@@ -90,15 +90,21 @@ export function DatastoreBoard({
     (a, b) => a.kind.localeCompare(b.kind) || a.target.localeCompare(b.target),
   );
   // 헤더 배지용 — 지표 이상 건수(liveness 상태 열이 표현하지 못하는 위험).
-  // ⚠️ warning/critical 만 세면 "stats 없음"과 "전부 정상"의 헤더가 같아져,
-  // 지표가 아예 안 걷히는 상태가 정상처럼 보인다. 미확인 건수를 따로 센다.
-  const statAlert = {
-    critical: stats.filter((s) => s.status === "critical").length,
-    total: stats.filter((s) => s.status === "critical" || s.status === "warning").length,
-    // 판정 행이 아예 없는 인스턴스 + unknown 행 = 지표를 확인하지 못한 대상.
-    unknown:
-      rows.length - stats.filter((s) => s.status !== "unknown").length,
-  };
+  // ⚠️ 집계는 **rows 를 기준으로 한 번씩** 순회한다. stats 배열을 직접 세면
+  // 행과 매칭되지 않는 stale/orphan stat 이나 중복 보고가 건수를 부풀리거나
+  // (미확인 계산에서) 음수를 만든다. 표시되는 행과 헤더가 항상 일치해야 한다.
+  const statAlert = rows.reduce(
+    (acc, c) => {
+      const st = statOf.get(`${c.kind}\u0000${c.target}`);
+      if (!st || st.status === "unknown") acc.unknown += 1;
+      else if (st.status === "critical") {
+        acc.critical += 1;
+        acc.total += 1;
+      } else if (st.status === "warning") acc.total += 1;
+      return acc;
+    },
+    { critical: 0, total: 0, unknown: 0 },
+  );
 
 
   return (
