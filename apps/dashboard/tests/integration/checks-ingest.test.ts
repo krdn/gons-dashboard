@@ -105,8 +105,10 @@ describe("/api/agent/checks-ingest", () => {
     // 건너뛰지 않는다 — verdict 가 없으면 새 행이 안 생겨 보드에 직전 상태가
     // 남기 때문(관측 공백이 정상으로 보이는 미탐). 데이터스토어 개수는
     // instances.ts 에서 파생시킨다(하드코딩하면 목록 변경 시 조용히 어긋난다).
+    // Phase 4 부터 심층지표(datastoreStats)도 항상 verdict 를 낸다 — 같은 이유
+    // (행이 안 생기면 보드에 직전 상태가 남는다). 개수는 instances.ts 에서 파생.
     expect((await res.json()).inserted).toBe(
-      2 + 5 + DATASTORE_INSTANCES.length,
+      2 + 5 + DATASTORE_INSTANCES.length * 2,
     );
     expect(recordEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -127,7 +129,7 @@ describe("/api/agent/checks-ingest", () => {
       makeReq(TEST_BEARER, json({ host: "home-server" })),
     );
     expect(res.status).toBe(200);
-    expect((await res.json()).inserted).toBe(5 + DATASTORE_INSTANCES.length);
+    expect((await res.json()).inserted).toBe(5 + DATASTORE_INSTANCES.length * 2);
     // unknown 이므로 이벤트는 발행하지 않는다 (위반도 정상 복귀도 아님).
     expect(recordEventMock).not.toHaveBeenCalled();
   });

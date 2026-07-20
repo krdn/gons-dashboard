@@ -330,7 +330,17 @@ build_checks_payload() {
   [ -n "$svc_json" ] && printf ',"services":[%s]' "$svc_json"
   [ -n "$timer_json" ] && printf ',"timers":[%s]' "$timer_json"
   [ -n "$cron_json" ] && printf ',"hostCron":[%s]' "$cron_json"
-  [ -n "$sec_json" ] && printf ',"security":%s' "$sec_json"
+  # collector 산출물은 보안 5종 + datastoreStats 가 한 파일에 들어있다.
+  # 서버 스키마에서 security 와 datastoreStats 는 **형제 필드**라 분리해 싣는다.
+  # jq 없이(호스트 의존 최소화) 문자열로 잘라내되, 실패하면 조용히 생략하지 않고
+  # security 만 보내 서버가 datastoreStats 를 not-reported unknown 으로 드러내게 한다.
+  if [ -n "$sec_json" ]; then
+    local dsx_json sec_only
+    dsx_json=$(printf '%s' "$sec_json" | sed -n 's/.*,"datastoreStats":\(\[.*\]\)}$/\1/p')
+    sec_only=$(printf '%s' "$sec_json" | sed 's/,"datastoreStats":\[.*\]}$/}/')
+    printf ',"security":%s' "$sec_only"
+    [ -n "$dsx_json" ] && printf ',"datastoreStats":%s' "$dsx_json"
+  fi
   [ -n "$ds_json" ] && printf ',"datastores":[%s]' "$ds_json"
   printf '}'
 }

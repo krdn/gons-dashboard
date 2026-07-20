@@ -22,6 +22,8 @@ export function sourceForKind(kind: CheckVerdict["kind"]): EventSource {
       return "security";
     case "pg":
     case "redis":
+    case "pgstat":
+    case "redisstat":
       return "host";
   }
 }

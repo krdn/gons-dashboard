@@ -58,6 +58,19 @@ sudo chmod 755 /opt/gons/monitoring-agent/gons-security-collect.sh
 sudo cp gons-security-collect.service gons-security-collect.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now gons-security-collect.timer
+
+# 5-1. 심층지표 수집 대상 (Phase 4 §J) — **collector 전용 env 파일**
+#      ⚠️ 에이전트의 /etc/default/gons-monitoring-agent 가 아니다. 그 파일에는
+#      METRICS_INGEST_TOKEN 이 있어 root collector 에 읽힐 이유가 없다(최소권한).
+#      이 파일에는 컨테이너 이름만 있어 시크릿이 없으므로 644 로 둔다.
+sudo tee /etc/default/gons-security-collect >/dev/null <<'EOF'
+DATASTORE_CONTAINERS="pg|gons-dashboard|gons-dashboard-postgres pg|ais-prod|ais-prod-postgres pg|krdn-timescaledb|krdn-timescaledb pg|voice|voice-postgres pg|n8n|n8n-postgres pg|ais|ais-postgres pg|sms-insights|sms-insights-postgres redis|gons-dashboard|gons-dashboard-redis redis|ais-prod|ais-prod-redis redis|news-prod|news-prod-redis redis|voice|voice-redis redis|n8n|n8n-redis"
+EOF
+sudo chmod 644 /etc/default/gons-security-collect
+sudo systemctl restart gons-security-collect.service
+
+# 검증 — 목록이 전달됐는지 (0 이면 env 파일 경로/이름 확인)
+sudo python3 -c "import json;print(len(json.load(open('/run/gons-monitoring/security.json')).get('datastoreStats',[])),'건')"
 ```
 
 ### 보안 baseline 갱신 (Phase 3 §H)

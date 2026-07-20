@@ -150,6 +150,9 @@ export default async function MonitoringPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <DatastoreBoard
             checks={checks.filter((c) => c.kind === "pg" || c.kind === "redis")}
+            stats={checks.filter(
+              (c) => c.kind === "pgstat" || c.kind === "redisstat",
+            )}
             now={now}
           />
           <LlmCostCard spend={llmSpend} budgetKrw={env.SAJU_LLM_DAILY_BUDGET_KRW} />

@@ -9,6 +9,12 @@ User=root
 #    gons-agent 가 **디렉토리 탐색(x 비트)** 부터 막힌다 — 파일이 0640
 #    root:gons-agent 여도 읽을 수 없다 (2026-07-20 실측: "허가 거부").
 Group=gons-agent
+# 수집 대상 목록 (Phase 4 §J). 에이전트의 /etc/default/gons-monitoring-agent 와
+# **별개 파일**이다 — 그 파일에는 METRICS_INGEST_TOKEN 이 들어있어 root collector
+# 에 읽힐 이유가 없다(최소권한). 이 파일에는 컨테이너 이름만 있어 시크릿이 없다.
+# ⚠️ `-` 접두: 파일이 없어도 유닛은 뜬다. 그때 DATASTORE_CONTAINERS 가 비어
+# datastoreStats:[] 가 되고 서버가 not-reported unknown 으로 드러낸다(조용한 실패 아님).
+EnvironmentFile=-/etc/default/gons-security-collect
 ExecStart=/opt/gons/monitoring-agent/gons-security-collect.sh
 
 # --- 샌드박스 (운영 서버 systemd-run 실증 기반) ---

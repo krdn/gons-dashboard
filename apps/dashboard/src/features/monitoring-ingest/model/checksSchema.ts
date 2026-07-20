@@ -72,6 +72,30 @@ export const checksPayloadSchema = z.object({
     )
     .max(40)
     .optional(),
+  // Phase 4 §J — 데이터스토어 심층지표(연결 수·크기). liveness(datastores)와 달리
+  // docker exec 채널이라 **포트 미노출 인스턴스도 관측된다**.
+  //
+  // ⚠️ 수치는 전부 optional — observed:true 인데 값이 없는 조합이 스키마상 합법이라
+  // 판정이 그 구멍을 unknown 으로 소화해야 한다(0 으로 떨어지면 오탐).
+  datastoreStats: z
+    .array(
+      z.object({
+        kind: z.enum(["pg", "redis"]),
+        target: z.string().min(1).max(60),
+        observed: z.boolean(),
+        reason: z.string().min(1).max(60).optional(),
+        /** 현재 연결 수 (pg: pg_stat_activity, redis: connected_clients). */
+        conns: z.number().int().min(0).optional(),
+        /** 연결 상한 (pg: max_connections). redis 는 판정에 쓰지 않는다. */
+        maxConns: z.number().int().min(0).optional(),
+        /** PG DB 크기 — 기록만, 판정 안 함(증가율 없이는 정상/이상 구분 불가). */
+        sizeBytes: z.number().int().min(0).optional(),
+        /** Redis used_memory. */
+        memBytes: z.number().int().min(0).optional(),
+      }),
+    )
+    .max(40)
+    .optional(),
 });
 
 export type ChecksPayload = z.infer<typeof checksPayloadSchema>;
