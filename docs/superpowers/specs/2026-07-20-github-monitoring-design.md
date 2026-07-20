@@ -53,24 +53,52 @@ GitHub 를 호출하면 rate limit 을 소진하고, 히스토리 축적과 알�
 ### rate limit 예산
 
 Search API 로 org 전체를 한 번에 조회해 레포 수에 비례한 증가를 막는다.
+**Search 쿼터(인증 30 req/min)와 core 쿼터(5000 req/h)는 별개로 계산한다.**
 
-| 호출 | 엔드포인트 | 요청/사이클 |
-|---|---|---|
-| 열린 이슈 | `GET /search/issues?q=org:krdn+is:issue+is:open` | 1 (+페이지) |
-| 열린 PR | `GET /search/issues?q=org:krdn+is:pr+is:open` | 1 (+페이지) |
-| Actions | `GET /repos/{owner}/{repo}/actions/runs` × 활성 레포 | N |
+| # | 호출 | 엔드포인트 | 쿼터 | 요청/사이클 |
+|---|---|---|---|---|
+| 1 | 열린 이슈 | `GET /search/issues?q=org:krdn+is:issue+is:open&sort=updated&order=desc&per_page=100` | search | 1~2 |
+| 2 | 열린 PR | `GET /search/issues?q=org:krdn+is:pr+is:open&sort=updated&order=desc&per_page=100` | search | 1~2 |
+| 3 | 활성 레포 목록 | `GET /orgs/krdn/repos?sort=pushed&direction=desc&per_page=100` | core | 1~2 |
+| 4 | Actions run | `GET /repos/{owner}/{repo}/actions/runs?per_page=20` × 활성 레포 N | core | N |
+| 5 | main Build run | `GET /repos/krdn/gons-dashboard/actions/workflows/{id}/runs?branch=main&per_page=5` | core | 1 |
+| 6 | main HEAD 커밋 | `GET /repos/krdn/gons-dashboard/commits/main` | core | 1 |
+| 7 | PR HEAD sha | `GET /repos/{owner}/{repo}/pulls/{n}` × 열린 PR M | core | M |
 
-`Search` 는 별도 쿼터(인증 30 req/min)를 쓰므로 core 5000/h 와 분리된다.
-Actions 대상 레포는 **최근 7일 내 push 가 있었던 레포**로 좁힌다 (`GET /orgs/krdn/repos?sort=pushed`
-1회로 목록 획득). 실측 기준 N ≤ 10 이므로 5분 사이클에 약 12 req → 시간당 144 req.
+N=10, M=10 기준 사이클당 **search 2~4 req + core 23~24 req**.
+시간당 core ≈ 288 req (5000 한도의 6%), search ≈ 48 req/h (한도는 분당 기준이라
+사이클 내 4 req 는 30/min 대비 여유).
 
-페이지네이션은 각 쿼리당 최대 2페이지(200건)로 자른다. 초과분은 보드에서
-"GitHub 에서 더 보기" 링크로 위임한다 — 관제 보드는 전수 목록이 아니라 판단 도구다.
+- **#3 은 `pushed` 내림차순 정렬 후 7일 cutoff 를 만나는 페이지에서 순회를 멈춘다.**
+  1회로 끝난다는 보장은 없으므로 최대 2페이지로 상한을 둔다.
+- **#4 의 활성 레포 필터와 무관하게 `krdn/gons-dashboard` 는 항상 포함한다** —
+  7일간 push 가 없어도 배포 파이프라인 판정 대상이기 때문.
+- **#5 는 #4 와 별도로 호출한다.** 레포 전체 최근 20건에는 PR·schedule run 이
+  섞여 main Build run 이 밀려날 수 있다. 워크플로를 **이름이 아닌 `workflowId`
+  (또는 `path`)로 지정**하고 `branch=main` 으로 좁힌다. 워크플로 식별자는
+  `config/thresholds.ts` 에 상수로 둔다.
+- **#7 은 Search 응답에 `head.sha` 가 없기 때문에 필요하다** (§5.2).
+  M 이 커지면 비용이 선형 증가하므로 상한 20개로 자르고, 초과 PR 의 CI 상태는
+  `unknown` 으로 둔다.
+
+### 결과 집합의 성격 — 전수가 아니라 스냅샷
+
+Search API 는 정렬된 결과를 최대 1000건까지만 제공한다. 이 설계는 각 쿼리당
+2페이지(200건)에서 자르므로, 보드가 보여주는 것은 **"전체 open 집합"이 아니라
+`updated` 내림차순 최근 200건 스냅샷"** 이다.
+
+응답의 `total_count` 를 저장해 보드 상단에 `표시 200 / 전체 N` 을 명시하고,
+잘렸을 때 "GitHub 에서 더 보기" 링크를 노출한다. 관제 보드는 전수 목록이 아니라
+판단 도구이므로 의도된 절충이다.
+
+Search 응답의 `incomplete_results: true` 는 GitHub 가 쿼리를 타임아웃시켰다는
+뜻이므로 **부분 결과로 스냅샷을 교체하지 않는다** (§4.2).
 
 ## 4. 데이터 모델
 
-신규 테이블 3개. 모두 GitHub 가 단일 진실 소스이므로 **동기화 시 전체 교체**
+신규 테이블 4개. GitHub 가 단일 진실 소스이므로 **동기화 시 전체 교체**
 (open 집합 스냅샷) 전략을 쓴다. 닫힌 항목을 추적할 필요가 없어 tombstone 이 불필요하다.
+단, 교체는 §4.2 의 안전 규칙을 지켜야 한다.
 
 ```ts
 // github_issues — 열린 이슈 스냅샷
@@ -92,8 +120,9 @@ Actions 대상 레포는 **최근 7일 내 push 가 있었던 레포**로 좁힌
   id: text primary key,           // "krdn/gons-dashboard#330"
   repo, number, title, url, author, createdAt, updatedAt, syncedAt,  // 위와 동일
   isDraft: boolean notNull default false,
-  // Search API 는 CI 상태를 주지 않는다. PR 별 추가 호출을 피하기 위해
-  // workflow_runs 에서 headSha 로 조인해 파생한다 (§5).
+  // PR 의 현재 HEAD 커밋 sha. Search Issues 응답에는 이 값이 없으므로
+  // GET /repos/{o}/{r}/pulls/{n} 로 별도 취득한다 (§3 예산 #7, §5.2).
+  // null = 취득 실패 또는 상한 초과 → CI 상태 unknown.
   headSha: text,
 }
 
@@ -101,16 +130,30 @@ Actions 대상 레포는 **최근 7일 내 push 가 있었던 레포**로 좁힌
 {
   id: text primary key,           // GitHub run id (문자열화)
   repo: text notNull,
-  workflowName: text notNull,
-  status: text notNull,           // queued | in_progress | completed
-  conclusion: text,               // success | failure | cancelled | skipped | null
+  workflowId: text notNull,       // 안정 식별자. 이름은 변경될 수 있어 판정에 쓰지 않는다.
+  workflowName: text notNull,     // 표시용
+  status: text notNull,           // queued | in_progress | completed | requested | waiting | pending
+  conclusion: text,               // success | failure | cancelled | skipped | neutral
+                                  // | timed_out | action_required | stale | startup_failure | null
   headSha: text notNull,
   headBranch: text,
   event: text,                    // push | pull_request | schedule ...
+  runAttempt: integer notNull default 1,  // 재실행 판별 — 같은 run 의 최신 attempt 만 유효
   url: text notNull,
   startedAt: timestamptz,
   completedAt: timestamptz,
   syncedAt: timestamptz notNull defaultNow(),
+}
+
+// github_sync_state — 동기화 건강 상태 (레포 무관 단일 행 × 소스별)
+// 보드가 "데이터 없음"과 "데이터가 낡음"을 구분하기 위해 필요하다.
+{
+  source: text primary key,       // "issues" | "pulls" | "runs" | "build"
+  lastAttemptAt: timestamptz,
+  lastSuccessAt: timestamptz,     // null = 한 번도 성공한 적 없음
+  lastError: text,                // 마지막 실패 사유 (표시용)
+  totalCount: integer,            // Search total_count — 스냅샷이 잘렸는지 판정
+  truncated: boolean notNull default false,
 }
 ```
 
@@ -125,36 +168,133 @@ Actions 대상 레포는 **최근 7일 내 push 가 있었던 레포**로 좁힌
 별도 purge cron 이 필요 없다 — Phase 3 의 `metric_samples` 무제한 증가 사고를
 반복하지 않기 위한 의도적 설계다.
 
+### 4.1 main HEAD 와 Build 판정 결과
+
+`judgeBuildState` 는 `mainHeadSha` 와 `mainHeadCommittedAt` 을 모두 필요로 한다
+(10분 유예 판정). RSC 는 DB 만 읽으므로 이 값들이 DB 에 있어야 한다.
+
+별도 테이블을 만들지 않고 **`github_sync_state` 의 `source = "build"` 행에
+판정 결과를 저장**한다. 판정은 순수 함수가 동기화 시점에 수행하고, 그 결과만
+보존한다 — RSC 가 다시 판정하면 두 곳에 로직이 생긴다.
+
+```ts
+// source = "build" 행의 확장 컬럼 (nullable — 다른 source 에는 무의미)
+{
+  buildState: text,               // synced | building | build-failed | no-run | unknown
+  mainHeadSha: text,
+  mainHeadCommittedAt: timestamptz,
+  buildRunUrl: text,
+  buildConclusion: text,
+}
+```
+
+### 4.2 스냅샷 교체 안전 규칙
+
+전체 교체는 **부분 실패 시 기존 데이터를 지우는** 위험이 있다. 다음을 보장한다:
+
+1. **수집 완료 후 교체.** 한 소스의 모든 페이지를 성공적으로 받은 뒤에만
+   `DELETE + INSERT` 를 단일 트랜잭션으로 실행한다. 페이지 도중 실패하면
+   그 소스는 교체하지 않고 이전 스냅샷을 유지한다.
+2. **소스별 독립.** 이슈 동기화가 실패해도 PR·runs 는 각자 교체된다.
+   Actions 는 **레포 단위로 독립** — 한 레포 조회가 실패하면 그 레포의 이전
+   run 만 유지하고 나머지는 갱신한다.
+3. **`incomplete_results: true` 는 실패로 취급.** GitHub 가 쿼리를 타임아웃시킨
+   부분 결과로 교체하면 멀쩡한 항목이 사라진다.
+4. **인증·rate limit 실패 시 교체하지 않는다.** `lastError` 에만 기록한다.
+5. **토큰 미설정 시에도 기존 행을 지우지 않는다.** 동기화를 건너뛰고
+   `lastAttemptAt` 만 갱신하며, 보드는 "동기화 비활성" 배지를 표시한다.
+
+보드는 `lastSuccessAt` 을 읽어 상태를 구분한다:
+
+| 조건 | 보드 표시 |
+|---|---|
+| `lastSuccessAt` 이 null | "아직 동기화된 적 없음" (empty state) |
+| `lastSuccessAt` 이 15분 이내 | 정상 |
+| `lastSuccessAt` 이 15분 초과 | **stale 배지 + `lastError` 표시** |
+
+이 구분이 없으면 "이슈가 0건"과 "동기화가 죽어서 안 보임"을 혼동한다.
+
 ## 5. 판정 규칙 (순수 함수)
 
 모든 판정은 `features/github-monitor/lib/` 의 순수 함수로 구현하고 단위 테스트한다.
 DB·네트워크 의존을 함수 밖에 두어 판정 로직만 독립 검증 가능하게 한다.
 
+### 5.0 GitHub 상태값 정규화 (`normalizeRunOutcome`)
+
+GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 판정 함수가
+모르는 값을 만나 조용히 오분류하지 않도록, 먼저 4값으로 정규화한다.
+
+| 정규화 결과 | GitHub 값 |
+|---|---|
+| `success` | `conclusion = success` |
+| `failure` | `conclusion ∈ {failure, timed_out, startup_failure, action_required}` |
+| `running` | `status ∈ {queued, in_progress, requested, waiting, pending}` |
+| `inconclusive` | `conclusion ∈ {cancelled, skipped, neutral, stale}` 또는 미지의 값 |
+
+**`inconclusive` 를 성공으로도 실패로도 보지 않는 것이 핵심이다.** 취소된 run 을
+실패로 보면 사람이 의도적으로 중단한 빌드마다 critical 알림이 나가고, 성공으로
+보면 실제로 검증되지 않은 커밋이 정상으로 표시된다.
+
+미지의 값은 `inconclusive` 로 떨어뜨리되 `logger.warn` 을 남겨 GitHub 가 새 값을
+도입했을 때 알 수 있게 한다.
+
 ### 5.1 배포 파이프라인 상태 (`judgeBuildState`)
 
-입력: `{ mainHeadSha, runs: WorkflowRun[] }` — gons-dashboard 의 main 브랜치 run 만.
+입력:
+```ts
+{
+  mainHeadSha: string,
+  mainHeadCommittedAt: Date,
+  runs: WorkflowRun[],   // 지정 workflowId, branch=main 의 run 만
+  nowFn: () => Date,     // 시각 주입 (테스트용)
+}
+```
+
+**대상 run 선택 규칙** (다중 run 처리):
+1. `workflowId` 가 설정된 Build 워크플로와 일치하는 run 만 본다 (이름 아님).
+2. `headSha === mainHeadSha` 인 run 만 본다.
+3. 그중 **`runAttempt` 가 가장 큰 것 하나**를 택한다 — 재실행이 있으면
+   최신 시도가 현재 진실이다. 실패 후 재실행 중이면 `building` 이 되며,
+   이는 의도된 동작이다 (사람이 이미 조치 중).
 
 | 상태 | 조건 | severity |
 |---|---|---|
-| `synced` | mainHeadSha 의 Build run 이 `completed`/`success` | ok |
-| `building` | mainHeadSha 의 run 이 `queued`/`in_progress` | ok |
-| `build-failed` | mainHeadSha 의 run 이 `completed`/`failure` | **critical** |
-| `no-run` | mainHeadSha 에 대응하는 run 이 없음 (동기화 지연 또는 미트리거) | warning |
+| `synced` | 대상 run 이 `success` | ok |
+| `building` | 대상 run 이 `running` | ok |
+| `build-failed` | 대상 run 이 `failure` | **critical** |
+| `no-run` | 대상 run 없음 + 커밋 후 10분 초과 | warning |
+| `unknown` | 대상 run 이 `inconclusive`, 또는 커밋 후 10분 이내 + run 없음 | — |
 
-`no-run` 은 push 직후 몇 분간 정상적으로 발생한다. 오탐을 막기 위해
-**main HEAD 커밋 시각이 10분 이내면 `building` 으로 취급**한다.
+`no-run` 은 push 직후 정상적으로 발생한다. **커밋 시각이 10분 이내면 `unknown`**
+으로 두어 오탐을 막는다 (`building` 이 아니라 `unknown` 인 이유: 워크플로가
+트리거됐는지 확인되지 않았으므로 "진행 중"이라 단정할 수 없다).
+
+`unknown` 은 알림을 발행하지도, 기존 알림을 해소하지도 않는다 (§6).
 
 ### 5.2 PR CI 상태 (`derivePrCiStatus`)
 
-Search API 는 CI 결과를 주지 않고, PR 별 조회는 N+1 호출이 된다.
-대신 `github_workflow_runs` 를 `headSha` 로 조인해 파생한다.
+**Search Issues 응답에는 PR 의 `head.sha` 가 없다.** 따라서 §3 예산 #7 로
+`GET /repos/{o}/{r}/pulls/{n}` 을 호출해 현재 HEAD sha 를 취득해 저장한다.
 
-- 해당 sha 의 run 이 하나라도 `failure` → `failing`
-- 전부 `success` → `passing`
-- 진행 중이 있으면 → `running`
-- run 이 없으면 → `unknown` (PR 브랜치가 Actions 트리거 대상이 아닐 수 있음)
+`workflow_runs.head_sha` 단순 조인은 안전하지 않다:
+- `pull_request` 이벤트 run 의 `head_sha` 는 **합성 merge SHA** 일 수 있다.
+- `pull_request_target` 은 base SHA 를 가리킨다.
 
-`unknown` 은 경고로 취급하지 않는다 — 정상 상태이기도 하기 때문.
+따라서 조인은 다음 조건을 모두 만족하는 run 만 대상으로 한다:
+- `run.headSha === pr.headSha` (저장된 PR HEAD 와 정확히 일치)
+- `run.event ∈ {push, pull_request}` — `pull_request_target` 등은 제외
+
+집계는 **workflow 별로 최신 `runAttempt` 하나씩** 취한 뒤 정규화 결과로 판정:
+
+| 결과 | 조건 |
+|---|---|
+| `failing` | 하나라도 `failure` |
+| `running` | `failure` 없고 하나라도 `running` |
+| `passing` | 전부 `success` |
+| `unknown` | 대상 run 없음, `pr.headSha` 미취득, 또는 전부 `inconclusive` |
+
+`unknown` 은 경고로 취급하지 않는다 — PR 브랜치가 Actions 트리거 대상이
+아닌 정상 상태일 수 있기 때문.
 
 ### 5.3 정체 판정 (`judgeStaleness`)
 
@@ -174,53 +314,98 @@ Search API 는 CI 결과를 주지 않고, PR 별 조회는 N+1 호출이 된다
 `monitoringEvents.source` 유니온에 `"github"` 를 추가하고, `hostId` 는 null 로 둔다
 (스키마상 nullable 이므로 변경 불필요).
 
-동기화 cron 이 판정 후 발행한다:
+동기화 cron 이 판정 후 발행한다. dedupKey 는
+`github:krdn/gons-dashboard:build-failed` 하나를 쓴다.
 
-| 조건 | dedupKey | severity |
-|---|---|---|
-| `build-failed` 진입 | `github:krdn/gons-dashboard:build-failed` | critical |
-| 그 외 상태로 회복 | 위 키로 `resolveEvent` | — |
+| `buildState` | 동작 |
+|---|---|
+| `build-failed` | `recordEvent(critical)` |
+| `synced` | `resolveEvent` |
+| `building` | **no-op** |
+| `no-run` | **no-op** |
+| `unknown` | **no-op** |
+| 동기화 실패 (API 오류·토큰 없음) | **no-op** — 판정 자체를 수행하지 않는다 |
 
-`recordEvent` 는 동일 dedupKey 의 open 이벤트를 억제하므로 5분마다 재발행해도
-중복 알림이 나가지 않는다. 회복 시 `resolveEvent` 가 `resolvedAt` 을 채우고
-기존 `monitoring-notify` sweep 이 해소 통지를 보낸다.
+**`synced` 일 때만 해소한다.** 이것이 기존 관제 정책과 일치하는 지점이다 —
+`monitoring-ingest` 의 check 판정도 `ok` 일 때만 `resolveEvent` 를 부르고
+`unknown` 은 명시적 no-op 이며, 코드 주석이 이유를 밝히고 있다:
+
+> unknown: no-op — 관찰 불가는 위반도 정상 복귀도 아니다. (…) 방화벽이
+> 복구됐는지 **확인할 수 없는** 상태에서 이벤트를 해소하면 실제로 뚫린 채로
+> 알림만 사라진다.
+
+같은 논리가 여기에도 적용된다. "그 외 상태면 해소"로 구현하면 **Build 가 계속
+실패 중인데 GitHub API 가 잠시 죽었을 때 "복구됨" 알림이 나간다.** 관제에서
+이는 침묵보다 나쁘다 — 거짓 안심을 주기 때문이다.
+
+`recordEvent` 는 동일 dedupKey 의 open 이벤트를 억제하므로 5분마다 재판정해도
+중복 알림이 나가지 않는다. 해소 시 `monitoring-notify` sweep 이 해소 통지를 보낸다.
 
 **관측은 best-effort** — 이벤트 발행 실패가 동기화 자체를 실패시키면 안 된다.
-`recordEvent` 호출은 try/catch 로 감싸 삼킨다 (메모리 `observability-must-be-best-effort`).
+`recordEvent` 와 `resolveEvent` **둘 다** try/catch 로 감싸 삼킨다
+(메모리 `observability-must-be-best-effort`).
+
+### 6.1 알림 링크
+
+현행 `monitoring-notify` 는 모든 알림의 `url` 을 `/monitoring` 으로 고정한다.
+GitHub 이벤트는 `/monitoring/github` 로 보내는 것이 맞으므로, notifier 가
+`source === "github"` 일 때 링크를 분기하도록 최소 수정한다.
+
+`EventSource` 유니온에 `"github"` 를 추가하고 (`entities/monitoring/model/types.ts`),
+`monitoring.ts` 스키마의 source 주석도 함께 갱신한다.
 
 ## 7. FSD 배치
 
 ```
+shared/lib/db/schema/github.ts     # 신규 테이블 4개 + schema/index.ts 재export
+drizzle/00XX_github_monitoring.sql # 마이그레이션 (운영은 psql 선적용 — §9)
+
 entities/github-activity/
-  model/types.ts        # GithubIssue, GithubPullRequest, GithubWorkflowRun, BuildState
-  api/queries.ts        # DB read (listOpenIssues, listOpenPrs, listRecentRuns)
-  api/sync.ts           # DB write (replaceIssues, replacePrs, upsertRuns)
+  model/types.ts        # GithubIssue, GithubPullRequest, GithubWorkflowRun,
+                        # BuildState, RunOutcome, PrCiStatus, SyncState
+  api/queries.ts        # DB read (listOpenIssues, listOpenPrs, listRecentRuns,
+                        #          getBuildState, getSyncStates)
+  api/sync.ts           # DB write (replaceIssues, replacePrs, replaceRunsForRepo,
+                        #          upsertSyncState) — 트랜잭션 교체 (§4.2)
   server.ts             # server entrypoint (import "server-only")
   client.ts             # 타입·상수만 (client 위젯용)
 
 features/github-monitor/
-  config/thresholds.ts  # 정체 임계값, 페이지 상한, 활성 레포 판정 기간
-  lib/githubClient.ts   # fetch 래퍼 (PAT 인증, 페이지네이션, 에러 정규화)
+  config/thresholds.ts  # 정체 임계값, 페이지 상한, 활성 레포 기간,
+                        # BUILD_WORKFLOW_ID, stale 임계(15분), PR HEAD 조회 상한
+  lib/githubClient.ts   # fetch 래퍼 (PAT 인증, 페이지네이션, 에러 정규화,
+                        #             incomplete_results 판정)
+  lib/normalizeRunOutcome.ts
   lib/judgeBuildState.ts
   lib/derivePrCiStatus.ts
   lib/judgeStaleness.ts
   lib/*.test.ts         # 판정 순수 함수 단위 테스트
-  index.ts              # server entrypoint
+  index.ts              # server entrypoint (동기화 오케스트레이션)
 
 widgets/monitoring/ui/
+  MonitoringTabs.tsx    # "use client" — usePathname() 기반 활성 탭 판정
   GithubKpiStrip.tsx
   BuildStateCard.tsx
   WorkflowRunsBoard.tsx
   PullRequestsBoard.tsx
   IssuesBoard.tsx
+  SyncStaleBadge.tsx    # lastSuccessAt 기반 stale 표시 (§4.2)
 
 app/(dashboard)/monitoring/
-  layout.tsx            # 탭 셸 (인프라 | GitHub) — 신설
+  layout.tsx            # 탭 셸 — 신설. MonitoringTabs 렌더
   page.tsx              # 기존 인프라 보드 (변경 최소)
-  github/page.tsx       # 신설
+  github/page.tsx       # 신설. page.tsx 와 동일하게 auth() → redirect("/login")
+                        # + export const dynamic = "force-dynamic"
 
-app/api/cron/github-sync/route.ts
+app/api/cron/github-sync/route.ts  # createCronHandler 사용 (기존 패턴)
+apps/cron/scheduler.js             # 5분 주기 호출 등록 (*/5 * * * *)
+
+features/monitoring-notify/index.ts  # source === "github" 시 링크 분기 (§6.1)
+entities/monitoring/model/types.ts   # EventSource 에 "github" 추가
 ```
+
+인증은 각 page 에서 개별 처리한다 (`layout.tsx` 가 아니라). 기존 `page.tsx` 가
+이미 그 패턴이고, layout 인증은 Next 에서 라우트별 보호를 보장하지 않는다.
 
 ### 왜 `entities/monitoring` 이 아닌 별도 entity 인가
 기존 관제 entity 는 host·container·check 중심이고 수명주기가 push/agent 기반이다.
@@ -266,14 +451,29 @@ compose 파일은 git 미동기화이므로 scp + sudo cp 선행 (메모리 `pro
 
 | 계층 | 대상 | 방식 |
 |---|---|---|
-| 순수 함수 | `judgeBuildState`, `derivePrCiStatus`, `judgeStaleness` | 단위 테스트. 경계값(10분 유예, 7일/14일 임계)과 오탐 방지 케이스 필수 |
-| API 클라이언트 | `githubClient` | 페이지네이션·에러 정규화를 fetch mock 으로 검증 |
-| 통합 | `github-sync` 라우트 | `TEST_DATABASE_URL` 로 upsert·삭제·이벤트 발행 검증 |
-| UI | 보드 위젯 | empty state 와 severity 강조만 (jsdom) |
+| 순수 함수 | `normalizeRunOutcome` | GitHub 상태값 전수 + 미지의 값 → `inconclusive` |
+| 순수 함수 | `judgeBuildState` | 5개 상태 전이 + 10분 유예 경계 + `runAttempt` 선택 |
+| 순수 함수 | `derivePrCiStatus` | merge SHA 오조인 방지, workflow 별 최신 attempt 집계 |
+| 순수 함수 | `judgeStaleness` | 7일/14일 경계, draft 제외 |
+| API 클라이언트 | `githubClient` | fetch mock — 페이지네이션, `incomplete_results`, 401/403/429 |
+| 통합 | `github-sync` 라우트 | `TEST_DATABASE_URL` — 교체·부분실패 보존·이벤트 발행 |
+| UI | 보드 위젯 | empty state, stale 배지, severity 강조 (jsdom) |
 
-`judgeBuildState` 의 `no-run` 10분 유예는 **시각 주입**으로 테스트한다
-(`nowFn` 파라미터). 메모리 `cron-catchup-wait-not-finite-retry` 의 교훈 —
-wall-clock 의존 로직은 시각을 주입하지 않으면 검증 불가능하다.
+**반드시 포함할 회귀 가드** (이번 리뷰에서 드러난 결함들):
+
+1. `judgeBuildState` 가 `build-failed` 인 상태에서 `runs: []` (API 실패 재현)를
+   받으면 `unknown` 을 반환하고 **해소로 이어지지 않는다.**
+2. 동기화 실패 시 기존 이슈 행이 **삭제되지 않는다** (§4.2 규칙 1).
+3. `incomplete_results: true` 응답으로 스냅샷이 교체되지 않는다.
+4. `conclusion: "cancelled"` 가 `failure` 로 분류되지 않는다.
+5. PR 의 `headSha` 와 다른 sha 의 run 이 CI 상태에 영향을 주지 않는다.
+
+`judgeBuildState` 의 10분 유예는 **시각 주입**으로 테스트한다 (`nowFn` 파라미터).
+메모리 `cron-catchup-wait-not-finite-retry` 의 교훈 — wall-clock 의존 로직은
+시각을 주입하지 않으면 검증 불가능하다.
+
+새 테스트 파일이 `.tsx` 이면 vitest include 설정을 확인한다
+(메모리 `vitest-include-tsx-silent-skip` — include 밖 파일은 조용히 스킵된다).
 
 ## 11. 후속 과제
 
