@@ -90,9 +90,14 @@ export function DatastoreBoard({
     (a, b) => a.kind.localeCompare(b.kind) || a.target.localeCompare(b.target),
   );
   // 헤더 배지용 — 지표 이상 건수(liveness 상태 열이 표현하지 못하는 위험).
+  // ⚠️ warning/critical 만 세면 "stats 없음"과 "전부 정상"의 헤더가 같아져,
+  // 지표가 아예 안 걷히는 상태가 정상처럼 보인다. 미확인 건수를 따로 센다.
   const statAlert = {
     critical: stats.filter((s) => s.status === "critical").length,
     total: stats.filter((s) => s.status === "critical" || s.status === "warning").length,
+    // 판정 행이 아예 없는 인스턴스 + unknown 행 = 지표를 확인하지 못한 대상.
+    unknown:
+      rows.length - stats.filter((s) => s.status !== "unknown").length,
   };
 
 
@@ -126,6 +131,14 @@ export function DatastoreBoard({
             }}
           >
             지표 이상 {statAlert.total}
+          </span>
+        )}
+        {statAlert.unknown > 0 && (
+          <span
+            className="rounded-full bg-[var(--color-surface-2)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-muted)]"
+            title="심층지표를 확인하지 못한 인스턴스 — collector env(DATASTORE_CONTAINERS) 확인"
+          >
+            지표 미확인 {statAlert.unknown}
           </span>
         )}
       </h2>

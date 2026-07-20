@@ -151,12 +151,15 @@ function judgeRedis(inst: DatastoreInstance, o: StatObservation): CheckVerdict {
   const cap = hasCap ? `${Math.round(o.maxMemBytes! / (1024 * 1024))}MiB` : "무제한";
 
   if (ratio != null) {
-    // noeviction 이면 상한 도달이 곧 쓰기 실패라 critical 을 한 단계 앞당긴다.
-    if (ratio >= REDIS_MEM_CRITICAL_RATIO || (noEvict && ratio >= REDIS_MEM_WARN_RATIO)) {
+    // 0.9 이상은 정책과 무관하게 critical — 상한에 근접한 것 자체가 위험이다.
+    // noeviction 은 상한 도달이 곧 쓰기 실패라 0.75 부터 critical 로 앞당긴다.
+    const criticalByRatio = ratio >= REDIS_MEM_CRITICAL_RATIO;
+    const criticalByPolicy = noEvict && ratio >= REDIS_MEM_WARN_RATIO;
+    if (criticalByRatio || criticalByPolicy) {
       return {
         ...base,
-        status: noEvict ? "critical" : "warning",
-        title: noEvict
+        status: "critical",
+        title: criticalByPolicy && !criticalByRatio
           ? `${label(inst)} 메모리 ${pct}% (${mib}/${cap}) — noeviction 이라 상한 도달 시 쓰기 실패`
           : `${label(inst)} 메모리 ${pct}% (${mib}/${cap})`,
       };

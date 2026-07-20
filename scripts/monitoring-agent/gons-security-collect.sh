@@ -208,8 +208,21 @@ collect_datastore_stats() {
       # maxmemory·정책은 INFO 에 없다 — CONFIG GET 으로 따로 조회한다.
       # 이 둘이 있어야 "상한 대비 몇 %"와 "가득 차면 축출인가 쓰기 실패인가"를
       # 판정할 수 있다. 절대 크기만으로는 위험도를 알 수 없다.
+      # ⚠️ 각 CONFIG GET 의 종료 상태를 따로 확인한다. 실패를 무시하면 필드만 빠진
+      # observed:true 가 나가고, 서버는 그것을 "상한 없음"·"축출 정책"으로 읽어
+      # **상한이 있는 인스턴스가 ok 로 강등**된다(위험을 숨기는 오판).
       maxmem=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory 2>/dev/null | tail -1 | tr -d ' \r')
+      rc_max=$?
       policy=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory-policy 2>/dev/null | tail -1 | tr -d ' \r')
+      rc_pol=$?
+      if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]] \
+         && { [ $rc_max -ne 0 ] || [ $rc_pol -ne 0 ] \
+              || ! [[ "$maxmem" =~ ^[0-9]+$ ]] || ! [[ "$policy" =~ ^[a-z-]+$ ]]; }; then
+        # INFO 는 됐지만 CONFIG 조회가 실패 — 판정 근거가 불완전하므로 관측 실패로 낸다.
+        entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":false,\"reason\":\"config-get-failed\"}"
+        acc="${acc:+$acc,}$entry"
+        continue
+      fi
       if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]]; then
         entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":true,\"memBytes\":$mem"
         [[ "$conns" =~ ^[0-9]+$ ]] && entry="$entry,\"conns\":$conns"

@@ -134,6 +134,32 @@ describe("judgeDatastoreStats — Redis 메모리 임계", () => {
     expect(noEvict.status).toBe("critical");
   });
 
+  it("90% 이상은 정책과 무관하게 critical (allkeys-lru 포함)", () => {
+    // 축출 정책이라도 상한에 근접한 것 자체가 위험이다. warn/critical 정책
+    // (0.75/0.9)을 noeviction 분기가 덮어써 90%가 warning 이 되면 안 된다.
+    for (const policy of ["allkeys-lru", "volatile-lru"]) {
+      const v = find(
+        judgeDatastoreStats([
+          { kind: "redis", target: REDIS.target, observed: true,
+            memBytes: 950 * MIB, maxMemBytes: 1024 * MIB, evictionPolicy: policy },
+        ]),
+        "redisstat", REDIS.target,
+      );
+      expect(v.status).toBe("critical");
+    }
+  });
+
+  it("정책이 누락돼도 90% 이상은 critical", () => {
+    const v = find(
+      judgeDatastoreStats([
+        { kind: "redis", target: REDIS.target, observed: true,
+          memBytes: 950 * MIB, maxMemBytes: 1024 * MIB },
+      ]),
+      "redisstat", REDIS.target,
+    );
+    expect(v.status).toBe("critical");
+  });
+
   it("운영 실측 ais-prod(799MiB/1GiB noeviction)은 critical 이다", () => {
     // 2026-07-20 실측 그대로. 절대 임계 방식에서는 warning 이었으나, 상한 78% +
     // noeviction 이라 실제로는 쓰기 실패가 임박한 상태다.
