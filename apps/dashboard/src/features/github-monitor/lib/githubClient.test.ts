@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { searchIssues, listActiveRepos, GithubApiError } from "./githubClient";
+import {
+  searchIssues,
+  listActiveRepos,
+  listBuildRuns,
+  GithubApiError,
+} from "./githubClient";
 
 const TOKEN = "test-token";
 
@@ -92,5 +97,43 @@ describe("listActiveRepos", () => {
     );
     const repos = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(repos).toContain("krdn/gons-dashboard");
+  });
+});
+
+describe("listBuildRuns", () => {
+  // ⚠️ GitHub REST 의 workflow_id 파라미터는 숫자 ID 또는 **파일명**을 받는다.
+  // 전체 경로(.github/workflows/ci.yml)를 인코딩해 넣어도 현재는 200 이 오지만
+  // 문서화되지 않은 관용 동작이라, 깨지면 build-failed 감지가 조용히 죽는다.
+  // 이 테스트가 URL 형식을 고정한다.
+  it("파일명·branch=main 으로 정확한 경로를 호출한다", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse({ workflow_runs: [] }));
+
+    await listBuildRuns(TOKEN, "krdn/gons-dashboard", "ci.yml");
+
+    const url = String(spy.mock.calls[0]?.[0]);
+    expect(url).toBe(
+      "https://api.github.com/repos/krdn/gons-dashboard/actions/workflows/ci.yml/runs?branch=main&per_page=5",
+    );
+    // 경로 구분자가 인코딩돼 들어가면 문서화된 형식을 벗어난 것이다.
+    expect(url).not.toContain("%2F");
+  });
+
+  it("workflow_runs 배열을 그대로 돌려준다", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ workflow_runs: [{ id: 1 }, { id: 2 }] }),
+    );
+    const runs = await listBuildRuns(TOKEN, "krdn/gons-dashboard", "ci.yml");
+    expect(runs).toHaveLength(2);
+  });
+
+  it("404 면 GithubApiError 로 던진다 (워크플로 식별자 오류 감지)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ message: "Not Found" }, 404),
+    );
+    await expect(
+      listBuildRuns(TOKEN, "krdn/gons-dashboard", "nope.yml"),
+    ).rejects.toMatchObject({ status: 404 });
   });
 });

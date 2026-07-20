@@ -110,6 +110,14 @@ describe("syncGithub — API 실패", () => {
     });
     mockFetchByPath([{ match: /./, status: 500, body: { message: "boom" } }]);
 
+    // 직전 판정 결과를 seed — API 실패가 이 값을 덮어쓰면 안 된다.
+    await db.insert(githubSyncState).values({
+      source: "build",
+      buildState: "build-failed",
+      mainHeadSha: "prevsha",
+      lastSuccessAt: new Date("2026-07-19T00:00:00Z"),
+    });
+
     const syncGithub = await loadSync("tok");
     const summary = await syncGithub();
 
@@ -119,6 +127,25 @@ describe("syncGithub — API 실패", () => {
     const events = await db.select().from(monitoringEvents);
     expect(events).toHaveLength(1);
     expect(events[0]?.resolvedAt).toBeNull(); // 해소되지 않았다
+
+    // 직전 판정 결과가 보존된다 — 관측 불가에서 상태를 덮어쓰면
+    // 보드가 "판정 없음"으로 바뀌어 진행 중인 장애가 시야에서 사라진다.
+    const build = (await db.select().from(githubSyncState)).find((s) => s.source === "build");
+    expect(build?.buildState).toBe("build-failed");
+    expect(build?.mainHeadSha).toBe("prevsha");
+    expect(build?.lastError).not.toBeNull(); // 실패 사유는 기록된다
+  });
+
+  // 관측 불가에서 recordEvent 를 부르면 dedup 때문에 no-op 이라 겉으론
+  // 티가 안 나지만, 계약은 "판정 자체를 하지 않는다"이다. 기존 이벤트가
+  // 없는 상태에서 돌려 새 이벤트가 생기지 않는지로 이를 검증한다.
+  it("기존 이벤트가 없을 때 API 실패는 새 이벤트를 만들지 않는다", async () => {
+    mockFetchByPath([{ match: /./, status: 500, body: { message: "boom" } }]);
+
+    const syncGithub = await loadSync("tok");
+    await syncGithub();
+
+    expect(await db.select().from(monitoringEvents)).toHaveLength(0);
   });
 
   // 회귀 가드 7: 부분 결과로 교체하면 멀쩡한 항목이 사라진다.
@@ -191,6 +218,24 @@ describe("syncGithub — 성공 경로", () => {
     expect(events[0]?.dedupKey).toBe(BUILD_DEDUP);
   });
 
+  // 전체 성공 시 lastError 를 지우지 않으면 한 번 실패한 뒤 영구히
+  // 오류 배지가 남는다 (§4.2). DB helper 뿐 아니라 배선도 검증한다.
+  it("전체 성공 시 이전 lastError 를 지운다", async () => {
+    await db.insert(githubSyncState).values([
+      { source: "issues", lastError: "이전 실패" },
+      { source: "build", lastError: "이전 실패" },
+    ]);
+    mockFetchByPath(buildRoutes("success"));
+
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.issues.ok).toBe(true);
+    const states = await db.select().from(githubSyncState);
+    expect(states.find((s) => s.source === "issues")?.lastError).toBeNull();
+    expect(states.find((s) => s.source === "build")?.lastError).toBeNull();
+  });
+
   it("build 성공 시 기존 open 이벤트를 해소한다", async () => {
     await db.insert(monitoringEvents).values({
       source: "github", severity: "critical", title: "Build 실패", dedupKey: BUILD_DEDUP,
@@ -252,15 +297,30 @@ describe("syncGithub — 성공 경로", () => {
   });
 });
 
+/** 이전 동기화가 성공했던 시각 — 부분 실패 시 이 값이 보존돼야 한다. */
+const PRIOR_SUCCESS = new Date("2026-07-19T00:00:00Z");
+
+function makeRunRow(over: Partial<typeof githubWorkflowRuns.$inferInsert> = {}) {
+  return {
+    id: "r1", repo: "krdn/a", workflowId: "wf", workflowName: "CI",
+    status: "completed", conclusion: "success", headSha: "s", headBranch: "main",
+    event: "push", runNumber: 1, runAttempt: 1, url: "u",
+    startedAt: new Date(), completedAt: new Date(),
+    ...over,
+  };
+}
+
 describe("syncGithub — Actions 부분 실패", () => {
   // 회귀 가드 8: 성공한 레포는 갱신되지만 lastSuccessAt 은 갱신되지 않는다(§4.3).
   it("실패 레포의 run 은 유지하고 lastSuccessAt 을 갱신하지 않는다", async () => {
-    await db.insert(githubWorkflowRuns).values({
-      id: "old-b", repo: "krdn/b", workflowId: "wf", workflowName: "CI",
-      status: "completed", conclusion: "success", headSha: "s", headBranch: "main",
-      event: "push", runNumber: 1, runAttempt: 1, url: "u",
-      startedAt: new Date(), completedAt: new Date(),
+    // 이전 성공 이력을 seed 한다 — 없으면 "보존"이 아니라 "원래 null"을
+    // 확인하는 셈이라, 구현이 값을 덮어써도 테스트가 통과한다.
+    await db.insert(githubSyncState).values({
+      source: "runs",
+      lastSuccessAt: PRIOR_SUCCESS,
+      lastAttemptAt: PRIOR_SUCCESS,
     });
+    await db.insert(githubWorkflowRuns).values(makeRunRow({ id: "old-b", repo: "krdn/b" }));
 
     mockFetchByPath([
       { match: /search\/issues/, body: EMPTY_SEARCH },
@@ -303,7 +363,68 @@ describe("syncGithub — Actions 부분 실패", () => {
     expect(runs.some((r) => r.id === "10")).toBe(true);
 
     const runsState = (await db.select().from(githubSyncState)).find((s) => s.source === "runs");
-    expect(runsState?.lastSuccessAt).toBeNull();
+    // ⚠️ seed 한 이전 성공 시각이 **보존**돼야 한다. null 만 확인하면
+    // 구현이 이전 값을 null 로 덮어써도 통과한다.
+    expect(runsState?.lastSuccessAt?.toISOString()).toBe(PRIOR_SUCCESS.toISOString());
     expect(runsState?.lastError).toContain("krdn/b");
+  });
+
+  // 활성 기간(7일) 밖으로 밀려난 레포의 run 이 남으면 보드의 "Actions 실패"
+  // 카운트에 유령 실패로 영구히 잡힌다. 조회 실패한 활성 레포와는 구분해야 한다.
+  it("대상 목록 밖 레포의 run 은 정리하고, 조회 실패한 활성 레포는 보존한다", async () => {
+    await db.insert(githubWorkflowRuns).values([
+      // 더 이상 활성이 아닌 레포 — 지워져야 한다
+      makeRunRow({ id: "gone", repo: "krdn/archived" }),
+      // 활성이지만 조회가 실패할 레포 — 유지돼야 한다
+      makeRunRow({ id: "kept", repo: "krdn/b" }),
+    ]);
+
+    mockFetchByPath([
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      {
+        match: /commits\/main/,
+        body: { sha: "x", commit: { committer: { date: new Date().toISOString() } } },
+      },
+      { match: /actions\/workflows/, body: { workflow_runs: [] } },
+      {
+        match: /orgs\/krdn\/repos/,
+        body: [
+          { full_name: "krdn/a", pushed_at: new Date().toISOString() },
+          { full_name: "krdn/b", pushed_at: new Date().toISOString() },
+        ],
+      },
+      { match: /repos\/krdn\/b\/actions\/runs/, status: 500, body: { message: "boom" } },
+      { match: /repos\/krdn\/a\/actions\/runs/, body: { workflow_runs: [] } },
+    ]);
+
+    const syncGithub = await loadSync("tok");
+    await syncGithub();
+
+    const repos = (await db.select().from(githubWorkflowRuns)).map((r) => r.id);
+    expect(repos).not.toContain("gone"); // 비활성 레포 정리됨
+    expect(repos).toContain("kept"); // 조회 실패한 활성 레포는 보존
+  });
+
+  // 레포 목록 조회 자체가 실패하면 정리를 하지 않는다 — 빈 목록으로
+  // prune 하면 전체 run 이 날아간다.
+  it("레포 목록 조회 실패 시 기존 run 을 지우지 않는다", async () => {
+    await db.insert(githubWorkflowRuns).values(makeRunRow({ id: "safe", repo: "krdn/a" }));
+
+    mockFetchByPath([
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      {
+        match: /commits\/main/,
+        body: { sha: "x", commit: { committer: { date: new Date().toISOString() } } },
+      },
+      { match: /actions\/workflows/, body: { workflow_runs: [] } },
+      { match: /orgs\/krdn\/repos/, status: 500, body: { message: "boom" } },
+    ]);
+
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.runs.ok).toBe(false);
+    const rows = await db.select().from(githubWorkflowRuns);
+    expect(rows.map((r) => r.id)).toContain("safe");
   });
 });

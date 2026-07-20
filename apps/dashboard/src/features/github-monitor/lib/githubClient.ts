@@ -152,12 +152,19 @@ export async function listWorkflowRuns(token: string, repo: string): Promise<Raw
   return res.workflow_runs;
 }
 
+/**
+ * 지정 워크플로의 main 브랜치 run 조회.
+ *
+ * @param workflowFile 워크플로 **파일명** (`"ci.yml"`). 전체 경로가 아니다 —
+ *   GitHub REST 의 `workflow_id` 파라미터는 숫자 ID 또는 파일명을 받는다.
+ *   경로를 넣어도 현재는 통하지만 문서화되지 않은 동작이라 의존하지 않는다.
+ */
 export async function listBuildRuns(
   token: string,
   repo: string,
-  workflowPath: string,
+  workflowFile: string,
 ): Promise<RawRun[]> {
-  const wf = encodeURIComponent(workflowPath);
+  const wf = encodeURIComponent(workflowFile);
   const res = await gh<{ workflow_runs: RawRun[] }>(
     token,
     `/repos/${repo}/actions/workflows/${wf}/runs?branch=main&per_page=5`,

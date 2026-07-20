@@ -14,6 +14,7 @@ export {
   replaceIssues,
   replacePrs,
   replaceRunsForRepo,
+  pruneRunsNotIn,
   upsertSyncState,
 } from "./api/sync";
 

@@ -10,6 +10,7 @@ import {
   replaceIssues,
   replacePrs,
   replaceRunsForRepo,
+  pruneRunsNotIn,
   upsertSyncState,
 } from "@/entities/github-activity/server";
 import { type BuildState } from "@/entities/github-activity/client";
@@ -24,7 +25,7 @@ import {
   type RawRun,
 } from "./lib/githubClient";
 import { judgeBuildState } from "./lib/judgeBuildState";
-import { BUILD_REPO, BUILD_WORKFLOW_PATH, PR_HEAD_FETCH_LIMIT } from "./config/thresholds";
+import { BUILD_REPO, BUILD_WORKFLOW_FILE, PR_HEAD_FETCH_LIMIT } from "./config/thresholds";
 
 export interface SyncSummary {
   skipped: boolean;
@@ -172,6 +173,16 @@ async function syncRuns(token: string, org: string): Promise<SyncSummary["runs"]
     }
   }
 
+  // 대상 목록 밖 레포의 run 정리 — 활성 기간(7일) 밖으로 밀려난 레포의 run 이
+  // 남으면 보드의 "Actions 실패" 카운트에 유령 실패로 영구히 잡힌다.
+  // repos 에는 조회 실패한 레포도 포함되므로 그 이전 스냅샷은 보존된다.
+  try {
+    await pruneRunsNotIn(repos);
+  } catch (err) {
+    // 정리 실패가 동기화 자체를 실패시키지는 않는다 — 다음 회차가 재시도한다.
+    logger.warn("github-monitor", "prune-runs-failed", { error: errMsg(err) });
+  }
+
   if (failedRepos.length > 0) {
     // 부분 실패 — lastSuccessAt 은 갱신하지 않는다 (§4.3).
     await upsertSyncState("runs", {
@@ -192,7 +203,7 @@ async function syncBuild(token: string, nowFn: () => Date): Promise<SyncSummary[
   let runs: RawRun[];
   try {
     head = await getMainHead(token, BUILD_REPO);
-    runs = await listBuildRuns(token, BUILD_REPO, BUILD_WORKFLOW_PATH);
+    runs = await listBuildRuns(token, BUILD_REPO, BUILD_WORKFLOW_FILE);
   } catch (err) {
     // ⚠️ 판정 자체를 수행하지 않는다. 관측 불가에서 판정하면
     // Build 가 계속 실패 중인데 "복구됨" 알림이 나간다.

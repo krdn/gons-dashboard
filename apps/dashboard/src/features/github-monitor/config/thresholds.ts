@@ -11,9 +11,21 @@ export const GITHUB_ORG_DEFAULT = "krdn";
 export const BUILD_REPO = "krdn/gons-dashboard";
 
 /**
- * Build 워크플로의 안정 식별자 (파일 경로).
- * ⚠️ 이름(`name:`)이 아니라 경로를 쓴다 — 이름은 변경돼도 경로는 유지된다.
- * 실제 워크플로 파일이 바뀌면 여기를 갱신한다.
+ * Build 워크플로의 API route 식별자 — **파일명만** 쓴다.
+ *
+ * GitHub REST 의 `workflow_id` 경로 파라미터는 숫자 ID 또는 **파일명**(`ci.yml`)을
+ * 받는다고 문서화돼 있다. 전체 경로(`.github/workflows/ci.yml`)를 인코딩해 넣어도
+ * 현재는 200 이 오지만(2026-07-20 실측), 문서화되지 않은 관용 동작이라 언제든
+ * 깨질 수 있다. 깨지면 build-failed 감지가 조용히 영구 비활성된다.
+ *
+ * ⚠️ 이름(`name: CI`)이 아니라 파일명을 쓴다 — 이름은 변경돼도 파일명은 유지된다.
+ * 워크플로 파일을 rename 하면 여기를 갱신한다.
+ */
+export const BUILD_WORKFLOW_FILE = "ci.yml";
+
+/**
+ * 같은 워크플로의 `path` 값 — DB `workflowId` 컬럼에 저장되는 형태.
+ * API 응답의 `run.path` 와 대조하는 용도이며 route 식별자와 구분한다.
  */
 export const BUILD_WORKFLOW_PATH = ".github/workflows/ci.yml";
 

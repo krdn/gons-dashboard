@@ -4,7 +4,7 @@
 // 페이지 도중 실패한 부분 결과로 교체하면 멀쩡한 행이 사라진다.
 // 교체는 DELETE+INSERT 를 단일 트랜잭션으로 묶어 중간 상태가 보이지 않게 한다.
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, notInArray } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import {
   githubIssues,
@@ -42,6 +42,28 @@ export async function replaceRunsForRepo(repo: string, rows: NewRun[]): Promise<
     await tx.delete(githubWorkflowRuns).where(eq(githubWorkflowRuns.repo, repo));
     if (rows.length > 0) await tx.insert(githubWorkflowRuns).values(rows);
   });
+}
+
+/**
+ * 대상 목록 밖 레포의 run 을 삭제한다 (reconciliation).
+ *
+ * 왜 필요한가: syncRuns 는 활성 레포(최근 7일 push)만 순회하고
+ * replaceRunsForRepo 는 인자로 받은 레포만 지운다. 그래서 어제까지 활성이던
+ * 레포가 오늘 cutoff 밖으로 밀려나면 그 run 이 갱신도 삭제도 되지 않고
+ * 영구히 남아, 보드의 "Actions 실패" 카운트에 유령 실패로 계속 잡힌다.
+ *
+ * ⚠️ keepRepos 에는 **조회에 실패한 활성 레포도 포함**해야 한다. 실패를
+ * 이유로 지우면 §4.2 의 "부분 실패 시 이전 스냅샷 유지" 계약이 깨진다.
+ *
+ * keepRepos 가 비면 아무것도 지우지 않는다 — 레포 목록 조회 자체가 실패한
+ * 상황에서 전체 삭제가 일어나는 것을 막는다.
+ */
+export async function pruneRunsNotIn(keepRepos: string[]): Promise<number> {
+  if (keepRepos.length === 0) return 0;
+  const res = await db
+    .delete(githubWorkflowRuns)
+    .where(notInArray(githubWorkflowRuns.repo, keepRepos));
+  return res.count;
 }
 
 /**
