@@ -357,7 +357,7 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
   pnpm vitest run src/features/github-monitor/lib/normalizeRunOutcome.test.ts
 ```
 
-Expected: PASS — 모든 케이스 통과.
+Expected: PASS — 17개 케이스 전부 통과 (`it` 4개 + `it.each` 13건 전개).
 
 - [ ] **Step 5: 커밋**
 
@@ -1894,7 +1894,7 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
   pnpm vitest run src/features/github-monitor/lib/githubClient.test.ts
 ```
 
-Expected: PASS — 11개 케이스 전부 통과 (`it.each` 3건 포함).
+Expected: PASS — 10개 케이스 전부 통과 (`it` 7개 + `it.each` 3건 전개).
 
 - [ ] **Step 5: 커밋**
 
@@ -2294,7 +2294,10 @@ describe("syncGithub — API 실패", () => {
     await seedIssue();
     mockFetchByPath([
       {
-        match: /search\/issues.*is:issue/,
+        // ⚠️ encodeURIComponent 가 "is:issue" 를 "is%3Aissue" 로 바꾼다.
+        // 원문으로 매칭하면 폴백 라우트에 걸려 정상 응답이 돌아오고,
+        // 이 테스트가 아무것도 검증하지 못한 채 통과한다.
+        match: /search\/issues.*is%3Aissue/,
         body: { total_count: 1, incomplete_results: true, items: [{ id: 99 }] },
       },
       { match: /./, body: EMPTY_SEARCH },
@@ -3094,13 +3097,17 @@ nav 트리는 그대로 두고 하위 구분만 탭으로 한다 — 관제는 �
 - Test: `apps/dashboard/src/widgets/monitoring/ui/GithubBoards.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 3 타입 (`@/entities/github-activity/client`)
-- Produces (전부 `@/widgets/monitoring` 배럴에서):
-  - `SyncStateBadge({ state, detail? }: { state: SyncDisplayState; detail?: string | null })`
-  - `BuildStateCard({ build }: { build: GithubSyncState | null })`
-  - `WorkflowRunsBoard({ runs }: { runs: GithubWorkflowRun[] })`
-  - `PullRequestsBoard({ prs, ciStatus, staleIds }: { prs: GithubPullRequest[]; ciStatus: Record<string, PrCiStatus>; staleIds: Set<string> })`
-  - `IssuesBoard({ issues, staleIds }: { issues: GithubIssue[]; staleIds: Set<string> })`
+- Consumes:
+  - Task 3 타입 (`@/entities/github-activity/client`)
+  - Step 0 배럴이 재export 하는 판정 함수 — `normalizeRunOutcome`(Task 2), `judgeBuildState`(Task 4), `derivePrCiStatus`(Task 6), `isPrStale`·`isIssueTriageStale`·`deriveSyncDisplayState`(Task 7). **이 네 태스크가 모두 끝나야 Step 0 이 컴파일된다.**
+- Produces:
+  - `@/features/github-monitor/lib` 배럴 — 위 판정 함수 전부. Task 15 가 이 경로로 import 한다.
+  - 위젯 (전부 `@/widgets/monitoring` 배럴에서):
+    - `SyncStateBadge({ state, detail? }: { state: SyncDisplayState; detail?: string | null })`
+    - `BuildStateCard({ build }: { build: GithubSyncState | null })`
+    - `WorkflowRunsBoard({ runs }: { runs: GithubWorkflowRun[] })`
+    - `PullRequestsBoard({ prs, ciStatus, staleIds }: { prs: GithubPullRequest[]; ciStatus: Record<string, PrCiStatus>; staleIds: Set<string> })`
+    - `IssuesBoard({ issues, staleIds }: { issues: GithubIssue[]; staleIds: Set<string> })`
 
 - [ ] **Step 0: 판정 함수 재export 배럴 작성**
 
@@ -3698,12 +3705,16 @@ export default async function GithubMonitoringPage() {
   const failingRuns = runs.filter((r) => normalizeRunOutcome(r) === "failure").length;
   const failingPrs = Object.values(ciStatus).filter((s) => s === "failing").length;
 
-  // 스냅샷이 잘렸으면 "표시 N / 전체 M" 을 밝힌다 — 보드가 전수인 척하면 안 된다.
-  const countLabel = (shown: number, source: SyncSource) => {
+  // 스냅샷이 잘렸는지 — 보드가 전수인 척하면 안 된다 (스펙 §3).
+  const truncationOf = (source: SyncSource) => {
     const s = syncStates.find((x) => x.source === source);
-    if (s?.truncated !== true || s.totalCount == null) return `${shown}`;
-    return `${shown} / ${s.totalCount}`;
+    if (s?.truncated !== true || s.totalCount == null) return null;
+    return s.totalCount;
   };
+
+  const org = env.GITHUB_MONITOR_ORG;
+  const searchUrl = (kind: "issue" | "pr") =>
+    `https://github.com/search?q=${encodeURIComponent(`org:${org} is:${kind} is:open`)}&type=issues`;
 
   return (
     <PageContainer>
@@ -3713,17 +3724,31 @@ export default async function GithubMonitoringPage() {
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-[var(--color-hairline)] bg-white p-4">
           <p className="text-xs text-[var(--color-text-muted)]">열린 이슈</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">
-            {countLabel(issues.length, "issues")}
-          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{issues.length}</p>
+          {truncationOf("issues") != null && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              표시 {issues.length} / 전체 {truncationOf("issues")} ·{" "}
+              <a href={searchUrl("issue")} target="_blank" rel="noreferrer" className="underline">
+                GitHub 에서 더 보기
+              </a>
+            </p>
+          )}
           <SyncStateBadge state={stateOf("issues")} detail={errorOf("issues")} />
         </div>
         <div className="rounded-xl border border-[var(--color-hairline)] bg-white p-4">
           <p className="text-xs text-[var(--color-text-muted)]">열린 PR (CI 실패)</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">
-            {countLabel(prs.length, "pulls")}
+            {prs.length}
             {failingPrs > 0 && <span className="ml-1 text-base text-red-700">({failingPrs})</span>}
           </p>
+          {truncationOf("pulls") != null && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              표시 {prs.length} / 전체 {truncationOf("pulls")} ·{" "}
+              <a href={searchUrl("pr")} target="_blank" rel="noreferrer" className="underline">
+                GitHub 에서 더 보기
+              </a>
+            </p>
+          )}
           <SyncStateBadge state={stateOf("pulls")} detail={errorOf("pulls")} />
         </div>
         <div className="rounded-xl border border-[var(--color-hairline)] bg-white p-4">
@@ -3755,6 +3780,17 @@ pnpm typecheck && pnpm lint
 ```
 
 Expected: 에러 없음.
+
+- [ ] **Step 2b: truncated 표시가 스펙 문구와 일치하는지 확인**
+
+```bash
+cd apps/dashboard
+grep -n "표시 {\|GitHub 에서 더 보기" 'src/app/(dashboard)/monitoring/github/page.tsx'
+```
+
+Expected: 이슈·PR 두 KPI 각각에 `표시 N / 전체 M` 과 "GitHub 에서 더 보기" 링크가 있어
+총 4줄이 잡힌다. 스펙 §3 이 요구하는 문구와 링크다 — 잘린 스냅샷을 전수인 것처럼
+보여주지 않기 위한 것이므로 문구를 임의로 줄이지 말 것.
 
 - [ ] **Step 3: 프로덕션 빌드 (client/server seam 검증)**
 
