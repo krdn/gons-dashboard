@@ -374,17 +374,20 @@ cancelled·skipped 를 inconclusive 로 분리해 의도적 중단이 critical
 
 ---
 
-## Task 3: 임계값 상수 + 도메인 타입
+## Task 3: 임계값 상수 + 도메인 타입 + client barrel
 
 **Files:**
 - Create: `apps/dashboard/src/features/github-monitor/config/thresholds.ts`
 - Create: `apps/dashboard/src/entities/github-activity/model/types.ts`
+- Create: `apps/dashboard/src/entities/github-activity/client.ts`
 
 **Interfaces:**
-- Consumes: `RunOutcome` (Task 2)
+- Consumes: 없음
 - Produces:
-  - 상수: `GITHUB_ORG_DEFAULT`, `BUILD_REPO`, `BUILD_WORKFLOW_ID`, `NO_RUN_GRACE_MS`, `PR_STALE_MS`, `ISSUE_TRIAGE_STALE_MS`, `SYNC_STALE_MS`, `ACTIVE_REPO_WINDOW_MS`, `SEARCH_MAX_PAGES`, `RUNS_PER_REPO`, `PR_HEAD_FETCH_LIMIT`, `TRIAGE_LABEL`
-  - 타입: `BuildState`, `PrCiStatus`, `GithubIssue`, `GithubPullRequest`, `GithubWorkflowRun`, `GithubSyncState`, `SyncSource`
+  - 상수: `GITHUB_ORG_DEFAULT`, `BUILD_REPO`, `BUILD_WORKFLOW_PATH`, `NO_RUN_GRACE_MS`, `PR_STALE_MS`, `ISSUE_TRIAGE_STALE_MS`, `TRIAGE_LABEL`, `SYNC_STALE_MS`, `ACTIVE_REPO_WINDOW_MS`, `SEARCH_MAX_PAGES`, `REPO_LIST_MAX_PAGES`, `RUNS_PER_REPO`, `PR_HEAD_FETCH_LIMIT`
+  - `@/entities/github-activity/client` 에서 import 가능한 타입: `BuildState`, `PrCiStatus`, `SyncSource`, `SyncDisplayState`, `GithubIssue`, `GithubPullRequest`, `GithubWorkflowRun`, `GithubSyncState`
+
+**⚠️ client.ts 가 여기 있는 이유**: Task 4·6·7 의 판정 함수가 이 타입들을 import 한다. DB 의존이 없어 Task 5(server barrel) 를 기다릴 필요가 없다.
 
 - [ ] **Step 1: 임계값 상수 작성**
 
@@ -528,7 +531,32 @@ export type SyncDisplayState =
   | "ok";
 ```
 
-- [ ] **Step 3: 타입 체크**
+- [ ] **Step 3: client 진입점 작성**
+
+Create `apps/dashboard/src/entities/github-activity/client.ts`:
+
+```ts
+// client 진입점 — 타입만 노출한다 (DB 의존 없음).
+//
+// ⚠️ "use client" 컴포넌트는 반드시 이 경로로 import 할 것. server.ts 를
+// import 하면 postgres 가 client bundle 그래프로 끌려와
+// `Module not found: Can't resolve 'tls'` 로 빌드가 실패한다.
+//
+// 판정 순수 함수(features/github-monitor/lib/*)도 이 경로를 쓴다 — DB 를
+// 건드리지 않으므로 server barrel 을 끌어올 이유가 없다.
+export type {
+  BuildState,
+  PrCiStatus,
+  SyncSource,
+  SyncDisplayState,
+  GithubIssue,
+  GithubPullRequest,
+  GithubWorkflowRun,
+  GithubSyncState,
+} from "./model/types";
+```
+
+- [ ] **Step 4: 타입 체크**
 
 ```bash
 cd apps/dashboard
@@ -537,16 +565,18 @@ pnpm typecheck
 
 Expected: 에러 없음.
 
-- [ ] **Step 4: 커밋**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /home/gon/projects/gon/gons-dashboard
 git add apps/dashboard/src/features/github-monitor/config/thresholds.ts \
-        apps/dashboard/src/entities/github-activity/model/types.ts
-git commit -m "feat(monitoring): GitHub 관제 임계값 상수·도메인 타입 (#323)
+        apps/dashboard/src/entities/github-activity/model/types.ts \
+        apps/dashboard/src/entities/github-activity/client.ts
+git commit -m "feat(monitoring): GitHub 관제 상수·타입·client barrel (#323)
 
 임계값을 판정 로직에서 분리해 조정과 로직 수정이 섞이지 않게 한다.
-Build 워크플로는 이름이 아닌 파일 경로로 식별한다."
+Build 워크플로는 이름이 아닌 파일 경로로 식별한다.
+client.ts 는 타입만 노출해 판정 함수와 위젯이 DB 를 끌어오지 않게 한다."
 ```
 
 ---
@@ -821,8 +851,6 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
 
 Expected: PASS — 10개 케이스 전부 통과.
 
-`Failed to resolve import "@/entities/github-activity/client"` 가 나오면 Task 5 의 client.ts 가 아직 없기 때문이다. Task 5 를 먼저 수행한 뒤 돌아올 것.
-
 - [ ] **Step 5: 커밋**
 
 ```bash
@@ -838,42 +866,19 @@ push 직후 10분은 unknown 으로 두어 no-run 오탐을 막는다."
 
 ---
 
-## Task 5: entity barrel (client/server 분리)
+## Task 5: entity server barrel (DB 조회)
 
 **Files:**
-- Create: `apps/dashboard/src/entities/github-activity/client.ts`
 - Create: `apps/dashboard/src/entities/github-activity/api/queries.ts`
 - Create: `apps/dashboard/src/entities/github-activity/server.ts`
 
 **Interfaces:**
-- Consumes: Task 1 스키마, Task 3 타입
-- Produces:
-  - `client.ts`: 모든 타입 re-export (DB 의존 없음)
-  - `server.ts`: `listOpenIssues()`, `listOpenPrs()`, `listRecentRuns()`, `listRunsForRepo(repo)`, `getSyncStates()`, `getBuildState()`
+- Consumes: Task 1 스키마, Task 3 타입 (`client.ts` 는 Task 3 에서 이미 생성됨)
+- Produces: `@/entities/github-activity/server` 에서 `listOpenIssues()`, `listOpenPrs()`, `listRecentRuns()`, `getSyncStates()`, `getBuildState()` — 전부 인자 없음, Promise 반환
 
-- [ ] **Step 1: client 진입점 작성**
+**참고:** Task 10 이 이 파일(`server.ts`)에 쓰기 함수 export 를 추가한다.
 
-Create `apps/dashboard/src/entities/github-activity/client.ts`:
-
-```ts
-// client 진입점 — 타입만 노출한다 (DB 의존 없음).
-//
-// ⚠️ "use client" 컴포넌트는 반드시 이 경로로 import 할 것. server.ts 를
-// import 하면 postgres 가 client bundle 그래프로 끌려와
-// `Module not found: Can't resolve 'tls'` 로 빌드가 실패한다.
-export type {
-  BuildState,
-  PrCiStatus,
-  SyncSource,
-  SyncDisplayState,
-  GithubIssue,
-  GithubPullRequest,
-  GithubWorkflowRun,
-  GithubSyncState,
-} from "./model/types";
-```
-
-- [ ] **Step 2: DB 조회 함수 작성**
+- [ ] **Step 1: DB 조회 함수 작성**
 
 Create `apps/dashboard/src/entities/github-activity/api/queries.ts`:
 
@@ -999,7 +1004,7 @@ export async function getBuildState(): Promise<GithubSyncState | null> {
 }
 ```
 
-- [ ] **Step 3: server 진입점 작성**
+- [ ] **Step 2: server 진입점 작성**
 
 Create `apps/dashboard/src/entities/github-activity/server.ts`:
 
@@ -1028,7 +1033,7 @@ export type {
 } from "./model/types";
 ```
 
-- [ ] **Step 4: 타입 체크 + lint (FSD 경계 검증)**
+- [ ] **Step 3: 타입 체크 + lint (FSD 경계 검증)**
 
 ```bash
 cd apps/dashboard
@@ -1037,25 +1042,16 @@ pnpm typecheck && pnpm lint
 
 Expected: 에러 없음. lint 가 FSD boundary 위반을 잡으므로 여기서 통과해야 한다.
 
-- [ ] **Step 5: Task 4 테스트 재실행 (client.ts 의존 해소 확인)**
-
-```bash
-cd apps/dashboard
-TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
-  pnpm vitest run src/features/github-monitor/lib/judgeBuildState.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 6: 커밋**
+- [ ] **Step 4: 커밋**
 
 ```bash
 cd /home/gon/projects/gon/gons-dashboard
-git add apps/dashboard/src/entities/github-activity/
-git commit -m "feat(monitoring): github-activity entity barrel 분리 (#323)
+git add apps/dashboard/src/entities/github-activity/api/queries.ts \
+        apps/dashboard/src/entities/github-activity/server.ts
+git commit -m "feat(monitoring): github-activity server barrel (#323)
 
-server.ts(DB 의존)와 client.ts(타입만)를 나눠 client 컴포넌트가
-postgres 를 끌어오는 빌드 실패를 구조적으로 차단한다."
+DB 조회는 server.ts 로만 나간다 — client.ts(타입만)와 분리해
+client 컴포넌트가 postgres 를 끌어오는 빌드 실패를 구조적으로 막는다."
 ```
 
 ---
@@ -1623,9 +1619,16 @@ describe("searchIssues", () => {
     await expect(searchIssues(TOKEN, "krdn", "issue")).rejects.toThrow(GithubApiError);
   });
 
-  it("401 이면 GithubApiError 로 status 를 실어 던진다", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ message: "Bad" }, 401));
-    await expect(searchIssues(TOKEN, "krdn", "issue")).rejects.toMatchObject({ status: 401 });
+  // 401=토큰 무효, 403=권한 부족/2차 rate limit, 429=rate limit.
+  // 셋 다 "스냅샷을 교체하면 안 되는 실패"라 같은 경로로 흘러야 한다.
+  it.each([401, 403, 429])("%i 이면 GithubApiError 로 status 를 실어 던진다", async (status) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ message: "Bad" }, status));
+    await expect(searchIssues(TOKEN, "krdn", "issue")).rejects.toMatchObject({ status });
+  });
+
+  it("네트워크 오류도 GithubApiError 로 감싼다 (status 0)", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("ECONNREFUSED"));
+    await expect(searchIssues(TOKEN, "krdn", "issue")).rejects.toMatchObject({ status: 0 });
   });
 
   it("2페이지 상한에서 자르고 truncated 를 표시한다", async () => {
@@ -1891,7 +1894,7 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
   pnpm vitest run src/features/github-monitor/lib/githubClient.test.ts
 ```
 
-Expected: PASS — 7개 케이스 전부 통과.
+Expected: PASS — 11개 케이스 전부 통과 (`it.each` 3건 포함).
 
 - [ ] **Step 5: 커밋**
 
@@ -1912,7 +1915,7 @@ Search 는 2페이지 상한, org repos 는 pushed 내림차순 cutoff 순회."
 
 **Files:**
 - Create: `apps/dashboard/src/entities/github-activity/api/sync.ts`
-- Modify: `apps/dashboard/src/entities/github-activity/server.ts` (export 추가)
+- Modify: `apps/dashboard/src/entities/github-activity/server.ts` (Task 5 가 만든 파일 — export 블록 추가)
 - Test: `apps/dashboard/tests/integration/github-sync-db.test.ts`
 
 **Interfaces:**
@@ -2163,54 +2166,99 @@ interface SyncSummary {
 Create `apps/dashboard/tests/integration/github-sync-orchestration.test.ts`:
 
 ```ts
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/shared/lib/db/client";
-import { githubIssues, githubSyncState, monitoringEvents } from "@/shared/lib/db/schema";
+import {
+  githubIssues,
+  githubWorkflowRuns,
+  githubSyncState,
+  monitoringEvents,
+} from "@/shared/lib/db/schema";
 
-// env 를 모듈 로드 전에 갈아끼워야 하므로 동적 import 를 쓴다.
+const BUILD_DEDUP = "github:krdn/gons-dashboard:build-failed";
+
+/**
+ * env 는 모듈 로드 시점에 평가되므로 동적 import 로 갈아끼운다.
+ *
+ * ⚠️ importActual 로 실제 env 를 펼친 뒤 두 필드만 덮는다 — 객체를 통째로
+ * 교체하면 syncGithub 가 (지금은 아니어도 나중에) 다른 env 를 읽을 때
+ * undefined 를 만나 테스트가 진짜 원인과 무관하게 깨진다.
+ */
 async function loadSync(token: string | undefined) {
   vi.resetModules();
-  vi.doMock("@/shared/config/env", () => ({
-    env: { GITHUB_MONITOR_TOKEN: token, GITHUB_MONITOR_ORG: "krdn" },
-  }));
+  vi.doMock("@/shared/config/env", async () => {
+    const actual = await vi.importActual<typeof import("@/shared/config/env")>(
+      "@/shared/config/env",
+    );
+    return {
+      ...actual,
+      env: { ...actual.env, GITHUB_MONITOR_TOKEN: token, GITHUB_MONITOR_ORG: "krdn" },
+    };
+  });
   return (await import("@/features/github-monitor")).syncGithub;
+}
+
+/** GitHub API 응답을 경로 패턴별로 지정하는 fetch mock. */
+function mockFetchByPath(routes: { match: RegExp; status?: number; body: unknown }[]) {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    const route = routes.find((r) => r.match.test(url));
+    if (route == null) {
+      return new Response(JSON.stringify({ message: "unmatched" }), { status: 404 });
+    }
+    return new Response(JSON.stringify(route.body), { status: route.status ?? 200 });
+  });
+}
+
+const EMPTY_SEARCH = { total_count: 0, incomplete_results: false, items: [] };
+
+async function seedIssue() {
+  await db.insert(githubIssues).values({
+    id: "krdn/a#1", repo: "krdn/a", number: 1, title: "t", url: "u",
+    author: null, labels: [], createdAt: new Date(), updatedAt: new Date(),
+  });
 }
 
 beforeEach(async () => {
   await db.delete(githubIssues);
+  await db.delete(githubWorkflowRuns);
   await db.delete(githubSyncState);
   await db.delete(monitoringEvents);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.doUnmock("@/shared/config/env");
   vi.resetModules();
 });
 
 describe("syncGithub — 토큰 미설정", () => {
   it("skip 하고 기존 행을 지우지 않는다", async () => {
-    await db.insert(githubIssues).values({
-      id: "krdn/a#1", repo: "krdn/a", number: 1, title: "t", url: "u",
-      author: null, labels: [], createdAt: new Date(), updatedAt: new Date(),
-    });
-
+    await seedIssue();
     const syncGithub = await loadSync(undefined);
     const summary = await syncGithub();
 
     expect(summary.skipped).toBe(true);
     expect(await db.select().from(githubIssues)).toHaveLength(1);
   });
+
+  // §4.2 규칙 5 — "시도는 하고 있다"를 남겨야 보드가 비활성과
+  // 완전 정지를 구분할 수 있다.
+  it("네 소스의 lastAttemptAt 을 갱신한다", async () => {
+    const syncGithub = await loadSync(undefined);
+    await syncGithub();
+
+    const rows = await db.select().from(githubSyncState);
+    expect(rows).toHaveLength(4);
+    expect(rows.every((r) => r.lastAttemptAt != null)).toBe(true);
+    expect(rows.every((r) => r.lastSuccessAt == null)).toBe(true);
+  });
 });
 
 describe("syncGithub — API 실패", () => {
   it("기존 이슈 행을 삭제하지 않는다", async () => {
-    await db.insert(githubIssues).values({
-      id: "krdn/a#1", repo: "krdn/a", number: 1, title: "t", url: "u",
-      author: null, labels: [], createdAt: new Date(), updatedAt: new Date(),
-    });
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ message: "rate limited" }), { status: 429 }),
-    );
+    await seedIssue();
+    mockFetchByPath([{ match: /./, status: 429, body: { message: "rate limited" } }]);
 
     const syncGithub = await loadSync("tok");
     const summary = await syncGithub();
@@ -2221,16 +2269,14 @@ describe("syncGithub — API 실패", () => {
 
   // 회귀 가드 5: API 실패에서 판정·해소가 일어나면
   // Build 가 계속 실패 중인데 "복구됨" 알림이 나간다.
-  it("build 판정을 수행하지 않고 기존 open 이벤트를 유지한다", async () => {
+  it("build 판정을 건너뛰고 기존 open 이벤트를 유지한다", async () => {
     await db.insert(monitoringEvents).values({
       source: "github",
       severity: "critical",
       title: "Build 실패",
-      dedupKey: "github:krdn/gons-dashboard:build-failed",
+      dedupKey: BUILD_DEDUP,
     });
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ message: "boom" }), { status: 500 }),
-    );
+    mockFetchByPath([{ match: /./, status: 500, body: { message: "boom" } }]);
 
     const syncGithub = await loadSync("tok");
     const summary = await syncGithub();
@@ -2241,6 +2287,175 @@ describe("syncGithub — API 실패", () => {
     const events = await db.select().from(monitoringEvents);
     expect(events).toHaveLength(1);
     expect(events[0]?.resolvedAt).toBeNull(); // 해소되지 않았다
+  });
+
+  // 회귀 가드 7: 부분 결과로 교체하면 멀쩡한 항목이 사라진다.
+  it("incomplete_results 면 이슈 스냅샷을 교체하지 않는다", async () => {
+    await seedIssue();
+    mockFetchByPath([
+      {
+        match: /search\/issues.*is:issue/,
+        body: { total_count: 1, incomplete_results: true, items: [{ id: 99 }] },
+      },
+      { match: /./, body: EMPTY_SEARCH },
+    ]);
+
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.issues.ok).toBe(false);
+    const rows = await db.select().from(githubIssues);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe("krdn/a#1"); // 기존 행 그대로
+  });
+});
+
+describe("syncGithub — 성공 경로", () => {
+  const HEAD_SHA = "aaaaaaaabbbbbbbb";
+
+  function buildRoutes(conclusion: string) {
+    return [
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      { match: /orgs\/krdn\/repos/, body: [] },
+      {
+        match: /commits\/main/,
+        body: {
+          sha: HEAD_SHA,
+          // 유예(10분)를 넘긴 과거 커밋 — no-run 판정이 살아있게 한다
+          commit: { committer: { date: new Date(Date.now() - 3_600_000).toISOString() } },
+        },
+      },
+      {
+        match: /actions\/workflows/,
+        body: {
+          workflow_runs: [
+            {
+              id: 1, name: "CI", workflow_id: 1, path: ".github/workflows/ci.yml",
+              status: "completed", conclusion, head_sha: HEAD_SHA, head_branch: "main",
+              event: "push", run_number: 1, run_attempt: 1,
+              html_url: "https://gh/run/1",
+              run_started_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ],
+        },
+      },
+      { match: /actions\/runs/, body: { workflow_runs: [] } },
+    ];
+  }
+
+  it("build 실패 시 critical 이벤트를 발행한다", async () => {
+    mockFetchByPath(buildRoutes("failure"));
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.build.state).toBe("build-failed");
+    const events = await db.select().from(monitoringEvents);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.severity).toBe("critical");
+    expect(events[0]?.dedupKey).toBe(BUILD_DEDUP);
+  });
+
+  it("build 성공 시 기존 open 이벤트를 해소한다", async () => {
+    await db.insert(monitoringEvents).values({
+      source: "github", severity: "critical", title: "Build 실패", dedupKey: BUILD_DEDUP,
+    });
+    mockFetchByPath(buildRoutes("success"));
+
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.build.state).toBe("synced");
+    const events = await db.select().from(monitoringEvents);
+    expect(events[0]?.resolvedAt).not.toBeNull();
+  });
+
+  // building·no-run·unknown 은 no-op — 확인되지 않은 상태에서
+  // 해소하면 거짓 안심을 준다.
+  it("build 진행 중이면 기존 이벤트를 해소하지 않는다", async () => {
+    await db.insert(monitoringEvents).values({
+      source: "github", severity: "critical", title: "Build 실패", dedupKey: BUILD_DEDUP,
+    });
+    mockFetchByPath([
+      ...buildRoutes("success").filter((r) => !/actions\/workflows/.test(r.match.source)),
+      {
+        match: /actions\/workflows/,
+        body: {
+          workflow_runs: [
+            {
+              id: 2, name: "CI", workflow_id: 1, path: ".github/workflows/ci.yml",
+              status: "in_progress", conclusion: null, head_sha: HEAD_SHA,
+              head_branch: "main", event: "push", run_number: 2, run_attempt: 1,
+              html_url: "https://gh/run/2",
+              run_started_at: new Date().toISOString(), updated_at: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.build.state).toBe("building");
+    const events = await db.select().from(monitoringEvents);
+    expect(events[0]?.resolvedAt).toBeNull();
+  });
+});
+
+describe("syncGithub — Actions 부분 실패", () => {
+  // 회귀 가드 8: 성공한 레포는 갱신되지만 lastSuccessAt 은 갱신되지 않는다(§4.3).
+  it("실패 레포의 run 은 유지하고 lastSuccessAt 을 갱신하지 않는다", async () => {
+    await db.insert(githubWorkflowRuns).values({
+      id: "old-b", repo: "krdn/b", workflowId: "wf", workflowName: "CI",
+      status: "completed", conclusion: "success", headSha: "s", headBranch: "main",
+      event: "push", runNumber: 1, runAttempt: 1, url: "u",
+      startedAt: new Date(), completedAt: new Date(),
+    });
+
+    mockFetchByPath([
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      { match: /commits\/main/, body: { sha: "x", commit: { committer: { date: new Date().toISOString() } } } },
+      { match: /actions\/workflows/, body: { workflow_runs: [] } },
+      {
+        match: /orgs\/krdn\/repos/,
+        body: [
+          { full_name: "krdn/a", pushed_at: new Date().toISOString() },
+          { full_name: "krdn/b", pushed_at: new Date().toISOString() },
+        ],
+      },
+      // krdn/b 만 실패시킨다
+      { match: /repos\/krdn\/b\/actions\/runs/, status: 500, body: { message: "boom" } },
+      {
+        match: /repos\/krdn\/a\/actions\/runs/,
+        body: {
+          workflow_runs: [
+            {
+              id: 10, name: "CI", workflow_id: 1, path: "p", status: "completed",
+              conclusion: "success", head_sha: "s", head_branch: "main", event: "push",
+              run_number: 1, run_attempt: 1, html_url: "u",
+              run_started_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+            },
+          ],
+        },
+      },
+    ]);
+
+    const syncGithub = await loadSync("tok");
+    const summary = await syncGithub();
+
+    expect(summary.runs.ok).toBe(false);
+    expect(summary.runs.failedRepos).toContain("krdn/b");
+
+    // 실패한 레포의 이전 run 은 살아있다
+    const runs = await db.select().from(githubWorkflowRuns);
+    expect(runs.some((r) => r.id === "old-b")).toBe(true);
+    // 성공한 레포는 갱신됐다
+    expect(runs.some((r) => r.id === "10")).toBe(true);
+
+    const runsState = (await db.select().from(githubSyncState)).find((s) => s.source === "runs");
+    expect(runsState?.lastSuccessAt).toBeNull();
+    expect(runsState?.lastError).toContain("krdn/b");
   });
 });
 ```
@@ -2502,24 +2717,30 @@ async function syncBuild(token: string, nowFn: () => Date): Promise<SyncSummary[
   return { ok: true, state };
 }
 
+const ALL_SOURCES = ["issues", "pulls", "runs", "build"] as const;
+
 export async function syncGithub(opts?: { nowFn?: () => Date }): Promise<SyncSummary> {
   const token = env.GITHUB_MONITOR_TOKEN;
-  const empty: SyncSummary = {
-    skipped: true,
-    issues: { ok: false, count: 0 },
-    pulls: { ok: false, count: 0 },
-    runs: { ok: false, repos: 0, failedRepos: [] },
-    build: { ok: false, state: null },
-  };
+  const nowFn = opts?.nowFn ?? (() => new Date());
 
   if (token == null || token === "") {
     // 기존 스냅샷을 지우지 않는다 — 보드는 "동기화 비활성" 배지를 표시한다.
+    // lastAttemptAt 은 갱신해 "시도는 하고 있다"를 남긴다 (§4.2 규칙 5).
     logger.info("github-monitor", "token-not-configured", {});
-    return empty;
+    const now = nowFn();
+    for (const source of ALL_SOURCES) {
+      await upsertSyncState(source, { lastAttemptAt: now });
+    }
+    return {
+      skipped: true,
+      issues: { ok: false, count: 0 },
+      pulls: { ok: false, count: 0 },
+      runs: { ok: false, repos: 0, failedRepos: [] },
+      build: { ok: false, state: null },
+    };
   }
 
   const org = env.GITHUB_MONITOR_ORG;
-  const nowFn = opts?.nowFn ?? (() => new Date());
 
   const [issues, pulls, runs, build] = await Promise.all([
     syncIssues(token, org),
@@ -2557,7 +2778,7 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
   pnpm vitest run tests/integration/github-sync-orchestration.test.ts
 ```
 
-Expected: PASS — 3개 케이스 전부 통과.
+Expected: PASS — 9개 케이스 전부 통과.
 
 - [ ] **Step 7: 커밋**
 
@@ -2594,13 +2815,22 @@ Create `apps/dashboard/src/app/api/cron/github-sync/route.ts`:
 // 5분마다 — GitHub 이슈·PR·Actions 스냅샷 동기화 (이슈 #323).
 // 수집 잡이므로 놓친 주기는 다음 5분이 대체한다 — catchup·retry 없음.
 import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
-import { syncGithub } from "@/features/github-monitor";
+import { syncGithub, type SyncSummary } from "@/features/github-monitor";
 
 export const dynamic = "force-dynamic";
 
-// 단일 대상 cron — createCronHandler 의 per-target 격리는 쓰지 않고
-// syncGithub 내부가 소스별 격리를 담당한다.
+// 단일 대상 cron — 소스별 격리는 syncGithub 내부가 담당한다.
 const TARGETS = [{ id: "github" }] as const;
+
+/** 실패한 소스 이름 목록. 비어 있으면 전 소스 성공. */
+function failedSources(summary: SyncSummary): string[] {
+  const failed: string[] = [];
+  if (!summary.issues.ok) failed.push("issues");
+  if (!summary.pulls.ok) failed.push("pulls");
+  if (!summary.runs.ok) failed.push("runs");
+  if (!summary.build.ok) failed.push("build");
+  return failed;
+}
 
 export const POST = createCronHandler({
   name: "github-sync",
@@ -2608,10 +2838,28 @@ export const POST = createCronHandler({
   getId: (t) => t.id,
   perTarget: async () => {
     const summary = await syncGithub();
+
+    // ⚠️ createCronHandler 는 perTarget 이 throw 해야 cron_runs 를 실패로
+    // 기록한다. summary 를 그대로 반환하면 전 소스가 실패해도 status=ok 로
+    // 남아 관제의 수집기 자체가 관측 불가가 된다.
+    //
+    // 토큰 미설정(skipped)은 실패가 아니다 — 의도적 비활성이므로 ok 로 둔다.
+    if (!summary.skipped) {
+      const failed = failedSources(summary);
+      if (failed.length > 0) {
+        throw new Error(`GitHub 동기화 부분 실패: ${failed.join(", ")}`);
+      }
+    }
+
     return summary as unknown as Record<string, unknown>;
   },
 });
 ```
+
+**설계 판단**: 소스 하나만 실패해도 cron 전체를 실패로 기록한다. 성공한 소스의
+스냅샷은 이미 DB 에 반영됐고 `github_sync_state` 가 소스별 진실을 갖고 있으므로,
+cron 상태는 "손볼 곳이 있다"는 단일 신호로 쓰는 편이 낫다. 소스별 세부는
+보드의 배지가 보여준다.
 
 - [ ] **Step 2: 타입 체크**
 
@@ -2676,6 +2924,9 @@ git commit -m "feat(monitoring): github-sync cron 라우트·스케줄 등록 (#
 Create `apps/dashboard/src/widgets/monitoring/ui/MonitoringTabs.test.tsx`:
 
 ```tsx
+// @vitest-environment jsdom
+// ⚠️ 이 지시자가 없으면 vitest 기본 환경(node)에서 document 가 없어
+// Testing Library 가 즉시 죽는다 (vitest.config.ts 의 environment: "node").
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MonitoringTabs } from "./MonitoringTabs";
@@ -2724,7 +2975,9 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
 
 Expected: FAIL — import 해결 실패.
 
-만약 "No test files found" 가 나오면 vitest include 에 `.tsx` 가 없는 것이다. `vitest.config.ts` 의 `test.include` 를 확인하고, 없으면 `"src/**/*.test.tsx"` 를 추가한 뒤 그 변경도 커밋에 포함할 것.
+`document is not defined` 가 나오면 파일 첫 줄의 `// @vitest-environment jsdom` 이 빠진 것이다.
+`No test files found` 가 나오면 include 문제인데, 현재 `vitest.config.ts` 는
+`src/**/*.test.tsx` 를 포함하므로 정상적으로는 발생하지 않는다.
 
 - [ ] **Step 3: 최소 구현 작성**
 
@@ -2833,17 +3086,37 @@ nav 트리는 그대로 두고 하위 구분만 탭으로 한다 — 관제는 �
 ## Task 14: GitHub 보드 위젯
 
 **Files:**
+- Create: `apps/dashboard/src/features/github-monitor/lib/index.ts`
 - Create: `apps/dashboard/src/widgets/monitoring/ui/SyncStateBadge.tsx`
 - Create: `apps/dashboard/src/widgets/monitoring/ui/BuildStateCard.tsx`
 - Create: `apps/dashboard/src/widgets/monitoring/ui/GithubBoards.tsx`
 - Modify: `apps/dashboard/src/widgets/monitoring/index.ts`
+- Test: `apps/dashboard/src/widgets/monitoring/ui/GithubBoards.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 3/5 타입, Task 7 판정 함수
-- Produces:
-  - `SyncStateBadge({ state }: { state: SyncDisplayState })`
+- Consumes: Task 3 타입 (`@/entities/github-activity/client`)
+- Produces (전부 `@/widgets/monitoring` 배럴에서):
+  - `SyncStateBadge({ state, detail? }: { state: SyncDisplayState; detail?: string | null })`
   - `BuildStateCard({ build }: { build: GithubSyncState | null })`
-  - `GithubBoards({ issues, prs, runs, prCiStatus })`
+  - `WorkflowRunsBoard({ runs }: { runs: GithubWorkflowRun[] })`
+  - `PullRequestsBoard({ prs, ciStatus, staleIds }: { prs: GithubPullRequest[]; ciStatus: Record<string, PrCiStatus>; staleIds: Set<string> })`
+  - `IssuesBoard({ issues, staleIds }: { issues: GithubIssue[]; staleIds: Set<string> })`
+
+- [ ] **Step 0: 판정 함수 재export 배럴 작성**
+
+Create `apps/dashboard/src/features/github-monitor/lib/index.ts`:
+
+```ts
+// 판정 순수 함수 재export — 소비자가 개별 파일 경로를 몰라도 되게 한다.
+//
+// features/github-monitor/index.ts(server entrypoint)와 분리한 이유:
+// 이 함수들은 DB·네트워크 의존이 없어 server-only 마킹이 불필요하고,
+// 위젯(widgets 레이어)도 안전하게 쓸 수 있어야 한다.
+export { normalizeRunOutcome, type RunOutcome } from "./normalizeRunOutcome";
+export { judgeBuildState } from "./judgeBuildState";
+export { derivePrCiStatus } from "./derivePrCiStatus";
+export { isPrStale, isIssueTriageStale, deriveSyncDisplayState } from "./judgeStaleness";
+```
 
 - [ ] **Step 1: 배지 컴포넌트 작성**
 
@@ -2961,6 +3234,7 @@ Create `apps/dashboard/src/widgets/monitoring/ui/GithubBoards.tsx`:
 ```tsx
 // GitHub 드릴다운 표 3개 — Actions / PR / 이슈.
 // 각 행은 GitHub 원본으로 링크한다. 보드는 전수 목록이 아니라 판단 도구다.
+import { normalizeRunOutcome } from "@/features/github-monitor/lib";
 import {
   type GithubIssue,
   type GithubPullRequest,
@@ -3009,10 +3283,11 @@ function Empty({ label }: { label: string }) {
 
 export function WorkflowRunsBoard({ runs }: { runs: GithubWorkflowRun[] }) {
   // 실패를 위로 — 판단이 필요한 것부터 보여준다.
+  // ⚠️ conclusion === "failure" 만 보면 timed_out·startup_failure 가 빠진다.
+  const isFail = (r: GithubWorkflowRun) => normalizeRunOutcome(r) === "failure";
   const sorted = [...runs].sort((a, b) => {
-    const aFail = a.conclusion === "failure" ? 0 : 1;
-    const bFail = b.conclusion === "failure" ? 0 : 1;
-    if (aFail !== bFail) return aFail - bFail;
+    const d = (isFail(a) ? 0 : 1) - (isFail(b) ? 0 : 1);
+    if (d !== 0) return d;
     return (b.startedAt?.getTime() ?? 0) - (a.startedAt?.getTime() ?? 0);
   });
 
@@ -3039,9 +3314,7 @@ export function WorkflowRunsBoard({ runs }: { runs: GithubWorkflowRun[] }) {
                     {r.workflowName}
                   </a>
                 </td>
-                <td className={r.conclusion === "failure" ? "text-red-700" : ""}>
-                  {r.conclusion ?? r.status}
-                </td>
+                <td className={isFail(r) ? "text-red-700" : ""}>{r.conclusion ?? r.status}</td>
                 <td className="font-mono text-xs">{r.headBranch ?? "—"}</td>
               </tr>
             ))}
@@ -3169,7 +3442,147 @@ export { BuildStateCard } from "./ui/BuildStateCard";
 export { WorkflowRunsBoard, PullRequestsBoard, IssuesBoard } from "./ui/GithubBoards";
 ```
 
-- [ ] **Step 5: 타입 체크 + lint**
+- [ ] **Step 5: 위젯 테스트 작성**
+
+Create `apps/dashboard/src/widgets/monitoring/ui/GithubBoards.test.tsx`:
+
+```tsx
+// @vitest-environment jsdom
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { IssuesBoard, PullRequestsBoard, WorkflowRunsBoard } from "./GithubBoards";
+import { SyncStateBadge } from "./SyncStateBadge";
+import { BuildStateCard } from "./BuildStateCard";
+import {
+  type GithubIssue,
+  type GithubPullRequest,
+  type GithubWorkflowRun,
+  type GithubSyncState,
+} from "@/entities/github-activity/client";
+
+function makeIssue(over: Partial<GithubIssue> = {}): GithubIssue {
+  return {
+    id: "krdn/a#1", repo: "krdn/a", number: 1, title: "이슈 제목", url: "https://gh/i/1",
+    author: "gon", labels: [], createdAt: new Date(), updatedAt: new Date(), ...over,
+  };
+}
+
+function makeRun(over: Partial<GithubWorkflowRun> = {}): GithubWorkflowRun {
+  return {
+    id: "1", repo: "krdn/a", workflowId: "wf", workflowName: "CI", status: "completed",
+    conclusion: "success", headSha: "s", headBranch: "main", event: "push",
+    runNumber: 1, runAttempt: 1, url: "https://gh/r/1",
+    startedAt: new Date(), completedAt: new Date(), ...over,
+  };
+}
+
+function makePr(over: Partial<GithubPullRequest> = {}): GithubPullRequest {
+  return {
+    id: "krdn/a#9", repo: "krdn/a", number: 9, title: "PR 제목", url: "https://gh/p/9",
+    author: "gon", isDraft: false, headSha: "s",
+    createdAt: new Date(), updatedAt: new Date(), ...over,
+  };
+}
+
+describe("empty state", () => {
+  it("이슈 0건이면 안내 문구를 보여준다", () => {
+    render(<IssuesBoard issues={[]} staleIds={new Set()} />);
+    expect(screen.getByText("열린 이슈가 없습니다.")).toBeTruthy();
+  });
+
+  it("run 0건이면 안내 문구를 보여준다", () => {
+    render(<WorkflowRunsBoard runs={[]} />);
+    expect(screen.getByText("표시할 실행이 없습니다.")).toBeTruthy();
+  });
+});
+
+describe("정체 강조", () => {
+  it("staleIds 에 든 이슈에만 정체 배지가 붙는다", () => {
+    render(
+      <IssuesBoard
+        issues={[makeIssue({ id: "a" }), makeIssue({ id: "b", title: "정상" })]}
+        staleIds={new Set(["a"])}
+      />,
+    );
+    expect(screen.getAllByText("정체")).toHaveLength(1);
+  });
+});
+
+describe("SyncStateBadge", () => {
+  it("ok 면 아무것도 렌더하지 않는다 (정상은 조용해야 한다)", () => {
+    const { container } = render(<SyncStateBadge state="ok" />);
+    expect(container.textContent).toBe("");
+  });
+
+  it("error 면 오류 배지를 보여준다", () => {
+    render(<SyncStateBadge state="error" detail="429" />);
+    expect(screen.getByText("동기화 오류")).toBeTruthy();
+  });
+
+  // "데이터 없음"과 "동기화가 죽어 낡음"이 다르게 보여야 한다.
+  it("empty 와 stale 은 다른 문구다", () => {
+    const { container: a } = render(<SyncStateBadge state="empty" />);
+    const { container: b } = render(<SyncStateBadge state="stale" />);
+    expect(a.textContent).not.toBe(b.textContent);
+  });
+
+  it("토큰 미설정은 비활성 문구", () => {
+    render(<SyncStateBadge state="disabled-empty" />);
+    expect(screen.getByText("동기화 비활성")).toBeTruthy();
+  });
+});
+
+describe("BuildStateCard", () => {
+  function makeBuild(over: Partial<GithubSyncState> = {}): GithubSyncState {
+    return {
+      source: "build", lastAttemptAt: new Date(), lastSuccessAt: new Date(),
+      lastError: null, totalCount: null, truncated: false,
+      buildState: "build-failed", mainHeadSha: "abcdef1234", mainHeadCommittedAt: new Date(),
+      buildRunUrl: "https://gh/run/1", buildConclusion: "failure", ...over,
+    };
+  }
+
+  it("build-failed 를 실패 문구로 보여준다", () => {
+    render(<BuildStateCard build={makeBuild()} />);
+    expect(screen.getByText("빌드 실패")).toBeTruthy();
+  });
+
+  it("HEAD sha 를 7자로 줄여 보여준다", () => {
+    render(<BuildStateCard build={makeBuild()} />);
+    expect(screen.getByText("abcdef1")).toBeTruthy();
+  });
+
+  it("판정 이력이 없으면 안내 문구", () => {
+    render(<BuildStateCard build={null} />);
+    expect(screen.getByText("아직 판정된 적 없음")).toBeTruthy();
+  });
+});
+
+describe("PR CI 표시", () => {
+  it("failing 을 실패로 표시한다", () => {
+    render(
+      <PullRequestsBoard
+        prs={[makePr()]}
+        ciStatus={{ "krdn/a#9": "failing" }}
+        staleIds={new Set()}
+      />,
+    );
+    expect(screen.getByText("실패")).toBeTruthy();
+  });
+});
+```
+
+- [ ] **Step 6: 위젯 테스트 통과 확인**
+
+```bash
+cd apps/dashboard
+TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
+  pnpm vitest run src/widgets/monitoring/ui/GithubBoards.test.tsx
+```
+
+Expected: PASS — "11 passed" 를 눈으로 확인할 것.
+
+- [ ] **Step 7: 타입 체크 + lint**
 
 ```bash
 cd apps/dashboard
@@ -3178,13 +3591,15 @@ pnpm typecheck && pnpm lint
 
 Expected: 에러 없음.
 
-- [ ] **Step 6: 커밋**
+- [ ] **Step 8: 커밋**
 
 ```bash
 cd /home/gon/projects/gon/gons-dashboard
-git add apps/dashboard/src/widgets/monitoring/ui/SyncStateBadge.tsx \
+git add apps/dashboard/src/features/github-monitor/lib/index.ts \
+        apps/dashboard/src/widgets/monitoring/ui/SyncStateBadge.tsx \
         apps/dashboard/src/widgets/monitoring/ui/BuildStateCard.tsx \
         apps/dashboard/src/widgets/monitoring/ui/GithubBoards.tsx \
+        apps/dashboard/src/widgets/monitoring/ui/GithubBoards.test.tsx \
         apps/dashboard/src/widgets/monitoring/index.ts
 git commit -m "feat(monitoring): GitHub 보드 위젯 (#323)
 
@@ -3201,8 +3616,14 @@ GitHub 원본 링크로 위임."
 - Create: `apps/dashboard/src/app/(dashboard)/monitoring/github/page.tsx`
 
 **Interfaces:**
-- Consumes: Task 5 조회 함수, Task 6/7 판정 함수, Task 14 위젯
+- Consumes:
+  - `@/entities/github-activity/server` — `listOpenIssues`, `listOpenPrs`, `listRecentRuns`, `getSyncStates`, `getBuildState` (Task 5)
+  - `@/entities/github-activity/client` — `PrCiStatus`, `SyncSource` 타입 (Task 3)
+  - `@/features/github-monitor/lib` — `derivePrCiStatus`, `isPrStale`, `isIssueTriageStale`, `deriveSyncDisplayState`, `normalizeRunOutcome` (Task 14 Step 0 이 배럴 생성)
+  - `@/widgets/monitoring` — `AutoRefresh`(기존), `BuildStateCard`, `IssuesBoard`, `PullRequestsBoard`, `SyncStateBadge`, `WorkflowRunsBoard` (Task 14)
 - Produces: `/monitoring/github` 라우트
+
+**사전 확인:** `AutoRefresh` 의 prop 이 `intervalMs` 임은 확인됨 (`src/widgets/monitoring/ui/AutoRefresh.tsx`). `PageHeader` 는 `title`·`subtitle`·`actions` 만 받는다 — `description` 은 없다.
 
 - [ ] **Step 1: 페이지 작성**
 
@@ -3227,6 +3648,7 @@ import {
   isPrStale,
   isIssueTriageStale,
   deriveSyncDisplayState,
+  normalizeRunOutcome,
 } from "@/features/github-monitor/lib";
 import {
   AutoRefresh,
@@ -3271,24 +3693,35 @@ export default async function GithubMonitoringPage() {
     issues.filter((i) => isIssueTriageStale(i)).map((i) => i.id),
   );
 
-  const failingRuns = runs.filter((r) => r.conclusion === "failure").length;
+  // ⚠️ conclusion === "failure" 만 세면 timed_out·startup_failure·action_required 가
+  // 누락된다. 정규화 함수를 단일 기준으로 쓴다.
+  const failingRuns = runs.filter((r) => normalizeRunOutcome(r) === "failure").length;
   const failingPrs = Object.values(ciStatus).filter((s) => s === "failing").length;
+
+  // 스냅샷이 잘렸으면 "표시 N / 전체 M" 을 밝힌다 — 보드가 전수인 척하면 안 된다.
+  const countLabel = (shown: number, source: SyncSource) => {
+    const s = syncStates.find((x) => x.source === source);
+    if (s?.truncated !== true || s.totalCount == null) return `${shown}`;
+    return `${shown} / ${s.totalCount}`;
+  };
 
   return (
     <PageContainer>
-      <PageHeader title="GitHub 관제" description="krdn org 의 이슈·PR·Actions 현황" />
+      <PageHeader title="GitHub 관제" subtitle="krdn org 의 이슈·PR·Actions 현황" />
       <AutoRefresh intervalMs={15_000} />
 
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-[var(--color-hairline)] bg-white p-4">
           <p className="text-xs text-[var(--color-text-muted)]">열린 이슈</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{issues.length}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">
+            {countLabel(issues.length, "issues")}
+          </p>
           <SyncStateBadge state={stateOf("issues")} detail={errorOf("issues")} />
         </div>
         <div className="rounded-xl border border-[var(--color-hairline)] bg-white p-4">
           <p className="text-xs text-[var(--color-text-muted)]">열린 PR (CI 실패)</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">
-            {prs.length}
+            {countLabel(prs.length, "pulls")}
             {failingPrs > 0 && <span className="ml-1 text-base text-red-700">({failingPrs})</span>}
           </p>
           <SyncStateBadge state={stateOf("pulls")} detail={errorOf("pulls")} />
@@ -3314,30 +3747,7 @@ export default async function GithubMonitoringPage() {
 }
 ```
 
-- [ ] **Step 2: features 배럴에 lib 재export 추가**
-
-Create `apps/dashboard/src/features/github-monitor/lib/index.ts`:
-
-```ts
-// 판정 순수 함수 재export — page 가 개별 파일 경로를 몰라도 되게 한다.
-// index.ts(server entrypoint)와 분리한 이유: 이 함수들은 DB·네트워크
-// 의존이 없어 server-only 마킹이 불필요하다.
-export { normalizeRunOutcome, type RunOutcome } from "./normalizeRunOutcome";
-export { judgeBuildState } from "./judgeBuildState";
-export { derivePrCiStatus } from "./derivePrCiStatus";
-export { isPrStale, isIssueTriageStale, deriveSyncDisplayState } from "./judgeStaleness";
-```
-
-- [ ] **Step 3: AutoRefresh 시그니처 확인**
-
-```bash
-cd apps/dashboard
-grep -n "export function AutoRefresh" -A 8 src/widgets/monitoring/ui/AutoRefresh.tsx
-```
-
-prop 이름이 `intervalMs` 가 아니면 page.tsx 의 호출부를 실제 시그니처에 맞게 고칠 것.
-
-- [ ] **Step 4: 타입 체크 + lint**
+- [ ] **Step 2: 타입 체크 + lint**
 
 ```bash
 cd apps/dashboard
@@ -3346,7 +3756,7 @@ pnpm typecheck && pnpm lint
 
 Expected: 에러 없음.
 
-- [ ] **Step 5: 프로덕션 빌드 (client/server seam 검증)**
+- [ ] **Step 3: 프로덕션 빌드 (client/server seam 검증)**
 
 ```bash
 cd apps/dashboard
@@ -3357,12 +3767,11 @@ Expected: 성공. `Module not found: Can't resolve 'tls'` 또는 `'net'` 이 나
 
 **이 단계는 건너뛸 수 없다.** typecheck·lint 로는 이 계열 오류를 잡지 못한다.
 
-- [ ] **Step 6: 커밋**
+- [ ] **Step 4: 커밋**
 
 ```bash
 cd /home/gon/projects/gon/gons-dashboard
-git add 'apps/dashboard/src/app/(dashboard)/monitoring/github/page.tsx' \
-        apps/dashboard/src/features/github-monitor/lib/index.ts
+git add 'apps/dashboard/src/app/(dashboard)/monitoring/github/page.tsx'
 git commit -m "feat(monitoring): /monitoring/github 페이지 (#323)
 
 KPI 4개 + Build 히어로 + 드릴다운 표 3개. 각 KPI 에 동기화 상태
@@ -3374,29 +3783,25 @@ KPI 4개 + Build 히어로 + 드릴다운 표 3개. 각 KPI 에 동기화 상태
 ## Task 16: 알림 링크 분기
 
 **Files:**
+- Create: `apps/dashboard/src/features/monitoring-notify/lib/notifyLink.ts`
 - Modify: `apps/dashboard/src/features/monitoring-notify/index.ts`
-- Test: `apps/dashboard/src/features/monitoring-notify/notifyLink.test.ts`
+- Test: `apps/dashboard/src/features/monitoring-notify/lib/notifyLink.test.ts`
 
 **Interfaces:**
-- Consumes: `EventSource` (Task 11 에서 "github" 추가됨)
-- Produces: `linkForSource(source: string): string`
+- Consumes: `EventSource` 에 "github" 추가됨 (Task 11)
+- Produces: `linkForSource(source: string): string` — 앱 내부 경로 (`/monitoring` 또는 `/monitoring/github`)
 
-- [ ] **Step 1: 현재 링크 코드 확인**
+**⚠️ 링크가 두 군데 있다.** `broadcast()` 의 web-push `url` 과 `eventBody()` 의
+텔레그램 본문 URL 이 각각 `/monitoring` 을 하드코딩한다. **둘 다** 고쳐야 한다 —
+하나만 고치면 채널에 따라 다른 곳으로 가는 비일관이 생긴다.
 
-```bash
-cd apps/dashboard
-sed -n 40,70p src/features/monitoring-notify/index.ts
-```
+- [ ] **Step 1: 실패하는 테스트 작성**
 
-`url: "/monitoring"` 이 있는 줄 번호와 주변 구조를 파악한다.
-
-- [ ] **Step 2: 실패하는 테스트 작성**
-
-Create `apps/dashboard/src/features/monitoring-notify/notifyLink.test.ts`:
+Create `apps/dashboard/src/features/monitoring-notify/lib/notifyLink.test.ts`:
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { linkForSource } from "./lib/notifyLink";
+import { linkForSource } from "./notifyLink";
 
 describe("linkForSource", () => {
   it("github 이벤트는 GitHub 탭으로 보낸다", () => {
@@ -3415,64 +3820,127 @@ describe("linkForSource", () => {
 });
 ```
 
-- [ ] **Step 3: 테스트가 실패하는지 확인**
+- [ ] **Step 2: 테스트가 실패하는지 확인**
 
 ```bash
 cd apps/dashboard
 TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
-  pnpm vitest run src/features/monitoring-notify/notifyLink.test.ts
+  pnpm vitest run src/features/monitoring-notify/lib/notifyLink.test.ts
 ```
 
-Expected: FAIL — import 해결 실패.
+Expected: FAIL — `Failed to resolve import "./notifyLink"`
 
-- [ ] **Step 4: 구현 작성**
+- [ ] **Step 3: 구현 작성**
 
 Create `apps/dashboard/src/features/monitoring-notify/lib/notifyLink.ts`:
 
 ```ts
-// 이벤트 소스 → 알림 클릭 시 열릴 경로 (이슈 #323).
+// 이벤트 소스 → 알림 클릭 시 열릴 앱 내부 경로 (이슈 #323).
 // GitHub 이벤트를 /monitoring 으로 보내면 사용자가 탭을 한 번 더 눌러야 한다.
 export function linkForSource(source: string): string {
   return source === "github" ? "/monitoring/github" : "/monitoring";
 }
 ```
 
-- [ ] **Step 5: notify 에 적용**
+- [ ] **Step 4: broadcast 에 source 인자 추가**
 
 Modify `apps/dashboard/src/features/monitoring-notify/index.ts`:
 
-1. import 추가 (기존 import 블록 끝):
+**4-1.** import 블록 끝에 추가:
 
 ```ts
 import { linkForSource } from "./lib/notifyLink";
 ```
 
-2. `url: "/monitoring",` 을 다음으로 교체:
+**4-2.** `broadcast` 함수 전체를 교체 (기존 시그니처는 `title, body, tag` 3개):
 
 ```ts
-      url: linkForSource(event.source),
+async function broadcast(
+  title: string,
+  body: string,
+  tag: string,
+  source: string,
+): Promise<void> {
+  await sendTelegram(`${title}\n${body}`);
+  for (const userId of await adminUserIds()) {
+    await sendPushToUser(userId, {
+      title,
+      body,
+      // 소스별 분기 — github 이벤트는 GitHub 탭으로 직행한다.
+      url: linkForSource(source),
+      // dedupKey 기반 태그 — 고정 태그면 SW 가 같은 태그 알림을 교체해
+      // 한 sweep 의 다중 장애 중 마지막만 남는다 (Codex P2).
+      tag,
+    });
+  }
+}
 ```
 
-`event` 가 그 스코프의 변수명과 다르면 실제 변수명(이벤트 행을 담은 것)으로 맞춘다.
+**4-3.** `eventBody` 함수 전체를 교체 (텔레그램 본문의 URL 도 같은 경로로):
+
+```ts
+function eventBody(event: MonitoringEventRow): string {
+  return [event.detail, `${env.NEXTAUTH_URL}${linkForSource(event.source)}`]
+    .filter(Boolean)
+    .join("\n");
+}
+```
+
+**4-4.** `broadcast` 호출부 **두 곳**에 `event.source` 인자 추가.
+
+`notifyOpenCriticals` 안:
+
+```ts
+      await broadcast(
+        `🔴 [관제] ${event.title}`,
+        eventBody(event),
+        `monitoring-${event.dedupKey}`,
+        event.source,
+      );
+```
+
+`notifyResolvedCriticals` 안:
+
+```ts
+    await broadcast(
+      `✅ [관제] 해소: ${event.title}`,
+      eventBody(event),
+      `monitoring-${event.dedupKey}`,
+      event.source,
+    );
+```
+
+- [ ] **Step 5: 두 호출부가 모두 고쳐졌는지 확인**
+
+```bash
+cd apps/dashboard
+grep -n "broadcast(" src/features/monitoring-notify/index.ts
+```
+
+Expected: 정의 1개 + 호출 2개 = 3줄. 호출 두 곳 모두 뒤에 `event.source,` 인자가 있어야 한다.
+하나라도 빠지면 typecheck 가 잡지만, 여기서 눈으로 확인해 두면 다음 단계가 빨라진다.
 
 - [ ] **Step 6: 테스트 통과 + 타입 체크**
 
 ```bash
 cd apps/dashboard
 TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" \
-  pnpm vitest run src/features/monitoring-notify/notifyLink.test.ts && pnpm typecheck
+  pnpm vitest run src/features/monitoring-notify/lib/notifyLink.test.ts && pnpm typecheck
 ```
 
-Expected: PASS + 타입 에러 없음.
+Expected: PASS (3개 케이스) + 타입 에러 없음.
 
 - [ ] **Step 7: 커밋**
 
 ```bash
 cd /home/gon/projects/gon/gons-dashboard
 git add apps/dashboard/src/features/monitoring-notify/lib/notifyLink.ts \
-        apps/dashboard/src/features/monitoring-notify/notifyLink.test.ts \
+        apps/dashboard/src/features/monitoring-notify/lib/notifyLink.test.ts \
         apps/dashboard/src/features/monitoring-notify/index.ts
-git commit -m "fix(monitoring): github 이벤트 알림을 GitHub 탭으로 링크 (#323)"
+git commit -m "fix(monitoring): github 이벤트 알림을 GitHub 탭으로 링크 (#323)
+
+web-push url 과 텔레그램 본문 URL 두 곳 모두 분기한다 — 하나만
+고치면 채널에 따라 다른 곳으로 가는 비일관이 생긴다."
 ```
 
 ---
@@ -3601,20 +4069,41 @@ PR 본문에 다음 배포 주의사항을 포함할 것:
 | 4. 다른 sha run 무시 | Task 6 Step 1 |
 | 4a. run 0건 → unknown | Task 6 Step 1 |
 | 4b. fork 격리 | Task 6 Step 1 |
-| 5. API 실패 시 판정·해소 미호출 | Task 11 Step 1 |
-| 6. 동기화 실패 시 행 미삭제 | Task 11 Step 1 |
-| 7. incomplete_results 미교체 | Task 9 Step 1 |
-| 8. 레포 부분 실패 격리 | Task 10 Step 1 |
-| 9. 전체 성공 시 lastError 삭제 | Task 10 Step 1 (`upsertSyncState`) |
+| 5. API 실패 시 판정·해소 미호출 | Task 11 Step 1 ("build 판정을 건너뛰고…") |
+| 6. 동기화 실패 시 행 미삭제 | Task 11 Step 1 ("기존 이슈 행을 삭제하지 않는다") |
+| 7. incomplete_results 미교체 | Task 9 Step 1 (클라이언트 throw) + Task 11 Step 1 (스냅샷 보존까지) |
+| 8. 레포 부분 실패 격리 | Task 10 Step 1 (DB primitive) + **Task 11 Step 1 (orchestration — lastSuccessAt 보존)** |
+| 9. 전체 성공 시 lastError 삭제 | Task 10 Step 1 (`upsertSyncState` 부분 갱신) + Task 11 (`lastError: null` 전달) |
 | 10. 첫 부분 성공 → error | Task 7 Step 1 |
 | 11. lastError > freshness | Task 7 Step 1 |
+
+**추가 검증** (스펙 §4.2 규칙 5, §6 성공 경로):
+
+| 항목 | 위치 |
+|---|---|
+| 토큰 미설정 시 lastAttemptAt 갱신 | Task 11 Step 1 |
+| build 실패 → critical 이벤트 발행 | Task 11 Step 1 |
+| build 성공 → 이벤트 해소 | Task 11 Step 1 |
+| building 은 해소하지 않음 | Task 11 Step 1 |
+| 위젯 empty/stale/severity (jsdom) | Task 14 Step 5 |
+| cron 이 부분 실패를 실패로 기록 | Task 12 Step 1 (`failedSources` throw) |
 
 **Placeholder scan:** TBD·TODO 없음. 모든 코드 스텝에 완전한 코드 포함.
 
 **Type consistency:** `RunOutcome`(Task 2) → Task 4·6 소비, `BuildState`·`PrCiStatus`·`SyncDisplayState`(Task 3) → Task 4·6·7·14·15 소비, `judgeBuildState` 반환 `{state, run}`(Task 4) → Task 11 소비. 함수명 일관 확인 완료.
 
-**알려진 확인 지점** (구현자가 실제 코드를 보고 맞춰야 하는 곳 — 계획에 확인 단계 포함됨):
-- Task 12 Step 2: `createCronHandler` 제네릭 시그니처
-- Task 15 Step 3: `AutoRefresh` prop 이름
-- Task 16 Step 1·5: `monitoring-notify` 의 이벤트 변수명
-- Task 13 Step 2: vitest `.tsx` include 설정
+**실제 코드와 대조 완료** (Codex 리뷰에서 확인된 사실 — 계획이 이미 반영함):
+
+| 항목 | 확인 결과 |
+|---|---|
+| `PageHeader` | `title`·`subtitle`·`actions` — `description` 없음 (계획은 `subtitle` 사용) |
+| `AutoRefresh` | prop 이름 `intervalMs` 맞음 |
+| `broadcast()` | 인자 `(title, body, tag)` — `event` 없음. Task 16 이 `source` 인자 추가 |
+| `eventBody()` | 텔레그램용 URL 을 따로 조립 — Task 16 이 여기도 분기 |
+| vitest 환경 | 기본 `node`. Testing Library 파일에 `// @vitest-environment jsdom` 필수 |
+| vitest include | `src/**/*.test.tsx` 포함됨 — 별도 설정 불필요 |
+| `recordEvent`/`resolveEvent` | 시그니처 일치 (`{source, severity, title, detail?, dedupKey, hostId?}` / `dedupKey`) |
+| drizzle API | `db.transaction`, `$inferInsert`, `onConflictDoUpdate({target, set})` 현행 버전과 일치 |
+
+**남은 확인 지점** (구현 중 실제 시그니처를 봐야 하는 곳 — 계획에 확인 단계 포함):
+- Task 12 Step 2: `createCronHandler` 제네릭이 `perTarget` 반환 타입을 받아들이는지
