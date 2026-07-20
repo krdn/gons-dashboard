@@ -49,6 +49,36 @@ describe("empty state", () => {
   });
 });
 
+describe("WorkflowRunsBoard 실패 판정", () => {
+  // conclusion === "failure" 만 보면 timed_out·startup_failure·action_required 가
+  // 누락된다. 실패를 위로 올리는 정렬도 normalizeRunOutcome 기준이어야 한다.
+  it("timed_out 도 실패로 취급해 success 보다 위에 놓는다", () => {
+    render(
+      <WorkflowRunsBoard
+        runs={[
+          makeRun({ id: "ok", workflowName: "정상빌드", conclusion: "success" }),
+          makeRun({ id: "to", workflowName: "타임아웃빌드", conclusion: "timed_out" }),
+        ]}
+      />,
+    );
+    const rows = screen.getAllByRole("row").slice(1); // 헤더 제외
+    expect(rows[0]?.textContent).toContain("타임아웃빌드");
+  });
+
+  it("cancelled 는 실패가 아니라 success 뒤에 남는다", () => {
+    render(
+      <WorkflowRunsBoard
+        runs={[
+          makeRun({ id: "c", workflowName: "취소빌드", conclusion: "cancelled" }),
+          makeRun({ id: "f", workflowName: "실패빌드", conclusion: "failure" }),
+        ]}
+      />,
+    );
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows[0]?.textContent).toContain("실패빌드");
+  });
+});
+
 describe("정체 강조", () => {
   it("staleIds 에 든 이슈에만 정체 배지가 붙는다", () => {
     render(
