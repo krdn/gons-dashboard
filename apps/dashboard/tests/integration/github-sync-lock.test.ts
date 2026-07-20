@@ -18,7 +18,12 @@ async function loadSync(token: string | undefined) {
     );
     return {
       ...actual,
-      env: { ...actual.env, GITHUB_MONITOR_TOKEN: token, GITHUB_MONITOR_ORG: "krdn" },
+      env: {
+        ...actual.env,
+        GITHUB_MONITOR_TOKEN: token,
+        GITHUB_MONITOR_ORG: "krdn",
+        GITHUB_MONITOR_PRUNE_RUNS: false,
+      },
     };
   });
   return (await import("@/features/github-monitor")).syncGithub;
@@ -107,5 +112,51 @@ describe("syncGithub — 동시 실행 방지", () => {
     expect(a.lockBusy).toBeUndefined();
     expect(b.lockBusy).toBeUndefined();
     expect(b.issues.ok).toBe(true);
+  });
+});
+
+describe("syncGithub — 소스 예외 시 락 유지", () => {
+  // ⚠️ Promise.all 은 한 소스가 reject 하면 즉시 반환하고 나머지는 계속 돈다.
+  // 그러면 advisory lock 의 finally 가 먼저 해제돼 아직 실행 중인 소스가
+  // 다음 주기와 겹친다 — 락을 넣은 목적이 무너진다. allSettled 로 전부
+  // 끝날 때까지 기다려야 한다.
+  it("한 소스가 pending 인 동안 두 번째 호출은 계속 lockBusy 다", async () => {
+    const pending: ((r: Response) => void)[] = [];
+    let signalStarted: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      signalStarted = resolve;
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      // 계정 조회는 즉시 응답해 소스들이 각자 진행하게 한다.
+      if (/api\.github\.com\/users\/krdn$/.test(url)) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ type: "Organization" }), { status: 200 }),
+        );
+      }
+      // 이슈 검색은 즉시 실패시켜 그 소스만 일찍 끝내고,
+      if (/search\/issues/.test(url)) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ message: "boom" }), { status: 500 }),
+        );
+      }
+      // 나머지(build/runs)는 붙잡아둔다.
+      signalStarted();
+      return new Promise<Response>((res) => pending.push(res));
+    });
+
+    const syncGithub = await loadSync("tok");
+    const first = syncGithub();
+    await started;
+
+    // 한 소스가 이미 끝났어도 나머지가 도는 동안 락은 유지돼야 한다.
+    const second = await syncGithub();
+    expect(second.lockBusy).toBe(true);
+
+    for (const res of pending) {
+      res(new Response(JSON.stringify({ message: "boom" }), { status: 500 }));
+    }
+    await first;
   });
 });

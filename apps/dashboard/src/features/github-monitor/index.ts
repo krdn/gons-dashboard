@@ -181,10 +181,14 @@ async function syncRuns(token: string, org: string): Promise<SyncSummary["runs"]
   // 남으면 보드의 "Actions 실패" 카운트에 유령 실패로 영구히 잡힌다.
   // repos 에는 조회 실패한 레포도 포함되므로 그 이전 스냅샷은 보존된다.
   //
-  // ⚠️ 목록이 페이지 상한에서 잘렸으면(complete=false) 정리하지 않는다.
-  // 잘린 목록으로 NOT IN 삭제하면 상한 밖 레포의 정상 run 이 매 주기 지워진다 —
-  // 유령 run 이 남는 것보다 나쁜 데이터 손실이다.
-  if (listComplete) {
+  // ⚠️ 두 조건을 모두 만족할 때만 정리한다:
+  //   1. GITHUB_MONITOR_PRUNE_RUNS=true — 토큰이 소유자의 모든 레포에
+  //      접근한다고 운영자가 명시. Fine-grained PAT 는 레포를 선택적으로
+  //      허용할 수 있고 계정 타입만으로는 이를 알 수 없다. 부분 접근 상태로
+  //      NOT IN 삭제하면 권한 밖 레포의 run 이 매 주기 지워진다.
+  //   2. listComplete — 목록이 페이지 상한에서 잘리지 않았고 소스가 전체 목록.
+  // 꺼두면 유령 run 이 보드에 남을 뿐, 데이터 손실은 없다.
+  if (env.GITHUB_MONITOR_PRUNE_RUNS && listComplete) {
     try {
       await pruneRunsNotIn(repos);
     } catch (err) {
@@ -192,7 +196,9 @@ async function syncRuns(token: string, org: string): Promise<SyncSummary["runs"]
       logger.warn("github-monitor", "prune-runs-failed", { error: errMsg(err) });
     }
   } else {
-    logger.warn("github-monitor", "prune-skipped-incomplete-repo-list", {
+    // 왜 건너뛰었는지 구분해 남긴다 — 설정 문제와 목록 잘림은 조치가 다르다.
+    logger.info("github-monitor", "prune-skipped", {
+      reason: env.GITHUB_MONITOR_PRUNE_RUNS ? "incomplete-repo-list" : "disabled",
       repos: repos.length,
     });
   }
@@ -318,12 +324,52 @@ async function syncGithubLocked(opts?: { nowFn?: () => Date }): Promise<SyncSumm
 
   const org = env.GITHUB_MONITOR_ORG;
 
-  const [issues, pulls, runs, build] = await Promise.all([
+  // ⚠️ allSettled 를 쓴다. Promise.all 은 한 소스가 reject 하면 즉시 반환하고
+  // 나머지 세 개는 계속 도는데, 그러면 advisory lock 의 finally 가 먼저
+  // 해제돼 아직 실행 중인 소스가 다음 주기와 겹친다 — 락을 넣은 목적이 무너진다.
+  //
+  // 각 sync* 는 자체적으로 try/catch 해 실패를 summary 로 돌려주지만,
+  // 그 안의 upsertSyncState(DB 호출)는 여전히 throw 할 수 있다.
+  const settled = await Promise.allSettled([
     syncIssues(token, org),
     syncPulls(token, org),
     syncRuns(token, org),
     syncBuild(token, nowFn),
   ]);
 
-  return { skipped: false, issues, pulls, runs, build };
+  const [issuesR, pullsR, runsR, buildR] = settled;
+
+  // rejection 은 예상 밖 오류(주로 DB)다. 로그로 남기고 실패 summary 로 바꾼다 —
+  // throw 하면 cron 이 실패로 기록하지만 어느 소스가 왜 죽었는지 알 수 없다.
+  for (const [i, r] of settled.entries()) {
+    if (r.status === "rejected") {
+      logger.warn("github-monitor", "source-rejected", {
+        source: ALL_SOURCES[i],
+        error: errMsg(r.reason),
+      });
+    }
+  }
+
+  const fallbackErr = (r: PromiseSettledResult<unknown>) =>
+    r.status === "rejected" ? errMsg(r.reason) : undefined;
+
+  return {
+    skipped: false,
+    issues:
+      issuesR.status === "fulfilled"
+        ? issuesR.value
+        : { ok: false, count: 0, error: fallbackErr(issuesR) },
+    pulls:
+      pullsR.status === "fulfilled"
+        ? pullsR.value
+        : { ok: false, count: 0, error: fallbackErr(pullsR) },
+    runs:
+      runsR.status === "fulfilled"
+        ? runsR.value
+        : { ok: false, repos: 0, failedRepos: [] },
+    build:
+      buildR.status === "fulfilled"
+        ? buildR.value
+        : { ok: false, state: null, error: fallbackErr(buildR) },
+  };
 }

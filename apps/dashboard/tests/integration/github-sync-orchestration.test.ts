@@ -16,7 +16,7 @@ const BUILD_DEDUP = "github:krdn/gons-dashboard:build-failed";
  * 교체하면 syncGithub 가 (지금은 아니어도 나중에) 다른 env 를 읽을 때
  * undefined 를 만나 테스트가 진짜 원인과 무관하게 깨진다.
  */
-async function loadSync(token: string | undefined) {
+async function loadSync(token: string | undefined, pruneRuns = false) {
   vi.resetModules();
   vi.doMock("@/shared/config/env", async () => {
     const actual = await vi.importActual<typeof import("@/shared/config/env")>(
@@ -24,7 +24,13 @@ async function loadSync(token: string | undefined) {
     );
     return {
       ...actual,
-      env: { ...actual.env, GITHUB_MONITOR_TOKEN: token, GITHUB_MONITOR_ORG: "krdn" },
+      env: {
+        ...actual.env,
+        GITHUB_MONITOR_TOKEN: token,
+        GITHUB_MONITOR_ORG: "krdn",
+        // 기본 off — 토큰의 레포 접근 범위를 알 수 없으면 삭제하지 않는다.
+        GITHUB_MONITOR_PRUNE_RUNS: pruneRuns,
+      },
     };
   });
   return (await import("@/features/github-monitor")).syncGithub;
@@ -429,7 +435,7 @@ describe("syncGithub — Actions 부분 실패", () => {
       { match: /repos\/krdn\/a\/actions\/runs/, body: { workflow_runs: [] } },
     ]);
 
-    const syncGithub = await loadSync("tok");
+    const syncGithub = await loadSync("tok", true);
     await syncGithub();
 
     const repos = (await db.select().from(githubWorkflowRuns)).map((r) => r.id);
@@ -462,11 +468,41 @@ describe("syncGithub — Actions 부분 실패", () => {
       { match: /actions\/runs/, body: { workflow_runs: [] } },
     ]);
 
-    const syncGithub = await loadSync("tok");
+    const syncGithub = await loadSync("tok", true);
     await syncGithub();
 
     const ids = (await db.select().from(githubWorkflowRuns)).map((r) => r.id);
     expect(ids).toContain("beyond-limit");
+  });
+
+  // ⚠️ 기본값 off. Fine-grained PAT 는 레포를 선택적으로 허용할 수 있고
+  // 계정 타입만으로는 이를 알 수 없다. 부분 접근 상태로 NOT IN 삭제하면
+  // 권한 밖 레포의 run 이 매 주기 지워진다 — 유령 run 보다 나쁜 손실이다.
+  it("GITHUB_MONITOR_PRUNE_RUNS 가 꺼져 있으면 정리하지 않는다", async () => {
+    await db
+      .insert(githubWorkflowRuns)
+      .values(makeRunRow({ id: "not-in-list", repo: "krdn/archived" }));
+
+    mockFetchByPath([
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      {
+        match: /commits\/main/,
+        body: { sha: "x", commit: { committer: { date: new Date().toISOString() } } },
+      },
+      { match: /actions\/workflows/, body: { workflow_runs: [] } },
+      {
+        match: /orgs\/krdn\/repos/,
+        body: [{ full_name: "krdn/a", pushed_at: new Date().toISOString() }],
+      },
+      { match: /actions\/runs/, body: { workflow_runs: [] } },
+    ]);
+
+    // 기본값(false)으로 로드
+    const syncGithub = await loadSync("tok");
+    await syncGithub();
+
+    const ids = (await db.select().from(githubWorkflowRuns)).map((r) => r.id);
+    expect(ids).toContain("not-in-list");
   });
 
   // 레포 목록 조회 자체가 실패하면 정리를 하지 않는다 — 빈 목록으로
