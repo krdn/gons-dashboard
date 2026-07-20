@@ -2379,8 +2379,12 @@ describe("syncGithub — 성공 경로", () => {
     await db.insert(monitoringEvents).values({
       source: "github", severity: "critical", title: "Build 실패", dedupKey: BUILD_DEDUP,
     });
+    // ⚠️ buildRoutes 를 filter 로 걸러내면 안 된다. 정규식의 .source 는
+    // 이스케이프를 보존한 "actions\\/workflows" 라, /actions\/workflows/.test()
+    // 가 항상 false 를 반환해 원본 success 라우트가 살아남는다.
+    // mockFetchByPath 는 첫 매치를 쓰므로 진행 중 run 이 무시되고 synced 가 된다.
+    // 라우트를 명시적으로 구성한다.
     mockFetchByPath([
-      ...buildRoutes("success").filter((r) => !/actions\/workflows/.test(r.match.source)),
       {
         match: /actions\/workflows/,
         body: {
@@ -2395,6 +2399,16 @@ describe("syncGithub — 성공 경로", () => {
           ],
         },
       },
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      { match: /orgs\/krdn\/repos/, body: [] },
+      {
+        match: /commits\/main/,
+        body: {
+          sha: HEAD_SHA,
+          commit: { committer: { date: new Date(Date.now() - 3_600_000).toISOString() } },
+        },
+      },
+      { match: /actions\/runs/, body: { workflow_runs: [] } },
     ]);
 
     const syncGithub = await loadSync("tok");

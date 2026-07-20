@@ -69,7 +69,7 @@ export const monitoringEvents = pgTable(
   "monitoring_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // 'host' | 'container' | 'cron' | 'service' | 'security' | 'ssl' | 'http'
+    // 'host' | 'container' | 'cron' | 'service' | 'security' | 'ssl' | 'http' | 'github'
     source: text("source").notNull(),
     // 'critical' | 'warning' | 'info'
     severity: text("severity").notNull(),
