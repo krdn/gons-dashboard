@@ -79,7 +79,8 @@ export default async function GithubMonitoringPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="GitHub 관제" subtitle="krdn org 의 이슈·PR·Actions 현황" />
+      {/* org 가 아니라 owner — GITHUB_MONITOR_ORG 는 개인 계정일 수 있다. */}
+      <PageHeader title="GitHub 관제" subtitle={`${org} 의 이슈·PR·Actions 현황`} />
       <AutoRefresh intervalMs={15_000} />
 
       <div className="grid gap-3 sm:grid-cols-4">

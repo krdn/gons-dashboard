@@ -126,23 +126,50 @@ export interface ActiveRepos {
 }
 
 /**
- * 레포 목록 조회 — org 엔드포인트를 먼저 시도하고 404 면 user 로 폴백한다.
+ * 소유자에 맞는 레포 목록 경로를 정한다.
  *
  * ⚠️ `GITHUB_MONITOR_ORG` 가 organization 이 아니라 **개인 계정**일 수 있다.
- * 실제 `krdn` 이 그렇다(User, 레포 181개) — `/orgs/krdn/repos` 는 영구히 404 라
- * 폴백이 없으면 Actions 수집이 통째로 죽는다. Search API 의 `org:` 한정자는
- * User 계정에도 동작해 이슈·PR 은 정상이므로, 이 실패는 조용히 부분 기능만 잃는다.
+ * 실제 `krdn` 이 그렇다(User, 레포 181개 중 private 21개) — `/orgs/krdn/repos` 는
+ * 영구히 404 라 분기가 없으면 Actions 수집이 통째로 죽는다. Search API 의
+ * `org:` 한정자는 User 에도 동작해 이슈·PR 만 정상인 부분 실패가 된다.
+ *
+ * ⚠️ 404 로 타입을 추정하지 않고 `/users/{owner}` 의 `type` 을 명시 조회한다.
+ * 404 는 다른 이유로도 날 수 있고, 무엇보다 **폴백 대상 선택이 prune 안전성과
+ * 직결**되기 때문이다:
+ *   - `/users/{owner}/repos` 는 **public 만** 반환한다. 이 목록으로 전역
+ *     NOT IN prune 을 돌리면 private 레포의 run 이 매 주기 삭제된다.
+ *   - 토큰 소유자 본인이면 `/user/repos?affiliation=owner&visibility=all` 이
+ *     private 까지 포함하므로 이쪽을 쓴다.
+ *   - 제3자 User 면 private 을 볼 수 없다 → `canPrune: false` 로 알려
+ *     호출자가 전역 삭제를 하지 않게 한다.
  */
-async function listRepos(token: string, owner: string, page: number): Promise<RawRepo[]> {
-  const query = `?sort=pushed&direction=desc&per_page=${PER_PAGE}&page=${page}`;
-  try {
-    return await gh<RawRepo[]>(token, `/orgs/${owner}/repos${query}`);
-  } catch (err) {
-    if (err instanceof GithubApiError && err.status === 404) {
-      return await gh<RawRepo[]>(token, `/users/${owner}/repos${query}`);
-    }
-    throw err;
+interface RepoSource {
+  path: (page: number) => string;
+  /** 이 경로가 소유자의 **전체** 레포를 보여주는가. false 면 prune 금지. */
+  canPrune: boolean;
+}
+
+async function resolveRepoSource(token: string, owner: string): Promise<RepoSource> {
+  const query = (page: number) =>
+    `?sort=pushed&direction=desc&per_page=${PER_PAGE}&page=${page}`;
+
+  const account = await gh<{ type: string }>(token, `/users/${owner}`);
+  if (account.type === "Organization") {
+    return { path: (p) => `/orgs/${owner}/repos${query(p)}`, canPrune: true };
   }
+
+  // User 계정 — 토큰 소유자 본인이면 private 까지 보인다.
+  const me = await gh<{ login: string }>(token, "/user");
+  if (me.login.toLowerCase() === owner.toLowerCase()) {
+    return {
+      path: (p) =>
+        `/user/repos?affiliation=owner&visibility=all&sort=pushed&direction=desc&per_page=${PER_PAGE}&page=${p}`,
+      canPrune: true,
+    };
+  }
+
+  // 제3자 User — public 만 보이므로 목록이 전체가 아니다.
+  return { path: (p) => `/users/${owner}/repos${query(p)}`, canPrune: false };
 }
 
 export async function listActiveRepos(
@@ -152,12 +179,13 @@ export async function listActiveRepos(
 ): Promise<ActiveRepos> {
   const cutoff = nowFn().getTime() - ACTIVE_REPO_WINDOW_MS;
   const active = new Set<string>();
+  const source = await resolveRepoSource(token, org);
   // 목록을 끝까지 훑었는가. false 면 pruneRunsNotIn 을 건너뛴다 —
   // 잘린 목록으로 NOT IN 삭제하면 상한 밖 레포의 정상 run 이 매 주기 지워진다.
-  let complete = false;
+  let pagedToEnd = false;
 
   for (let page = 1; page <= REPO_LIST_MAX_PAGES; page++) {
-    const repos = await listRepos(token, org, page);
+    const repos = await gh<RawRepo[]>(token, source.path(page));
     let hitCutoff = false;
     for (const r of repos) {
       const pushed = r.pushed_at == null ? 0 : Date.parse(r.pushed_at);
@@ -166,14 +194,16 @@ export async function listActiveRepos(
     }
     // pushed 내림차순이므로 cutoff 를 만났거나 페이지가 덜 찼으면 전부 본 것이다.
     if (hitCutoff || repos.length < PER_PAGE) {
-      complete = true;
+      pagedToEnd = true;
       break;
     }
   }
 
   // 활성 필터와 무관하게 항상 포함 — 배포 파이프라인 판정 대상이다.
   active.add(BUILD_REPO);
-  return { repos: [...active], complete };
+  // 페이지를 끝까지 봤더라도 소스가 부분 목록(제3자 User = public only)이면
+  // 전체로 간주할 수 없다. 두 조건을 모두 만족할 때만 prune 을 허용한다.
+  return { repos: [...active], complete: pagedToEnd && source.canPrune };
 }
 
 export async function listWorkflowRuns(token: string, repo: string): Promise<RawRun[]> {

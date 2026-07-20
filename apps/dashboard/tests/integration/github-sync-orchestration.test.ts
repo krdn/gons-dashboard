@@ -30,11 +30,25 @@ async function loadSync(token: string | undefined) {
   return (await import("@/features/github-monitor")).syncGithub;
 }
 
+/**
+ * 계정 타입 조회 라우트 — resolveRepoSource 가 레포 목록 경로를 정하기 전에
+ * /users/{owner} 와 /user 를 부른다. 테스트가 이를 빠뜨리면 404 로 떨어져
+ * listActiveRepos 가 실패하고, 검증하려던 동작에 도달하지 못한다.
+ * 기본은 Organization — 기존 테스트들이 /orgs/krdn/repos 를 mock 하기 때문.
+ */
+const ACCOUNT_ROUTES: { match: RegExp; status?: number; body: unknown }[] = [
+  { match: /api\.github\.com\/users\/krdn$/, body: { type: "Organization" } },
+  { match: /api\.github\.com\/user$/, body: { login: "krdn" } },
+];
+
 /** GitHub API 응답을 경로 패턴별로 지정하는 fetch mock. */
 function mockFetchByPath(routes: { match: RegExp; status?: number; body: unknown }[]) {
+  // 계정 라우트를 **앞에** 둔다. 일부 테스트가 /./ 같은 포괄 폴백을 쓰는데
+  // 뒤에 두면 그 폴백에 먼저 걸려 계정 조회가 엉뚱한 응답을 받는다.
+  const all = [...ACCOUNT_ROUTES, ...routes];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
-    const route = routes.find((r) => r.match.test(url));
+    const route = all.find((r) => r.match.test(url));
     if (route == null) {
       return new Response(JSON.stringify({ message: "unmatched" }), { status: 404 });
     }

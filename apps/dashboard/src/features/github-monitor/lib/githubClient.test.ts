@@ -78,39 +78,81 @@ describe("listActiveRepos", () => {
   const nowFn = () => NOW;
   const daysAgo = (d: number) => new Date(NOW.getTime() - d * 24 * 60 * 60_000).toISOString();
 
+  /**
+   * 계정 타입 조회(/users/{owner}, /user)를 처리하고 레포 목록만 지정하는 mock.
+   * resolveRepoSource 가 목록 경로를 정하기 전에 이 둘을 부르므로, 빠뜨리면
+   * 404 로 떨어져 검증하려던 동작에 도달하지 못한다.
+   */
+  function mockRepos(reposBody: unknown, accountType = "Organization") {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (/api\.github\.com\/users\/krdn$/.test(url)) {
+        return Promise.resolve(jsonResponse({ type: accountType }));
+      }
+      if (/api\.github\.com\/user$/.test(url)) {
+        return Promise.resolve(jsonResponse({ login: "krdn" }));
+      }
+      return Promise.resolve(jsonResponse(reposBody));
+    });
+  }
+
   it("7일 이내 push 된 레포만 돌려준다", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse([
-        { full_name: "krdn/a", pushed_at: daysAgo(1) },
-        { full_name: "krdn/b", pushed_at: daysAgo(30) },
-      ]),
-    );
+    mockRepos([
+      { full_name: "krdn/a", pushed_at: daysAgo(1) },
+      { full_name: "krdn/b", pushed_at: daysAgo(30) },
+    ]);
     const { repos } = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(repos).toContain("krdn/a");
     expect(repos).not.toContain("krdn/b");
   });
 
   // ⚠️ GITHUB_MONITOR_ORG 가 organization 이 아닐 수 있다. 실제 krdn 은
-  // User 계정(레포 181개)이라 /orgs/krdn/repos 는 영구히 404 다 —
-  // 폴백이 없으면 Actions 수집이 통째로 죽는다.
-  it("org 가 404 면 users 엔드포인트로 폴백한다", async () => {
-    const spy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+  // User 계정(레포 181개 중 private 21개)이라 /orgs/krdn/repos 는 영구히 404 다 —
+  // 분기가 없으면 Actions 수집이 통째로 죽는다.
+  it("Organization 이면 /orgs 경로를 쓴다", async () => {
+    const spy = mockRepos([{ full_name: "krdn/a", pushed_at: daysAgo(1) }], "Organization");
+    const r = await listActiveRepos(TOKEN, "krdn", nowFn);
+
+    expect(spy.mock.calls.some((c) => String(c[0]).includes("/orgs/krdn/repos"))).toBe(true);
+    expect(r.complete).toBe(true); // 전체 목록이므로 prune 허용
+  });
+
+  // 토큰 소유자 본인이면 /user/repos 가 private 까지 보여준다.
+  // /users/{owner}/repos 는 public 만이라, 그 목록으로 전역 prune 하면
+  // private 레포의 run 이 매 주기 삭제된다.
+  it("본인 User 계정이면 /user/repos 로 private 까지 포함한다", async () => {
+    const spy = mockRepos([{ full_name: "krdn/a", pushed_at: daysAgo(1) }], "User");
+    const r = await listActiveRepos(TOKEN, "krdn", nowFn);
+
+    const urls = spy.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/user/repos") && u.includes("visibility=all"))).toBe(
+      true,
+    );
+    expect(urls.some((u) => u.includes("/users/krdn/repos"))).toBe(false);
+    expect(r.complete).toBe(true);
+  });
+
+  // 제3자 User 는 public 만 보이므로 목록이 전체가 아니다 → prune 금지.
+  it("제3자 User 면 public 만 보이므로 complete=false", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/orgs/")) {
-        return Promise.resolve(jsonResponse({ message: "Not Found" }, 404));
+      if (/api\.github\.com\/users\/someone$/.test(url)) {
+        return Promise.resolve(jsonResponse({ type: "User" }));
+      }
+      if (/api\.github\.com\/user$/.test(url)) {
+        return Promise.resolve(jsonResponse({ login: "krdn" })); // 다른 사람
       }
       return Promise.resolve(
-        jsonResponse([{ full_name: "krdn/a", pushed_at: daysAgo(1) }]),
+        jsonResponse([{ full_name: "someone/a", pushed_at: daysAgo(1) }]),
       );
     });
 
-    const { repos } = await listActiveRepos(TOKEN, "krdn", nowFn);
-
-    expect(repos).toContain("krdn/a");
-    expect(spy.mock.calls.some((c) => String(c[0]).includes("/users/krdn/repos"))).toBe(true);
+    const r = await listActiveRepos(TOKEN, "someone", nowFn);
+    expect(r.repos).toContain("someone/a");
+    expect(r.complete).toBe(false); // 부분 목록 — prune 하면 안 된다
   });
 
-  it("org 가 404 가 아닌 에러면 폴백하지 않고 전파한다", async () => {
+  it("계정 조회 실패는 전파한다 (404 로 타입을 추정하지 않는다)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({ message: "rate limited" }, 429),
     );
@@ -120,12 +162,10 @@ describe("listActiveRepos", () => {
   // complete=false 로 prune 을 건너뛰게 하는 신호. 이게 없으면 잘린 목록으로
   // NOT IN 삭제가 일어나 상한 밖 레포의 정상 run 이 매 주기 지워진다.
   it("cutoff 를 만나면 complete=true", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse([
-        { full_name: "krdn/a", pushed_at: daysAgo(1) },
-        { full_name: "krdn/old", pushed_at: daysAgo(30) },
-      ]),
-    );
+    mockRepos([
+      { full_name: "krdn/a", pushed_at: daysAgo(1) },
+      { full_name: "krdn/old", pushed_at: daysAgo(30) },
+    ]);
     const r = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(r.complete).toBe(true);
   });
@@ -136,18 +176,14 @@ describe("listActiveRepos", () => {
       full_name: `krdn/r${i}`,
       pushed_at: daysAgo(1),
     }));
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      Promise.resolve(jsonResponse(full)),
-    );
+    mockRepos(full);
     const r = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(r.complete).toBe(false);
   });
 
   // 배포 파이프라인 판정 대상이라 push 가 없어도 항상 포함해야 한다.
   it("gons-dashboard 는 오래돼도 항상 포함한다", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse([{ full_name: "krdn/gons-dashboard", pushed_at: daysAgo(365) }]),
-    );
+    mockRepos([{ full_name: "krdn/gons-dashboard", pushed_at: daysAgo(365) }]);
     const { repos } = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(repos).toContain("krdn/gons-dashboard");
   });

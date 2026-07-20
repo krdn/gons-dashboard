@@ -5,6 +5,7 @@
 import "server-only";
 import { env } from "@/shared/config/env";
 import { logger } from "@/shared/lib/log";
+import { withAdvisoryLock, LOCK_KEYS } from "@/shared/lib/db/advisoryLock";
 import { recordEvent, resolveEvent } from "@/entities/monitoring/server";
 import {
   replaceIssues,
@@ -29,6 +30,8 @@ import { BUILD_REPO, BUILD_WORKFLOW_FILE, PR_HEAD_FETCH_LIMIT } from "./config/t
 
 export interface SyncSummary {
   skipped: boolean;
+  /** 다른 실행이 advisory lock 을 쥐고 있어 이번 회차를 건너뛴 경우. */
+  lockBusy?: boolean;
   issues: { ok: boolean; count: number; error?: string };
   pulls: { ok: boolean; count: number; error?: string };
   runs: { ok: boolean; repos: number; failedRepos: string[] };
@@ -264,7 +267,35 @@ async function syncBuild(token: string, nowFn: () => Date): Promise<SyncSummary[
 
 const ALL_SOURCES = ["issues", "pulls", "runs", "build"] as const;
 
+/**
+ * GitHub 스냅샷 동기화.
+ *
+ * ⚠️ advisory lock 으로 직렬화한다. cron 의 HTTP timeout(120s)은 요청만 끊고
+ * 서버 측 실행은 계속되므로, GitHub 응답이 느리면 다음 주기(5분)와 겹친다.
+ * 그 상태로 두 실행이 DELETE+INSERT 와 prune 을 교차하면 오래된 실행이
+ * 최신 스냅샷을 덮거나 지운다.
+ *
+ * 이미 실행 중이면 대기하지 않고 `lockBusy: true` 로 즉시 반환한다 —
+ * 수집 잡이므로 다음 주기가 대체하면 된다.
+ */
 export async function syncGithub(opts?: { nowFn?: () => Date }): Promise<SyncSummary> {
+  const result = await withAdvisoryLock(LOCK_KEYS.githubSync, "github-sync", () =>
+    syncGithubLocked(opts),
+  );
+  if (result == null) {
+    return {
+      skipped: true,
+      lockBusy: true,
+      issues: { ok: false, count: 0 },
+      pulls: { ok: false, count: 0 },
+      runs: { ok: false, repos: 0, failedRepos: [] },
+      build: { ok: false, state: null },
+    };
+  }
+  return result;
+}
+
+async function syncGithubLocked(opts?: { nowFn?: () => Date }): Promise<SyncSummary> {
   const token = env.GITHUB_MONITOR_TOKEN;
   const nowFn = opts?.nowFn ?? (() => new Date());
 

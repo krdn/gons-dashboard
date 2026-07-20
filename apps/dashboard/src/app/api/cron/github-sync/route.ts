@@ -29,7 +29,8 @@ export const POST = createCronHandler({
     // 기록한다. summary 를 그대로 반환하면 전 소스가 실패해도 status=ok 로
     // 남아 관제의 수집기 자체가 관측 불가가 된다.
     //
-    // 토큰 미설정(skipped)은 실패가 아니다 — 의도적 비활성이므로 ok 로 둔다.
+    // 토큰 미설정(skipped)과 락 경합(lockBusy)은 실패가 아니다 —
+    // 전자는 의도적 비활성, 후자는 이전 회차가 아직 도는 정상 상황이다.
     if (!summary.skipped) {
       const failed = failedSources(summary);
       if (failed.length > 0) {
