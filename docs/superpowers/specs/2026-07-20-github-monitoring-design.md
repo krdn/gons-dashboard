@@ -205,15 +205,25 @@ Search 응답의 `incomplete_results: true` 는 GitHub 가 쿼리를 타임아�
 5. **토큰 미설정 시에도 기존 행을 지우지 않는다.** 동기화를 건너뛰고
    `lastAttemptAt` 만 갱신하며, 보드는 "동기화 비활성" 배지를 표시한다.
 
-보드는 `lastSuccessAt` 을 읽어 상태를 구분한다:
+보드는 아래를 **순서대로** 평가해 상태를 정한다. `lastError` 가 freshness 보다
+우선한다 — 최근에 성공한 적이 있어도 **직전 시도가 실패했으면 그 사실을 먼저
+알려야** 한다.
 
-| 조건 | 보드 표시 |
-|---|---|
-| `lastSuccessAt` 이 null | "아직 동기화된 적 없음" (empty state) |
-| `lastSuccessAt` 이 15분 이내 | 정상 |
-| `lastSuccessAt` 이 15분 초과 | **stale 배지 + `lastError` 표시** |
-| 토큰 미설정 + `lastSuccessAt` null | "동기화 비활성" (empty state) |
-| 토큰 미설정 + `lastSuccessAt` 있음 | 이전 스냅샷 + **"동기화 비활성" 배지** |
+| 순서 | 조건 | 보드 표시 |
+|---|---|---|
+| 1 | 토큰 미설정 + `lastSuccessAt` null | "동기화 비활성" (empty state) |
+| 2 | 토큰 미설정 + `lastSuccessAt` 있음 | 이전 스냅샷 + "동기화 비활성" 배지 |
+| 3 | **`lastError` 가 비어있지 않음** | 보유한 데이터 + **오류 배지 + `lastError`** |
+| 4 | `lastSuccessAt` 이 null | "아직 동기화된 적 없음" (empty state) |
+| 5 | `lastSuccessAt` 이 15분 초과 | 보유한 데이터 + **stale 배지** |
+| 6 | 그 외 | 정상 |
+
+3번이 4번보다 앞서므로 **첫 동기화가 부분 성공인 경우**(`lastSuccessAt` null +
+`lastError` 있음)에도 empty state 가 아니라 **성공한 레포의 행을 보여주면서
+오류 배지**를 단다. 데이터가 있는데 "없음"이라 표시하는 것을 막는다.
+
+**`lastError` 는 전체 성공 시 null 로 지운다.** 지우지 않으면 한 번 실패한 뒤
+영구히 오류 배지가 남는다.
 
 이 구분이 없으면 "이슈가 0건"과 "동기화가 죽어서 안 보임"을 혼동한다.
 
@@ -280,8 +290,10 @@ GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 
 `runAttempt = 1` 이 되어 순서를 정할 수 없다. `runNumber` 가 워크플로 전체에서
 단조 증가하므로 이것을 1차 키로 쓴다.
 
-실패 후 재실행 중이면 `building` 이 되며, 이는 의도된 동작이다
-(사람이 이미 조치 중이므로 알림을 유지할 필요가 없다).
+실패 후 재실행 중이면 `building` 이 되며, 이는 의도된 동작이다 —
+**보드에는 `building` 으로 표시하되, 성공이 확인되기 전까지 기존 critical
+이벤트는 해소하지 않는다** (§6 의 `building` no-op). 재실행이 다시 실패할 수
+있으므로 "조치 중"은 "복구됨"이 아니다.
 
 | 상태 | 조건 | severity |
 |---|---|---|
@@ -313,12 +325,19 @@ GitHub 의 `status` / `conclusion` 조합은 문서에 나온 것보다 넓다. 
 집계는 **workflow 별로 `(runNumber, runAttempt)` 최대인 run 하나씩** 취한 뒤
 정규화 결과로 판정한다 (§5.1 과 동일한 선택 규칙):
 
-| 결과 | 조건 |
-|---|---|
-| `failing` | 하나라도 `failure` |
-| `running` | `failure` 없고 하나라도 `running` |
-| `passing` | 전부 `success` |
-| `unknown` | 대상 run 없음, `pr.headSha` 미취득, 또는 전부 `inconclusive` |
+판정은 **순서대로 평가하고 마지막을 catch-all 로 둔다** — 명시 조건만 나열하면
+`success + inconclusive` 같은 혼합 조합이 어느 분기에도 걸리지 않는다.
+
+| 순서 | 결과 | 조건 |
+|---|---|---|
+| 1 | `failing` | 하나라도 `failure` |
+| 2 | `running` | (`failure` 없음) 하나라도 `running` |
+| 3 | `passing` | (위 둘 아님) 전부 `success` |
+| 4 | `unknown` | **그 외 전부** — 대상 run 없음, `pr.headSha` 미취득, 전부 `inconclusive`, `success`+`inconclusive` 혼합 |
+
+`success` + `inconclusive` 혼합이 `passing` 이 아닌 이유: 취소·스킵된 워크플로가
+있으면 그 검증은 수행되지 않았으므로 "통과"라 단정할 수 없다. 보수적으로
+`unknown` 으로 둔다 (§5.0 의 `inconclusive` 취급과 일관).
 
 `unknown` 은 경고로 취급하지 않는다 — PR 브랜치가 Actions 트리거 대상이
 아닌 정상 상태일 수 있기 때문.
@@ -385,7 +404,7 @@ GitHub 이벤트는 `/monitoring/github` 로 보내는 것이 맞으므로, noti
 
 ```
 shared/lib/db/schema/github.ts     # 신규 테이블 4개 + schema/index.ts 재export
-drizzle/00XX_github_monitoring.sql # 마이그레이션 (운영은 psql 선적용 — §9)
+drizzle/00XX_github_monitoring.sql # 마이그레이션 (운영은 psql BEGIN/COMMIT 선적용)
 
 entities/github-activity/
   model/types.ts        # GithubIssue, GithubPullRequest, GithubWorkflowRun,
@@ -479,8 +498,8 @@ compose 파일은 git 미동기화이므로 scp + sudo cp 선행 (메모리 `pro
 | 계층 | 대상 | 방식 |
 |---|---|---|
 | 순수 함수 | `normalizeRunOutcome` | GitHub 상태값 전수 + 미지의 값 → `inconclusive` |
-| 순수 함수 | `judgeBuildState` | 5개 상태 전이 + 10분 유예 경계 + `runAttempt` 선택 |
-| 순수 함수 | `derivePrCiStatus` | merge SHA 오조인 방지, workflow 별 최신 attempt 집계 |
+| 순수 함수 | `judgeBuildState` | 5개 상태 전이 + 10분 유예 경계 + `(runNumber, runAttempt)` 선택 |
+| 순수 함수 | `derivePrCiStatus` | merge SHA 오조인 방지, workflow 별 `(runNumber, runAttempt)` 최신 집계, 혼합 조합 catch-all |
 | 순수 함수 | `judgeStaleness` | 7일/14일 경계, draft 제외 |
 | API 클라이언트 | `githubClient` | fetch mock — 페이지네이션, `incomplete_results`, 401/403/429 |
 | 통합 | `github-sync` 라우트 | `TEST_DATABASE_URL` — 교체·부분실패 보존·이벤트 발행 |
@@ -504,6 +523,13 @@ compose 파일은 git 미동기화이므로 scp + sudo cp 선행 (메모리 `pro
 7. `incomplete_results: true` 응답으로 스냅샷이 교체되지 않는다.
 8. 일부 레포 Actions 조회 실패 시 그 레포 run 은 유지되고 나머지는 갱신되며,
    `runs` 의 `lastSuccessAt` 은 갱신되지 않는다 (§4.3).
+9. 전체 성공 시 `lastError` 가 null 로 지워진다 (오류 배지가 영구히 남지 않음).
+
+UI 상태 판정 (§4.2 표):
+10. `lastSuccessAt` null + `lastError` 있음 (첫 동기화 부분 성공) → empty state 가
+    아니라 **성공한 레포의 행 + 오류 배지**.
+11. `lastSuccessAt` 이 15분 이내 + `lastError` 있음 → 정상이 아니라 **오류 배지**
+    (freshness 보다 `lastError` 가 우선).
 
 `judgeBuildState` 의 10분 유예는 **시각 주입**으로 테스트한다 (`nowFn` 파라미터).
 메모리 `cron-catchup-wait-not-finite-retry` 의 교훈 — wall-clock 의존 로직은
@@ -517,6 +543,9 @@ compose 파일은 git 미동기화이므로 scp + sudo cp 선행 (메모리 `pro
 1. **`deploy-lagging` 판정** — deploy-watcher 가 배포 성공 시 digest 를 DB 에
    기록하도록 확장한 뒤, main HEAD ↔ Build ↔ 운영 digest 3자 비교로 승격.
    이것이 완성되면 "CI Build success ≠ 운영 배포" 함정이 완전히 관제로 편입된다.
-2. **레포별 필터** — 레포 수가 늘어 보드가 붐비면 레포 선택 UI 추가.
-3. **추세** — 주간 이슈 유입/해소 비율. 현재 스냅샷 모델로는 불가하며
+2. **`(source, repo)` 복합키 sync state** — 현재 `runs` 는 단일 행이라 한 레포만
+   실패해도 전체가 stale 로 표시된다(§4.3). 레포 수가 늘어 이 보수적 표시가
+   실용성을 해치면 레포 단위 상태로 전환한다.
+3. **레포별 필터** — 레포 수가 늘어 보드가 붐비면 레포 선택 UI 추가.
+4. **추세** — 주간 이슈 유입/해소 비율. 현재 스냅샷 모델로는 불가하며
    히스토리 테이블이 필요하다. 실제 필요가 생기기 전까지 보류 (YAGNI).
