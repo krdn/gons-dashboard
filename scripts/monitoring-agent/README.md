@@ -31,6 +31,11 @@ INTERVAL_SEC=15
 WATCH_SERVICES="nginx docker fail2ban ufw ollama telegram-bot smbd nmbd"
 # systemd 타이머 (§C-3)
 WATCH_TIMERS="n8n-backup.timer n8n-update.timer certbot.timer"
+# 데이터스토어 liveness 스펙 "kind|이름|포트" (Phase 3 §G).
+# 포트 빈 값 = 미노출 → 항상 "관찰 불가"(설계상 정상).
+# ⚠️ 판정의 단일 소스는 서버측 features/monitoring-datastore/config/instances.ts —
+# 이 env 와 갈리면 보드에 not-reported / spec-mismatch 로 뜬다. 둘을 함께 갱신할 것.
+DATASTORE_SPECS="pg|gons-dashboard|5440 pg|ais-prod|5438 pg|krdn-timescaledb|5435 pg|voice|5437 pg|n8n|5434 pg|ais|5436 pg|sms-insights| redis|gons-dashboard|6390 redis|ais-prod|6385 redis|news-prod|6380 redis|voice|6382 redis|n8n|"
 # 호스트 cron 판정 스펙 "이름|로그경로|maxAge분" (§C-2)
 # maxAge분 = 주기 + 여유 (매시 잡=75, 매일 잡=1500). 로그가 이 시간 넘게
 # 갱신 안 되면 서버가 "실행 흔적 없음" 판정 (warning, 2배 초과 시 critical).
@@ -119,3 +124,28 @@ journalctl -u gons-monitoring-agent -n 20 --no-pager
     `Type=oneshot` 은 종료가 곧 중지라 파일을 쓰자마자 디렉토리가 삭제된다 (실측 확인).
   - 스냅샷이 15분 넘게 낡으면 에이전트가 중계하지 않는다 — 낡은 값을 현재값으로
     재사용하지 않기 위함. 보드에는 "관찰 불가" 로 뜬다.
+- 데이터스토어 프로브 관련 (Phase 3 §G):
+  - 운영 호스트에 `pg_isready`·`redis-cli` 가 **없어** `nc` 단독으로 구현했다
+    (설계 스펙은 전자를 1순위로 뒀으나 실측 부재 → 편차).
+  - **`nc -z`(TCP 핸드셰이크만) 를 쓰지 않는다.** 도커 포트포워딩은 살아있는데
+    뒤의 프로세스가 죽은 경우에도 성공해 "죽었는데 초록" 이 된다. 대신 프로토콜
+    최소 요청을 보내고 응답 시그니처를 **화이트리스트**로 확인한다
+    (PG=SSLRequest→`S`/`N`, Redis=`PING`→`+PONG`).
+  - ⚠️ 이 판정 로직은 셸 안에 있어 **TS 테스트가 닿지 않는다.** 프로브를 고칠 때는
+    아래 4케이스를 호스트에서 직접 재확인할 것 (2026-07-20 실측 기준):
+
+    | 대상 | 기대 |
+    |---|---|
+    | 살아있는 PG (5440) | `reachable:true` |
+    | 살아있는 Redis (6390) | `reachable:true` |
+    | 닫힌 포트 (5999) | `reachable:false` |
+    | **다른 프로토콜 (nginx 80)** | `reachable:false` ← 화이트리스트가 없으면 여기서 오탐 |
+    | **비밀번호 걸린 Redis** | `reachable:true` ← `-NOAUTH ...` 도 살아있다는 증거 |
+
+    ```bash
+    HOST_NAME=home-server \
+      DATASTORE_SPECS='pg|live|5440 redis|live|6390 pg|closed|5999 pg|wrongproto|80' \
+      /opt/gons/monitoring-agent/agent.sh --dry-run | tr ',' '\n' | grep -A99 datastores
+    ```
+  - 프로브는 대상당 약 1초(응답 대기) 순차 실행 — 12개면 정상 시 ~10초.
+    checks 주기(60초) 안이라 문제없지만 목록을 크게 늘릴 땐 감안할 것.

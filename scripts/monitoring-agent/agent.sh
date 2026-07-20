@@ -191,10 +191,92 @@ read_security_json() {
   head -c 100000 "$SECURITY_FILE" | tr -d '\n'
 }
 
+# 데이터스토어 liveness (Phase 3 §G) — 특권 불요라 에이전트가 직접 프로브한다.
+#
+# ⚠️ `nc -z`(TCP 핸드셰이크만) 를 쓰지 않는다. 도커 포트포워딩은 살아있는데
+# 뒤의 프로세스가 죽은 경우에도 성공해 "죽었는데 초록" 이 된다. 대신 각
+# 프로토콜의 최소 요청을 보내고 **응답 시그니처를 화이트리스트로** 확인한다.
+#
+# 운영 실측 2026-07-20 (이 판정의 유일한 가드 — TS 테스트가 닿지 않는다):
+#   PG 살아있음   → 'S' 또는 'N'  (SSLRequest 응답)
+#   Redis 살아있음 → '+PONG'
+#   포트 닫힘      → 빈 응답
+#   다른 프로토콜(nginx) → 'H' / 'HTTP/'  ← 비어있지 않다고 ok 로 보면 오탐
+#
+# pg_isready/redis-cli 는 운영 호스트에 없어 nc 단독으로 구현한다(스펙 편차).
+DATASTORE_SPECS="${DATASTORE_SPECS:-}"
+DATASTORE_PROBE_TIMEOUT="${DATASTORE_PROBE_TIMEOUT:-5}"
+
+# PG SSLRequest: 길이 8 + 코드 80877103. 살아있으면 'S'(SSL 가능)/'N'(불가) 1바이트.
+probe_pg() {
+  local port="$1" reply
+  reply=$( { printf '\000\000\000\010\004\322\026\057'; sleep 1; } \
+    | timeout "$DATASTORE_PROBE_TIMEOUT" nc 127.0.0.1 "$port" 2>/dev/null | head -c 1 )
+  [ "$reply" = "S" ] || [ "$reply" = "N" ]
+}
+
+# PING → '+PONG'. 비밀번호가 걸린 인스턴스는 '-NOAUTH Authentication required.' 를
+# 돌려주는데 이것도 **살아있다는 증거**라 ok 다(스펙 §B-1). 다만 '-' 로 시작하는
+# 응답 전체를 허용하면 안 된다 — 아무 오류 문자열이나 liveness 로 통과한다.
+# 실측 2026-07-20: requirepass 컨테이너가 정확히 위 문자열을 반환.
+probe_redis() {
+  local port="$1" reply
+  reply=$( { printf 'PING\r\n'; sleep 1; } \
+    | timeout "$DATASTORE_PROBE_TIMEOUT" nc 127.0.0.1 "$port" 2>/dev/null \
+    | head -c 40 | tr -d '\r\n' )
+  [ "$reply" = "+PONG" ] || [ "$reply" = "-NOAUTH Authentication required." ]
+}
+
+# "kind|target|port" 목록 → JSON 배열 요소들. port 빈 값 = 미노출.
+build_datastore_json() {
+  local spec kind target port out="" reachable
+  for spec in $DATASTORE_SPECS; do
+    IFS='|' read -r kind target port <<<"$spec"
+    [ -n "$kind" ] && [ -n "$target" ] || continue
+    if [ "$kind" != "pg" ] && [ "$kind" != "redis" ]; then
+      echo "[agent] DATASTORE_SPECS: 알 수 없는 kind '$kind' — 건너뜀" >&2
+      continue
+    fi
+    # ⚠️ 정규화 **후** 재검증한다. 서버 Zod 가 payload 전체를 검사하므로 잘못된
+    # 항목 하나가 400 을 내면 checks push 가 통째로 죽어 heartbeat 까지 끊긴다
+    # (관측 공백이 아니라 관측 정지 — 보드에 직전 상태가 남는다).
+    target="${target//[^A-Za-z0-9._-]/}"
+    if [ -z "$target" ] || [ "${#target}" -gt 60 ]; then
+      echo "[agent] DATASTORE_SPECS: 잘못된 target '$spec' — 건너뜀" >&2
+      continue
+    fi
+
+    if [ -z "$port" ]; then
+      out="${out:+$out,}{\"kind\":\"$kind\",\"target\":\"$target\",\"observed\":false,\"reason\":\"not-exposed\"}"
+      continue
+    fi
+    # 1..65535 밖이면 Zod 가 거부한다 — 0·65536 은 숫자 검사만으로는 통과한다.
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+      echo "[agent] DATASTORE_SPECS: 잘못된 포트 '$spec' — 건너뜀" >&2
+      continue
+    fi
+
+    # nc 부재는 오탐 대신 관측 불가 — 없는 도구로 죽었다고 단정하지 않는다.
+    if ! command -v nc >/dev/null 2>&1; then
+      out="${out:+$out,}{\"kind\":\"$kind\",\"target\":\"$target\",\"port\":$port,\"observed\":false,\"reason\":\"nc-missing\"}"
+      continue
+    fi
+
+    if [ "$kind" = "pg" ]; then
+      probe_pg "$port" && reachable=true || reachable=false
+    else
+      probe_redis "$port" && reachable=true || reachable=false
+    fi
+    out="${out:+$out,}{\"kind\":\"$kind\",\"target\":\"$target\",\"port\":$port,\"observed\":true,\"reachable\":$reachable}"
+  done
+  printf '%s' "$out"
+}
+
 build_checks_payload() {
-  local svc_json="" timer_json="" cron_json="" sec_json=""
+  local svc_json="" timer_json="" cron_json="" sec_json="" ds_json=""
   local unit state nrestarts
   sec_json=$(read_security_json) || sec_json=""
+  ds_json=$(build_datastore_json)
 
   for unit in $WATCH_SERVICES; do
     state=$(systemctl is-active "$unit" 2>/dev/null)
@@ -246,6 +328,7 @@ build_checks_payload() {
   [ -n "$timer_json" ] && printf ',"timers":[%s]' "$timer_json"
   [ -n "$cron_json" ] && printf ',"hostCron":[%s]' "$cron_json"
   [ -n "$sec_json" ] && printf ',"security":%s' "$sec_json"
+  [ -n "$ds_json" ] && printf ',"datastores":[%s]' "$ds_json"
   printf '}'
 }
 
