@@ -246,6 +246,16 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 5분마다 — GitHub 이슈·PR·Actions 스냅샷 동기화 (관제 #323).
+// 수집 잡: 놓친 주기는 다음 5분이 대체 — catchup·retry 제외.
+cron.schedule(
+  "*/5 * * * *",
+  () => {
+    void callCron("/api/cron/github-sync", "github-sync", 120_000);
+  },
+  { timezone: TIMEZONE },
+);
+
 // autopilot — 5분 주기로 새 이미지 감지·배포·검증·롤백 (AUTOPILOT_DEPLOY=on 일 때만).
 if (process.env.AUTOPILOT_DEPLOY === "on") {
   cron.schedule(
