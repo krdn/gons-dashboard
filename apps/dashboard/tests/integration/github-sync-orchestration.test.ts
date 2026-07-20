@@ -206,6 +206,24 @@ describe("syncGithub — 성공 경로", () => {
     ];
   }
 
+  // ⚠️ 클라이언트 단위 테스트는 "ci.yml" 을 직접 넘기므로, syncBuild 가 다시
+  // 전체 경로를 넘겨도 통과한다. 실제 배선이 만드는 URL 을 여기서 고정한다.
+  it("Build run 조회 URL 이 파일명 route 다 (%2F 미포함)", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    mockFetchByPath(buildRoutes("success"));
+
+    const syncGithub = await loadSync("tok");
+    await syncGithub();
+
+    const wfUrl = spy.mock.calls
+      .map((c) => String(c[0]))
+      .find((u) => u.includes("/actions/workflows/"));
+    expect(wfUrl).toBeDefined();
+    expect(wfUrl).toContain("/actions/workflows/ci.yml/runs");
+    expect(wfUrl).not.toContain("%2F");
+    expect(wfUrl).toContain("branch=main");
+  });
+
   it("build 실패 시 critical 이벤트를 발행한다", async () => {
     mockFetchByPath(buildRoutes("failure"));
     const syncGithub = await loadSync("tok");
@@ -403,6 +421,38 @@ describe("syncGithub — Actions 부분 실패", () => {
     const repos = (await db.select().from(githubWorkflowRuns)).map((r) => r.id);
     expect(repos).not.toContain("gone"); // 비활성 레포 정리됨
     expect(repos).toContain("kept"); // 조회 실패한 활성 레포는 보존
+  });
+
+  // 목록이 페이지 상한에서 잘렸으면(complete=false) prune 하지 않는다.
+  // 잘린 목록으로 NOT IN 삭제하면 상한 밖 레포의 정상 run 이 매 주기 지워진다 —
+  // 유령 run 이 남는 것보다 나쁜 데이터 손실이다.
+  it("레포 목록이 잘렸으면 정리를 건너뛴다", async () => {
+    await db
+      .insert(githubWorkflowRuns)
+      .values(makeRunRow({ id: "beyond-limit", repo: "krdn/page3-repo" }));
+
+    // 2페이지 모두 100건 가득 + 전부 활성 → cutoff 미도달 → complete=false
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({
+      full_name: `krdn/r${i}`,
+      pushed_at: new Date().toISOString(),
+    }));
+
+    mockFetchByPath([
+      { match: /search\/issues/, body: EMPTY_SEARCH },
+      {
+        match: /commits\/main/,
+        body: { sha: "x", commit: { committer: { date: new Date().toISOString() } } },
+      },
+      { match: /actions\/workflows/, body: { workflow_runs: [] } },
+      { match: /orgs\/krdn\/repos/, body: fullPage },
+      { match: /actions\/runs/, body: { workflow_runs: [] } },
+    ]);
+
+    const syncGithub = await loadSync("tok");
+    await syncGithub();
+
+    const ids = (await db.select().from(githubWorkflowRuns)).map((r) => r.id);
+    expect(ids).toContain("beyond-limit");
   });
 
   // 레포 목록 조회 자체가 실패하면 정리를 하지 않는다 — 빈 목록으로

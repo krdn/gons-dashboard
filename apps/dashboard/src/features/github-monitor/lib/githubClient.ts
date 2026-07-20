@@ -116,32 +116,64 @@ interface RawRepo {
   pushed_at: string | null;
 }
 
+export interface ActiveRepos {
+  repos: string[];
+  /**
+   * 목록을 끝까지 훑었는지. false = 페이지 상한에서 잘렸다는 뜻이므로
+   * 호출자는 이 목록을 "전체"로 간주하는 작업(prune 등)을 해선 안 된다.
+   */
+  complete: boolean;
+}
+
+/**
+ * 레포 목록 조회 — org 엔드포인트를 먼저 시도하고 404 면 user 로 폴백한다.
+ *
+ * ⚠️ `GITHUB_MONITOR_ORG` 가 organization 이 아니라 **개인 계정**일 수 있다.
+ * 실제 `krdn` 이 그렇다(User, 레포 181개) — `/orgs/krdn/repos` 는 영구히 404 라
+ * 폴백이 없으면 Actions 수집이 통째로 죽는다. Search API 의 `org:` 한정자는
+ * User 계정에도 동작해 이슈·PR 은 정상이므로, 이 실패는 조용히 부분 기능만 잃는다.
+ */
+async function listRepos(token: string, owner: string, page: number): Promise<RawRepo[]> {
+  const query = `?sort=pushed&direction=desc&per_page=${PER_PAGE}&page=${page}`;
+  try {
+    return await gh<RawRepo[]>(token, `/orgs/${owner}/repos${query}`);
+  } catch (err) {
+    if (err instanceof GithubApiError && err.status === 404) {
+      return await gh<RawRepo[]>(token, `/users/${owner}/repos${query}`);
+    }
+    throw err;
+  }
+}
+
 export async function listActiveRepos(
   token: string,
   org: string,
   nowFn: () => Date = () => new Date(),
-): Promise<string[]> {
+): Promise<ActiveRepos> {
   const cutoff = nowFn().getTime() - ACTIVE_REPO_WINDOW_MS;
   const active = new Set<string>();
+  // 목록을 끝까지 훑었는가. false 면 pruneRunsNotIn 을 건너뛴다 —
+  // 잘린 목록으로 NOT IN 삭제하면 상한 밖 레포의 정상 run 이 매 주기 지워진다.
+  let complete = false;
 
   for (let page = 1; page <= REPO_LIST_MAX_PAGES; page++) {
-    const repos = await gh<RawRepo[]>(
-      token,
-      `/orgs/${org}/repos?sort=pushed&direction=desc&per_page=${PER_PAGE}&page=${page}`,
-    );
+    const repos = await listRepos(token, org, page);
     let hitCutoff = false;
     for (const r of repos) {
       const pushed = r.pushed_at == null ? 0 : Date.parse(r.pushed_at);
       if (pushed >= cutoff) active.add(r.full_name);
       else hitCutoff = true;
     }
-    // pushed 내림차순이므로 cutoff 를 만났거나 페이지가 덜 찼으면 멈춘다.
-    if (hitCutoff || repos.length < PER_PAGE) break;
+    // pushed 내림차순이므로 cutoff 를 만났거나 페이지가 덜 찼으면 전부 본 것이다.
+    if (hitCutoff || repos.length < PER_PAGE) {
+      complete = true;
+      break;
+    }
   }
 
   // 활성 필터와 무관하게 항상 포함 — 배포 파이프라인 판정 대상이다.
   active.add(BUILD_REPO);
-  return [...active];
+  return { repos: [...active], complete };
 }
 
 export async function listWorkflowRuns(token: string, repo: string): Promise<RawRun[]> {

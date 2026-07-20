@@ -85,9 +85,62 @@ describe("listActiveRepos", () => {
         { full_name: "krdn/b", pushed_at: daysAgo(30) },
       ]),
     );
-    const repos = await listActiveRepos(TOKEN, "krdn", nowFn);
+    const { repos } = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(repos).toContain("krdn/a");
     expect(repos).not.toContain("krdn/b");
+  });
+
+  // ⚠️ GITHUB_MONITOR_ORG 가 organization 이 아닐 수 있다. 실제 krdn 은
+  // User 계정(레포 181개)이라 /orgs/krdn/repos 는 영구히 404 다 —
+  // 폴백이 없으면 Actions 수집이 통째로 죽는다.
+  it("org 가 404 면 users 엔드포인트로 폴백한다", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/orgs/")) {
+        return Promise.resolve(jsonResponse({ message: "Not Found" }, 404));
+      }
+      return Promise.resolve(
+        jsonResponse([{ full_name: "krdn/a", pushed_at: daysAgo(1) }]),
+      );
+    });
+
+    const { repos } = await listActiveRepos(TOKEN, "krdn", nowFn);
+
+    expect(repos).toContain("krdn/a");
+    expect(spy.mock.calls.some((c) => String(c[0]).includes("/users/krdn/repos"))).toBe(true);
+  });
+
+  it("org 가 404 가 아닌 에러면 폴백하지 않고 전파한다", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ message: "rate limited" }, 429),
+    );
+    await expect(listActiveRepos(TOKEN, "krdn", nowFn)).rejects.toMatchObject({ status: 429 });
+  });
+
+  // complete=false 로 prune 을 건너뛰게 하는 신호. 이게 없으면 잘린 목록으로
+  // NOT IN 삭제가 일어나 상한 밖 레포의 정상 run 이 매 주기 지워진다.
+  it("cutoff 를 만나면 complete=true", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([
+        { full_name: "krdn/a", pushed_at: daysAgo(1) },
+        { full_name: "krdn/old", pushed_at: daysAgo(30) },
+      ]),
+    );
+    const r = await listActiveRepos(TOKEN, "krdn", nowFn);
+    expect(r.complete).toBe(true);
+  });
+
+  it("페이지 상한까지 전부 활성이면 complete=false", async () => {
+    // 2페이지 모두 100건 가득 + 전부 활성 → cutoff 를 못 만나고 상한에서 끊긴다
+    const full = Array.from({ length: 100 }, (_, i) => ({
+      full_name: `krdn/r${i}`,
+      pushed_at: daysAgo(1),
+    }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      Promise.resolve(jsonResponse(full)),
+    );
+    const r = await listActiveRepos(TOKEN, "krdn", nowFn);
+    expect(r.complete).toBe(false);
   });
 
   // 배포 파이프라인 판정 대상이라 push 가 없어도 항상 포함해야 한다.
@@ -95,7 +148,7 @@ describe("listActiveRepos", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse([{ full_name: "krdn/gons-dashboard", pushed_at: daysAgo(365) }]),
     );
-    const repos = await listActiveRepos(TOKEN, "krdn", nowFn);
+    const { repos } = await listActiveRepos(TOKEN, "krdn", nowFn);
     expect(repos).toContain("krdn/gons-dashboard");
   });
 });

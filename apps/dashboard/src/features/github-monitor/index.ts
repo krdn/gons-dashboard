@@ -155,8 +155,9 @@ async function syncRuns(token: string, org: string): Promise<SyncSummary["runs"]
   await upsertSyncState("runs", { lastAttemptAt: now });
 
   let repos: string[];
+  let listComplete: boolean;
   try {
-    repos = await listActiveRepos(token, org);
+    ({ repos, complete: listComplete } = await listActiveRepos(token, org));
   } catch (err) {
     await upsertSyncState("runs", { lastError: errMsg(err) });
     return { ok: false, repos: 0, failedRepos: [] };
@@ -176,11 +177,21 @@ async function syncRuns(token: string, org: string): Promise<SyncSummary["runs"]
   // 대상 목록 밖 레포의 run 정리 — 활성 기간(7일) 밖으로 밀려난 레포의 run 이
   // 남으면 보드의 "Actions 실패" 카운트에 유령 실패로 영구히 잡힌다.
   // repos 에는 조회 실패한 레포도 포함되므로 그 이전 스냅샷은 보존된다.
-  try {
-    await pruneRunsNotIn(repos);
-  } catch (err) {
-    // 정리 실패가 동기화 자체를 실패시키지는 않는다 — 다음 회차가 재시도한다.
-    logger.warn("github-monitor", "prune-runs-failed", { error: errMsg(err) });
+  //
+  // ⚠️ 목록이 페이지 상한에서 잘렸으면(complete=false) 정리하지 않는다.
+  // 잘린 목록으로 NOT IN 삭제하면 상한 밖 레포의 정상 run 이 매 주기 지워진다 —
+  // 유령 run 이 남는 것보다 나쁜 데이터 손실이다.
+  if (listComplete) {
+    try {
+      await pruneRunsNotIn(repos);
+    } catch (err) {
+      // 정리 실패가 동기화 자체를 실패시키지는 않는다 — 다음 회차가 재시도한다.
+      logger.warn("github-monitor", "prune-runs-failed", { error: errMsg(err) });
+    }
+  } else {
+    logger.warn("github-monitor", "prune-skipped-incomplete-repo-list", {
+      repos: repos.length,
+    });
   }
 
   if (failedRepos.length > 0) {
