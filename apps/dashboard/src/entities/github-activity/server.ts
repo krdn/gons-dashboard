@@ -10,6 +10,13 @@ export {
   getBuildState,
 } from "./api/queries";
 
+export {
+  replaceIssues,
+  replacePrs,
+  replaceRunsForRepo,
+  upsertSyncState,
+} from "./api/sync";
+
 export type {
   BuildState,
   PrCiStatus,
