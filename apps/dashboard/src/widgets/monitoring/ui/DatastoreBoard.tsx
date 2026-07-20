@@ -89,6 +89,12 @@ export function DatastoreBoard({
   const rows = [...checks].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.target.localeCompare(b.target),
   );
+  // 헤더 배지용 — 지표 이상 건수(liveness 상태 열이 표현하지 못하는 위험).
+  const statAlert = {
+    critical: stats.filter((s) => s.status === "critical").length,
+    total: stats.filter((s) => s.status === "critical" || s.status === "warning").length,
+  };
+
 
   return (
     <section
@@ -103,6 +109,25 @@ export function DatastoreBoard({
         <span className="font-mono text-xs font-medium tabular-nums text-[var(--color-text-muted)]">
           {rows.length}
         </span>
+        {/*
+          ⚠️ 심층지표의 warning/critical 은 liveness 상태 열에 나타나지 않는다
+          (liveness 는 "응답하나"만 본다). 헤더에 건수만 있으면 800MiB 경고가
+          떠 있어도 보드 전체가 "12개 정상"으로 읽힌다 — 집계가 실제 판정을
+          가리지 않도록 지표 이상 건수를 헤더에 노출한다.
+        */}
+        {statAlert.total > 0 && (
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-semibold"
+            style={{
+              color: statAlert.critical > 0
+                ? "var(--color-severity-high)"
+                : "var(--color-warn)",
+              backgroundColor: "var(--color-surface-2)",
+            }}
+          >
+            지표 이상 {statAlert.total}
+          </span>
+        )}
       </h2>
       {rows.length === 0 ? (
         <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">

@@ -205,9 +205,16 @@ collect_datastore_stats() {
       rc=$?
       mem=$(printf '%s' "$out" | grep -E '^used_memory:' | head -1 | tr -d ' \r' | cut -d: -f2)
       conns=$(printf '%s' "$out" | grep -E '^connected_clients:' | head -1 | tr -d ' \r' | cut -d: -f2)
+      # maxmemory·정책은 INFO 에 없다 — CONFIG GET 으로 따로 조회한다.
+      # 이 둘이 있어야 "상한 대비 몇 %"와 "가득 차면 축출인가 쓰기 실패인가"를
+      # 판정할 수 있다. 절대 크기만으로는 위험도를 알 수 없다.
+      maxmem=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory 2>/dev/null | tail -1 | tr -d ' \r')
+      policy=$(timeout "$CMD_TIMEOUT" docker exec "$cont" redis-cli CONFIG GET maxmemory-policy 2>/dev/null | tail -1 | tr -d ' \r')
       if [ $rc -eq 0 ] && [[ "$mem" =~ ^[0-9]+$ ]]; then
         entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":true,\"memBytes\":$mem"
         [[ "$conns" =~ ^[0-9]+$ ]] && entry="$entry,\"conns\":$conns"
+        [[ "$maxmem" =~ ^[0-9]+$ ]] && entry="$entry,\"maxMemBytes\":$maxmem"
+        [[ "$policy" =~ ^[a-z-]+$ ]] && entry="$entry,\"evictionPolicy\":\"$policy\""
         entry="$entry}"
       else
         entry="{\"kind\":\"redis\",\"target\":\"$target\",\"observed\":false,\"reason\":\"exec-failed-rc$rc\"}"
