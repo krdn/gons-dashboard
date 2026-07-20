@@ -25,3 +25,12 @@ if (env.NODE_ENV !== "production") {
 
 export const db = drizzle(pgClient, { schema });
 export type DbClient = typeof db;
+
+/**
+ * raw postgres.js 클라이언트 — advisory lock 처럼 **전용 연결**이 필요한
+ * 작업에만 쓴다(`sql.reserve()`). 일반 쿼리는 `db`(drizzle)를 쓸 것.
+ *
+ * 왜 필요한가: `pg_advisory_lock` 은 세션 단위라 락을 잡은 연결과 푸는 연결이
+ * 같아야 한다. 풀에서 매번 다른 연결이 나오면 락이 영구히 남는다.
+ */
+export const sqlClient = pgClient;

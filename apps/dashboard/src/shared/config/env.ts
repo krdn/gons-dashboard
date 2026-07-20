@@ -153,6 +153,29 @@ const schema = z.object({
     z.string().min(1).optional(),
   ),
 
+  // GitHub 관제 (이슈 #323) — 둘 다 선택. 토큰 미설정 시 동기화 cron 이
+  // skip 하고 보드는 "동기화 비활성" 배지를 표시한다(기존 스냅샷은 유지).
+  // 토큰 누락이 앱 부팅을 막으면 안 되므로 필수로 만들지 않는다.
+  // compose 가 `${VAR:-}` 로 빈 문자열을 넘기므로 preprocess 로 "" → undefined.
+  GITHUB_MONITOR_TOKEN: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().min(1).optional(),
+  ),
+  GITHUB_MONITOR_ORG: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().min(1).default("krdn"),
+  ),
+  // 대상 목록 밖 레포의 workflow run 을 삭제할지 (기본 off).
+  //
+  // ⚠️ 켜기 전에 토큰이 **소유자의 모든 레포**에 접근하는지 확인할 것.
+  // Fine-grained PAT 는 레포를 선택적으로 허용할 수 있는데, 그 상태로 켜면
+  // 권한 밖 레포의 run 이 매 주기 삭제된다. 계정 타입만으로는 이를 알 수 없어
+  // 자동 판정하지 않는다 — 꺼두면 유령 run 이 보드에 남을 뿐 데이터는 안전하다.
+  GITHUB_MONITOR_PRUNE_RUNS: z.preprocess(
+    (v) => v === "true" || v === "1",
+    z.boolean().default(false),
+  ),
+
   // 타임존 (cron + DB 쿼리에 결정적)
   TZ: z.literal("Asia/Seoul").default("Asia/Seoul"),
 });

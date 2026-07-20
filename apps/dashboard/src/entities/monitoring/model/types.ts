@@ -45,7 +45,8 @@ export type EventSource =
   | "service"
   | "security"
   | "ssl"
-  | "http";
+  | "http"
+  | "github";
 
 export interface MonitoringEventInput {
   source: EventSource;

@@ -8,7 +8,7 @@
 - **도메인 (현재)**:
   - **Email 분석** — Gmail 폴링 → LLM 분류(important/reply-needed) → 위젯 표시·푸시
   - **Server Infra Monitor** — 등록된 Docker host들의 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그)
-  - **실시간 관제 (Monitoring)** — 호스트 에이전트 push(vitals+checks) + docker stats cron + `cron_runs` 계측 + 이벤트 타임라인 + HTTP/SSL 체크 + systemd·호스트 cron 판정 + critical 알림(텔레그램/web-push) → `/monitoring` (이슈 #323 Phase 1·2, 에이전트: `scripts/monitoring-agent/`)
+  - **실시간 관제 (Monitoring)** — 호스트 에이전트 push(vitals+checks) + docker stats cron + `cron_runs` 계측 + 이벤트 타임라인 + HTTP/SSL 체크 + systemd·호스트 cron 판정 + critical 알림(텔레그램/web-push) → `/monitoring` (인프라 탭) + `/monitoring/github` (krdn org 이슈·PR·Actions, 5분 폴링 — main Build 실패를 critical 이벤트로 발행) (이슈 #323, 에이전트: `scripts/monitoring-agent/`)
   - **Saju (사주)** — 외부 빌더 `@krdn/saju` (github:krdn/saju) 소비 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
   - **Stock Analysis (증권 종목)** — `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 (Phase 1~8 진행 중)
   - **Memo** — 메모 작성·관리 + LLM 변환 프리셋 (`features/memo-{compose,manage,preset-manage,transform}`, `MEMO_LLM_MODEL_*`)
@@ -257,6 +257,7 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | MCP / PlayMCP | `MCP_DASHBOARD_TOKEN`, `PLAYMCP_GATEWAY_URL`, `PLAYMCP_CLIENT_ID`, `PLAYMCP_BOOTSTRAP_OTT` | ✓ (MCP stdio + PlayMCP 게이트웨이 사용 시) |
 | 관제 | `METRICS_INGEST_TOKEN` | ✓ (호스트 에이전트 → metrics/checks-ingest 인증, 회전 시 호스트 `/etc/default/gons-monitoring-agent` 동시 교체) |
 | 관제 Phase 2 | `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | 선택 — 빈 값이면 해당 기능만 비활성 (hairpin 회피 IP / 텔레그램 알림) |
+| GitHub 관제 | `GITHUB_MONITOR_TOKEN`, `GITHUB_MONITOR_ORG` | 선택 — 미설정 시 `/monitoring/github` 보드만 비활성(기존 스냅샷 유지). Fine-grained PAT, read-only: Issues·PR·Actions·Metadata |
 
 **시크릿은 어떤 형태로도 저장소에 커밋 금지** — README, 주석, 마크다운 본문 포함.
 
