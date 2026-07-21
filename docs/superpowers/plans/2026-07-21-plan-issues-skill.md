@@ -155,22 +155,12 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 #    401/5xx 등 실제 오류는 삼키지 말고 중단 (배포된 REFERENCE.md 가 정본):
 # --include 로 상태줄+본문을 한 번에 받아 재조회 없이 처리(2차 호출 실패 무시 방지).
 # 상태는 에러 텍스트가 아니라 실제 HTTP 상태 코드(상태줄 3자리)로 분기.
-RESP=$(gh api --include /orgs/krdn/issue-types 2>&1)
-CODE=$(printf '%s\n' "$RESP" | sed -n 's#^HTTP/[0-9.]* \([0-9]\{3\}\).*#\1#p' | head -1)
-TYPES=""   # ★case 진입 전 초기화 — 어떤 폴백 경로(404·기타)든 이전 시도의 stale 값을 물려받지 않음
-case "$CODE" in
-  200) # 헤더/본문 경계(첫 빈 줄) 이후 본문만 떼어 그 자리서 파싱 — 재조회 없음.
-       # jq -e: 빈 본문·malformed·빈 배열이면 non-zero → 200이라도 타입을 못 뽑았으면 라벨 폴백.
-       BODY=$(printf '%s\n' "$RESP" | awk 'f{print} /^\r?$/{f=1}')
-       if TYPES=$(printf '%s' "$BODY" | jq -e -r '.[].name'); then
-         : # $TYPES 확보 → 이슈에 지정
-       else
-         TYPES=""   # jq 부분 출력 후 실패 시 부분값이 남지 않도록 명시 무효화
-         echo "issue-types 200 이나 본문이 비었거나 malformed(타입 0) → 라벨 폴백(type:feature/type:task)" >&2
-       fi ;;
-  404) echo "issue-types 미설정(404) → 라벨 폴백(type:feature/type:task)" >&2 ;;
-  *)   echo "issue-types 조회 실패(HTTP ${CODE:-?}) — 인증·네트워크 확인 후 중단" >&2; exit 1 ;;
-esac
+# issue type — gh issue create 는 --type 미지원.
+# `gh api /orgs/krdn/issue-types` 로 조회하되, 실행자가 결과를 판단해 처리:
+#   · 타입 목록 확보 → 이슈에 그 타입 지정(graphql)
+#   · org 미설정(404) → 라벨 폴백(type:feature / type:task)
+#   · 인증·네트워크 오류(401/5xx) → 삼키지 말고 사용자에게 알림
+# (지침이다 — 완전한 셸 에러 처리를 복붙하지 말고 위 의도대로 구성)
 
 # 2. umbrella 이슈 생성 (본문 파일로)
 gh issue create --repo krdn/gons-dashboard --title "<제목>" --body-file /tmp/umbrella.md
