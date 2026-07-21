@@ -158,8 +158,14 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 RESP=$(gh api --include /orgs/krdn/issue-types 2>&1)
 CODE=$(printf '%s\n' "$RESP" | sed -n 's#^HTTP/[0-9.]* \([0-9]\{3\}\).*#\1#p' | head -1)
 case "$CODE" in
-  200) # 헤더/본문 경계(첫 빈 줄) 이후 본문만 떼어 그 자리에서 파싱 — 재조회 없음
-       TYPES=$(printf '%s\n' "$RESP" | awk 'f{print} /^\r?$/{f=1}' | jq -r '.[].name') ;;
+  200) # 헤더/본문 경계(첫 빈 줄) 이후 본문만 떼어 그 자리서 파싱 — 재조회 없음.
+       # jq -e: 빈 본문·malformed·빈 배열이면 non-zero → 200이라도 타입을 못 뽑았으면 라벨 폴백.
+       BODY=$(printf '%s\n' "$RESP" | awk 'f{print} /^\r?$/{f=1}')
+       if TYPES=$(printf '%s' "$BODY" | jq -e -r '.[].name'); then
+         : # $TYPES 확보 → 이슈에 지정
+       else
+         echo "issue-types 200 이나 본문이 비었거나 malformed(타입 0) → 라벨 폴백(type:feature/type:task)" >&2
+       fi ;;
   404) echo "issue-types 미설정(404) → 라벨 폴백(type:feature/type:task)" >&2 ;;
   *)   echo "issue-types 조회 실패(HTTP ${CODE:-?}) — 인증·네트워크 확인 후 중단" >&2; exit 1 ;;
 esac
