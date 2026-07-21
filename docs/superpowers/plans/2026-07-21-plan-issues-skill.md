@@ -153,14 +153,14 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 # 1. issue type — gh issue create 는 --type 미지원. 라벨 폴백 또는 graphql.
 #    org issue-types 존재 확인. ★HTTP 상태 실판별: 404(미설정)만 라벨 폴백,
 #    401/5xx 등 실제 오류는 삼키지 말고 중단 (배포된 REFERENCE.md 가 정본):
-if TYPES=$(gh api /orgs/krdn/issue-types --jq '.[].name' 2>/tmp/it_err); then
-  : # $TYPES 확보 → 이슈에 지정 시도
-elif grep -qiE 'HTTP 404|Not Found' /tmp/it_err; then
-  echo "issue-types 미설정(404) → 라벨 폴백(type:feature/type:task)" >&2
-else
-  echo "issue-types 조회 실패(비-404): $(cat /tmp/it_err) — 인증·네트워크 확인 후 중단" >&2
-  exit 1
-fi
+# --include 로 상태줄을 받아 ★실제 HTTP 상태 코드로 분기 (에러 텍스트 매칭 아님).
+RESP=$(gh api --include /orgs/krdn/issue-types 2>&1)
+CODE=$(printf '%s\n' "$RESP" | sed -n 's#^HTTP/[0-9.]* \([0-9]\{3\}\).*#\1#p' | head -1)
+case "$CODE" in
+  200) TYPES=$(gh api /orgs/krdn/issue-types --jq '.[].name') ;;
+  404) echo "issue-types 미설정(404) → 라벨 폴백(type:feature/type:task)" >&2 ;;
+  *)   echo "issue-types 조회 실패(HTTP ${CODE:-?}) — 인증·네트워크 확인 후 중단" >&2; exit 1 ;;
+esac
 
 # 2. umbrella 이슈 생성 (본문 파일로)
 gh issue create --repo krdn/gons-dashboard --title "<제목>" --body-file /tmp/umbrella.md
