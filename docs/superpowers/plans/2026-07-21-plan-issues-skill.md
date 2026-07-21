@@ -150,16 +150,11 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 ## GitHub 계층 생성 명령 카탈로그
 
 ```bash
-# 1. issue type — gh issue create 는 --type 미지원. 라벨 폴백 또는 graphql.
-#    org issue-types 존재 확인. ★HTTP 상태 실판별: 404(미설정)만 라벨 폴백,
-#    401/5xx 등 실제 오류는 삼키지 말고 중단 (배포된 REFERENCE.md 가 정본):
-# --include 로 상태줄+본문을 한 번에 받아 재조회 없이 처리(2차 호출 실패 무시 방지).
-# 상태는 에러 텍스트가 아니라 실제 HTTP 상태 코드(상태줄 3자리)로 분기.
-# issue type — gh issue create 는 --type 미지원.
+# 1. issue type — gh issue create 는 --type 미지원.
 # `gh api /orgs/krdn/issue-types` 로 조회하되, 실행자가 결과를 판단해 처리:
 #   · 타입 목록 확보 → 이슈에 그 타입 지정(graphql)
 #   · org 미설정(404) → 라벨 폴백(type:feature / type:task)
-#   · 인증·네트워크 오류(401/5xx) → 삼키지 말고 사용자에게 알림
+#   · 404 외 조회·지정 오류(401/403/429/5xx 등) → 라벨로 우회하지 말고 사용자에게 알림
 # (지침이다 — 완전한 셸 에러 처리를 복붙하지 말고 위 의도대로 구성)
 
 # 2. umbrella 이슈 생성 (본문 파일로)
