@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **✅ 구현 완료 (2026-07-21).** 이 계획은 실행됐고 스킬이 배포됐다(`~/.claude/skills/gon:plan-issues/`,
+> repo `krdn/gon-claude`). **진실 소스는 배포된 스킬 파일**이다 — Codex 2라운드 리뷰(APPROVED)로
+> 아래 예시 이후 반영된 변경이 있다: ① `link-sub-issue.sh`의 `sub_issue_id`는 `-F`(정수) 전송
+> (`-f` 문자열은 HTTP 422) + 멱등 GET `--paginate` + 정수 가드(Task 1 코드 반영됨). ② SKILL.md
+> 4단계는 A(계획)→B(dry-run 종료)→C(승인 게이트)→D(단건/umbrella 분리 생성)로 재구성(Task 3 반영됨).
+> ③ REFERENCE.md는 issue-type 조회 실패를 삼키지 않고(404만 라벨 폴백) TOP 7 표를 "spec §2.6 캐시
+> 스냅샷(원본=spec, 런타임 재읽기)"으로 명시 — 이 세부는 **배포된 REFERENCE.md를 정본**으로 본다.
+
 **Goal:** 구상을 받아 갭분석→수직슬라이스 분해→GitHub 계층(umbrella + sub-issues + Projects) 생성까지 자동화하는 조직화 전용 스킬을 만든다.
 
 **Architecture:** `~/.claude/skills/gon:plan-issues/` 디렉토리에 SKILL.md(실행 지시서, ~100줄) + REFERENCE.md(상세 명령·결정트리) + scripts/link-sub-issue.sh(결정적 연산: number→database id 변환 + sub_issues POST). 스킬은 프롬프트 기반이라 "테스트"는 스크립트의 셸 단위 검증 + dry-run 스모크로 한다.
@@ -54,23 +62,31 @@ REPO="${1:?owner/repo required}"
 PARENT="${2:?parent issue number required}"
 CHILD="${3:?child issue number required}"
 
+for n in "$PARENT" "$CHILD"; do
+  case "$n" in ''|*[!0-9]*) echo "error: 이슈 번호는 양의 정수여야 함: '$n'" >&2; exit 1;; esac
+done
+
 # child 의 database id 조회 (sub_issues API 는 number 가 아닌 id 를 요구)
 CHILD_ID=$(gh api "repos/${REPO}/issues/${CHILD}" --jq '.id')
-if [ -z "$CHILD_ID" ]; then
-  echo "error: child #${CHILD} id 조회 실패" >&2
-  exit 1
-fi
+case "$CHILD_ID" in ''|*[!0-9]*) echo "error: child #${CHILD} database id 조회 실패(값='$CHILD_ID')" >&2; exit 1;; esac
 
-# 이미 연결돼 있으면 skip (멱등)
-if gh api "repos/${REPO}/issues/${PARENT}/sub_issues" --jq '.[].number' 2>/dev/null | grep -qx "$CHILD"; then
+# 이미 연결돼 있으면 skip (멱등). GET 을 조건식 밖에서 실행해 실패를 삼키지 않음.
+# --paginate 로 100개 초과 sub-issue 도 전부 조회 (설계상 최대 100).
+EXISTING=$(gh api --paginate "repos/${REPO}/issues/${PARENT}/sub_issues" --jq '.[].number')
+if printf '%s\n' "$EXISTING" | grep -Fqx -- "$CHILD"; then
   echo "already-linked ${CHILD} -> ${PARENT}"
   exit 0
 fi
 
+# -F (typed field): sub_issue_id 는 integer 를 요구 — -f(string) 는 HTTP 422 로 거부됨
 gh api --method POST "repos/${REPO}/issues/${PARENT}/sub_issues" \
-  -f "sub_issue_id=${CHILD_ID}" >/dev/null
+  -F "sub_issue_id=${CHILD_ID}" >/dev/null
 echo "linked ${CHILD} -> ${PARENT}"
 ```
+
+> **⚠️ 리뷰 반영 (Codex)**: sub_issue_id 는 `-F`(정수)로 보낸다 — `-f`(문자열)는 HTTP 422
+> "not of type integer" 로 거부됨(임시 이슈 end-to-end 로 실측). 멱등 GET 은 조건식 밖에서
+> 실행(실패 삼킴 방지)하고 `--paginate`로 전량 조회, PARENT·CHILD·CHILD_ID 정수 가드 필수.
 
 - [ ] **Step 2: 실행 권한 + 구문 검증**
 
@@ -223,8 +239,9 @@ allowed-tools: [Bash, Read, Write, Edit, Grep, Glob, AskUserQuestion, WebFetch]
 ## 1단계: 구상 수집 + 규모 판정
 
 구상 텍스트를 받는다($ARGUMENTS 또는 대화). 시크릿(env/key/pem 값)이 섞였으면 제거.
+`--dry-run` 여부를 **여기서 먼저 판정**한다 — dry-run이면 이후 어떤 GitHub 객체(draft·이슈·Projects 항목)도 만들지 않고 4단계에서 계획만 출력한다.
 **규모 판정**: 갭분석 후 수직 슬라이스가 **2개 이상이면 umbrella**, 1개면 단건.
-`--single`/`--umbrella`로 강제 가능.
+`--single`/`--umbrella`로 강제 가능. (구상의 Projects draft 캡처는 4단계 승인 후 수행 — 여기서 만들지 않는다.)
 
 ## 2단계: 갭 분석 (이슈화 전 필수)
 
@@ -236,14 +253,22 @@ Grep/Glob/Read로 코드베이스를 스캔해 "재사용 자산 표(자산│�
 각 슬라이스가 4조건 만족: ①DB→UI 관통(관찰 가능한 변화) ②독립 배포성 ③단일 PR ④명시 의존성.
 수평 레이어("스키마만"/"UI만")·다중 도메인 혼합 금지. 선행 필요 시 `Depends on #N`.
 각 슬라이스에 **TOP 7 중 관련 항목만** 수용조건으로 주입 (REFERENCE.md 매핑, 런타임 스캔).
+각 슬라이스에 **불변식 자문**(spec §3.1): "이 값 제약/필드가 핵심 결과를 전부-아니면-전무로 무효화하는가?" — 값 조정이 아니라 구조를 바꿔야 할 케이스 조기 식별.
 
-## 4단계: 계층 생성 (--dry-run이면 계획만 출력하고 중단)
+## 4단계: 계층 생성 (승인 게이트 우선 — 비가역)
 
-REFERENCE.md 명령 카탈로그대로:
-1. umbrella 이슈 생성(본문=재사용표+갭분석+슬라이스 목록, "이 이슈 읽어 Phase 1부터 착수" 진입 지시).
-2. 각 슬라이스 sub-issue 생성 → `scripts/link-sub-issue.sh`로 연결.
-3. 라벨(도메인)·Milestone·Projects 추가. issue type은 있으면 지정, 없으면 라벨 폴백.
-4. **비가역**: 실제 생성 전 `--dry-run` 결과를 AskUserQuestion으로 승인받는다.
+**A. 계획 출력** — 만들 것을 먼저 텍스트로 보여준다: umbrella 제목/단건 이슈 제목, 슬라이스(sub-issue) 목록, 주입될 수용조건, 라벨·Milestone·Projects 여부, 의존성.
+
+**B. dry-run이면 여기서 종료** — `--dry-run`은 A까지만 하고 GitHub 객체를 하나도 만들지 않는다.
+
+**C. 승인 게이트** — dry-run이 아니면 A 결과를 AskUserQuestion으로 승인받는다. **승인 전에는 draft·이슈·Projects 항목을 하나도 만들지 않는다.**
+
+**D. 승인 후 생성** (REFERENCE.md 명령 카탈로그대로):
+- **단건(--single/슬라이스 1개)**: 이슈 1개 생성 → 도메인 라벨 + issue type(있으면)/라벨 폴백 + (scope 있으면)Projects 항목. **sub-issue 연결·Milestone은 생략.**
+- **umbrella(슬라이스 2개 이상)**:
+  1. umbrella 이슈 생성(본문=재사용표+갭분석+슬라이스 목록, "이 이슈 읽어 Phase 1부터 착수" 진입 지시).
+  2. 각 슬라이스 sub-issue 생성 → `scripts/link-sub-issue.sh`로 연결.
+  3. 도메인 라벨 + issue type/라벨 폴백 + Milestone(선택) + (scope 있으면)Projects 항목 추가.
 
 ## 5단계: 인계 출력
 

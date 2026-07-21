@@ -67,8 +67,8 @@
 | 관심사 | GitHub 객체 | 명령/API |
 |---|---|---|
 | 구상 큰 그림 | umbrella 이슈 + Milestone(선택) | `gh issue create`, `gh api .../milestones` |
-| Phase/슬라이스 | sub-issues (100개·8단계) | `gh api .../issues/{parent}/sub_issues -f sub_issue_id=<id>` |
-| 무엇의 성격 | issue type (Feature/Task/Bug) | `gh api .../orgs/krdn/issue-types`, 이슈 생성 시 `-f type=` |
+| Phase/슬라이스 | sub-issues (100개·8단계) | `gh api .../issues/{parent}/sub_issues -F sub_issue_id=<id>` (⚠️ `-F` 정수 — `-f` 문자열은 HTTP 422) |
+| 무엇의 성격 | issue type (Feature/Task/Bug) | `gh api .../orgs/krdn/issue-types` (조회). `gh issue create`는 `--type` 미지원 → 라벨 폴백 또는 graphql |
 | 어느 도메인 | 라벨 (기존 유지) | `gh issue edit --add-label` |
 | 단계 상태 | Projects Status 필드 | `gh project item-edit` |
 | 단계 발전 | "닫으면 자동 Done" 내장 자동화 | Projects 워크플로 (기본 on) |
@@ -183,10 +183,13 @@ allowed-tools: [Bash, Read, Write, Edit, Grep, Glob, AskUserQuestion, WebFetch]
    - `--umbrella` 또는 대규모 판정 → full 계층.
 3. **① 구상 캡처**: 구상 텍스트를 Projects draft로 (`gh project item-create`).
 4. **② 갭 분석**: 코드베이스 스캔(Grep/Glob/Read) → "재사용 자산 표 + 빠진 축" 생성 → umbrella 본문 초안.
-5. **③ 슬라이스 분해**: §3 규칙으로 자름. 각 슬라이스에 `Depends on` 표시.
-6. **④ 계층 생성**:
-   - issue type 없으면 생성 안내(org 권한 필요) 또는 라벨 폴백.
-   - umbrella 이슈 생성(type:Feature) → sub-issue들 생성(type:Task) → `sub_issues` API로 연결(database id 변환) → Milestone·라벨·Projects 추가.
+5. **③ 슬라이스 분해**: §3 규칙으로 자름. 각 슬라이스에 `Depends on` + 불변식 자문(§3.1) 표시.
+6. **④ 계층 생성 (승인 게이트 우선 — 비가역)**: 계획을 먼저 텍스트로 출력 → `--dry-run`이면
+   여기서 종료(GitHub 객체 0 생성) → 아니면 AskUserQuestion 승인 → **승인 후에만** draft·이슈·Projects
+   생성. 구상의 Projects draft 캡처(①)도 이 승인 뒤에 수행한다. 생성 시:
+   - issue type 조회 실패는 삼키지 않음 — 404(미설정)만 라벨 폴백, 401/5xx는 알림.
+   - **단건**: 이슈 1개 + 라벨 + Projects 항목(sub·Milestone 생략).
+   - **umbrella**: umbrella 이슈 → sub-issue들 → `sub_issues` API 연결(`-F` 정수 id 변환) → Milestone·라벨·Projects.
 7. **⑤ 인계 출력**: 생성된 계층 요약 + 각 sub-issue에 "이 이슈는 `/brainstorming`으로 상세화하세요" 안내.
 
 ### 4.4 삭제된 스킬에서 흡수할 좋은 패턴
