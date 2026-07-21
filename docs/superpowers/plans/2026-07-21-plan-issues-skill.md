@@ -120,6 +120,11 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 
 - [ ] **Step 1: REFERENCE.md 작성**
 
+> **⚠️ 발췌본 주의**: 아래 코드펜스는 초기 초안이며 Codex 리뷰로 개선된 부분이 있다
+> (issue-type 조회는 HTTP 404만 라벨 폴백하고 401/5xx는 중단, 명령 카탈로그에 단건·중복방지
+> 항목 추가, TOP 7 표는 "spec §2.6 캐시 스냅샷" 명시). **정본은 배포된
+> `~/.claude/skills/gon:plan-issues/REFERENCE.md`** — 이 예시를 그대로 복사하지 말 것.
+
 ````markdown
 # gon:plan-issues — 상세 레퍼런스
 
@@ -146,8 +151,16 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 
 ```bash
 # 1. issue type — gh issue create 는 --type 미지원. 라벨 폴백 또는 graphql.
-#    org issue-types 존재 확인:
-gh api /orgs/krdn/issue-types --jq '.[].name' 2>/dev/null || echo "issue-types 미설정 → 라벨 폴백"
+#    org issue-types 존재 확인. ★HTTP 상태 실판별: 404(미설정)만 라벨 폴백,
+#    401/5xx 등 실제 오류는 삼키지 말고 중단 (배포된 REFERENCE.md 가 정본):
+if TYPES=$(gh api /orgs/krdn/issue-types --jq '.[].name' 2>/tmp/it_err); then
+  : # $TYPES 확보 → 이슈에 지정 시도
+elif grep -qiE 'HTTP 404|Not Found' /tmp/it_err; then
+  echo "issue-types 미설정(404) → 라벨 폴백(type:feature/type:task)" >&2
+else
+  echo "issue-types 조회 실패(비-404): $(cat /tmp/it_err) — 인증·네트워크 확인 후 중단" >&2
+  exit 1
+fi
 
 # 2. umbrella 이슈 생성 (본문 파일로)
 gh issue create --repo krdn/gons-dashboard --title "<제목>" --body-file /tmp/umbrella.md
