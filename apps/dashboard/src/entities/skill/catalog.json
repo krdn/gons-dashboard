@@ -205,28 +205,16 @@
       "bodyPath": "/skill-catalog/gon-memo-save.json"
     },
     {
-      "name": "gon:save-issue",
-      "description": "이슈 저장 스킬 (Save Issue). 작업 완료 후 커밋, 푸시, GitHub 이슈 등록을 자동화합니다. \"/gon:save-issue\", \"이슈 저장\", \"작업 저장\", \"커밋해줘\", \"커밋하고 푸시\", \"변경사항 저장\", \"작업 끝\", \"이슈 등록\", \"push 해줘\", \"푸시해줘\", \"저장하고 이슈\", \"이거 올려줘\" 요청 시 사용.",
-      "version": "2.1.0",
-      "model": "haiku",
+      "name": "gon:plan-issues",
+      "description": "구상을 GitHub 계층(umbrella + sub-issues + Projects)으로 조직·단계화하는 스킬. 갭분석→수직슬라이스 분해→이슈 계층 생성까지 자동화. \"/gon:plan-issues\", \"구상 이슈화\", \"이슈로 쪼개줘\", \"단계 나눠줘\", \"로드맵 만들어줘\", \"sub-issue 만들어줘\" 요청 시 사용.",
+      "version": null,
+      "model": null,
       "source": "standalone",
-      "category": "workflow-orchestration",
-      "necessity": "medium",
-      "necessityReason": "작업 완료 후 커밋·푸시·GitHub 이슈 등록 자동화는 git 워크플로로 자주 쓰일 수 있으나, 커밋/푸시는 Claude Code 기본 git 능력과 겹치고 이슈 등록 부분만 차별. ship/gon:todo와 인접. 상황 의존.",
-      "filePath": "~/.claude/skills/gon:save-issue/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-save-issue.json"
-    },
-    {
-      "name": "gon:todo",
-      "description": "지능형 TODO 관리 스킬. 개발 중 발견된 버그, 아이디어, 기술 부채를 프로젝트별 .todos/backlog.json에 저장·관리합니다. \"/gon:todo\", \"todo 추가\", \"할일 목록\", \"todo 보여줘\", \"할일 관리\" 요청 시 사용.",
-      "version": "2.1.0",
-      "model": "haiku",
-      "source": "standalone",
-      "category": "workflow-orchestration",
-      "necessity": "medium",
-      "necessityReason": "개발 중 버그·기술부채 자동 감지·프로젝트별 TODO 관리. learn·gon:save-issue와 일부 겹침. TODO 수집은 유용하나 TodoWrite 내장+이슈트래커로 대체 가능 측면 있어 중.",
-      "filePath": "~/.claude/skills/gon:todo/SKILL.md",
-      "bodyPath": "/skill-catalog/gon-todo.json"
+      "category": "uncategorized",
+      "necessity": "unrated",
+      "necessityReason": "",
+      "filePath": "~/.claude/skills/gon:plan-issues/SKILL.md",
+      "bodyPath": "/skill-catalog/gon-plan-issues.json"
     },
     {
       "name": "graphify",

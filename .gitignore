@@ -92,3 +92,6 @@ graphify-out/
 
 # eval Layer 2 리포트 (로컬 전용)
 apps/dashboard/tests/eval/reports/
+
+# Grok CLI 로컬 설정 (도입 보류 — 레포에 커밋 안 함)
+.grok/
