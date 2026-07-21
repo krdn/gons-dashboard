@@ -28,6 +28,7 @@ import {
 } from "@/widgets/monitoring";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PageHeader } from "@/shared/ui/PageHeader";
+import { RefreshButton } from "@/features/github-monitor-refresh/ui/RefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,11 @@ export default async function GithubMonitoringPage() {
   return (
     <PageContainer>
       {/* org 가 아니라 owner — GITHUB_MONITOR_ORG 는 개인 계정일 수 있다. */}
-      <PageHeader title="GitHub 관제" subtitle={`${org} 의 이슈·PR·Actions 현황`} />
+      <PageHeader
+        title="GitHub 관제"
+        subtitle={`${org} 의 이슈·PR·Actions 현황`}
+        actions={<RefreshButton />}
+      />
       <AutoRefresh intervalMs={15_000} />
 
       <div className="grid gap-3 sm:grid-cols-4">
