@@ -15,7 +15,15 @@ function successLabel(result: RefreshResult): string {
   if (!s) return "갱신 완료";
   if (s.skipped && s.lockBusy) return "동기화 진행 중 — 곧 반영됩니다";
   if (s.skipped) return "토큰 미설정 — 동기화 비활성";
+  if (s.failed.length > 0) {
+    return `일부 소스 실패: ${s.failed.join(", ")} · 이슈 ${s.issues} · PR ${s.pulls} · 레포 ${s.runs}`;
+  }
   return `갱신 완료 · 이슈 ${s.issues} · PR ${s.pulls} · 레포 ${s.runs}`;
+}
+
+/** 부분 실패면 경고 색으로 — "갱신 완료" 오인 방지. */
+function isPartialFailure(result: RefreshResult): boolean {
+  return (result.summary?.failed.length ?? 0) > 0;
 }
 
 export function RefreshButton() {
@@ -43,7 +51,13 @@ export function RefreshButton() {
         {isPending ? "새로고침 중…" : "새로고침"}
       </button>
       {result?.ok && (
-        <p className="max-w-xs text-right text-xs text-[var(--color-text-muted)]">
+        <p
+          className={`max-w-xs text-right text-xs ${
+            isPartialFailure(result)
+              ? "text-[var(--color-severity-high)]"
+              : "text-[var(--color-text-muted)]"
+          }`}
+        >
           {successLabel(result)}
         </p>
       )}

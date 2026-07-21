@@ -59,7 +59,35 @@ describe("refreshGithubMonitor", () => {
       runs: 5,
       skipped: false,
       lockBusy: false,
+      failed: [],
     });
+  });
+
+  it("부분 실패(일부 소스 ok:false)는 failed 에 소스명을 담는다", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1" } });
+    // issues 는 실패(ok:false), runs 는 일부 레포 실패(failedRepos 비어있지 않음).
+    syncGithubMock.mockResolvedValue({
+      ...okSummary,
+      issues: { ok: false, count: 0, error: "rate limited" },
+      runs: { ok: true, repos: 4, failedRepos: ["krdn/a"] },
+    });
+    const refresh = await loadAction();
+
+    const r = await refresh();
+
+    // ok 자체는 true(요청은 수행됨) 지만 failed 로 부분 실패를 노출한다.
+    expect(r.ok).toBe(true);
+    expect(r.summary?.failed).toEqual(["이슈", "Actions"]);
+  });
+
+  it("전부 성공하면 failed 는 빈 배열", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1" } });
+    syncGithubMock.mockResolvedValue(okSummary);
+    const refresh = await loadAction();
+
+    const r = await refresh();
+
+    expect(r.summary?.failed).toEqual([]);
   });
 
   it("lockBusy(cron 겹침)를 summary 에 표시한다", async () => {

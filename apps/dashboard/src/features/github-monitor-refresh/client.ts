@@ -6,11 +6,26 @@
 
 import { auth } from "@/shared/lib/auth";
 import { logger } from "@/shared/lib/log";
-import { syncGithub } from "@/features/github-monitor";
+import { syncGithub, type SyncSummary } from "@/features/github-monitor";
 import { checkCooldown } from "./lib/rateLimit";
 import type { RefreshResult } from "./model/types";
 
 const COOLDOWN_MS = 30_000;
+
+/**
+ * 부분 실패한 소스명을 모은다. syncGithub 은 소스별 독립 수행이라 일부만
+ * 실패해도 throw 하지 않는다 — ok:false(또는 runs 는 failedRepos 존재)면 실패로 본다.
+ * skipped(토큰 미설정)·lockBusy(cron 겹침)는 "안 한 것"이라 별도 필드로 표시하므로 제외.
+ */
+function collectFailedSources(s: SyncSummary): string[] {
+  if (s.skipped) return [];
+  const failed: string[] = [];
+  if (!s.issues.ok) failed.push("이슈");
+  if (!s.pulls.ok) failed.push("PR");
+  if (!s.runs.ok || s.runs.failedRepos.length > 0) failed.push("Actions");
+  if (!s.build.ok) failed.push("Build");
+  return failed;
+}
 
 // 전역(사용자 무관) 쿨다운. GitHub API 는 토큰 단위 공유 자원이라 전역이 맞다.
 // 단일 인스턴스 가정 — multi-instance 시 Redis 로 이전 필요.
@@ -41,6 +56,7 @@ export async function refreshGithubMonitor(): Promise<RefreshResult> {
         runs: s.runs.repos,
         skipped: s.skipped,
         lockBusy: s.lockBusy ?? false,
+        failed: collectFailedSources(s),
       },
     };
   } catch (err) {
