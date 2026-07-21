@@ -164,6 +164,7 @@ case "$CODE" in
        if TYPES=$(printf '%s' "$BODY" | jq -e -r '.[].name'); then
          : # $TYPES 확보 → 이슈에 지정
        else
+         TYPES=""   # jq 부분 출력 후 실패 시 부분값이 남지 않도록 명시 무효화
          echo "issue-types 200 이나 본문이 비었거나 malformed(타입 0) → 라벨 폴백(type:feature/type:task)" >&2
        fi ;;
   404) echo "issue-types 미설정(404) → 라벨 폴백(type:feature/type:task)" >&2 ;;
