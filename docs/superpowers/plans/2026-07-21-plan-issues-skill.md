@@ -191,6 +191,7 @@ Server Action 변경 시 dev dogfood smoke → **Codex APPROVED** → APPROVED *
 |---|---|---|
 | project scope 없음 | `gh auth status`에 `project` 없음 | `gh auth refresh -s project` 안내(사용자 `!` 명령). 계층 이슈까지는 진행, Projects만 skip |
 | issue-types 미설정 | `/orgs/krdn/issue-types` 404 | 라벨 폴백(`type:feature`/`type:task`) |
+| issue-types 조회 오류 | 401/403/429/5xx | 라벨로 우회 말고 사용자에게 알림 |
 | sub_issues 연결 실패 | 스크립트 non-zero | parent/child number 확인, id 조회 실패 시 이슈 존재 확인 |
 | 중복 계층 재실행 | title 매칭 | 기존 이슈 있으면 재생성 말고 링크만 |
 ````
