@@ -157,6 +157,7 @@ cd ~/.claude 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 \
 # 상태는 에러 텍스트가 아니라 실제 HTTP 상태 코드(상태줄 3자리)로 분기.
 RESP=$(gh api --include /orgs/krdn/issue-types 2>&1)
 CODE=$(printf '%s\n' "$RESP" | sed -n 's#^HTTP/[0-9.]* \([0-9]\{3\}\).*#\1#p' | head -1)
+TYPES=""   # ★case 진입 전 초기화 — 어떤 폴백 경로(404·기타)든 이전 시도의 stale 값을 물려받지 않음
 case "$CODE" in
   200) # 헤더/본문 경계(첫 빈 줄) 이후 본문만 떼어 그 자리서 파싱 — 재조회 없음.
        # jq -e: 빈 본문·malformed·빈 배열이면 non-zero → 200이라도 타입을 못 뽑았으면 라벨 폴백.
