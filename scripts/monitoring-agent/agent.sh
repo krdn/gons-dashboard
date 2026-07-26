@@ -18,6 +18,8 @@
 #   WATCH_TIMERS          공백 구분 타이머 유닛 목록 (예: "n8n-backup.timer certbot.timer")
 #   HOSTCRON_SPECS        공백 구분 "이름|로그경로|maxAge분" (예: "self-healing|/var/log/self-healing.log|75")
 #                         — maxAge분: 이 시간 넘게 로그 mtime 정지면 실행 흔적 없음 판정(서버측)
+#   GPU_TIMEOUT_SEC       기본 5 — nvidia-smi 1회 호출 제한시간
+#   GPU_FAIL_LIMIT        기본 3 — 연속 실패 N회면 GPU 수집을 영구 포기(서킷 브레이커)
 set -u
 LC_ALL=C # awk printf 소수점이 로케일에 따라 콤마가 되는 것 방지
 
@@ -28,10 +30,25 @@ INTERVAL_SEC="${INTERVAL_SEC:-15}"
 CHECKS_EVERY_N="${CHECKS_EVERY_N:-4}"
 # 양의 정수가 아니면 기본값 — 0 은 나머지 연산 오류, 비정수는 산술 오류로
 # 에이전트가 재시작 루프에 빠진다 (Codex P2).
-[[ "$CHECKS_EVERY_N" =~ ^[1-9][0-9]*$ ]] || CHECKS_EVERY_N=4
+# ⚠️ 자릿수를 제한한다 — DATASTORE_SPECS 포트 검증과 같은 이유다. 20자리 입력은
+# `^[1-9][0-9]*$` 를 통과하지만 bash 산술은 64비트라 wrap 되어 **음수**가 된다
+# (실측: 99999999999999999999999 → -8446744073709551617, `[ -gt 0 ]` 가 false).
+# 그러면 sleep_tick 의 while 이 한 바퀴도 안 돌아 대기 없는 busy loop 가 된다.
+[[ "$CHECKS_EVERY_N" =~ ^[1-9][0-9]{0,3}$ ]] || CHECKS_EVERY_N=4
+# INTERVAL_SEC 도 같은 등급이다. sleep 에 직접 넘기던 때는 "0.5" 도 동작했지만, 이제
+# sleep_tick() 이 `[ -gt ]` 비교와 `$(( ))` 확장에 쓴다 — 비정수면 비교가 에러로 끝나
+# while 이 즉시 빠져나가고 **대기 없는 busy loop** 가 된다(CPU 잠식 + ingest 폭주).
+[[ "$INTERVAL_SEC" =~ ^[1-9][0-9]{0,3}$ ]] || INTERVAL_SEC=15
 WATCH_SERVICES="${WATCH_SERVICES:-}"
 WATCH_TIMERS="${WATCH_TIMERS:-}"
 HOSTCRON_SPECS="${HOSTCRON_SPECS:-}"
+GPU_TIMEOUT_SEC="${GPU_TIMEOUT_SEC:-5}"
+GPU_FAIL_LIMIT="${GPU_FAIL_LIMIT:-3}"
+# 2자리 제한(최대 99). GPU_TIMEOUT_SEC 이 거대하면 timeout 이 사실상 무한이 되어
+# 2026-07-24 사고가 그대로 재현되고, GPU_FAIL_LIMIT 이 거대하면 브레이커가 임계에
+# 영영 닿지 못해 무력화된다 — 둘 다 wrap 이 아니라 "통과하는 큰 값" 자체가 위험하다.
+[[ "$GPU_TIMEOUT_SEC" =~ ^[1-9][0-9]{0,1}$ ]] || GPU_TIMEOUT_SEC=5
+[[ "$GPU_FAIL_LIMIT" =~ ^[1-9][0-9]{0,1}$ ]] || GPU_FAIL_LIMIT=3
 
 MODE="loop"
 case "${1:-}" in
@@ -58,6 +75,11 @@ PREV_CPU_TOTAL=""
 declare -A PREV_RX
 declare -A PREV_TX
 PREV_TS=0
+
+# GPU 서킷 브레이커 상태 — 루프 전체에서 유지되어야 하므로 전역이다
+# (collect() 안에서 초기화하면 매 사이클 리셋되어 임계에 영원히 못 닿는다).
+GPU_FAILS=0
+GPU_DISABLED=0
 
 cpu_snapshot() {
   # "idle total" — idle=idle+iowait, total=user..steal 합
@@ -131,13 +153,54 @@ collect() {
   TEMP_C=$(cat /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null | sort -n | tail -1 |
     awk '{ if ($1 > 1000) printf "%.1f", $1/1000; else if ($1 != "") printf "%.1f", $1 }')
 
-  # GPU (nvidia-smi 있을 때만)
+  # GPU (nvidia-smi 있을 때만) — 서킷 브레이커로 감싼다.
+  #
+  # ⚠️ 2026-07-24 운영 사고: NVIDIA 드라이버가 suspend 중 잠기면 nvidia-smi 가 반환하지
+  # 않고 100% CPU 로 무한 스핀한다(SIGKILL 도 안 먹는다). timeout 이 없던 탓에 collect()
+  # 가 첫 사이클에서 멈춰 vitals·checks push 가 2일간 정지했다 — 그런데 systemd 는
+  # active(running) 로 보고하고 에러 로그도 없어 아무도 알아채지 못했다.
+  #
+  # timeout 만으로는 부족하다. 죽지 않는 nvidia-smi 를 15초마다 새로 띄우면 분당 4개씩
+  # 100% CPU 프로세스가 쌓인다. 연속 실패가 임계에 닿으면 이 프로세스 생애 동안 GPU
+  # 수집을 포기하고 나머지 지표만 계속 보낸다 — GPU 타일 하나보다 관제 생존이 우선이다.
   GPU_JSON=""
-  if command -v nvidia-smi >/dev/null 2>&1; then
-    GPU_JSON=$(nvidia-smi \
+  if [ "$GPU_DISABLED" -eq 0 ] && command -v nvidia-smi >/dev/null 2>&1; then
+    local gpu_raw gpu_rc
+    # ⚠️ timeout 을 파이프에 물리지 말 것 — $? 가 head 의 0 이 되어 타임아웃(124)이 가려진다.
+    gpu_raw=$(timeout -k 2 "$GPU_TIMEOUT_SEC" nvidia-smi \
       --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu \
-      --format=csv,noheader,nounits 2>/dev/null | head -1 |
-      awk -F', *' 'NF>=4 && $3+0>0 { printf "{\"utilPct\":%s,\"vramPct\":%.1f,\"tempC\":%s}", $1, $2/$3*100, $4 }')
+      --format=csv,noheader,nounits 2>/dev/null)
+    gpu_rc=$?
+    if [ "$gpu_rc" -ne 0 ]; then
+      GPU_FAILS=$((GPU_FAILS + 1))
+      # timeout 이 끊었다는 것은 드라이버가 응답하지 않는다는 **직접 증거**다.
+      # 두 종료코드를 모두 봐야 한다 (GNU coreutils 9.4 실측):
+      #   124 — SIGTERM 으로 끊김
+      #   137 — SIGTERM 을 무시해 -k 의 SIGKILL 로 끊김 (128+9)
+      # ⚠️ 잠긴 nvidia-smi 는 TERM 을 받지 못하는 상태라 **실제 장애에서는 137 이 나온다**.
+      # 124 만 보면 실장애에서 이 분기를 빠져나가 재시도 경로로 떨어진다.
+      # 잠긴 프로세스는 KILL 로도 회수되지 않고 100% CPU 로 남으므로(2026-07-24 실측)
+      # 재시도할수록 좀비만 늘어난다 — 재시도 가치가 없으니 첫 회에 즉시 차단한다.
+      # 그 외 실패(일시적 오류)는 회복 가능하므로 GPU_FAIL_LIMIT 까지 관용한다.
+      case "$gpu_rc" in
+        124 | 137)
+          GPU_DISABLED=1
+          echo "[agent] GPU 수집 중단 — nvidia-smi 가 ${GPU_TIMEOUT_SEC}초 내 응답하지 않음(rc=$gpu_rc, 드라이버 잠김)." \
+            "재시도는 고착 프로세스만 늘리므로 하지 않는다. 나머지 지표는 계속 수집한다." >&2
+          ;;
+        *)
+          if [ "$GPU_FAILS" -ge "$GPU_FAIL_LIMIT" ]; then
+            GPU_DISABLED=1
+            echo "[agent] GPU 수집 중단 — nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc)." \
+              "나머지 지표는 계속 수집한다." >&2
+          fi
+          ;;
+      esac
+    else
+      GPU_FAILS=0
+      GPU_JSON=$(printf '%s\n' "$gpu_raw" | head -1 |
+        awk -F', *' 'NF>=4 && $3+0>0 { printf "{\"utilPct\":%s,\"vramPct\":%.1f,\"tempC\":%s}", $1, $2/$3*100, $4 }')
+    fi
   fi
 
   # 네트워크 bps (직전 스냅샷 대비, 최대 10 인터페이스)
@@ -378,6 +441,43 @@ push() { # $1=API 경로, $2=payload
   return 0
 }
 
+# systemd watchdog heartbeat — 루프가 **어떤 이유로든** 멈추면 systemd 가 재시작한다.
+# 2026-07-24 사고의 본질은 "멈췄는데 systemd 는 active 로 보고" 였다. GPU 서킷 브레이커는
+# 알려진 한 경로(nvidia-smi)만 막지만, 이 heartbeat 는 남은 모든 경로 — SIGKILL 로도
+# 회수되지 않는 자식을 timeout 이 기다리는 경우, df 가 죽은 sshfs 마운트에 걸리는 경우,
+# systemctl 이 D-Bus 에서 멈추는 경우 — 를 한꺼번에 덮는다.
+# WATCHDOG_USEC 는 systemd 가 WatchdogSec 설정 시에만 주입한다 → 없으면 조용히 no-op
+# (수동 실행·다른 init 환경에서도 그대로 동작).
+notify_watchdog() {
+  [ -n "${WATCHDOG_USEC:-}" ] || return 0
+  command -v systemd-notify >/dev/null 2>&1 || return 0
+  systemd-notify WATCHDOG=1 2>/dev/null || true
+}
+
+# heartbeat 간격 — systemd 가 준 WATCHDOG_USEC 의 1/3 (권장 상한은 1/2).
+# ⚠️ 고정값으로 두면 안 된다. WatchdogSec 은 유닛 파일에 박혀 있는데 INTERVAL_SEC 은
+# 운영자가 환경변수로 늘릴 수 있어(60·120 등), 그 순간 sleep 하나가 WatchdogSec 을
+# 넘겨 **정상 에이전트가 영구 재시작 루프**에 빠진다. USEC 에서 유도하면 양쪽 어느 값을
+# 바꿔도 자동으로 맞는다. watchdog 이 없으면 쪼갤 이유가 없으므로 INTERVAL_SEC 그대로.
+if [ -n "${WATCHDOG_USEC:-}" ] && [[ "${WATCHDOG_USEC}" =~ ^[0-9]+$ ]]; then
+  WATCHDOG_STEP_SEC=$((WATCHDOG_USEC / 1000000 / 3))
+  [ "$WATCHDOG_STEP_SEC" -lt 1 ] && WATCHDOG_STEP_SEC=1
+else
+  WATCHDOG_STEP_SEC="$INTERVAL_SEC"
+fi
+
+# INTERVAL_SEC 을 WATCHDOG_STEP_SEC 단위로 쪼개 자면서 heartbeat 를 보낸다.
+sleep_tick() {
+  local remain="$1" step
+  while [ "$remain" -gt 0 ]; do
+    step="$remain"
+    [ "$step" -gt "$WATCHDOG_STEP_SEC" ] && step="$WATCHDOG_STEP_SEC"
+    sleep "$step"
+    remain=$((remain - step))
+    notify_watchdog
+  done
+}
+
 push_vitals() { push "/api/agent/metrics-ingest" "$(build_payload)"; }
 
 push_checks() {
@@ -408,15 +508,27 @@ case "$MODE" in
     fi
     ;;
   loop)
-    echo "[agent] 시작 — host=$HOST_NAME url=$DASHBOARD_URL interval=${INTERVAL_SEC}s checks=매${CHECKS_EVERY_N}사이클"
+    # watchdog 설정을 시작 로그에 남긴다 — 재시작 루프가 의심될 때 유닛의 WatchdogSec 과
+    # 실제 heartbeat 간격을 대조할 수 있어야 한다(2026-07-24 사고는 로그가 없어 진단이 늦었다).
+    WD_DESC="없음"
+    [ -n "${WATCHDOG_USEC:-}" ] &&
+      WD_DESC="$((WATCHDOG_USEC / 1000000))초(heartbeat ${WATCHDOG_STEP_SEC}초 주기)"
+    echo "[agent] 시작 — host=$HOST_NAME url=$DASHBOARD_URL interval=${INTERVAL_SEC}s checks=매${CHECKS_EVERY_N}사이클 watchdog=$WD_DESC"
     CYCLE=0
     while :; do
-      sleep "$INTERVAL_SEC"
+      sleep_tick "$INTERVAL_SEC"
       collect
+      # collect 가 반환했다 = 수집 경로가 살아있다. push 성공 여부는 heartbeat 조건이
+      # 아니다 — 대시보드가 잠깐 죽었다고 에이전트를 재시작할 이유는 없다.
+      notify_watchdog
       push_vitals || true # 일시 실패는 다음 주기에 회복 — 프로세스는 유지
       CYCLE=$((CYCLE + 1))
       if [ $((CYCLE % CHECKS_EVERY_N)) -eq 0 ]; then
         push_checks || true
+        # checks 사이클은 루프에서 가장 긴 구간이다 — datastore 프로브(각
+        # DATASTORE_PROBE_TIMEOUT 초) + systemctl 조회 + curl(-m 10). 여기서 heartbeat 를
+        # 한 번 더 보내지 않으면 **정상인데도** WatchdogSec 을 넘겨 재시작될 수 있다.
+        notify_watchdog
       fi
     done
     ;;

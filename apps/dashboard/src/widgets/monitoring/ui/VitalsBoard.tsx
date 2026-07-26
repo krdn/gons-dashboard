@@ -8,6 +8,10 @@ import {
 import { VITALS_TIERS, type VitalsTier } from "@/features/monitoring-ingest";
 import { formatAgo, formatBps, formatUptime } from "../lib/format";
 
+// GPU 지표가 같은 호스트의 다른 지표보다 이만큼 뒤처지면 "관측 중단" 으로 본다
+// (에이전트 수집 주기 15초의 6배 — 일시적 지연과 구분).
+const GPU_STALE_MS = 90_000;
+
 function metricOf(metrics: LatestMetric[], name: string): LatestMetric | null {
   return metrics.find((m) => m.metric === name) ?? null;
 }
@@ -104,6 +108,15 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
   const stale = ageSec != null && ageSec > 60;
   const dead = ageSec != null && ageSec > 300;
 
+  // 에이전트가 드라이버 잠김으로 GPU 수집을 포기해도(agent.sh 서킷 브레이커) 조회 창
+  // 30분 안에서는 마지막 GPU 값이 계속 잡힌다. 다른 지표는 갱신되므로 카드 전체가
+  // 최신처럼 보이고 GPU 타일만 과거값을 현재값으로 표시하는 미탐이 생긴다 — 낡은
+  // 관측치를 현재값으로 재사용하지 않는다는 원칙(agent.sh security 섹션과 동일)을 지킨다.
+  const gpuStale =
+    gpuUtil != null &&
+    snapshot.lastCollectedAt != null &&
+    snapshot.lastCollectedAt.getTime() - gpuUtil.collectedAt.getTime() > GPU_STALE_MS;
+
   return (
     <section className="rounded-xl border border-[var(--color-hairline)] bg-white p-4 text-[var(--color-text)]">
       <header className="mb-3 flex items-center justify-between gap-2">
@@ -169,10 +182,18 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
         {gpuUtil != null && (
           <Tile
             label="GPU"
-            value={gpuUtil.value.toFixed(0)}
-            unit="%"
-            color={pctColor(gpuVram?.value ?? null, VITALS_TIERS.gpuVram)}
-            sub={`VRAM ${gpuVram?.value.toFixed(0) ?? "–"}% · ${gpuTemp?.value.toFixed(0) ?? "–"}°C`}
+            value={gpuStale ? "–" : gpuUtil.value.toFixed(0)}
+            unit={gpuStale ? undefined : "%"}
+            color={
+              gpuStale
+                ? "var(--color-text-subtle)"
+                : pctColor(gpuVram?.value ?? null, VITALS_TIERS.gpuVram)
+            }
+            sub={
+              gpuStale
+                ? `관측 중단 — ${formatAgo(gpuUtil.collectedAt, now)}`
+                : `VRAM ${gpuVram?.value.toFixed(0) ?? "–"}% · ${gpuTemp?.value.toFixed(0) ?? "–"}°C`
+            }
           />
         )}
         {nets.map((rx) => {
