@@ -88,17 +88,26 @@ GPU_MARK_WARNED=0
 # 브레이커가 차단해 gpuUnavailable 을 보내 **정상 상태를 장애로 보고**하게 된다.
 # 하드웨어는 PCI 벤더 ID 로 확인한다 — sysfs 읽기라 드라이버가 잠겨도 hang 하지 않는다.
 # 하드웨어 구성은 런타임에 바뀌지 않으므로 시작 시 1회만 판정한다.
-has_nvidia_pci() {
-  local v
-  for v in /sys/bus/pci/devices/*/vendor; do
-    [ -r "$v" ] || continue
-    [ "$(cat "$v" 2>/dev/null)" = "0x10de" ] && return 0
+PCI_DEVICES_DIR="${PCI_DEVICES_DIR:-/sys/bus/pci/devices}"
+has_nvidia_gpu() {
+  local d
+  for d in "$PCI_DEVICES_DIR"/*/; do
+    [ -r "$d/vendor" ] && [ -r "$d/class" ] || continue
+    [ "$(cat "$d/vendor" 2>/dev/null)" = "0x10de" ] || continue
+    # ⚠️ 벤더 ID 만으로는 부족하다 — 0x10de 는 "NVIDIA 가 만든 것" 이지 GPU 가 아니다.
+    # PCI class 0x03xxxx 만 Display controller (0x030000 VGA, 0x030200 3D).
+    # 같은 벤더의 오디오·USB·구형 nForce 칩셋의 이더넷/SATA 는 GPU 가 아니며,
+    # 그것들을 GPU 로 세면 nvidia-smi 가 실패해 정상 호스트를 장애로 보고한다.
+    # 실측(home-server): 01:00.0=0x030000(GPU), 01:00.1=0x040300(HDMI 오디오).
+    case "$(cat "$d/class" 2>/dev/null)" in
+      0x03*) return 0 ;;
+    esac
   done
   return 1
 }
 # GPU_PRESENT 를 미리 지정하면 그 값을 쓴다(테스트·특수 환경 오버라이드).
 if [ -z "${GPU_PRESENT:-}" ]; then
-  if command -v nvidia-smi >/dev/null 2>&1 && has_nvidia_pci; then
+  if command -v nvidia-smi >/dev/null 2>&1 && has_nvidia_gpu; then
     GPU_PRESENT=1
   else
     GPU_PRESENT=0

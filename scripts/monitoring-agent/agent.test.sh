@@ -172,6 +172,42 @@ echo \"No devices were found\" >&2
 exit 6"
 check "GPU 미보유(nvidia-smi 는 존재) → 신호 없음·미호출" "없음|미호출" "$(nogpu)"
 
+# 벤더 ID(0x10de)만으로는 GPU 를 증명하지 못한다 — 같은 벤더의 HDMI 오디오·USB
+# 컨트롤러, 구형 nForce 칩셋의 이더넷/SATA 가 모두 0x10de 다. GPU 가 없는데 있다고
+# 보면 nvidia-smi 가 실패해 브레이커가 차단하고, 정상 호스트를 장애로 보고한다.
+echo "== GPU 하드웨어 판정 (PCI class) =="
+stub '#!/bin/sh
+echo "15, 2048, 6144, 45"' # nvidia-smi 는 존재하는 것으로 둔다
+mkpci() { # $1=슬롯 $2=vendor $3=class
+  mkdir -p "$WORK/pci/$1"
+  printf '%s\n' "$2" >"$WORK/pci/$1/vendor"
+  printf '%s\n' "$3" >"$WORK/pci/$1/class"
+}
+detect() { # PCI 트리를 보고 판정한 GPU_PRESENT
+  (
+    export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy PCI_DEVICES_DIR="$WORK/pci"
+    unset GPU_PRESENT
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    printf '%s' "$GPU_PRESENT"
+  ) 2>/dev/null
+}
+rm -rf "$WORK/pci"; mkpci 0000:01:00.0 0x10de 0x030000
+check "NVIDIA VGA(0x030000) → GPU 있음" "1" "$(detect)"
+
+rm -rf "$WORK/pci"; mkpci 0000:01:00.0 0x10de 0x030200
+check "NVIDIA 3D controller(0x030200) → GPU 있음" "1" "$(detect)"
+
+# 실측: RTX 3060 Laptop 은 01:00.0=GPU, 01:00.1=HDMI 오디오다. 오디오만 있으면 GPU 가 아니다.
+rm -rf "$WORK/pci"; mkpci 0000:01:00.1 0x10de 0x040300
+check "NVIDIA 오디오만(0x040300) → GPU 없음" "0" "$(detect)"
+
+rm -rf "$WORK/pci"; mkpci 0000:00:02.0 0x8086 0x030000
+check "타 벤더 VGA(Intel) → GPU 없음" "0" "$(detect)"
+
+rm -rf "$WORK/pci"; mkpci 0000:01:00.0 0x10de 0x030000; mkpci 0000:01:00.1 0x10de 0x040300
+check "GPU + 오디오 동시 존재 → GPU 있음" "1" "$(detect)"
+
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과
   (
