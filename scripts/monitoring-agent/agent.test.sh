@@ -88,6 +88,14 @@ rm -f "$WORK/run/gpu-disabled"; stub '#!/bin/sh
 echo "15, 2048, 6144, 45"'
 check "마커 없으면 정상 수집" "0|없음" "$(run_cycles 1)"
 
+# 마커는 원자적으로(임시 파일 + mv) 써야 한다. truncate 후 write 라면 그 사이에 죽었을 때
+# 빈 파일이 남고, 레거시 판정이 그것을 폐기해 **진짜 hang 증거가 사라진다**.
+rm -f "$WORK/run/gpu-disabled"; stub '#!/bin/sh
+sleep 30'
+run_cycles 1 >/dev/null
+check "hang 후 마커 내용이 완전(빈 파일 아님)" "attempt" "$(cat "$WORK/run/gpu-disabled" 2>/dev/null)"
+check "임시 파일이 남지 않음" "0" "$(find "$WORK/run" -name '*.tmp' 2>/dev/null | wc -l)"
+
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과
   (

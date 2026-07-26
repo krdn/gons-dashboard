@@ -120,8 +120,15 @@ fi
 
 # /run 은 tmpfs 라 사실상 메모리 연산이다. 차단된 뒤에는 호출 자체가 없어 I/O 도 멈춘다.
 gpu_mark_attempt() {
-  # 내용을 남긴다 — 빈 마커는 구버전이 만든 것이라 위 시작 로직이 폐기한다.
-  [ -n "$GPU_FLAG" ] && { printf 'attempt\n' >"$GPU_FLAG"; } 2>/dev/null
+  [ -n "$GPU_FLAG" ] || return 0
+  # ⚠️ 반드시 **원자적으로** 쓴다. `printf > file` 은 truncate 후 write 라 두 단계이고,
+  # 그 사이에 죽거나 write 가 실패하면 빈 파일이 남는다. 빈 마커는 구버전이 남긴 것과
+  # 구분되지 않아 시작 로직이 폐기해 버리고, 결국 **진짜 hang 증거가 사라진다**.
+  # rename(2) 은 원자적이라 마커는 항상 완전한 내용을 갖는다 → "빈 마커 = 구버전" 이 보장된다.
+  # security collector 가 /run 산출물에 쓰는 것과 같은 패턴이다.
+  {
+    printf 'attempt\n' >"$GPU_FLAG.tmp" && mv -f "$GPU_FLAG.tmp" "$GPU_FLAG"
+  } 2>/dev/null
   return 0
 }
 gpu_clear_flag() {
