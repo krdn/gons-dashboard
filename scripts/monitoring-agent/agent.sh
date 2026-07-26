@@ -234,6 +234,7 @@ collect() {
   # 100% CPU 프로세스가 쌓인다. 연속 실패가 임계에 닿으면 이 프로세스 생애 동안 GPU
   # 수집을 포기하고 나머지 지표만 계속 보낸다 — GPU 타일 하나보다 관제 생존이 우선이다.
   GPU_JSON=""
+  GPU_SKIPPED=0
   # gpu_mark_attempt 는 호출 **직전** 마커를 남긴다 — 이 조건이 watchdog 재시작 루프를
   # 끊는다. 마커를 못 남기면 false 를 돌려 GPU 수집을 통째로 건너뛴다(fail-safe):
   # 보호 없이 호출했다가 hang 하면 다음 인스턴스가 그 사실을 알 수 없어 재시작마다
@@ -277,6 +278,14 @@ collect() {
       GPU_JSON=$(printf '%s\n' "$gpu_raw" | head -1 |
         awk -F', *' 'NF>=4 && $3+0>0 { printf "{\"utilPct\":%s,\"vramPct\":%.1f,\"tempC\":%s}", $1, $2/$3*100, $4 }')
     fi
+  fi
+
+  # nvidia-smi 가 있는데 값을 못 얻었으면 **관측 불가**다 — 브레이커 차단·마커 기록
+  # 실패·아직 임계에 못 닿은 오류가 모두 여기 걸린다. 판정을 GPU_DISABLED 로 하면
+  # 마커 실패 경로가 새어나가 보드에서 "GPU 없는 호스트" 처럼 보인다.
+  # nvidia-smi 자체가 없으면(진짜 GPU 미보유) 이 블록에 들어오지 않는다.
+  if [ -z "$GPU_JSON" ] && command -v nvidia-smi >/dev/null 2>&1; then
+    GPU_SKIPPED=1
   fi
 
   # 네트워크 bps (직전 스냅샷 대비, 최대 10 인터페이스)
@@ -497,7 +506,7 @@ build_payload() {
   # "GPU 가 없는 호스트" 와 구분되지 않고, 조회 창(30분)을 벗어나는 순간 장애가 화면에서
   # 아예 사라진다 — 관측 불가를 관측 없음으로 오인하지 않는다(security 섹션과 같은 원칙).
   # 매 사이클 실리므로 창 안에서 계속 갱신된다.
-  [ "$GPU_DISABLED" -eq 1 ] && printf '"gpuUnavailable":true,'
+  [ "$GPU_SKIPPED" -eq 1 ] && printf '"gpuUnavailable":true,'
   [ -n "$NET_JSON" ] && printf '"net":[%s],' "$NET_JSON"
   printf '"uptimeSec":%s,' "$UPTIME"
   printf '"rebootRequired":%s' "$REBOOT"

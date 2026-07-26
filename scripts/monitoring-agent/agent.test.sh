@@ -118,6 +118,36 @@ touch $WORK/called
 echo \"15, 2048, 6144, 45\""
 check "마커 기록 불가 → GPU 건너뛰되 나머지는 수집" "빈값|미호출|수집됨" "$(failsafe)"
 
+# GPU 를 수집하지 못한 사실이 payload 에 실려야 보드가 "GPU 없는 호스트" 와 구분한다.
+# 판정을 GPU_DISABLED 로 하면 마커 실패 경로가 새어나간다.
+echo "== gpuUnavailable 신호 =="
+unavail() { # $1=RUNTIME_DIRECTORY $2=사이클수 → payload 에 gpuUnavailable 포함 여부
+  (
+    export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
+    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 RUNTIME_DIRECTORY="$1"
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    take_snapshots
+    for _ in $(seq "$2"); do collect; done
+    build_payload | grep -q gpuUnavailable && echo 있음 || echo 없음
+  ) 2>/dev/null
+}
+rm -f "$WORK/run/gpu-disabled"; stub '#!/bin/sh
+echo "15, 2048, 6144, 45"'
+check "정상 수집 → 신호 없음" "없음" "$(unavail "$WORK/run" 1)"
+
+rm -f "$WORK/run/gpu-disabled"; stub '#!/bin/sh
+exit 6'
+check "브레이커 차단 → 신호 있음" "있음" "$(unavail "$WORK/run" 3)"
+
+stub '#!/bin/sh
+echo "15, 2048, 6144, 45"'
+check "마커 기록 실패 → 신호 있음" "있음" "$(unavail "$WORK/nonexistent-dir" 1)"
+
+# nvidia-smi 자체가 없는 호스트는 GPU 미보유이므로 신호를 보내면 안 된다.
+rm -f "$WORK/run/gpu-disabled" "$WORK/stub/nvidia-smi"
+check "GPU 미보유 호스트 → 신호 없음" "없음" "$(unavail "$WORK/run" 1)"
+
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과
   (
