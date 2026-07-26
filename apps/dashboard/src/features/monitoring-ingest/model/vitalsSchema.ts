@@ -30,6 +30,9 @@ export const vitalsPayloadSchema = z.object({
       tempC: z.number(),
     })
     .optional(),
+  // 에이전트가 GPU 수집을 포기했음을 알리는 명시 신호(서킷 브레이커 작동).
+  // gpu 를 그냥 생략하면 "GPU 없는 호스트" 와 구분되지 않는다.
+  gpuUnavailable: z.boolean().optional(),
   net: z
     .array(
       z.object({

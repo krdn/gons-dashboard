@@ -8,6 +8,10 @@ import {
 import { VITALS_TIERS, type VitalsTier } from "@/features/monitoring-ingest";
 import { formatAgo, formatBps, formatUptime } from "../lib/format";
 
+// GPU 지표가 같은 호스트의 다른 지표보다 이만큼 뒤처지면 "관측 중단" 으로 본다
+// (에이전트 수집 주기 15초의 6배 — 일시적 지연과 구분).
+const GPU_STALE_MS = 90_000;
+
 function metricOf(metrics: LatestMetric[], name: string): LatestMetric | null {
   return metrics.find((m) => m.metric === name) ?? null;
 }
@@ -87,6 +91,10 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
   const gpuUtil = metricOf(m, "gpu.util_pct");
   const gpuVram = metricOf(m, "gpu.vram_pct");
   const gpuTemp = metricOf(m, "gpu.temp_c");
+  // 에이전트가 GPU 수집을 포기하면 gpu.* 지표가 끊기고 30분 조회 창을 벗어나는 순간
+  // 타일이 통째로 사라져 "GPU 없는 호스트" 와 구분되지 않는다. 에이전트가 대신 보내는
+  // 이 명시 신호로 장애를 계속 드러낸다.
+  const gpuUnavailable = metricOf(m, "gpu.unavailable");
   const uptime = metricOf(m, "uptime.sec");
   const reboot = metricOf(m, "reboot.required");
   const load1 = metricOf(m, "load.1");
@@ -103,6 +111,15 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
       : Math.floor((now.getTime() - snapshot.lastCollectedAt.getTime()) / 1000);
   const stale = ageSec != null && ageSec > 60;
   const dead = ageSec != null && ageSec > 300;
+
+  // 에이전트가 드라이버 잠김으로 GPU 수집을 포기해도(agent.sh 서킷 브레이커) 조회 창
+  // 30분 안에서는 마지막 GPU 값이 계속 잡힌다. 다른 지표는 갱신되므로 카드 전체가
+  // 최신처럼 보이고 GPU 타일만 과거값을 현재값으로 표시하는 미탐이 생긴다 — 낡은
+  // 관측치를 현재값으로 재사용하지 않는다는 원칙(agent.sh security 섹션과 동일)을 지킨다.
+  const gpuStale =
+    gpuUtil != null &&
+    snapshot.lastCollectedAt != null &&
+    snapshot.lastCollectedAt.getTime() - gpuUtil.collectedAt.getTime() > GPU_STALE_MS;
 
   return (
     <section className="rounded-xl border border-[var(--color-hairline)] bg-white p-4 text-[var(--color-text)]">
@@ -166,13 +183,29 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
           color={pctColor(temp?.value ?? null, VITALS_TIERS.temp)}
           sub={uptime ? `업타임 ${formatUptime(uptime.value)}` : undefined}
         />
+        {gpuUtil == null && gpuUnavailable != null && (
+          <Tile
+            label="GPU"
+            value="–"
+            color="var(--color-warn)"
+            sub={`관측 불가 — ${formatAgo(gpuUnavailable.collectedAt, now)} 기준`}
+          />
+        )}
         {gpuUtil != null && (
           <Tile
             label="GPU"
-            value={gpuUtil.value.toFixed(0)}
-            unit="%"
-            color={pctColor(gpuVram?.value ?? null, VITALS_TIERS.gpuVram)}
-            sub={`VRAM ${gpuVram?.value.toFixed(0) ?? "–"}% · ${gpuTemp?.value.toFixed(0) ?? "–"}°C`}
+            value={gpuStale ? "–" : gpuUtil.value.toFixed(0)}
+            unit={gpuStale ? undefined : "%"}
+            color={
+              gpuStale
+                ? "var(--color-text-subtle)"
+                : pctColor(gpuVram?.value ?? null, VITALS_TIERS.gpuVram)
+            }
+            sub={
+              gpuStale
+                ? `관측 중단 — ${formatAgo(gpuUtil.collectedAt, now)}`
+                : `VRAM ${gpuVram?.value.toFixed(0) ?? "–"}% · ${gpuTemp?.value.toFixed(0) ?? "–"}°C`
+            }
           />
         )}
         {nets.map((rx) => {

@@ -35,6 +35,10 @@ export function flattenVitals(
     push("gpu.util_pct", p.gpu.utilPct);
     push("gpu.vram_pct", p.gpu.vramPct);
     push("gpu.temp_c", p.gpu.tempC);
+  } else if (p.gpuUnavailable) {
+    // 관측 불가를 관측 없음과 구분한다. 매 사이클 갱신되므로 조회 창을 벗어나
+    // GPU 장애가 화면에서 사라지는 일이 없다.
+    push("gpu.unavailable", 1);
   }
 
   for (const net of p.net ?? []) {
