@@ -38,7 +38,7 @@ check() { # $1=설명 $2=기대 $3=실제
 run_cycles() { # $1=사이클수
   (
     export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
-    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 RUNTIME_DIRECTORY="$WORK/run"
+    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 GPU_PRESENT=1 RUNTIME_DIRECTORY="$WORK/run"
     # shellcheck disable=SC1091
     . "$WORK/lib.sh"
     take_snapshots
@@ -103,7 +103,7 @@ failsafe() { # 쓰기 불가 RUNTIME_DIRECTORY → "GPU_JSON|스텁호출여부|
   rm -f "$WORK/called"
   (
     export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
-    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 RUNTIME_DIRECTORY="$WORK/nonexistent-dir"
+    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 GPU_PRESENT=1 RUNTIME_DIRECTORY="$WORK/nonexistent-dir"
     # shellcheck disable=SC1091
     . "$WORK/lib.sh"
     take_snapshots
@@ -124,7 +124,7 @@ echo "== gpuUnavailable 신호 =="
 unavail() { # $1=RUNTIME_DIRECTORY $2=사이클수 → payload 에 gpuUnavailable 포함 여부
   (
     export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
-    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 RUNTIME_DIRECTORY="$1"
+    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 GPU_PRESENT=1 RUNTIME_DIRECTORY="$1"
     # shellcheck disable=SC1091
     . "$WORK/lib.sh"
     take_snapshots
@@ -144,9 +144,33 @@ stub '#!/bin/sh
 echo "15, 2048, 6144, 45"'
 check "마커 기록 실패 → 신호 있음" "있음" "$(unavail "$WORK/nonexistent-dir" 1)"
 
-# nvidia-smi 자체가 없는 호스트는 GPU 미보유이므로 신호를 보내면 안 된다.
-rm -f "$WORK/run/gpu-disabled" "$WORK/stub/nvidia-smi"
-check "GPU 미보유 호스트 → 신호 없음" "없음" "$(unavail "$WORK/run" 1)"
+# GPU 미보유 호스트에 신호를 보내면 정상 상태를 장애로 보고하는 오탐이 된다.
+# ⚠️ nvidia-smi 실행 파일의 존재로 판단하면 안 된다 — 드라이버 패키지에 딸려오는
+# 도구라 GPU 를 뽑았거나 nvidia-utils 만 설치된 호스트에도 남아 있고, 그런 곳에서
+# "No devices were found" 로 실패해 브레이커가 차단하면 오탐이 발생한다.
+# 하드웨어 존재(PCI 벤더 ID)로 판정해야 한다.
+rm -f "$WORK/run/gpu-disabled"
+stub '#!/bin/sh
+echo "No devices were found" >&2
+exit 6'
+nogpu() { # GPU_PRESENT=0 → "신호여부|스텁호출여부"
+  rm -f "$WORK/called"
+  (
+    export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
+    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 GPU_PRESENT=0 RUNTIME_DIRECTORY="$WORK/run"
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    take_snapshots
+    for _ in 1 2 3; do collect; done
+    printf '%s|%s' "$(build_payload | grep -q gpuUnavailable && echo 있음 || echo 없음)" \
+      "$([ -f "$WORK/called" ] && echo 호출됨 || echo 미호출)"
+  ) 2>/dev/null
+}
+stub "#!/bin/sh
+touch $WORK/called
+echo \"No devices were found\" >&2
+exit 6"
+check "GPU 미보유(nvidia-smi 는 존재) → 신호 없음·미호출" "없음|미호출" "$(nogpu)"
 
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과

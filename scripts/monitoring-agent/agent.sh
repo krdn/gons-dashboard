@@ -82,6 +82,30 @@ GPU_FAILS=0
 GPU_DISABLED=0
 GPU_MARK_WARNED=0
 
+# GPU 보유 여부 — nvidia-smi 실행 파일의 존재만으로 판단하면 안 된다. 그것은 드라이버
+# 패키지에 딸려오는 도구일 뿐이라, GPU 를 뽑았거나 nvidia-utils 만 설치된 호스트에도
+# 남아 있다. 그런 곳에서 nvidia-smi 는 "No devices were found" 로 실패하고, 결과적으로
+# 브레이커가 차단해 gpuUnavailable 을 보내 **정상 상태를 장애로 보고**하게 된다.
+# 하드웨어는 PCI 벤더 ID 로 확인한다 — sysfs 읽기라 드라이버가 잠겨도 hang 하지 않는다.
+# 하드웨어 구성은 런타임에 바뀌지 않으므로 시작 시 1회만 판정한다.
+has_nvidia_pci() {
+  local v
+  for v in /sys/bus/pci/devices/*/vendor; do
+    [ -r "$v" ] || continue
+    [ "$(cat "$v" 2>/dev/null)" = "0x10de" ] && return 0
+  done
+  return 1
+}
+# GPU_PRESENT 를 미리 지정하면 그 값을 쓴다(테스트·특수 환경 오버라이드).
+if [ -z "${GPU_PRESENT:-}" ]; then
+  if command -v nvidia-smi >/dev/null 2>&1 && has_nvidia_pci; then
+    GPU_PRESENT=1
+  else
+    GPU_PRESENT=0
+  fi
+fi
+[[ "$GPU_PRESENT" =~ ^[01]$ ]] || GPU_PRESENT=0
+
 # ⚠️ 차단 상태는 **프로세스 밖에도** 남겨야 한다. 브레이커만으로는 프로세스 생애까지만
 # 유효한데, watchdog 이 재시작을 자동화했기 때문이다: 드라이버가 진짜 hang 이면
 # collect() 가 멈춰 heartbeat 가 끊기고 → 90초 후 watchdog 재시작 → 브레이커 리셋 →
@@ -239,7 +263,7 @@ collect() {
   # 끊는다. 마커를 못 남기면 false 를 돌려 GPU 수집을 통째로 건너뛴다(fail-safe):
   # 보호 없이 호출했다가 hang 하면 다음 인스턴스가 그 사실을 알 수 없어 재시작마다
   # 고착 프로세스가 쌓인다 — 마커가 막으려던 바로 그 상황이다.
-  if [ "$GPU_DISABLED" -eq 0 ] && command -v nvidia-smi >/dev/null 2>&1 && gpu_mark_attempt; then
+  if [ "$GPU_PRESENT" -eq 1 ] && [ "$GPU_DISABLED" -eq 0 ] && gpu_mark_attempt; then
     local gpu_raw gpu_rc
     # ⚠️ timeout 을 파이프에 물리지 말 것 — $? 가 head 의 0 이 되어 타임아웃(124)이 가려진다.
     gpu_raw=$(timeout -k 2 "$GPU_TIMEOUT_SEC" nvidia-smi \
@@ -280,11 +304,11 @@ collect() {
     fi
   fi
 
-  # nvidia-smi 가 있는데 값을 못 얻었으면 **관측 불가**다 — 브레이커 차단·마커 기록
-  # 실패·아직 임계에 못 닿은 오류가 모두 여기 걸린다. 판정을 GPU_DISABLED 로 하면
-  # 마커 실패 경로가 새어나가 보드에서 "GPU 없는 호스트" 처럼 보인다.
-  # nvidia-smi 자체가 없으면(진짜 GPU 미보유) 이 블록에 들어오지 않는다.
-  if [ -z "$GPU_JSON" ] && command -v nvidia-smi >/dev/null 2>&1; then
+  # GPU 가 **있는데** 값을 못 얻었으면 관측 불가다 — 브레이커 차단·마커 기록 실패·
+  # 아직 임계에 못 닿은 오류가 모두 여기 걸린다. 판정을 GPU_DISABLED 로 하면 마커 실패
+  # 경로가 새어나가 보드에서 "GPU 없는 호스트" 처럼 보인다(원인 열거는 새 경로가 생길
+  # 때마다 구멍이 난다 — 결과로 판정한다).
+  if [ -z "$GPU_JSON" ] && [ "$GPU_PRESENT" -eq 1 ]; then
     GPU_SKIPPED=1
   fi
 
