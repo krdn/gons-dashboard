@@ -91,6 +91,10 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
   const gpuUtil = metricOf(m, "gpu.util_pct");
   const gpuVram = metricOf(m, "gpu.vram_pct");
   const gpuTemp = metricOf(m, "gpu.temp_c");
+  // 에이전트가 GPU 수집을 포기하면 gpu.* 지표가 끊기고 30분 조회 창을 벗어나는 순간
+  // 타일이 통째로 사라져 "GPU 없는 호스트" 와 구분되지 않는다. 에이전트가 대신 보내는
+  // 이 명시 신호로 장애를 계속 드러낸다.
+  const gpuUnavailable = metricOf(m, "gpu.unavailable");
   const uptime = metricOf(m, "uptime.sec");
   const reboot = metricOf(m, "reboot.required");
   const load1 = metricOf(m, "load.1");
@@ -179,6 +183,14 @@ function HostVitals({ snapshot, now }: { snapshot: HostMetricsSnapshot; now: Dat
           color={pctColor(temp?.value ?? null, VITALS_TIERS.temp)}
           sub={uptime ? `업타임 ${formatUptime(uptime.value)}` : undefined}
         />
+        {gpuUtil == null && gpuUnavailable != null && (
+          <Tile
+            label="GPU"
+            value="–"
+            color="var(--color-warn)"
+            sub={`관측 불가 — ${formatAgo(gpuUnavailable.collectedAt, now)} 기준`}
+          />
+        )}
         {gpuUtil != null && (
           <Tile
             label="GPU"

@@ -417,6 +417,11 @@ build_payload() {
   printf '"disks":[%s],' "$DISKS_JSON"
   [ -n "$TEMP_C" ] && printf '"cpuTempC":%s,' "$TEMP_C"
   [ -n "$GPU_JSON" ] && printf '"gpu":%s,' "$GPU_JSON"
+  # GPU 수집을 포기한 상태를 **명시적으로** 실어보낸다. 지표를 그냥 빼면 보드에서
+  # "GPU 가 없는 호스트" 와 구분되지 않고, 조회 창(30분)을 벗어나는 순간 장애가 화면에서
+  # 아예 사라진다 — 관측 불가를 관측 없음으로 오인하지 않는다(security 섹션과 같은 원칙).
+  # 매 사이클 실리므로 창 안에서 계속 갱신된다.
+  [ "$GPU_DISABLED" -eq 1 ] && printf '"gpuUnavailable":true,'
   [ -n "$NET_JSON" ] && printf '"net":[%s],' "$NET_JSON"
   printf '"uptimeSec":%s,' "$UPTIME"
   printf '"rebootRequired":%s' "$REBOOT"
