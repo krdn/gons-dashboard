@@ -89,21 +89,41 @@ GPU_DISABLED=0
 # RuntimeDirectoryPreserve=restart 로 재시작 사이에만 보존한다 —
 # 정지·재부팅하면 사라지므로 드라이버 복구 후 자동으로 재무장된다.
 # RUNTIME_DIRECTORY 미주입(수동 실행)이면 플래그 없이 기존 동작 그대로.
-GPU_DISABLED_FLAG=""
+# ⚠️ 마커는 **호출 실패 후가 아니라 호출 직전에** 세운다.
+# 실패 후에 세우면 정작 가장 위험한 경로를 못 막는다: timeout 이 회수 불가 자식을
+# wait 하며 스스로 블록되면 collect() 가 반환하지 않아 차단 코드가 **실행되지 않는다**.
+# 그 상태로 heartbeat 가 끊기면 watchdog 이 재시작하고, 새 인스턴스는 아무 흔적도 없으니
+# 다시 nvidia-smi 를 띄운다 — 90초마다 회수 불가 프로세스가 하나씩 쌓인다.
+#
+# 마커가 남아 있다는 것은 "이전 인스턴스가 nvidia-smi 를 호출한 뒤 정상 반환하지
+# 못했다"는 직접 증거다(정상 반환 시엔 지우므로). 브레이커가 차단한 경우에도 그대로
+# 남으므로 두 경로를 한 플래그로 덮는다.
+# RuntimeDirectoryPreserve=restart 라 stop·재부팅 시엔 삭제 → 드라이버 복구 후 자동 재무장.
+GPU_FLAG=""
 if [ -n "${RUNTIME_DIRECTORY:-}" ]; then
-  GPU_DISABLED_FLAG="${RUNTIME_DIRECTORY%%:*}/gpu-disabled"
-  if [ -f "$GPU_DISABLED_FLAG" ]; then
+  GPU_FLAG="${RUNTIME_DIRECTORY%%:*}/gpu-disabled"
+  if [ -f "$GPU_FLAG" ]; then
     GPU_DISABLED=1
-    echo "[agent] GPU 수집 비활성 상태로 시작 — 이전 인스턴스가 드라이버 무응답을 확인했다." \
-      "복구 후 재무장하려면 서비스를 stop/start 하거나 $GPU_DISABLED_FLAG 를 지운다." >&2
+    echo "[agent] GPU 수집 비활성으로 시작 — 이전 인스턴스가 nvidia-smi 에서 반환하지" \
+      "못했거나 드라이버 무응답을 확인했다. 복구 후 재무장하려면 서비스를 stop/start" \
+      "하거나 $GPU_FLAG 를 지운다." >&2
   fi
 fi
 
-# 차단 사유를 남기고 플래그를 세운다(쓰기 실패는 치명적이지 않다 — 메모리 상태는 유효).
+# /run 은 tmpfs 라 사실상 메모리 연산이다. 차단된 뒤에는 호출 자체가 없어 I/O 도 멈춘다.
+gpu_mark_attempt() {
+  [ -n "$GPU_FLAG" ] && { : >"$GPU_FLAG"; } 2>/dev/null
+  return 0
+}
+gpu_clear_flag() {
+  [ -n "$GPU_FLAG" ] && rm -f "$GPU_FLAG" 2>/dev/null
+  return 0
+}
+
+# 차단 사유를 남긴다. 플래그는 이미 시도 마커로 세워져 있어 따로 쓰지 않는다.
 disable_gpu_collection() {
   GPU_DISABLED=1
   echo "[agent] GPU 수집 중단 — $1 나머지 지표는 계속 수집한다." >&2
-  [ -n "$GPU_DISABLED_FLAG" ] && { : >"$GPU_DISABLED_FLAG"; } 2>/dev/null
   return 0
 }
 
@@ -192,6 +212,7 @@ collect() {
   GPU_JSON=""
   if [ "$GPU_DISABLED" -eq 0 ] && command -v nvidia-smi >/dev/null 2>&1; then
     local gpu_raw gpu_rc
+    gpu_mark_attempt # ⚠️ 반드시 호출 **직전** — 이 줄이 watchdog 재시작 루프를 끊는다
     # ⚠️ timeout 을 파이프에 물리지 말 것 — $? 가 head 의 0 이 되어 타임아웃(124)이 가려진다.
     gpu_raw=$(timeout -k 2 "$GPU_TIMEOUT_SEC" nvidia-smi \
       --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu \
@@ -220,6 +241,7 @@ collect() {
       esac
     else
       GPU_FAILS=0
+      gpu_clear_flag # 정상 반환을 확인한 뒤에만 지운다
       GPU_JSON=$(printf '%s\n' "$gpu_raw" | head -1 |
         awk -F', *' 'NF>=4 && $3+0>0 { printf "{\"utilPct\":%s,\"vramPct\":%.1f,\"tempC\":%s}", $1, $2/$3*100, $4 }')
     fi
