@@ -103,16 +103,25 @@ GPU_FLAG=""
 if [ -n "${RUNTIME_DIRECTORY:-}" ]; then
   GPU_FLAG="${RUNTIME_DIRECTORY%%:*}/gpu-disabled"
   if [ -f "$GPU_FLAG" ]; then
-    GPU_DISABLED=1
-    echo "[agent] GPU 수집 비활성으로 시작 — 이전 인스턴스가 nvidia-smi 에서 반환하지" \
-      "못했거나 드라이버 무응답을 확인했다. 복구 후 재무장하려면 서비스를 stop/start" \
-      "하거나 $GPU_FLAG 를 지운다." >&2
+    if [ "$(head -c 7 "$GPU_FLAG" 2>/dev/null)" = "attempt" ]; then
+      GPU_DISABLED=1
+      echo "[agent] GPU 수집 비활성으로 시작 — 이전 인스턴스가 nvidia-smi 에서 반환하지" \
+        "못했거나 드라이버 무응답을 확인했다. 복구 후 재무장하려면 서비스를 stop/start" \
+        "하거나 $GPU_FLAG 를 지운다." >&2
+    else
+      # 빈 마커는 구버전(rc 종류를 가리지 않고 남기던 시절)이 만든 것이다. 그 시절
+      # 마커는 회복 가능한 오류에도 생겼으므로 hang 의 증거가 아니다 — 근거 없이
+      # 영구 차단하지 않고 폐기 후 재무장한다(구→신 업그레이드 경로).
+      rm -f "$GPU_FLAG" 2>/dev/null
+      echo "[agent] 형식을 알 수 없는 GPU 마커를 폐기하고 재무장한다 ($GPU_FLAG)." >&2
+    fi
   fi
 fi
 
 # /run 은 tmpfs 라 사실상 메모리 연산이다. 차단된 뒤에는 호출 자체가 없어 I/O 도 멈춘다.
 gpu_mark_attempt() {
-  [ -n "$GPU_FLAG" ] && { : >"$GPU_FLAG"; } 2>/dev/null
+  # 내용을 남긴다 — 빈 마커는 구버전이 만든 것이라 위 시작 로직이 폐기한다.
+  [ -n "$GPU_FLAG" ] && { printf 'attempt\n' >"$GPU_FLAG"; } 2>/dev/null
   return 0
 }
 gpu_clear_flag() {
