@@ -21,6 +21,12 @@ RestartSec=10
 # INTERVAL_SEC 을 WatchdogSec 보다 크게 잡는 순간 정상 에이전트가 재시작 루프에 빠진다.
 WatchdogSec=90
 NotifyAccess=all
+# GPU 브레이커 차단 플래그를 담는다. watchdog 이 재시작을 자동화했으므로 차단 상태가
+# 프로세스 생애를 넘어 유지되어야 한다 — 아니면 드라이버가 잠긴 채 90초마다 재시작되며
+# 회수 불가한 nvidia-smi 가 그때마다 하나씩 쌓인다.
+# Preserve=restart: 재시작 사이에만 보존하고 stop/재부팅 시 삭제 → 드라이버 복구 후 자동 재무장.
+RuntimeDirectory=gons-monitoring-agent
+RuntimeDirectoryPreserve=restart
 # Phase 2: systemctl 조회(checks)가 필요한데 DynamicUser 의 임시 UID 는 D-Bus
 # 시스템 버스 연결이 거부된다("Transport endpoint is not connected") — 고정
 # 시스템 유저로 전환하고 DynamicUser 가 주던 격리는 명시 옵션으로 유지.

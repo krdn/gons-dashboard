@@ -81,6 +81,32 @@ PREV_TS=0
 GPU_FAILS=0
 GPU_DISABLED=0
 
+# ⚠️ 차단 상태는 **프로세스 밖에도** 남겨야 한다. 브레이커만으로는 프로세스 생애까지만
+# 유효한데, watchdog 이 재시작을 자동화했기 때문이다: 드라이버가 진짜 hang 이면
+# collect() 가 멈춰 heartbeat 가 끊기고 → 90초 후 watchdog 재시작 → 브레이커 리셋 →
+# GPU 재시도 → 또 hang. 회수 불가 프로세스가 **90초마다 하나씩** 쌓인다.
+# systemd 가 만들어 주는 RuntimeDirectory(서비스 유저 소유)에 플래그를 남기고,
+# RuntimeDirectoryPreserve=restart 로 재시작 사이에만 보존한다 —
+# 정지·재부팅하면 사라지므로 드라이버 복구 후 자동으로 재무장된다.
+# RUNTIME_DIRECTORY 미주입(수동 실행)이면 플래그 없이 기존 동작 그대로.
+GPU_DISABLED_FLAG=""
+if [ -n "${RUNTIME_DIRECTORY:-}" ]; then
+  GPU_DISABLED_FLAG="${RUNTIME_DIRECTORY%%:*}/gpu-disabled"
+  if [ -f "$GPU_DISABLED_FLAG" ]; then
+    GPU_DISABLED=1
+    echo "[agent] GPU 수집 비활성 상태로 시작 — 이전 인스턴스가 드라이버 무응답을 확인했다." \
+      "복구 후 재무장하려면 서비스를 stop/start 하거나 $GPU_DISABLED_FLAG 를 지운다." >&2
+  fi
+fi
+
+# 차단 사유를 남기고 플래그를 세운다(쓰기 실패는 치명적이지 않다 — 메모리 상태는 유효).
+disable_gpu_collection() {
+  GPU_DISABLED=1
+  echo "[agent] GPU 수집 중단 — $1 나머지 지표는 계속 수집한다." >&2
+  [ -n "$GPU_DISABLED_FLAG" ] && { : >"$GPU_DISABLED_FLAG"; } 2>/dev/null
+  return 0
+}
+
 cpu_snapshot() {
   # "idle total" — idle=idle+iowait, total=user..steal 합
   awk '/^cpu /{ idle=$5+$6; total=$2+$3+$4+$5+$6+$7+$8+$9; print idle, total }' /proc/stat
@@ -184,15 +210,11 @@ collect() {
       # 그 외 실패(일시적 오류)는 회복 가능하므로 GPU_FAIL_LIMIT 까지 관용한다.
       case "$gpu_rc" in
         124 | 137)
-          GPU_DISABLED=1
-          echo "[agent] GPU 수집 중단 — nvidia-smi 가 ${GPU_TIMEOUT_SEC}초 내 응답하지 않음(rc=$gpu_rc, 드라이버 잠김)." \
-            "재시도는 고착 프로세스만 늘리므로 하지 않는다. 나머지 지표는 계속 수집한다." >&2
+          disable_gpu_collection "nvidia-smi 가 ${GPU_TIMEOUT_SEC}초 내 응답하지 않음(rc=$gpu_rc, 드라이버 잠김). 재시도는 고착 프로세스만 늘리므로 하지 않는다."
           ;;
         *)
           if [ "$GPU_FAILS" -ge "$GPU_FAIL_LIMIT" ]; then
-            GPU_DISABLED=1
-            echo "[agent] GPU 수집 중단 — nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc)." \
-              "나머지 지표는 계속 수집한다." >&2
+            disable_gpu_collection "nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc)."
           fi
           ;;
       esac
