@@ -234,8 +234,13 @@ collect() {
           disable_gpu_collection "nvidia-smi 가 ${GPU_TIMEOUT_SEC}초 내 응답하지 않음(rc=$gpu_rc, 드라이버 잠김). 재시도는 고착 프로세스만 늘리므로 하지 않는다."
           ;;
         *)
+          # 회복 가능한 오류다(드라이버는 반환은 했다). 마커를 지워 **재시작 후 다시
+          # 시도**하게 한다 — 일시적 실패 하나가 재시작을 만나 영구 차단이 되면 안 된다.
+          # 마커의 불변식: rc 를 받지 못했거나(호출 중 사망) hang 증거(124/137)일 때만 남는다.
+          # 이 경로로 차단되더라도 좀비가 남지 않으므로(프로세스가 반환했다) 재시도는 안전하다.
+          gpu_clear_flag
           if [ "$GPU_FAILS" -ge "$GPU_FAIL_LIMIT" ]; then
-            disable_gpu_collection "nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc)."
+            disable_gpu_collection "nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc). 재시작 시 다시 시도한다."
           fi
           ;;
       esac
