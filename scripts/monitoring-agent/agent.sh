@@ -80,6 +80,7 @@ PREV_TS=0
 # (collect() 안에서 초기화하면 매 사이클 리셋되어 임계에 영원히 못 닿는다).
 GPU_FAILS=0
 GPU_DISABLED=0
+GPU_MARK_WARNED=0
 
 # ⚠️ 차단 상태는 **프로세스 밖에도** 남겨야 한다. 브레이커만으로는 프로세스 생애까지만
 # 유효한데, watchdog 이 재시작을 자동화했기 때문이다: 드라이버가 진짜 hang 이면
@@ -126,10 +127,17 @@ gpu_mark_attempt() {
   # 구분되지 않아 시작 로직이 폐기해 버리고, 결국 **진짜 hang 증거가 사라진다**.
   # rename(2) 은 원자적이라 마커는 항상 완전한 내용을 갖는다 → "빈 마커 = 구버전" 이 보장된다.
   # security collector 가 /run 산출물에 쓰는 것과 같은 패턴이다.
+  # 실패를 삼키지 않는다 — 호출자가 이 반환값을 보고 GPU 수집을 건너뛴다(fail-safe).
   {
     printf 'attempt\n' >"$GPU_FLAG.tmp" && mv -f "$GPU_FLAG.tmp" "$GPU_FLAG"
-  } 2>/dev/null
-  return 0
+  } 2>/dev/null && return 0
+  # 매 사이클 반복되므로 1회만 경고한다.
+  if [ "$GPU_MARK_WARNED" -eq 0 ]; then
+    GPU_MARK_WARNED=1
+    echo "[agent] GPU 마커를 기록할 수 없어 GPU 수집을 건너뛴다 ($GPU_FLAG)." \
+      "마커 없이 호출하면 hang 시 재시작마다 고착 프로세스가 쌓인다." >&2
+  fi
+  return 1
 }
 gpu_clear_flag() {
   [ -n "$GPU_FLAG" ] && rm -f "$GPU_FLAG" 2>/dev/null
@@ -226,9 +234,12 @@ collect() {
   # 100% CPU 프로세스가 쌓인다. 연속 실패가 임계에 닿으면 이 프로세스 생애 동안 GPU
   # 수집을 포기하고 나머지 지표만 계속 보낸다 — GPU 타일 하나보다 관제 생존이 우선이다.
   GPU_JSON=""
-  if [ "$GPU_DISABLED" -eq 0 ] && command -v nvidia-smi >/dev/null 2>&1; then
+  # gpu_mark_attempt 는 호출 **직전** 마커를 남긴다 — 이 조건이 watchdog 재시작 루프를
+  # 끊는다. 마커를 못 남기면 false 를 돌려 GPU 수집을 통째로 건너뛴다(fail-safe):
+  # 보호 없이 호출했다가 hang 하면 다음 인스턴스가 그 사실을 알 수 없어 재시작마다
+  # 고착 프로세스가 쌓인다 — 마커가 막으려던 바로 그 상황이다.
+  if [ "$GPU_DISABLED" -eq 0 ] && command -v nvidia-smi >/dev/null 2>&1 && gpu_mark_attempt; then
     local gpu_raw gpu_rc
-    gpu_mark_attempt # ⚠️ 반드시 호출 **직전** — 이 줄이 watchdog 재시작 루프를 끊는다
     # ⚠️ timeout 을 파이프에 물리지 말 것 — $? 가 head 의 0 이 되어 타임아웃(124)이 가려진다.
     gpu_raw=$(timeout -k 2 "$GPU_TIMEOUT_SEC" nvidia-smi \
       --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu \

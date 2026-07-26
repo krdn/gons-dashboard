@@ -96,6 +96,28 @@ run_cycles 1 >/dev/null
 check "hang 후 마커 내용이 완전(빈 파일 아님)" "attempt" "$(cat "$WORK/run/gpu-disabled" 2>/dev/null)"
 check "임시 파일이 남지 않음" "0" "$(find "$WORK/run" -name '*.tmp' 2>/dev/null | wc -l)"
 
+# 마커를 못 남기면 hang 이 나도 다음 인스턴스가 알 수 없다. 보호 없이 위험한 호출을
+# 계속하는 fail-open 이 되므로, GPU 수집을 건너뛰고 나머지 지표만 보낸다.
+echo "== 마커 기록 실패 시 fail-safe =="
+failsafe() { # 쓰기 불가 RUNTIME_DIRECTORY → "GPU_JSON|스텁호출여부|CPU수집여부"
+  rm -f "$WORK/called"
+  (
+    export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
+    export GPU_TIMEOUT_SEC=1 GPU_FAIL_LIMIT=3 RUNTIME_DIRECTORY="$WORK/nonexistent-dir"
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    take_snapshots
+    collect
+    printf '%s|%s|%s' "${GPU_JSON:-빈값}" \
+      "$([ -f "$WORK/called" ] && echo 호출됨 || echo 미호출)" \
+      "$([ -n "${CPU_PCT:-}" ] && echo 수집됨 || echo 없음)"
+  ) 2>/dev/null
+}
+stub "#!/bin/sh
+touch $WORK/called
+echo \"15, 2048, 6144, 45\""
+check "마커 기록 불가 → GPU 건너뛰되 나머지는 수집" "빈값|미호출|수집됨" "$(failsafe)"
+
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과
   (
