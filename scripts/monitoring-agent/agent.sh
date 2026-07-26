@@ -80,6 +80,109 @@ PREV_TS=0
 # (collect() 안에서 초기화하면 매 사이클 리셋되어 임계에 영원히 못 닿는다).
 GPU_FAILS=0
 GPU_DISABLED=0
+GPU_MARK_WARNED=0
+
+# GPU 보유 여부 — nvidia-smi 실행 파일의 존재만으로 판단하면 안 된다. 그것은 드라이버
+# 패키지에 딸려오는 도구일 뿐이라, GPU 를 뽑았거나 nvidia-utils 만 설치된 호스트에도
+# 남아 있다. 그런 곳에서 nvidia-smi 는 "No devices were found" 로 실패하고, 결과적으로
+# 브레이커가 차단해 gpuUnavailable 을 보내 **정상 상태를 장애로 보고**하게 된다.
+# 하드웨어는 PCI 벤더 ID 로 확인한다 — sysfs 읽기라 드라이버가 잠겨도 hang 하지 않는다.
+# 하드웨어 구성은 런타임에 바뀌지 않으므로 시작 시 1회만 판정한다.
+PCI_DEVICES_DIR="${PCI_DEVICES_DIR:-/sys/bus/pci/devices}"
+has_nvidia_gpu() {
+  local d
+  for d in "$PCI_DEVICES_DIR"/*/; do
+    [ -r "$d/vendor" ] && [ -r "$d/class" ] || continue
+    [ "$(cat "$d/vendor" 2>/dev/null)" = "0x10de" ] || continue
+    # ⚠️ 벤더 ID 만으로는 부족하다 — 0x10de 는 "NVIDIA 가 만든 것" 이지 GPU 가 아니다.
+    # PCI class 0x03xxxx 만 Display controller (0x030000 VGA, 0x030200 3D).
+    # 같은 벤더의 오디오·USB·구형 nForce 칩셋의 이더넷/SATA 는 GPU 가 아니며,
+    # 그것들을 GPU 로 세면 nvidia-smi 가 실패해 정상 호스트를 장애로 보고한다.
+    # 실측(home-server): 01:00.0=0x030000(GPU), 01:00.1=0x040300(HDMI 오디오).
+    case "$(cat "$d/class" 2>/dev/null)" in
+      0x03*) return 0 ;;
+    esac
+  done
+  return 1
+}
+# GPU_PRESENT 를 미리 지정하면 그 값을 쓴다(테스트·특수 환경 오버라이드).
+if [ -z "${GPU_PRESENT:-}" ]; then
+  if command -v nvidia-smi >/dev/null 2>&1 && has_nvidia_gpu; then
+    GPU_PRESENT=1
+  else
+    GPU_PRESENT=0
+  fi
+fi
+[[ "$GPU_PRESENT" =~ ^[01]$ ]] || GPU_PRESENT=0
+
+# ⚠️ 차단 상태는 **프로세스 밖에도** 남겨야 한다. 브레이커만으로는 프로세스 생애까지만
+# 유효한데, watchdog 이 재시작을 자동화했기 때문이다: 드라이버가 진짜 hang 이면
+# collect() 가 멈춰 heartbeat 가 끊기고 → 90초 후 watchdog 재시작 → 브레이커 리셋 →
+# GPU 재시도 → 또 hang. 회수 불가 프로세스가 **90초마다 하나씩** 쌓인다.
+# systemd 가 만들어 주는 RuntimeDirectory(서비스 유저 소유)에 플래그를 남기고,
+# RuntimeDirectoryPreserve=restart 로 재시작 사이에만 보존한다 —
+# 정지·재부팅하면 사라지므로 드라이버 복구 후 자동으로 재무장된다.
+# RUNTIME_DIRECTORY 미주입(수동 실행)이면 플래그 없이 기존 동작 그대로.
+# ⚠️ 마커는 **호출 실패 후가 아니라 호출 직전에** 세운다.
+# 실패 후에 세우면 정작 가장 위험한 경로를 못 막는다: timeout 이 회수 불가 자식을
+# wait 하며 스스로 블록되면 collect() 가 반환하지 않아 차단 코드가 **실행되지 않는다**.
+# 그 상태로 heartbeat 가 끊기면 watchdog 이 재시작하고, 새 인스턴스는 아무 흔적도 없으니
+# 다시 nvidia-smi 를 띄운다 — 90초마다 회수 불가 프로세스가 하나씩 쌓인다.
+#
+# 마커가 남아 있다는 것은 "이전 인스턴스가 nvidia-smi 를 호출한 뒤 정상 반환하지
+# 못했다"는 직접 증거다(정상 반환 시엔 지우므로). 브레이커가 차단한 경우에도 그대로
+# 남으므로 두 경로를 한 플래그로 덮는다.
+# RuntimeDirectoryPreserve=restart 라 stop·재부팅 시엔 삭제 → 드라이버 복구 후 자동 재무장.
+GPU_FLAG=""
+if [ -n "${RUNTIME_DIRECTORY:-}" ]; then
+  GPU_FLAG="${RUNTIME_DIRECTORY%%:*}/gpu-disabled"
+  if [ -f "$GPU_FLAG" ]; then
+    if [ "$(head -c 7 "$GPU_FLAG" 2>/dev/null)" = "attempt" ]; then
+      GPU_DISABLED=1
+      echo "[agent] GPU 수집 비활성으로 시작 — 이전 인스턴스가 nvidia-smi 에서 반환하지" \
+        "못했거나 드라이버 무응답을 확인했다. 복구 후 재무장하려면 서비스를 stop/start" \
+        "하거나 $GPU_FLAG 를 지운다." >&2
+    else
+      # 빈 마커는 구버전(rc 종류를 가리지 않고 남기던 시절)이 만든 것이다. 그 시절
+      # 마커는 회복 가능한 오류에도 생겼으므로 hang 의 증거가 아니다 — 근거 없이
+      # 영구 차단하지 않고 폐기 후 재무장한다(구→신 업그레이드 경로).
+      rm -f "$GPU_FLAG" 2>/dev/null
+      echo "[agent] 형식을 알 수 없는 GPU 마커를 폐기하고 재무장한다 ($GPU_FLAG)." >&2
+    fi
+  fi
+fi
+
+# /run 은 tmpfs 라 사실상 메모리 연산이다. 차단된 뒤에는 호출 자체가 없어 I/O 도 멈춘다.
+gpu_mark_attempt() {
+  [ -n "$GPU_FLAG" ] || return 0
+  # ⚠️ 반드시 **원자적으로** 쓴다. `printf > file` 은 truncate 후 write 라 두 단계이고,
+  # 그 사이에 죽거나 write 가 실패하면 빈 파일이 남는다. 빈 마커는 구버전이 남긴 것과
+  # 구분되지 않아 시작 로직이 폐기해 버리고, 결국 **진짜 hang 증거가 사라진다**.
+  # rename(2) 은 원자적이라 마커는 항상 완전한 내용을 갖는다 → "빈 마커 = 구버전" 이 보장된다.
+  # security collector 가 /run 산출물에 쓰는 것과 같은 패턴이다.
+  # 실패를 삼키지 않는다 — 호출자가 이 반환값을 보고 GPU 수집을 건너뛴다(fail-safe).
+  {
+    printf 'attempt\n' >"$GPU_FLAG.tmp" && mv -f "$GPU_FLAG.tmp" "$GPU_FLAG"
+  } 2>/dev/null && return 0
+  # 매 사이클 반복되므로 1회만 경고한다.
+  if [ "$GPU_MARK_WARNED" -eq 0 ]; then
+    GPU_MARK_WARNED=1
+    echo "[agent] GPU 마커를 기록할 수 없어 GPU 수집을 건너뛴다 ($GPU_FLAG)." \
+      "마커 없이 호출하면 hang 시 재시작마다 고착 프로세스가 쌓인다." >&2
+  fi
+  return 1
+}
+gpu_clear_flag() {
+  [ -n "$GPU_FLAG" ] && rm -f "$GPU_FLAG" 2>/dev/null
+  return 0
+}
+
+# 차단 사유를 남긴다. 플래그는 이미 시도 마커로 세워져 있어 따로 쓰지 않는다.
+disable_gpu_collection() {
+  GPU_DISABLED=1
+  echo "[agent] GPU 수집 중단 — $1 나머지 지표는 계속 수집한다." >&2
+  return 0
+}
 
 cpu_snapshot() {
   # "idle total" — idle=idle+iowait, total=user..steal 합
@@ -164,7 +267,12 @@ collect() {
   # 100% CPU 프로세스가 쌓인다. 연속 실패가 임계에 닿으면 이 프로세스 생애 동안 GPU
   # 수집을 포기하고 나머지 지표만 계속 보낸다 — GPU 타일 하나보다 관제 생존이 우선이다.
   GPU_JSON=""
-  if [ "$GPU_DISABLED" -eq 0 ] && command -v nvidia-smi >/dev/null 2>&1; then
+  GPU_SKIPPED=0
+  # gpu_mark_attempt 는 호출 **직전** 마커를 남긴다 — 이 조건이 watchdog 재시작 루프를
+  # 끊는다. 마커를 못 남기면 false 를 돌려 GPU 수집을 통째로 건너뛴다(fail-safe):
+  # 보호 없이 호출했다가 hang 하면 다음 인스턴스가 그 사실을 알 수 없어 재시작마다
+  # 고착 프로세스가 쌓인다 — 마커가 막으려던 바로 그 상황이다.
+  if [ "$GPU_PRESENT" -eq 1 ] && [ "$GPU_DISABLED" -eq 0 ] && gpu_mark_attempt; then
     local gpu_raw gpu_rc
     # ⚠️ timeout 을 파이프에 물리지 말 것 — $? 가 head 의 0 이 되어 타임아웃(124)이 가려진다.
     gpu_raw=$(timeout -k 2 "$GPU_TIMEOUT_SEC" nvidia-smi \
@@ -184,23 +292,33 @@ collect() {
       # 그 외 실패(일시적 오류)는 회복 가능하므로 GPU_FAIL_LIMIT 까지 관용한다.
       case "$gpu_rc" in
         124 | 137)
-          GPU_DISABLED=1
-          echo "[agent] GPU 수집 중단 — nvidia-smi 가 ${GPU_TIMEOUT_SEC}초 내 응답하지 않음(rc=$gpu_rc, 드라이버 잠김)." \
-            "재시도는 고착 프로세스만 늘리므로 하지 않는다. 나머지 지표는 계속 수집한다." >&2
+          disable_gpu_collection "nvidia-smi 가 ${GPU_TIMEOUT_SEC}초 내 응답하지 않음(rc=$gpu_rc, 드라이버 잠김). 재시도는 고착 프로세스만 늘리므로 하지 않는다."
           ;;
         *)
+          # 회복 가능한 오류다(드라이버는 반환은 했다). 마커를 지워 **재시작 후 다시
+          # 시도**하게 한다 — 일시적 실패 하나가 재시작을 만나 영구 차단이 되면 안 된다.
+          # 마커의 불변식: rc 를 받지 못했거나(호출 중 사망) hang 증거(124/137)일 때만 남는다.
+          # 이 경로로 차단되더라도 좀비가 남지 않으므로(프로세스가 반환했다) 재시도는 안전하다.
+          gpu_clear_flag
           if [ "$GPU_FAILS" -ge "$GPU_FAIL_LIMIT" ]; then
-            GPU_DISABLED=1
-            echo "[agent] GPU 수집 중단 — nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc)." \
-              "나머지 지표는 계속 수집한다." >&2
+            disable_gpu_collection "nvidia-smi ${GPU_FAIL_LIMIT}회 연속 실패(마지막 rc=$gpu_rc). 재시작 시 다시 시도한다."
           fi
           ;;
       esac
     else
       GPU_FAILS=0
+      gpu_clear_flag # 정상 반환을 확인한 뒤에만 지운다
       GPU_JSON=$(printf '%s\n' "$gpu_raw" | head -1 |
         awk -F', *' 'NF>=4 && $3+0>0 { printf "{\"utilPct\":%s,\"vramPct\":%.1f,\"tempC\":%s}", $1, $2/$3*100, $4 }')
     fi
+  fi
+
+  # GPU 가 **있는데** 값을 못 얻었으면 관측 불가다 — 브레이커 차단·마커 기록 실패·
+  # 아직 임계에 못 닿은 오류가 모두 여기 걸린다. 판정을 GPU_DISABLED 로 하면 마커 실패
+  # 경로가 새어나가 보드에서 "GPU 없는 호스트" 처럼 보인다(원인 열거는 새 경로가 생길
+  # 때마다 구멍이 난다 — 결과로 판정한다).
+  if [ -z "$GPU_JSON" ] && [ "$GPU_PRESENT" -eq 1 ]; then
+    GPU_SKIPPED=1
   fi
 
   # 네트워크 bps (직전 스냅샷 대비, 최대 10 인터페이스)
@@ -421,7 +539,7 @@ build_payload() {
   # "GPU 가 없는 호스트" 와 구분되지 않고, 조회 창(30분)을 벗어나는 순간 장애가 화면에서
   # 아예 사라진다 — 관측 불가를 관측 없음으로 오인하지 않는다(security 섹션과 같은 원칙).
   # 매 사이클 실리므로 창 안에서 계속 갱신된다.
-  [ "$GPU_DISABLED" -eq 1 ] && printf '"gpuUnavailable":true,'
+  [ "$GPU_SKIPPED" -eq 1 ] && printf '"gpuUnavailable":true,'
   [ -n "$NET_JSON" ] && printf '"net":[%s],' "$NET_JSON"
   printf '"uptimeSec":%s,' "$UPTIME"
   printf '"rebootRequired":%s' "$REBOOT"

@@ -85,6 +85,11 @@ jobs:
           KRX_OPENAPI_AUTH_KEY: placeholder-krx-key
         run: pnpm test
 
+      # 호스트 에이전트는 bash 라 vitest 대상이 아니다. hang 방어 로직(브레이커·마커·
+      # 입력 가드·watchdog heartbeat)은 조용히 기능만 죽는 결함이 나기 쉬워 별도로 고정한다.
+      - name: Monitoring agent regression tests
+        run: bash scripts/monitoring-agent/agent.test.sh
+
       - name: Build MCP packages
         run: pnpm --filter @gons/mcp-calendar build
 
