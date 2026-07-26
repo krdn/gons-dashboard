@@ -15,6 +15,13 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT="$SCRIPT_DIR/agent.sh"
 WORK="$(mktemp -d)"
+# ⚠️ mktemp 실패 시 WORK 는 **빈 문자열**이 된다(set -u 는 할당된 빈 값을 잡지 못한다).
+# 그 상태로 "$WORK/pci" 를 rm -rf 하면 /pci 를 재귀 삭제한다 — 하위 경로를 붙이는
+# 순간 빈 값이 유효한 절대 경로가 되기 때문이다. 여기서 확실히 끊는다.
+if [ -z "$WORK" ] || [ ! -d "$WORK" ]; then
+  echo "임시 작업 디렉토리를 만들지 못했습니다" >&2
+  exit 1
+fi
 trap 'rm -rf "$WORK"' EXIT
 
 PASS=0
