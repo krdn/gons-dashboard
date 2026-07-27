@@ -49,6 +49,8 @@ GPU_FAIL_LIMIT="${GPU_FAIL_LIMIT:-3}"
 # 영영 닿지 못해 무력화된다 — 둘 다 wrap 이 아니라 "통과하는 큰 값" 자체가 위험하다.
 [[ "$GPU_TIMEOUT_SEC" =~ ^[1-9][0-9]{0,1}$ ]] || GPU_TIMEOUT_SEC=5
 [[ "$GPU_FAIL_LIMIT" =~ ^[1-9][0-9]{0,1}$ ]] || GPU_FAIL_LIMIT=3
+DF_TIMEOUT_SEC="${DF_TIMEOUT_SEC:-5}"
+[[ "$DF_TIMEOUT_SEC" =~ ^[1-9][0-9]{0,1}$ ]] || DF_TIMEOUT_SEC=5
 
 MODE="loop"
 case "${1:-}" in
@@ -239,6 +241,16 @@ collect() {
 
   # 디스크 (used% + inode%) — 실 파일시스템만, mount 는 JSON 안전 문자만, 최대 20개.
   # NF!=6 skip: 공백 포함 마운트/장치명이 잘린 이름으로 기록되는 것을 방지.
+  #
+  # ⚠️ df 는 nvidia-smi 와 같은 등급의 hang 경로다. 응답 없는 네트워크 마운트를 statfs
+  # 하면 커널에서 D 상태로 박혀 SIGKILL 로도 회수되지 않는다. home-server 에
+  # sshfs-remote-databases.service 실패 이력이 있어 가정이 아니라 실재 위험이다.
+  #
+  # 이중 방어: (1) 알려진 위험 타입인 fuse.sshfs 를 아예 제외한다 — GNU df 는 마운트
+  # 테이블의 타입으로 먼저 거르므로 statfs 자체를 호출하지 않는다. (2) 그래도 남는
+  # 경로(NFS/CIFS 등 미열거 타입)를 위해 timeout 을 씌운다. timeout 이 끊으면 fd 가
+  # 닫혀 awk 입력이 비고 DISKS_JSON 만 빈 값이 된다 — 나머지 지표는 계속 수집된다.
+  DF_EXCLUDE=(-x tmpfs -x devtmpfs -x overlay -x squashfs -x fuse.sshfs)
   DISKS_JSON=$(awk '
     FNR==NR { if (NF != 6) next; p=$5; gsub(/%/,"",p); if (p ~ /^[0-9]+$/) inode[$6]=p; next }
     FNR>1 {
@@ -249,8 +261,8 @@ collect() {
       if (m in inode) printf ",\"inodePct\":%s", inode[m];
       printf "}";
     }' \
-    <(df -Pi -x tmpfs -x devtmpfs -x overlay -x squashfs 2>/dev/null) \
-    <(df -P -x tmpfs -x devtmpfs -x overlay -x squashfs 2>/dev/null))
+    <(timeout -k 2 "$DF_TIMEOUT_SEC" df -Pi "${DF_EXCLUDE[@]}" 2>/dev/null) \
+    <(timeout -k 2 "$DF_TIMEOUT_SEC" df -P "${DF_EXCLUDE[@]}" 2>/dev/null))
 
   # CPU 온도 (hwmon 최대값, millidegree → °C)
   TEMP_C=$(cat /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null | sort -n | tail -1 |
