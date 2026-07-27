@@ -246,17 +246,57 @@ check "df 인자에 -x fuse.sshfs 포함" "있음" \
   "$(grep -q -- '-x fuse.sshfs' "$WORK/df-args" && echo 있음 || echo 없음)"
 check "df 를 두 번(-Pi, -P) 호출" "2" "$(wc -l <"$WORK/df-args" | tr -d ' ')"
 
-# (2) hang 스텁 — exec 로 교체해야 timeout 의 SIGTERM 이 sleep 에 직접 닿는다.
-#     wrapper 를 남기면 sh 만 죽고 sleep 이 stdout 을 붙든 채 남아 awk 가 계속 기다린다.
+# (2) ★ 회수 불가 df 재현 — 여기가 실제 위험이다.
+#
+# 협조적으로 죽는 스텁(exec sleep)은 이 결함을 **한 번도 실행하지 않는다.** timeout 의
+# SIGTERM 에 순순히 죽으면 fd 가 닫혀 awk 가 EOF 를 받고 다 잘 되는 것처럼 보인다.
+# 실장애는 D 상태 df 라 SIGKILL 도 안 먹고, 그러면 (a) timeout 이 자식을 reap 하려고
+# 같이 멈추고 (b) 죽지 않은 df 가 쓰기 fd 를 붙들어 awk 가 EOF 를 영영 못 받는다.
+#
+# 사용자 공간에서 D 상태는 못 만들지만, 문제의 성질인 "죽여도 fd 를 붙든 프로세스가
+# 남는다" 는 자식을 남기고 종료하는 것으로 정확히 재현된다 — 손자 sleep 이 stdout 을
+# 상속해 계속 붙들고 있다. 이 스텁으로 돌리면 수정 전 코드는 영구 정지한다.
 stub_df '#!/bin/sh
-exec sleep 30'
-DF_RESULT="$(df_run)"
-check "df 가 멈춰도 collect 는 반환한다" "yes" \
-  "$([ "$(printf '%s' "$DF_RESULT" | cut -d'|' -f1)" -le 5 ] && echo yes || echo no)"
-check "df 멈추면 디스크 지표만 빈다" "" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f2)"
-check "df 가 멈춰도 나머지 지표는 수집된다" "있음" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f3)"
+sleep 30 &
+exit 0'
+# timeout 으로 감싼다 — 수정 전 코드는 여기서 영구 정지하므로, 감싸지 않으면 테스트가
+# "실패" 가 아니라 "영원히 안 끝남" 이 되어 CI 에서 원인이 드러나지 않는다.
+DF_RESULT="$(timeout 25 bash -c "WORK='$WORK'; $(declare -f df_run); df_run" 2>/dev/null)"
+check "회수 불가 df 에서도 collect 가 반환한다" "yes" \
+  "$([ -n "$DF_RESULT" ] && echo yes || echo no)"
+check "회수 불가 df 면 디스크 지표만 빈다" "" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f2)"
+check "회수 불가 df 에서도 나머지 지표는 수집된다" "있음" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f3)"
 
-rm -f "$WORK/stub/df"
+# (3) in-flight 가드 — 실장애에서 회수 불가한 것은 df 자신이고, 그러면 그 자식을 reap 하려는
+#     timeout 도 함께 남는다. 그 상태로 사이클마다 새 df 를 띄우면 2개씩 무한히 쌓인다
+#     (nvidia-smi 좀비와 같은 패턴). 직전 PID 가 살아 있으면 건너뛰어야 한다.
+#     D 상태는 사용자 공간에서 못 만들므로, 가드가 보는 조건(살아 있는 PID)을 직접 준다.
+df_guard_run() { # $1=DF_INFLIGHT_PIDS 로 넣을 PID → "새 df 호출 수|DISKS_JSON"
+  (
+    export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
+    export GPU_PRESENT=0 DF_TIMEOUT_SEC=1 RUNTIME_DIRECTORY="$WORK/run"
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    : >"$WORK/df-spawns"
+    DF_INFLIGHT_PIDS="$1"
+    collect_disks
+    printf '%s|%s' "$(wc -l <"$WORK/df-spawns" | tr -d ' ')" "$DISKS_JSON"
+  ) 2>/dev/null
+}
+stub_df '#!/bin/sh
+echo spawn >>"'"$WORK"'/df-spawns"
+echo "/dev/sda1 100 50 50 50% /"
+exit 0'
+
+sleep 30 & LIVE_PID=$!
+check "직전 df 가 살아 있으면 새로 띄우지 않는다" "0|" "$(df_guard_run "$LIVE_PID")"
+kill "$LIVE_PID" 2>/dev/null; wait "$LIVE_PID" 2>/dev/null || true
+
+# 죽은 PID 는 가드를 막지 않아야 한다 — 안 그러면 한 번 걸린 뒤 영영 수집이 안 된다.
+check "죽은 PID 는 수집을 막지 않는다 (자동 재개)" "2" "$(df_guard_run "$LIVE_PID" | cut -d'|' -f1)"
+
+pkill -f "sleep 30" 2>/dev/null || true
+rm -f "$WORK/stub/df" "$WORK/df-spawns"
 
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과

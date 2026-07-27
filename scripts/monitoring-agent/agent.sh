@@ -51,6 +51,10 @@ GPU_FAIL_LIMIT="${GPU_FAIL_LIMIT:-3}"
 [[ "$GPU_FAIL_LIMIT" =~ ^[1-9][0-9]{0,1}$ ]] || GPU_FAIL_LIMIT=3
 DF_TIMEOUT_SEC="${DF_TIMEOUT_SEC:-5}"
 [[ "$DF_TIMEOUT_SEC" =~ ^[1-9][0-9]{0,1}$ ]] || DF_TIMEOUT_SEC=5
+# 알려진 위험 타입인 fuse.sshfs 는 아예 제외한다 — GNU df 는 마운트 테이블의 타입으로
+# 먼저 거르므로 statfs 자체를 호출하지 않는다. 즉 hang 을 **예방**한다. 미열거 타입
+# (NFS/CIFS 등)에서 실제로 박혔을 때의 방어는 collect_disks() 안에 있다.
+DF_EXCLUDE=(-x tmpfs -x devtmpfs -x overlay -x squashfs -x fuse.sshfs)
 
 MODE="loop"
 case "${1:-}" in
@@ -65,7 +69,10 @@ fi
 # 토큰은 curl 인자가 아닌 헤더 파일(-H @file, mode 600)로 전달 — /proc cmdline 노출 방지.
 RESP_FILE=$(mktemp)
 HDR_FILE=$(mktemp)
-trap 'rm -f "$RESP_FILE" "$HDR_FILE"' EXIT
+# df 출력 수신용 — 파이프가 아니라 **일반 파일**이어야 하는 이유는 collect_disks() 참조.
+DF_INODE_FILE=$(mktemp)
+DF_SIZE_FILE=$(mktemp)
+trap 'rm -f "$RESP_FILE" "$HDR_FILE" "$DF_INODE_FILE" "$DF_SIZE_FILE"' EXIT
 if [ "$MODE" != "dry-run" ]; then
   chmod 600 "$HDR_FILE"
   printf 'Authorization: Bearer %s\n' "$METRICS_INGEST_TOKEN" >"$HDR_FILE"
@@ -83,6 +90,9 @@ PREV_TS=0
 GPU_FAILS=0
 GPU_DISABLED=0
 GPU_MARK_WARNED=0
+# 회수되지 않은 df 의 PID. 비어 있지 않으면 직전 사이클의 df 가 아직 살아 있다는 뜻.
+DF_INFLIGHT_PIDS=""
+DF_STUCK_WARNED=0
 
 # GPU 보유 여부 — nvidia-smi 실행 파일의 존재만으로 판단하면 안 된다. 그것은 드라이버
 # 패키지에 딸려오는 도구일 뿐이라, GPU 를 뽑았거나 nvidia-utils 만 설치된 호스트에도
@@ -212,6 +222,77 @@ take_snapshots() {
   PREV_TS=$(date +%s)
 }
 
+# 디스크 스냅샷 → DISKS_JSON.
+#
+# ⚠️ df 는 nvidia-smi 와 같은 등급의 hang 경로다. 응답 없는 네트워크 마운트를 statfs 하면
+# 커널에서 D 상태로 박혀 **SIGKILL 로도 회수되지 않는다.** 이 성질 때문에 "timeout 을
+# 씌운다" 만으로는 방어가 안 된다 — 두 겹으로 새기 때문이다:
+#
+#   (a) timeout 은 신호를 보낸 뒤 자식을 **reap 하려고 기다린다.** 자식이 안 죽으면
+#       timeout 자체가 반환하지 않는다.
+#   (b) 죽지 않은 df 가 파이프의 **쓰기 끝을 계속 붙든다.** 그러면 <(df ...) 로 읽는
+#       awk 가 EOF 를 영영 못 받아 collect() 가 통째로 멈춘다 — 2026-07-24 사고와 같은 결말.
+#
+# 그래서 세 가지를 지킨다:
+#   1. process substitution 이 아니라 **일반 파일**로 받는다. 일반 파일은 쓰는 쪽이
+#      살아 있든 말든 awk 가 EOF 를 본다.
+#   2. 자식을 **wait 하지 않는다.** 회수 불가한 자식을 기다리면 같이 멈추므로,
+#      kill -0 폴링으로 기한을 두고 확인만 한다.
+#   3. 직전 사이클의 df 가 아직 살아 있으면 **새로 띄우지 않는다.** 안 그러면 마운트
+#      하나가 사이클마다 2개씩 회수 불가 프로세스를 쌓는다(nvidia-smi 좀비와 같은 패턴).
+#      이 가드로 최대 2개에서 멈추고, 마운트가 회복되면 df 가 끝나면서 자동 재개된다.
+collect_disks() {
+  local alive="" p
+  for p in $DF_INFLIGHT_PIDS; do
+    kill -0 "$p" 2>/dev/null && alive="$alive $p"
+  done
+  DF_INFLIGHT_PIDS="${alive# }"
+
+  if [ -n "$DF_INFLIGHT_PIDS" ]; then
+    if [ "$DF_STUCK_WARNED" -eq 0 ]; then
+      DF_STUCK_WARNED=1
+      echo "[agent] 이전 df 가 회수되지 않아 디스크 수집을 건너뜁니다 — 응답 없는 마운트 의심" >&2
+    fi
+    DISKS_JSON=""
+    return 0
+  fi
+  DF_STUCK_WARNED=0
+
+  : >"$DF_INODE_FILE"
+  : >"$DF_SIZE_FILE"
+  timeout -k 2 "$DF_TIMEOUT_SEC" df -Pi "${DF_EXCLUDE[@]}" >"$DF_INODE_FILE" 2>/dev/null &
+  local pid_i=$!
+  timeout -k 2 "$DF_TIMEOUT_SEC" df -P "${DF_EXCLUDE[@]}" >"$DF_SIZE_FILE" 2>/dev/null &
+  local pid_s=$!
+
+  # 0.1초 간격 폴링. 정상 df 는 수십 ms 에 끝나므로 사실상 즉시 빠져나온다.
+  # 상한은 timeout(-k 포함) 이 자연 종료할 시간보다 넉넉히 잡는다.
+  local waited=0 limit=$(((DF_TIMEOUT_SEC + 3) * 10))
+  while [ "$waited" -lt "$limit" ]; do
+    kill -0 "$pid_i" 2>/dev/null || kill -0 "$pid_s" 2>/dev/null || break
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+
+  DF_INFLIGHT_PIDS=""
+  kill -0 "$pid_i" 2>/dev/null && DF_INFLIGHT_PIDS="$pid_i"
+  kill -0 "$pid_s" 2>/dev/null && DF_INFLIGHT_PIDS="${DF_INFLIGHT_PIDS:+$DF_INFLIGHT_PIDS }$pid_s"
+
+  # 파일 구분은 FILENAME 으로 한다. NR==FNR 관용구는 **첫 파일이 비면 깨진다** —
+  # df -Pi 만 멈추고 df -P 는 성공한 경우 두 번째 파일의 첫 줄이 첫 파일로 오인된다.
+  # NF!=6 skip: 헤더와, 공백 포함 마운트/장치명이 잘린 이름으로 기록되는 것을 함께 막는다.
+  DISKS_JSON=$(awk -v inof="$DF_INODE_FILE" '
+    FILENAME == inof { if (NF != 6) next; p=$5; gsub(/%/,"",p); if (p ~ /^[0-9]+$/) inode[$6]=p; next }
+    FNR>1 {
+      if (NF != 6) next;
+      p=$5; gsub(/%/,"",p); m=$6;
+      if (m !~ /^[A-Za-z0-9\/._-]+$/ || p !~ /^[0-9]+$/ || n>=20) next;
+      printf "%s{\"mount\":\"%s\",\"usedPct\":%s", (n++?",":""), m, p;
+      if (m in inode) printf ",\"inodePct\":%s", inode[m];
+      printf "}";
+    }' "$DF_INODE_FILE" "$DF_SIZE_FILE")
+}
+
 # ---------- 수집 ----------
 collect() {
   local now elapsed
@@ -240,29 +321,8 @@ collect() {
     }' /proc/meminfo)"
 
   # 디스크 (used% + inode%) — 실 파일시스템만, mount 는 JSON 안전 문자만, 최대 20개.
-  # NF!=6 skip: 공백 포함 마운트/장치명이 잘린 이름으로 기록되는 것을 방지.
   #
-  # ⚠️ df 는 nvidia-smi 와 같은 등급의 hang 경로다. 응답 없는 네트워크 마운트를 statfs
-  # 하면 커널에서 D 상태로 박혀 SIGKILL 로도 회수되지 않는다. home-server 에
-  # sshfs-remote-databases.service 실패 이력이 있어 가정이 아니라 실재 위험이다.
-  #
-  # 이중 방어: (1) 알려진 위험 타입인 fuse.sshfs 를 아예 제외한다 — GNU df 는 마운트
-  # 테이블의 타입으로 먼저 거르므로 statfs 자체를 호출하지 않는다. (2) 그래도 남는
-  # 경로(NFS/CIFS 등 미열거 타입)를 위해 timeout 을 씌운다. timeout 이 끊으면 fd 가
-  # 닫혀 awk 입력이 비고 DISKS_JSON 만 빈 값이 된다 — 나머지 지표는 계속 수집된다.
-  DF_EXCLUDE=(-x tmpfs -x devtmpfs -x overlay -x squashfs -x fuse.sshfs)
-  DISKS_JSON=$(awk '
-    FNR==NR { if (NF != 6) next; p=$5; gsub(/%/,"",p); if (p ~ /^[0-9]+$/) inode[$6]=p; next }
-    FNR>1 {
-      if (NF != 6) next;
-      p=$5; gsub(/%/,"",p); m=$6;
-      if (m !~ /^[A-Za-z0-9\/._-]+$/ || p !~ /^[0-9]+$/ || n>=20) next;
-      printf "%s{\"mount\":\"%s\",\"usedPct\":%s", (n++?",":""), m, p;
-      if (m in inode) printf ",\"inodePct\":%s", inode[m];
-      printf "}";
-    }' \
-    <(timeout -k 2 "$DF_TIMEOUT_SEC" df -Pi "${DF_EXCLUDE[@]}" 2>/dev/null) \
-    <(timeout -k 2 "$DF_TIMEOUT_SEC" df -P "${DF_EXCLUDE[@]}" 2>/dev/null))
+  collect_disks
 
   # CPU 온도 (hwmon 최대값, millidegree → °C)
   TEMP_C=$(cat /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null | sort -n | tail -1 |
