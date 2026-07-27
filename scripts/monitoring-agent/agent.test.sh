@@ -215,6 +215,49 @@ check "타 벤더 VGA(Intel) → GPU 없음" "0" "$(detect)"
 rm -rf "$WORK/pci"; mkpci 0000:01:00.0 0x10de 0x030000; mkpci 0000:01:00.1 0x10de 0x040300
 check "GPU + 오디오 동시 존재 → GPU 있음" "1" "$(detect)"
 
+echo "== df hang 방어 (죽은 sshfs 마운트) =="
+# df 는 nvidia-smi 와 같은 등급의 hang 경로다 — 응답 없는 네트워크 마운트를 statfs 하면
+# D 상태로 박혀 SIGKILL 로도 안 죽는다. 여기서 고정하는 것은 두 가지:
+#   (1) 알려진 위험 타입(fuse.sshfs)이 df 인자에서 실제로 제외되는가
+#   (2) 그래도 df 가 멈추면 collect 가 **반환하는가** — 안 그러면 2026-07-24 재현이다
+stub_df() { printf '%s\n' "$1" >"$WORK/stub/df"; chmod +x "$WORK/stub/df"; }
+
+df_run() { # → "경과초|DISKS_JSON|UPTIME유무"
+  (
+    export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
+    export GPU_PRESENT=0 DF_TIMEOUT_SEC=1 RUNTIME_DIRECTORY="$WORK/run"
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    t0=$SECONDS
+    collect
+    # UPTIME 은 collect 안에서 디스크 **이후**에 세팅된다 — df 가 멈춘 뒤에도 수집이
+    # 끝까지 진행됐다는 증거로 이 변수를 쓴다. df 이전 변수(CPU 등)는 같은 것을 증명하지 못한다.
+    printf '%s|%s|%s' "$((SECONDS - t0))" "$DISKS_JSON" \
+      "$([ -n "${UPTIME:-}" ] && echo 있음 || echo 없음)"
+  ) 2>/dev/null
+}
+
+# (1) 인자 검사 — df 를 인자 에코 스텁으로 바꿔 제외 목록을 들여다본다.
+stub_df '#!/bin/sh
+echo "$@" >>"'"$WORK"'/df-args"
+exit 0'
+rm -f "$WORK/df-args"; df_run >/dev/null
+check "df 인자에 -x fuse.sshfs 포함" "있음" \
+  "$(grep -q -- '-x fuse.sshfs' "$WORK/df-args" && echo 있음 || echo 없음)"
+check "df 를 두 번(-Pi, -P) 호출" "2" "$(wc -l <"$WORK/df-args" | tr -d ' ')"
+
+# (2) hang 스텁 — exec 로 교체해야 timeout 의 SIGTERM 이 sleep 에 직접 닿는다.
+#     wrapper 를 남기면 sh 만 죽고 sleep 이 stdout 을 붙든 채 남아 awk 가 계속 기다린다.
+stub_df '#!/bin/sh
+exec sleep 30'
+DF_RESULT="$(df_run)"
+check "df 가 멈춰도 collect 는 반환한다" "yes" \
+  "$([ "$(printf '%s' "$DF_RESULT" | cut -d'|' -f1)" -le 5 ] && echo yes || echo no)"
+check "df 멈추면 디스크 지표만 빈다" "" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f2)"
+check "df 가 멈춰도 나머지 지표는 수집된다" "있음" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f3)"
+
+rm -f "$WORK/stub/df"
+
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
 guard() { # $1=INTERVAL_SEC 입력 → 폴백 결과
   (
@@ -232,6 +275,20 @@ check "0 → 기본값 폴백" "15" "$(guard 0)"
 check "경계 초과(10000) → 기본값 폴백" "15" "$(guard 10000)"
 check "경계 내 최대(9999) → 통과" "9999" "$(guard 9999)"
 check "정상(30) → 통과" "30" "$(guard 30)"
+
+# DF_TIMEOUT_SEC 도 같은 등급 — 거대하면 timeout 이 사실상 무한이 되어 방어가 무력화된다.
+df_guard() { # $1=DF_TIMEOUT_SEC 입력 → 폴백 결과
+  (
+    export METRICS_INGEST_TOKEN=dummy DF_TIMEOUT_SEC="$1"
+    # shellcheck disable=SC1091
+    . "$WORK/lib.sh"
+    printf '%s' "$DF_TIMEOUT_SEC"
+  ) 2>/dev/null
+}
+check "DF_TIMEOUT_SEC 3자리(100) → 기본값 폴백" "5" "$(df_guard 100)"
+check "DF_TIMEOUT_SEC 비정수 → 기본값 폴백" "5" "$(df_guard 2.5)"
+check "DF_TIMEOUT_SEC 0 → 기본값 폴백" "5" "$(df_guard 0)"
+check "DF_TIMEOUT_SEC 정상(10) → 통과" "10" "$(df_guard 10)"
 
 echo "== watchdog heartbeat 분할 =="
 # WatchdogSec 은 유닛 파일, INTERVAL_SEC 은 환경변수라 서로 모른다. 고정 간격으로
