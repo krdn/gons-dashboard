@@ -90,8 +90,6 @@ PREV_TS=0
 GPU_FAILS=0
 GPU_DISABLED=0
 GPU_MARK_WARNED=0
-# 회수되지 않은 df 의 PID. 비어 있지 않으면 직전 사이클의 df 가 아직 살아 있다는 뜻.
-DF_INFLIGHT_PIDS=""
 DF_STUCK_WARNED=0
 
 # GPU 보유 여부 — nvidia-smi 실행 파일의 존재만으로 판단하면 안 된다. 그것은 드라이버
@@ -238,20 +236,37 @@ take_snapshots() {
 #      살아 있든 말든 awk 가 EOF 를 본다.
 #   2. 자식을 **wait 하지 않는다.** 회수 불가한 자식을 기다리면 같이 멈추므로,
 #      kill -0 폴링으로 기한을 두고 확인만 한다.
-#   3. 직전 사이클의 df 가 아직 살아 있으면 **새로 띄우지 않는다.** 안 그러면 마운트
-#      하나가 사이클마다 2개씩 회수 불가 프로세스를 쌓는다(nvidia-smi 좀비와 같은 패턴).
-#      이 가드로 최대 2개에서 멈추고, 마운트가 회복되면 df 가 끝나면서 자동 재개된다.
-collect_disks() {
-  local alive="" p
-  for p in $DF_INFLIGHT_PIDS; do
-    kill -0 "$p" 2>/dev/null && alive="$alive $p"
-  done
-  DF_INFLIGHT_PIDS="${alive# }"
+#   3. 회수되지 않은 df 가 남아 있으면 **새로 띄우지 않는다.** 안 그러면 마운트 하나가
+#      사이클마다 2개씩 회수 불가 프로세스를 쌓는다(nvidia-smi 좀비와 같은 패턴).
+#      최대 2개에서 멈추고, 마운트가 회복되면 df 가 끝나면서 자동 재개된다.
 
-  if [ -n "$DF_INFLIGHT_PIDS" ]; then
+# 회수되지 않은 df 가 남아 있는가 — /proc 에서 **현재 사실을 직접** 본다.
+#
+# ⚠️ PID 를 변수에 기억해 두는 방식은 안 된다. 서비스는 자주 재시작된다
+# (유닛의 Restart=always, watchdog, 배포 때마다 systemctl restart) — 그때 in-memory
+# 상태는 사라지지만 D 상태 df 는 그대로 살아남아 init 에 재부모화된다. 그러면 가드가
+# 매 재시작마다 백지가 되어 2개씩 새로 쌓인다. GPU 브레이커가 RuntimeDirectory 로
+# 해결한 것과 같은 문제이고, 여기서는 상태를 저장할 필요 없이 /proc 을 보면 된다
+# (재시작·PID 재사용 어느 쪽과도 무관하게 사실 그 자체다).
+#
+# 우리 UID 소유만 본다 — 남의 df 때문에 수집을 멈추지 않는다. 정상 df 는 수 ms 안에
+# 끝나므로 건강한 df 를 잡아 한 사이클 건너뛸 확률은 무시할 만하다.
+# 비용: 839 프로세스 기준 8ms — 15초 사이클에서 무시할 수준.
+df_running() {
+  local p comm
+  for p in /proc/[0-9]*; do
+    [ -O "$p" ] || continue
+    read -r comm <"$p/comm" 2>/dev/null || continue
+    [ "$comm" = "df" ] && return 0
+  done
+  return 1
+}
+
+collect_disks() {
+  if df_running; then
     if [ "$DF_STUCK_WARNED" -eq 0 ]; then
       DF_STUCK_WARNED=1
-      echo "[agent] 이전 df 가 회수되지 않아 디스크 수집을 건너뜁니다 — 응답 없는 마운트 의심" >&2
+      echo "[agent] 회수되지 않은 df 가 남아 있어 디스크 수집을 건너뜁니다 — 응답 없는 마운트 의심" >&2
     fi
     DISKS_JSON=""
     return 0
@@ -274,9 +289,7 @@ collect_disks() {
     waited=$((waited + 1))
   done
 
-  DF_INFLIGHT_PIDS=""
-  kill -0 "$pid_i" 2>/dev/null && DF_INFLIGHT_PIDS="$pid_i"
-  kill -0 "$pid_s" 2>/dev/null && DF_INFLIGHT_PIDS="${DF_INFLIGHT_PIDS:+$DF_INFLIGHT_PIDS }$pid_s"
+  # 남은 자식을 기억해 둘 필요는 없다 — 다음 사이클의 df_running() 이 /proc 에서 다시 본다.
 
   # 파일 구분은 FILENAME 으로 한다. NR==FNR 관용구는 **첫 파일이 비면 깨진다** —
   # df -Pi 만 멈추고 df -P 는 성공한 경우 두 번째 파일의 첫 줄이 첫 파일로 오인된다.

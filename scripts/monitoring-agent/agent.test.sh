@@ -267,18 +267,27 @@ check "회수 불가 df 에서도 collect 가 반환한다" "yes" \
 check "회수 불가 df 면 디스크 지표만 빈다" "" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f2)"
 check "회수 불가 df 에서도 나머지 지표는 수집된다" "있음" "$(printf '%s' "$DF_RESULT" | cut -d'|' -f3)"
 
-# (3) in-flight 가드 — 실장애에서 회수 불가한 것은 df 자신이고, 그러면 그 자식을 reap 하려는
-#     timeout 도 함께 남는다. 그 상태로 사이클마다 새 df 를 띄우면 2개씩 무한히 쌓인다
-#     (nvidia-smi 좀비와 같은 패턴). 직전 PID 가 살아 있으면 건너뛰어야 한다.
-#     D 상태는 사용자 공간에서 못 만들므로, 가드가 보는 조건(살아 있는 PID)을 직접 준다.
-df_guard_run() { # $1=DF_INFLIGHT_PIDS 로 넣을 PID → "새 df 호출 수|DISKS_JSON"
+# (3) 잔존 df 가드 — 회수 불가한 df 가 남아 있으면 새로 띄우면 안 된다. 안 그러면
+#     사이클마다 2개씩 무한히 쌓인다(nvidia-smi 좀비와 같은 패턴).
+#
+#     ★ 가드는 PID 를 기억하는 방식이면 안 된다. 서비스는 Restart=always·watchdog·배포로
+#     자주 재시작되고, 그때 in-memory 상태는 사라지는데 D 상태 df 는 init 에 재부모화되어
+#     살아남는다 — 재시작마다 가드가 백지가 되어 2개씩 쌓인다. 그래서 /proc 을 본다.
+#     아래 테스트는 **에이전트가 띄우지 않은(= 이전 인스턴스가 남긴)** df 를 만들어
+#     그 시나리오를 그대로 재현한다.
+#
+#     comm 은 실행 파일 이름에서 오므로 셸 스크립트 스텁으로는 안 된다(comm 이 sh 가 된다).
+#     실제 바이너리를 df 라는 이름으로 복사해야 comm=df 가 된다.
+mkdir -p "$WORK/orphan"
+cp "$(command -v sleep)" "$WORK/orphan/df"
+
+df_guard_run() { # → "새 df 호출 수|DISKS_JSON"
   (
     export PATH="$WORK/stub:$PATH" METRICS_INGEST_TOKEN=dummy
     export GPU_PRESENT=0 DF_TIMEOUT_SEC=1 RUNTIME_DIRECTORY="$WORK/run"
     # shellcheck disable=SC1091
     . "$WORK/lib.sh"
     : >"$WORK/df-spawns"
-    DF_INFLIGHT_PIDS="$1"
     collect_disks
     printf '%s|%s' "$(wc -l <"$WORK/df-spawns" | tr -d ' ')" "$DISKS_JSON"
   ) 2>/dev/null
@@ -288,14 +297,20 @@ echo spawn >>"'"$WORK"'/df-spawns"
 echo "/dev/sda1 100 50 50 50% /"
 exit 0'
 
-sleep 30 & LIVE_PID=$!
-check "직전 df 가 살아 있으면 새로 띄우지 않는다" "0|" "$(df_guard_run "$LIVE_PID")"
-kill "$LIVE_PID" 2>/dev/null; wait "$LIVE_PID" 2>/dev/null || true
+# 이전 인스턴스가 남긴 것처럼, 에이전트와 무관한 df 프로세스를 띄운다.
+"$WORK/orphan/df" 30 & ORPHAN_PID=$!
+sleep 0.3
+check "고아 df 를 /proc 에서 발견한다" "발견" \
+  "$( (export METRICS_INGEST_TOKEN=dummy; . "$WORK/lib.sh"; df_running && echo 발견 || echo 못찾음) 2>/dev/null )"
+check "잔존 df 가 있으면 새로 띄우지 않는다 (재시작 후에도)" "0|" "$(df_guard_run)"
 
-# 죽은 PID 는 가드를 막지 않아야 한다 — 안 그러면 한 번 걸린 뒤 영영 수집이 안 된다.
-check "죽은 PID 는 수집을 막지 않는다 (자동 재개)" "2" "$(df_guard_run "$LIVE_PID" | cut -d'|' -f1)"
+kill "$ORPHAN_PID" 2>/dev/null; wait "$ORPHAN_PID" 2>/dev/null || true
+sleep 0.3
+# 사라지면 자동 재개해야 한다 — 안 그러면 한 번 걸린 뒤 영영 수집이 안 된다.
+check "잔존 df 가 사라지면 자동 재개한다" "2" "$(df_guard_run | cut -d'|' -f1)"
 
 pkill -f "sleep 30" 2>/dev/null || true
+rm -rf "$WORK/orphan"
 rm -f "$WORK/stub/df" "$WORK/df-spawns"
 
 echo "== 입력 가드 (산술 연산에 쓰이므로 자릿수 제한 필수) =="
