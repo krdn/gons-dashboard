@@ -33,7 +33,10 @@ vi.mock("@/shared/config/env", async () => {
   return { ...actual, env: { ...actual.env, ADMIN_EMAILS: "krdn.net@gmail.com" } };
 });
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const mockRevalidatePath = vi.fn();
+vi.mock("next/cache", () => ({
+  revalidatePath: (...a: unknown[]) => mockRevalidatePath(...a),
+}));
 
 const VALID_ID = "a".repeat(64);
 
@@ -63,6 +66,7 @@ beforeEach(async () => {
   hostId = h.id;
   mockAuth.mockReset();
   mockRunDocker.mockReset();
+  mockRevalidatePath.mockReset();
   // ADMIN_EMAILS는 .env에서 부팅 시점에 env 모듈로 freeze (process.env 직접 변경은 무의미).
   // .env에 krdn.net@gmail.com이 admin으로 설정되어 있는 가정 위에서 테스트.
 });
@@ -100,6 +104,7 @@ describe("container-actions", () => {
     expect(logs).toHaveLength(1);
     expect(logs[0].action).toBe("restart");
     expect(logs[0].status).toBe("success");
+    expect(mockRevalidatePath).toHaveBeenCalledWith(`/servers/${HOST_NAME}`);
   });
 
   it("비admin은 거부 + audit 기록 없음", async () => {
@@ -171,5 +176,31 @@ describe("container-actions", () => {
       containerName: "x",
     });
     expect(result).toMatchObject({ ok: false, code: "UNAUTHORIZED" });
+  });
+
+  it("executeContainerAction: 세션 없이도 시스템 actor 로 실행된다", async () => {
+    const { executeContainerAction } = await import(
+      "@/features/container-actions/api/executeContainerAction"
+    );
+    const result = await executeContainerAction(
+      "restart",
+      { hostId: "00000000-0000-0000-0000-000000000000", containerId: "abc123def456", containerName: "x" },
+      "system:auto-remediate",
+    );
+    // 세션 부재가 이유인 UNAUTHORIZED 는 나오지 않아야 한다.
+    // (host 가 없으므로 HOST_NOT_FOUND 가 기대값)
+    expect(result).toMatchObject({ ok: false, code: "HOST_NOT_FOUND" });
+  });
+
+  it("executeContainerAction: containerId 형식 검증은 유지된다", async () => {
+    const { executeContainerAction } = await import(
+      "@/features/container-actions/api/executeContainerAction"
+    );
+    const result = await executeContainerAction(
+      "restart",
+      { hostId: "00000000-0000-0000-0000-000000000000", containerId: "../../etc", containerName: "x" },
+      "system:auto-remediate",
+    );
+    expect(result).toMatchObject({ ok: false, code: "INVALID_INPUT" });
   });
 });
