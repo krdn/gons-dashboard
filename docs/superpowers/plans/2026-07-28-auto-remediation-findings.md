@@ -1,0 +1,160 @@
+# 자동 복구 Phase 1 — 활성화 전 선결 사항 (구현 후 발견)
+
+> 이슈 #352 / 브랜치 `feat/auto-remediation-phase1` / 계획 `2026-07-28-monitoring-auto-remediation.md`
+>
+> 9개 태스크 구현·리뷰를 마친 뒤, 조립 층(태스크 경계를 넘는 지점)에서 발견한 결함 기록.
+> **구현 결함이 아니라 계획의 전제 결함이다** — 9개 태스크 모두 계획대로 정확히 구현됐고,
+> 태스크별 리뷰도 각자 diff 안에서는 옳게 판정했다. 아래 결함은 어느 태스크의 diff 에도 없다.
+
+## 요약
+
+`AUTO_REMEDIATE_ENABLED=true` 로 켜기 전에 **반드시** 해결해야 한다. 현재 브랜치는 안전하다 —
+env 미설정이 기본이고 그 값 없이는 조치가 실행되지 않는다.
+
+| # | 결함 | 심각도 | 상태 |
+|---|---|---|---|
+| 1 | `prune-images` 가 관계없는 이벤트에 오매칭 | **위험** | 미해결 |
+| 2 | 정책 3종이 실제 이벤트 `detail` 계약과 불일치 | 기능 무효 | 미해결 |
+| 3 | 보드에 조치 대상이 표시되지 않음 | Phase 1 목적 무효 | 미해결 |
+| 4 | skip 중복 억제 키에 실행 모드 누락 | 경미 | 미해결 |
+
+---
+
+## 1. `prune-images` 오매칭 (위험)
+
+`config/policies.ts` 의 `pruneImages.buildAction` 은 `detail.usedPct >= 85` 만 본다.
+**그 `usedPct` 가 무엇의 비율인지 확인하지 않는다.**
+
+실제로 `usedPct` 를 JSON `detail` 에 싣는 이벤트 생산자:
+
+| 생산자 | `usedPct` 의미 | JSON detail? |
+|---|---|---|
+| `judgeDatastoreStats` → pgstat | postgres **연결** 사용률 | 예 |
+| `judgeDatastoreStats` → redisstat | redis **메모리** 사용률 | 예 |
+| `evaluateVitals` → disk | 디스크 사용률 | **아니오** (아래 §2) |
+
+그리고 `POLICIES = [restartContainer, pruneImages, redisMaxmemory]` 순서에
+`selectActions` 가 **첫 매칭에서 `break`** 한다. 결과:
+
+```
+Redis 메모리 90% 경보
+  → restartContainer  skip (식별자 누락)
+  → pruneImages       usedPct 90 >= 85  → ACTION: docker image prune  ← break
+  → redisMaxmemory    평가되지 않음
+```
+
+postgres 연결 고갈 85% 도 동일하게 `docker image prune` 을 유발한다.
+
+계획서 Global Constraint 1 은 "조치 조건은 실측값만 사용한다. 이름·prefix·관례를 조건에
+넣지 않는다" 인데, 정책이 **필드 이름으로 매칭**해 출처가 다른 지표를 같은 것으로 취급한다.
+막으려던 실수를 같은 형태로 재현했다.
+
+**최소 수정:** `pruneImages` 가 `event.source`(또는 판정 kind)를 확인해 디스크 이벤트에만
+매칭하도록 좁힌다. 단, §2 때문에 좁히면 매칭 대상이 0이 된다 — §2 와 함께 판단해야 한다.
+
+---
+
+## 2. 정책 3종이 실제 이벤트 `detail` 계약과 불일치
+
+계획서는 이벤트 `detail` 이 구조화된 JSON 이고 특정 필드를 담는다고 가정했으나,
+실제 생산자들은 그 계약을 구현하지 않는다.
+
+### 이벤트 생산자 전수 (`recordEvent` 호출부)
+
+| 파일 | source | detail |
+|---|---|---|
+| `monitoring-ingest/index.ts:74` | `host` | `verdict.detail` — **`evaluateVitals` 가 만들지 않음 → 항상 undefined** |
+| `monitoring-ingest/index.ts:149` | `sourceForKind(v.kind)` (pgstat/redisstat 등) | `JSON.stringify(v.detail)` |
+| `monitoring-availability/index.ts:60` | `http` | 평문 문자열 (JSON 아님) |
+| `monitoring-availability/index.ts:116` | `ssl` | 없음 |
+| `github-monitor/index.ts:255` | github | — |
+| `monitoring-remediate/api/runCycle.ts:138` | `host` (영구화 필요 알림) | JSON |
+
+**`source: "container"` 이벤트를 만드는 곳은 저장소에 없다.**
+
+### 정책별 판정
+
+**`restart-container`** — `detail.containerName` + `detail.containerId` 를 요구.
+이 필드를 싣는 생산자가 없고 `container` source 자체가 없다. → 영구히
+`"컨테이너 식별자 누락"`.
+
+**`prune-images`** — `detail.usedPct` 를 요구. 디스크 판정은 `evaluateVitals.ts:67` 의
+`tiered("disk:${mount}", disk.usedPct, ...)` 로 존재하지만, `tiered()` (`:40-57`) 는
+`{ dedupKeySuffix, violated, severity, title }` 만 반환하고 **`detail` 을 만들지 않는다.**
+사용률 값은 `title` 문자열 안에만 들어간다 (`디스크 / 사용률 91.2% (임계 90%)`).
+→ 진짜 디스크 이벤트는 `detail` 이 null 이라 `"detail 파싱 불가"` 로 skip.
+→ 대신 §1 의 datastore 이벤트에 오매칭한다.
+
+**`redis-maxmemory`** — `detail.target` 을 요구. `judgeDatastoreStats` 의 verdict 는
+`{ kind, target, detail, dedupKeySuffix }` 구조로 **`target` 이 `detail` 의 형제 필드**이고,
+`monitoring-ingest/index.ts:153` 이 `detail: JSON.stringify(v.detail)` 로 `detail` 만
+직렬화한다. → `d.target` 이 항상 undefined → `"target/maxMemBytes 관측값 없음"`.
+(계획서는 이 정책이 호스트 여유 메모리 회로 차단기 때문에 항상 skip 된다고 예상했으나,
+실제로는 그 지점에 도달하기도 전에 막힌다.)
+
+### 선택지
+
+- **(i) 이벤트 생산자를 확장** — `evaluateVitals` 가 구조화된 `detail` 을 만들고,
+  ingest 가 `target` 을 함께 직렬화하고, 컨테이너 이벤트 생산자를 신설.
+  이 계획의 범위 밖이며 기존 관제 시스템을 건드린다.
+- **(ii) 정책이 현존하는 것을 읽도록 변경** — `title` 문자열 파싱 등. Global Constraint 1
+  위반이고 취약하다. 권장하지 않는다.
+- **(iii) Phase 1 범위를 명시적으로 축소** — 기계장치(테이블·게이트·claim·cron·보드)는
+  완성됐고, 정책은 Phase 2 에서 이벤트 `detail` 계약을 정비한 뒤 활성화한다고 스펙에 명시.
+  §1 의 위험만 지금 막는다 (`pruneImages` 를 출처로 좁혀 오매칭 차단).
+
+---
+
+## 3. 보드에 조치 대상이 표시되지 않음
+
+`widgets/monitoring/ui/RemediationBoard.tsx` 가 렌더하는 것: `outcome` 배지, `policyId`,
+시각, `action`(조치 **종류** 문자열), `reason`.
+
+렌더하지 않는 것: **`detail`** (= `JSON.stringify(plan.action)` — `hostId`·`containerId`·
+`containerName`·`target`·`nextBytes` 가 여기 있다), `dedupKey`, `eventId`.
+
+한 행이 이렇게 보인다:
+
+```
+restart-container  [dry_run]  16:33:02
+```
+
+**무엇을 재시작하려 했는지가 없다.** Phase 1 의 목적은 사람이 dry-run 계획을 검토하는 것인데,
+대상을 모르면 "이 판단이 맞나?" 를 판단할 수 없다.
+
+데이터는 `listRecentRemediations` 가 `select()` 로 이미 전부 가져온다 — 순수 렌더링 누락이다.
+
+**수정:** `detail` 에서 대상 식별자를 뽑아 표시하거나, `dedupKey` 를 함께 노출한다.
+
+---
+
+## 4. skip 중복 억제 키에 실행 모드 누락 (경미)
+
+`api/attempts.ts` 의 `recordSkip` 중복 억제 키는 `(dedupKey, policyId, reasonShape)` 이고
+`dryRun` 을 포함하지 않는다. dry-run 모드에서 skip 이 기록된 뒤 6시간 안에
+`AUTO_REMEDIATE_ENABLED=true` 로 켜면 실제 모드의 같은 skip 이 억제되어, 보드가 최대 6시간
+낡은 모드를 보여준다. 모드 전환 직후가 로그가 현실을 반영해야 할 가장 중요한 순간이다.
+
+**수정:** 중복 억제 매칭에 `dryRun` 을 포함한다.
+
+---
+
+## 이연 항목 (최종 브랜치 리뷰에서 판단)
+
+- `runRemediationCycle` 자체 통합 테스트 없음 — 5분마다 도는 유일한 진입점인데 어떤 테스트도
+  실행하지 않는다. 조각은 테스트가 있으나 조립이 없고, 위 §1~§4 가 정확히 조립 층의 결함이다.
+- `reapStaleInFlight` 가 고아를 `"failed"` 로 정리하는데 `"failed"` 는 `COUNTED_OUTCOMES` 에
+  포함 — 크래시 구간에 한해 시도 예산이 소진된다.
+- skip 루프(`runCycle.ts:69-76`)에 에러 격리 없음 — `recordSkip` throw 시 사이클 전체 중단.
+- 전역 `ORDER BY attempted_at DESC` 가 `remediation_attempts_dedup_idx`
+  `(dedup_key, attempted_at DESC)` 의 선두 컬럼과 안 맞아 Seq Scan + Sort.
+- `isUniqueViolation` 이 `entities/monitoring/api/events.ts:21-27` 과 완전 중복 — 공유 유틸 추출 검토.
+- `monitoring-purge` 라우트에 유닛 테스트 없음 (기존 4개 case 포함). 데이터 삭제 경로.
+- `notifyIfPermanenceNeeded` 이벤트가 auto-resolve 없이 다음 사이클에 다시 잡힘 — 현재는
+  `readHostAvailableMemBytes`=null 이라 도달 불가, Phase 2 에서 회로 차단기가 풀리면 재귀 형태.
+
+## 구현 상태 (참고)
+
+9개 태스크 전부 완료. `feat/auto-remediation-phase1`, HEAD `e3cd2f0`.
+`pnpm build` 통과, 1636/1636 (238 파일), 작업 트리 clean.
+태스크별 커밋·리뷰·판정 이력은 `.superpowers/sdd/2026-07-28-monitoring-auto-remediation/progress.md`.
