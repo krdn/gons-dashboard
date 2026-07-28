@@ -145,7 +145,7 @@ export const remediationAttempts = pgTable(
     // 'restart-container' | 'prune-images' | 'raise-redis-maxmemory'
     action: text("action").notNull(),
     dryRun: boolean("dry_run").notNull().default(true),
-    // 'in_flight' | 'executed' | 'skipped' | 'failed'
+    // 'in_flight' | 'executed' | 'dry_run' | 'skipped' | 'failed'
     outcome: text("outcome").notNull(),
     // skip·실패 사유. 판단 근거 추적용.
     reason: text("reason"),

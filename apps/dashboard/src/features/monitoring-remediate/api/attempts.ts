@@ -46,9 +46,13 @@ export async function claimAttempt(input: ClaimInput): Promise<string | null> {
   }
 }
 
+// "dry_run" 은 "executed" 와 별도 값이다 — dry-run 은 실제 조치를 하지
+// 않았으므로 guards.ts 의 COUNTED_OUTCOMES(시도 횟수·쿨다운 산입) 화이트리스트가
+// 자동으로 제외한다. 같은 값으로 기록하면 Phase 1 관찰 기간 중에도 시도
+// 횟수 상한이 소진돼 버린다 (2026-07-28 리뷰에서 발견).
 export async function settleAttempt(
   id: string,
-  outcome: "executed" | "failed",
+  outcome: "executed" | "failed" | "dry_run",
   reason?: string,
 ): Promise<void> {
   await db

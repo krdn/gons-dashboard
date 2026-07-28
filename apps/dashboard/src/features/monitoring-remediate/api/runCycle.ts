@@ -90,7 +90,7 @@ export async function runRemediationCycle(now: Date): Promise<CycleSummary> {
     if (attemptId == null) continue;
 
     if (dryRun) {
-      await settleAttempt(attemptId, "executed", "dry-run — 실제 조치 없음");
+      await settleAttempt(attemptId, "dry_run", "dry-run — 실제 조치 없음");
       executed += 1;
       continue;
     }

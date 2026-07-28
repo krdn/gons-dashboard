@@ -57,6 +57,16 @@ describe("evaluateGuards", () => {
     expect(evaluateGuards({ ...base, history }).allowed).toBe(true);
   });
 
+  // dry-run 은 조치를 하지 않았으므로 산입하면 안 된다. 산입하면 Phase 1 관찰
+  // 기간이 몇 사이클 만에 "시도 횟수 상한 도달" 로 무력화된다.
+  it("dry_run 은 시도 횟수에 포함하지 않는다", () => {
+    const history = Array.from({ length: 5 }, (_, i) => ({
+      outcome: "dry_run",
+      attemptedAt: new Date(`2026-07-2${i + 1}T00:00:00Z`),
+    }));
+    expect(evaluateGuards({ ...base, history }).allowed).toBe(true);
+  });
+
   it("쿨다운 중이면 거부", () => {
     const v = evaluateGuards({
       ...base,
