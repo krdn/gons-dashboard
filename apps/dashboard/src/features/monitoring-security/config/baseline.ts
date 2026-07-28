@@ -32,6 +32,7 @@ export const ALLOWED_PORTS: readonly string[] = [
   "tcp:0.0.0.0:443",
   "tcp:0.0.0.0:445", // smbd
   "tcp:0.0.0.0:2222",
+  "tcp:0.0.0.0:3000", // gonsai2-dev backend (ufw 가 LAN 만 허용 — 2026-07-28 확인)
   "tcp:0.0.0.0:3002",
   "tcp:0.0.0.0:3010",
   "tcp:0.0.0.0:3020", // gons-dashboard
@@ -40,6 +41,10 @@ export const ALLOWED_PORTS: readonly string[] = [
   "tcp:0.0.0.0:3200",
   "tcp:0.0.0.0:3300",
   "tcp:0.0.0.0:3401",
+  // news-postgres. news 앱들이 host.docker.internal:5433 으로 접속하는 구조라
+  // 루프백으로 좁히면 컨테이너에서 도달 불가 — 0.0.0.0 이 의도된 구성이다
+  // (2026-07-28 확인, docker-compose.override.yml 의 DATABASE_URL).
+  "tcp:0.0.0.0:5433",
   "tcp:0.0.0.0:5435", // timescaledb
   "tcp:0.0.0.0:5437", // voice-postgres
   "tcp:0.0.0.0:5438", // ais-prod-postgres
@@ -76,6 +81,7 @@ export const ALLOWED_PORTS: readonly string[] = [
   "tcp:[::]:3200",
   "tcp:[::]:3300",
   "tcp:[::]:3401",
+  "tcp:[::]:5433", // news-postgres (docker-proxy dual-stack)
   "tcp:[::]:5435",
   "tcp:[::]:5437",
   "tcp:[::]:5438",
