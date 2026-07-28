@@ -176,6 +176,14 @@ const schema = z.object({
     z.boolean().default(false),
   ),
 
+  // 관제 자동 복구 실행 스위치 (이슈 #352). 미설정/false 면 dry-run
+  // (계획만 기록, 조치 안 함) — 설정을 빠뜨렸을 때 조치가 실행되는 쪽으로
+  // 기울면 안 되므로 기본값은 false.
+  AUTO_REMEDIATE_ENABLED: z.preprocess(
+    (v) => v === "true" || v === "1",
+    z.boolean().default(false),
+  ),
+
   // 타임존 (cron + DB 쿼리에 결정적)
   TZ: z.literal("Asia/Seoul").default("Asia/Seoul"),
 });
