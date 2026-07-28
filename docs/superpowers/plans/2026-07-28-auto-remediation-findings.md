@@ -13,10 +13,10 @@ env 미설정이 기본이고 그 값 없이는 조치가 실행되지 않는다
 
 | # | 결함 | 심각도 | 상태 |
 |---|---|---|---|
-| 1 | `prune-images` 가 관계없는 이벤트에 오매칭 | **위험** | 미해결 |
-| 2 | 정책 3종이 실제 이벤트 `detail` 계약과 불일치 | 기능 무효 | 미해결 |
-| 3 | 보드에 조치 대상이 표시되지 않음 | Phase 1 목적 무효 | 미해결 |
-| 4 | skip 중복 억제 키에 실행 모드 누락 | 경미 | 미해결 |
+| 1 | `prune-images` 가 관계없는 이벤트에 오매칭 | **위험** | **해결** (`6a66544` — mount 실측값 요구) |
+| 2 | 정책 3종이 실제 이벤트 `detail` 계약과 불일치 | 기능 무효 | 선택지 (iii) 채택 — Phase 2 선결 조건으로 이월 |
+| 3 | 보드에 조치 대상이 표시되지 않음 | Phase 1 목적 무효 | **해결** (`772c657` — detail 추출 + dedupKey 노출) |
+| 4 | skip 중복 억제 키에 실행 모드 누락 | 경미 | **해결** (`6b22266` — 매칭에 dryRun 포함) |
 
 ---
 
@@ -130,6 +130,17 @@ occurredAt, hostId` 뿐이고:
   완성됐고, 정책은 Phase 2 에서 이벤트 `detail` 계약을 정비한 뒤 활성화한다고 스펙에 명시.
   §1 의 위험만 지금 막는다 (`pruneImages` 를 출처로 좁혀 오매칭 차단).
 
+**→ (iii) 채택 (2026-07-28).** Phase 1 은 기계장치 완성 + 전 정책 상시 skip 상태로
+마무리한다. 정책 활성화(`AUTO_REMEDIATE_ENABLED=true`)의 선결 조건:
+
+1. `evaluateVitals` 의 `tiered()` 가 구조화된 `detail`(최소 `mount`, `usedPct`)을 생성
+   — `prune-images` 활성화 조건.
+2. `monitoring-ingest` 가 datastore verdict 의 `target` 을 `detail` 에 포함해 직렬화
+   — `redis-maxmemory` 활성화 조건.
+3. `source: "container"` 이벤트 생산자 신설 (containerName·containerId 를 detail 에)
+   — `restart-container` 활성화 조건.
+4. 켜기 전 dry-run 보드에서 계획 검토 기간 확보 (계획서 명시 절차).
+
 ---
 
 ## 3. 보드에 조치 대상이 표시되지 않음
@@ -182,6 +193,6 @@ restart-container  [dry_run]  16:33:02
 
 ## 구현 상태 (참고)
 
-9개 태스크 전부 완료. `feat/auto-remediation-phase1`, HEAD `e3cd2f0`.
-`pnpm build` 통과, 1636/1636 (238 파일), 작업 트리 clean.
+9개 태스크 전부 완료 + 결함 §1·§3·§4 수정 완료 (`6a66544`·`772c657`·`6b22266`).
+`feat/auto-remediation-phase1`. `pnpm build` 통과, 1648/1648 (240 파일).
 태스크별 커밋·리뷰·판정 이력은 `.superpowers/sdd/2026-07-28-monitoring-auto-remediation/progress.md`.
