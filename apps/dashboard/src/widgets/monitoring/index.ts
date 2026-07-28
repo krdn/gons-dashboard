@@ -7,6 +7,7 @@ export { VitalsBoard } from "./ui/VitalsBoard";
 export { ContainerStatsBoard } from "./ui/ContainerStatsBoard";
 export { CronRunsBoard } from "./ui/CronRunsBoard";
 export { EventsTimeline } from "./ui/EventsTimeline";
+export { RemediationBoard } from "./ui/RemediationBoard";
 export { AvailabilityBoard } from "./ui/AvailabilityBoard";
 export { ServicesBoard } from "./ui/ServicesBoard";
 export { HostCronBoard } from "./ui/HostCronBoard";

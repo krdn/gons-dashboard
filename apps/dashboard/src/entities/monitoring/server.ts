@@ -19,6 +19,7 @@ export {
   getLatestContainerStats,
 } from "./api/samples";
 export { listCronRunBoard } from "./api/cronRuns";
+export { listRecentRemediations } from "./api/remediations";
 export { getSajuLlmSpend, type LlmSpendSummary } from "./api/llmSpend";
 export {
   insertCheckResults,
@@ -37,6 +38,7 @@ export type {
   HostMetricsSnapshot,
   ContainerStatRow,
   CronRunBoardRow,
+  RemediationAttemptRow,
   CheckResultRow,
   NewCheckResult,
   CheckKind,
