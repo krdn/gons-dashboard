@@ -62,6 +62,17 @@ export async function settleAttempt(
  *  사람이 검토하지 않으므로 기록의 목적 자체가 사라진다. */
 const SKIP_DEDUPE_HOURS = 6;
 
+/**
+ * 사유 문자열에서 변동값(분·퍼센트·바이트)을 지워 "같은 종류의 사유" 인지 비교한다.
+ *
+ * guards/policies 의 reason 은 관측값을 보간한다 — 예: "지속 시간 부족 (10분 < 30분)".
+ * 5분 뒤 같은 판정은 "(15분 < 30분)" 이 되므로 원문 그대로 비교하면 중복 억제가
+ * 전혀 걸리지 않는다. 가장 빈번한 사유가 하필 이 형태라 억제의 목적 자체가 무너진다.
+ */
+function reasonShape(reason: string): string {
+  return reason.replace(/\d+/g, "#");
+}
+
 export async function recordSkip(input: {
   eventId: string;
   dedupKey: string;
@@ -69,20 +80,22 @@ export async function recordSkip(input: {
   reason: string;
 }): Promise<void> {
   const since = new Date(Date.now() - SKIP_DEDUPE_HOURS * 60 * 60 * 1000);
-  const existing = await db
-    .select({ id: remediationAttempts.id })
+  const candidates = await db
+    .select({ reason: remediationAttempts.reason })
     .from(remediationAttempts)
     .where(
       and(
         eq(remediationAttempts.dedupKey, input.dedupKey),
         eq(remediationAttempts.policyId, input.policyId),
-        eq(remediationAttempts.reason, input.reason),
         eq(remediationAttempts.outcome, "skipped"),
         gt(remediationAttempts.attemptedAt, since),
       ),
-    )
-    .limit(1);
-  if (existing.length > 0) return;
+    );
+  const shape = reasonShape(input.reason);
+  const alreadyRecorded = candidates.some(
+    (c) => c.reason != null && reasonShape(c.reason) === shape,
+  );
+  if (alreadyRecorded) return;
 
   await db.insert(remediationAttempts).values({
     eventId: input.eventId ?? null,

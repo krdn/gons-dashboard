@@ -111,4 +111,19 @@ describe("remediation attempts", () => {
       .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
     expect(rows).toHaveLength(2);
   });
+
+  it("recordSkip: 숫자만 다른 같은 종류의 사유는 한 번만 기록한다", async () => {
+    const base = {
+      eventId: null as unknown as string,
+      dedupKey: KEY,
+      policyId: "redis-maxmemory",
+    };
+    await recordSkip({ ...base, reason: "지속 시간 부족 (10분 < 30분)" });
+    await recordSkip({ ...base, reason: "지속 시간 부족 (15분 < 30분)" });
+    const rows = await db
+      .select()
+      .from(remediationAttempts)
+      .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
+    expect(rows).toHaveLength(1);
+  });
 });
