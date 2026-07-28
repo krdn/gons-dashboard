@@ -6,6 +6,7 @@
 import "server-only";
 import { type RemediationAttemptRow } from "@/entities/monitoring/server";
 import { formatAgo, formatKstTime } from "../lib/format";
+import { remediationTarget } from "../lib/remediationTarget";
 
 const OUTCOME_STYLE: Record<
   string,
@@ -96,31 +97,41 @@ export function RemediationBoard({
         </p>
       ) : (
         <ol className="space-y-2">
-          {rows.map((r) => (
-            <li
-              key={r.id}
-              className="rounded-lg border border-[var(--color-hairline)] p-2.5"
-            >
-              <div className="flex flex-wrap items-center gap-1.5">
-                <OutcomeBadge outcome={r.outcome} />
-                {/* outcome='dry_run' 은 claimAttempt 가 dryRun=true 로만 넣는다
-                    (runCycle.ts) — 항상 같이 붙어 정보량이 0이라 이때는 생략한다. */}
-                {r.dryRun && r.outcome !== "dry_run" && <DryRunBadge />}
-                <span className="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[11px] text-[var(--color-text-muted)]">
-                  {r.policyId}
-                </span>
-                <span className="ml-auto text-[11px] tabular-nums text-[var(--color-text-subtle)]">
-                  {formatKstTime(r.attemptedAt)} · {formatAgo(r.attemptedAt, now)}
-                </span>
-              </div>
-              <p className="mt-1.5 text-sm text-[var(--color-text)]">{r.action}</p>
-              {r.reason && (
-                <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                  {r.reason}
+          {rows.map((r) => {
+            const target = remediationTarget(r.detail);
+            return (
+              <li
+                key={r.id}
+                className="rounded-lg border border-[var(--color-hairline)] p-2.5"
+              >
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <OutcomeBadge outcome={r.outcome} />
+                  {/* outcome='dry_run' 은 claimAttempt 가 dryRun=true 로만 넣는다
+                      (runCycle.ts) — 항상 같이 붙어 정보량이 0이라 이때는 생략한다. */}
+                  {r.dryRun && r.outcome !== "dry_run" && <DryRunBadge />}
+                  <span className="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[11px] text-[var(--color-text-muted)]">
+                    {r.policyId}
+                  </span>
+                  <span className="ml-auto text-[11px] tabular-nums text-[var(--color-text-subtle)]">
+                    {formatKstTime(r.attemptedAt)} · {formatAgo(r.attemptedAt, now)}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-sm text-[var(--color-text)]">
+                  {r.action}
+                  {target && <span className="font-medium"> — {target}</span>}
                 </p>
-              )}
-            </li>
-          ))}
+                {/* 대상 식별의 최후 보루 — skip 행은 detail 이 없어 이것만 남는다. */}
+                <p className="mt-0.5 font-mono text-[11px] text-[var(--color-text-subtle)]">
+                  {r.dedupKey}
+                </p>
+                {r.reason && (
+                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                    {r.reason}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>
