@@ -86,22 +86,38 @@ export async function recordSkip(input: {
 }): Promise<void> {
   const since = new Date(Date.now() - SKIP_DEDUPE_HOURS * 60 * 60 * 1000);
   const candidates = await db
-    .select({ reason: remediationAttempts.reason })
+    .select({
+      reason: remediationAttempts.reason,
+      dryRun: remediationAttempts.dryRun,
+      attemptedAt: remediationAttempts.attemptedAt,
+    })
     .from(remediationAttempts)
     .where(
       and(
         eq(remediationAttempts.dedupKey, input.dedupKey),
         eq(remediationAttempts.policyId, input.policyId),
-        // 실행 모드가 다르면 다른 skip 이다 — dry-run 의 skip 이 실제 모드의
-        // 같은 skip 을 억제하면 모드 전환 직후 보드가 낡은 모드를 보여준다.
-        eq(remediationAttempts.dryRun, input.dryRun),
         eq(remediationAttempts.outcome, "skipped"),
         gt(remediationAttempts.attemptedAt, since),
       ),
     );
+  // 실행 모드가 다르면 다른 skip 이다 — 반대 모드 skip 은 "모드 경계" 이고,
+  // 경계 이후의 같은 모드·같은 모양 기록만 억제 근거로 삼는다. 창 전체에서
+  // 같은 모드를 찾으면 dry-run → 실제 → dry-run 왕복 시 왕복 이전 기록이
+  // 복귀 모드의 첫 skip 을 억제해, 보드 최신 행이 낡은 모드로 남는다.
+  // 모드 전환 직후가 로그가 현실을 반영해야 할 가장 중요한 순간이다.
+  const lastOtherMode = Math.max(
+    0,
+    ...candidates
+      .filter((c) => c.dryRun !== input.dryRun)
+      .map((c) => c.attemptedAt.getTime()),
+  );
   const shape = reasonShape(input.reason);
   const alreadyRecorded = candidates.some(
-    (c) => c.reason != null && reasonShape(c.reason) === shape,
+    (c) =>
+      c.dryRun === input.dryRun &&
+      c.attemptedAt.getTime() > lastOtherMode &&
+      c.reason != null &&
+      reasonShape(c.reason) === shape,
   );
   if (alreadyRecorded) return;
 
