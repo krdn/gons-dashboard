@@ -103,7 +103,9 @@ export function RemediationBoard({
             >
               <div className="flex flex-wrap items-center gap-1.5">
                 <OutcomeBadge outcome={r.outcome} />
-                {r.dryRun && <DryRunBadge />}
+                {/* outcome='dry_run' 은 claimAttempt 가 dryRun=true 로만 넣는다
+                    (runCycle.ts) — 항상 같이 붙어 정보량이 0이라 이때는 생략한다. */}
+                {r.dryRun && r.outcome !== "dry_run" && <DryRunBadge />}
                 <span className="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[11px] text-[var(--color-text-muted)]">
                   {r.policyId}
                 </span>

@@ -82,6 +82,7 @@ export async function recordSkip(input: {
   dedupKey: string;
   policyId: string;
   reason: string;
+  dryRun: boolean;
 }): Promise<void> {
   const since = new Date(Date.now() - SKIP_DEDUPE_HOURS * 60 * 60 * 1000);
   const candidates = await db
@@ -106,7 +107,7 @@ export async function recordSkip(input: {
     dedupKey: input.dedupKey,
     policyId: input.policyId,
     action: "-",
-    dryRun: true,
+    dryRun: input.dryRun,
     outcome: "skipped",
     reason: input.reason,
     settledAt: new Date(),

@@ -72,6 +72,7 @@ describe("remediation attempts", () => {
       dedupKey: KEY,
       policyId: "redis-maxmemory",
       reason: "지속 시간 부족",
+      dryRun: true,
     });
     const rows = await db
       .select()
@@ -87,6 +88,7 @@ describe("remediation attempts", () => {
       dedupKey: KEY,
       policyId: "redis-maxmemory",
       reason: "지속 시간 부족",
+      dryRun: true,
     };
     await recordSkip(input);
     await recordSkip(input);
@@ -102,6 +104,7 @@ describe("remediation attempts", () => {
       eventId: null as unknown as string,
       dedupKey: KEY,
       policyId: "redis-maxmemory",
+      dryRun: true,
     };
     await recordSkip({ ...base, reason: "지속 시간 부족" });
     await recordSkip({ ...base, reason: "쿨다운 중" });
@@ -117,6 +120,7 @@ describe("remediation attempts", () => {
       eventId: null as unknown as string,
       dedupKey: KEY,
       policyId: "redis-maxmemory",
+      dryRun: true,
     };
     await recordSkip({ ...base, reason: "지속 시간 부족 (10분 < 30분)" });
     await recordSkip({ ...base, reason: "지속 시간 부족 (15분 < 30분)" });

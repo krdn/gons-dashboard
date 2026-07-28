@@ -72,6 +72,7 @@ export async function runRemediationCycle(now: Date): Promise<CycleSummary> {
       dedupKey: s.event.dedupKey,
       policyId: s.policyId,
       reason: s.reason,
+      dryRun,
     });
   }
 
