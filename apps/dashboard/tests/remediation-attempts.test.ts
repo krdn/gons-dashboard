@@ -134,6 +134,27 @@ describe("remediation attempts", () => {
     expect(rows).toHaveLength(2);
   });
 
+  // 왕복 전환(dry-run → 실제 → dry-run)도 각 전환이 보드에 보여야 한다.
+  // 창 전체에서 같은 모드 행을 찾으면 왕복 이전 기록이 새 모드의 첫 skip 을
+  // 억제해, 보드 최신 행이 이전 모드로 남는다 (2026-07-28 stop-gate 리뷰).
+  it("recordSkip: 모드 왕복 후 되돌아온 모드의 skip 도 다시 기록한다", async () => {
+    const base = {
+      eventId: null as unknown as string,
+      dedupKey: KEY,
+      policyId: "redis-maxmemory",
+      reason: "지속 시간 부족",
+    };
+    await recordSkip({ ...base, dryRun: true });
+    await recordSkip({ ...base, dryRun: false });
+    await recordSkip({ ...base, dryRun: true }); // 왕복 복귀 — 기록돼야 함
+    await recordSkip({ ...base, dryRun: true }); // 같은 모드 반복 — 억제돼야 함
+    const rows = await db
+      .select()
+      .from(remediationAttempts)
+      .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
+    expect(rows).toHaveLength(3);
+  });
+
   it("recordSkip: 숫자만 다른 같은 종류의 사유는 한 번만 기록한다", async () => {
     const base = {
       eventId: null as unknown as string,
