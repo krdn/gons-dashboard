@@ -49,8 +49,35 @@ postgres 연결 고갈 85% 도 동일하게 `docker image prune` 을 유발한�
 넣지 않는다" 인데, 정책이 **필드 이름으로 매칭**해 출처가 다른 지표를 같은 것으로 취급한다.
 막으려던 실수를 같은 형태로 재현했다.
 
-**최소 수정:** `pruneImages` 가 `event.source`(또는 판정 kind)를 확인해 디스크 이벤트에만
-매칭하도록 좁힌다. 단, §2 때문에 좁히면 매칭 대상이 0이 된다 — §2 와 함께 판단해야 한다.
+### ⚠️ `source` 로는 구분할 수 없다 (Codex 리뷰 지적, 확인됨)
+
+처음에 "`event.source` 로 디스크 이벤트만 매칭하도록 좁힌다" 를 제안했으나 **성립하지 않는다.**
+`monitoring-ingest/lib/sourceForKind.ts:23-27` 이 `pg`/`redis`/`pgstat`/`redisstat` 에 대해
+`"host"` 를 반환한다 — `evaluateVitals` 의 디스크 이벤트와 **같은 source 값**이다.
+
+`OpenEventView` 에서 쓸 수 있는 것은 `id, dedupKey, severity, source, title, detail,
+occurredAt, hostId` 뿐이고:
+
+- `source` — 위 이유로 구분 불가
+- `dedupKey` prefix (`disk:` 등) — 구분은 되지만 **Global Constraint 1 정면 위반**.
+  prefix 기반 판단은 2026-07-28 수동 복구에서 두 번 틀렸던 바로 그 방식이라 계획이 금지했다.
+- `detail` 형태 — 디스크 이벤트는 `detail` 이 **null**, datastore 는 JSON. 즉 "JSON detail 에
+  usedPct 가 있다" 는 조건은 정확히 **datastore 만** 고르는 조건이다. 뒤집혀 있다.
+
+**결론: 현재 이벤트 모델에서 `prune-images` 가 디스크 이벤트를 고를 방법은 없다.**
+디스크 사용률의 유일한 소재가 `title` 문자열이기 때문이다.
+
+### 올바른 최소 수정
+
+`prune-images` 가 **디스크 이벤트만 만족시킬 수 있는 양성 조건**을 요구하게 한다 — 예를 들어
+`detail.mount` 또는 `detail.kind === "disk"`. 현재 그 필드를 만드는 생산자가 없으므로 이 정책은
+**항상 skip** 하게 되고, skip 사유가 선결 조건(디스크 이벤트의 구조화된 detail)을 문서화한다.
+
+오매칭(위험)이 사라지고, 보드에는 "왜 발동하지 않는가" 가 근거와 함께 남는다.
+
+`restart-container` 와 `redis-maxmemory` 는 **등록된 채 둔다** — 둘은 skip 만 만들어 무해하고,
+그 skip 사유가 이벤트 계약의 공백을 그대로 증거로 남긴다. 위험한 것은 *조치를 만들어내는*
+`prune-images` 하나뿐이다.
 
 ---
 
