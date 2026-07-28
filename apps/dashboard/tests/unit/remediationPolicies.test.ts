@@ -113,6 +113,45 @@ describe("redis maxmemory 정책", () => {
   });
 });
 
+describe("이미지 프룬 정책", () => {
+  const policy = POLICIES.find((p) => p.id === "prune-images")!;
+
+  // 오매칭 회귀 (findings §1): usedPct 는 pgstat(연결 사용률)·redisstat(메모리
+  // 사용률)도 같은 필드명으로 싣는다. 필드명만 보면 Redis 메모리 90% 경보에
+  // docker image prune 이 실행된다. 디스크 이벤트만 가질 수 있는 mount
+  // 실측값을 함께 요구해야 한다.
+  it("redisstat 형태 detail(usedPct 만 있음)에는 조치를 만들지 않는다", () => {
+    const action = policy.buildAction(
+      ev({
+        detail: JSON.stringify({
+          usedPct: 92,
+          evictionPolicy: "noeviction",
+          maxMemBytes: 1073741824,
+          target: "ais-prod",
+        }),
+      }),
+      facts,
+    );
+    expect(action).toMatchObject({ skip: expect.stringContaining("mount") });
+  });
+
+  it("mount 실측값이 있는 디스크 detail 이면 임계 초과 시 조치 생성", () => {
+    const action = policy.buildAction(
+      ev({ detail: JSON.stringify({ mount: "/", usedPct: 91 }) }),
+      facts,
+    );
+    expect(action).toMatchObject({ kind: "prune-images", hostId: "h1" });
+  });
+
+  it("mount 가 있어도 임계 미달이면 skip", () => {
+    const action = policy.buildAction(
+      ev({ detail: JSON.stringify({ mount: "/", usedPct: 60 }) }),
+      facts,
+    );
+    expect(action).toMatchObject({ skip: expect.stringContaining("미달") });
+  });
+});
+
 describe("컨테이너 재시작 정책", () => {
   const policy = POLICIES.find((p) => p.id === "restart-container")!;
 

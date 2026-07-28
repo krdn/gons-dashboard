@@ -93,6 +93,15 @@ const pruneImages: RemediationPolicy = {
     if (event.hostId == null) return { skip: "hostId 없음" };
     const d = parseDetail(event.detail);
     if (d == null) return { skip: "detail 파싱 불가 — 실측값 없이 조치 금지" };
+    // usedPct 는 pgstat(연결 사용률)·redisstat(메모리 사용률)도 같은 필드명으로
+    // 싣는다 — 필드명만 보면 Redis 메모리 경보에 image prune 이 실행된다.
+    // 디스크 이벤트만 가질 수 있는 mount 실측값을 함께 요구한다. 현재 디스크
+    // 이벤트는 detail 을 싣지 않으므로(evaluateVitals §2) 이 정책은 항상 skip
+    // 하며, 선결 조건은 디스크 detail 계약 정비다 — docs/superpowers/plans/
+    // 2026-07-28-auto-remediation-findings.md §1.
+    if (typeof d.mount !== "string") {
+      return { skip: "mount 관측값 없음 — usedPct 출처 불명 (디스크 detail 계약 정비 전까지 항상 skip)" };
+    }
     const pct = typeof d.usedPct === "number" ? d.usedPct : null;
     if (pct == null) return { skip: "디스크 사용률 관측값 없음" };
     if (pct < 85) return { skip: `임계 미달 (${pct}% < 85%)` };
