@@ -89,6 +89,7 @@ export async function recordSkip(input: {
     .select({
       reason: remediationAttempts.reason,
       dryRun: remediationAttempts.dryRun,
+      outcome: remediationAttempts.outcome,
       attemptedAt: remediationAttempts.attemptedAt,
     })
     .from(remediationAttempts)
@@ -96,15 +97,16 @@ export async function recordSkip(input: {
       and(
         eq(remediationAttempts.dedupKey, input.dedupKey),
         eq(remediationAttempts.policyId, input.policyId),
-        eq(remediationAttempts.outcome, "skipped"),
         gt(remediationAttempts.attemptedAt, since),
       ),
     );
-  // 실행 모드가 다르면 다른 skip 이다 — 반대 모드 skip 은 "모드 경계" 이고,
-  // 경계 이후의 같은 모드·같은 모양 기록만 억제 근거로 삼는다. 창 전체에서
-  // 같은 모드를 찾으면 dry-run → 실제 → dry-run 왕복 시 왕복 이전 기록이
-  // 복귀 모드의 첫 skip 을 억제해, 보드 최신 행이 낡은 모드로 남는다.
-  // 모드 전환 직후가 로그가 현실을 반영해야 할 가장 중요한 순간이다.
+  // 실행 모드가 다르면 다른 skip 이다 — 반대 모드의 모든 시도(claim·settle
+  // 포함, outcome 무관)가 "모드 경계" 이고, 경계 이후의 같은 모드·같은 모양
+  // skip 만 억제 근거로 삼는다. 창 전체에서 같은 모드를 찾으면 dry-run →
+  // 실제 → dry-run 왕복 시 왕복 이전 기록이 복귀 모드의 첫 skip 을 억제해
+  // 보드 최신 행이 낡은 모드로 남고, 경계를 skip 행에서만 찾으면 반대 모드
+  // 구간에 조치가 실행된 왕복에서 같은 결함이 재현된다. 모드 전환 직후가
+  // 로그가 현실을 반영해야 할 가장 중요한 순간이다.
   const lastOtherMode = Math.max(
     0,
     ...candidates
@@ -114,6 +116,7 @@ export async function recordSkip(input: {
   const shape = reasonShape(input.reason);
   const alreadyRecorded = candidates.some(
     (c) =>
+      c.outcome === "skipped" &&
       c.dryRun === input.dryRun &&
       c.attemptedAt.getTime() > lastOtherMode &&
       c.reason != null &&

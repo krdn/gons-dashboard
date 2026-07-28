@@ -155,6 +155,27 @@ describe("remediation attempts", () => {
     expect(rows).toHaveLength(3);
   });
 
+  // 반대 모드 구간에 skip 이 아닌 시도(claim→settle)만 있었던 왕복도
+  // 경계로 인정돼야 한다 — 경계를 skip 행에서만 찾으면 이 경우 왕복
+  // 이전 기록이 복귀 모드의 첫 skip 을 여전히 억제한다 (stop-gate 리뷰 2).
+  it("recordSkip: 반대 모드의 비-skip 시도도 모드 경계로 인정한다", async () => {
+    const base = {
+      eventId: null as unknown as string,
+      dedupKey: KEY,
+      policyId: "redis-maxmemory",
+      reason: "지속 시간 부족",
+    };
+    await recordSkip({ ...base, dryRun: true });
+    const id = await claimAttempt({ ...baseClaim, dryRun: false });
+    await settleAttempt(id!, "executed");
+    await recordSkip({ ...base, dryRun: true }); // 복귀 — 기록돼야 함
+    const rows = await db
+      .select()
+      .from(remediationAttempts)
+      .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
+    expect(rows.filter((r) => r.outcome === "skipped")).toHaveLength(2);
+  });
+
   it("recordSkip: 숫자만 다른 같은 종류의 사유는 한 번만 기록한다", async () => {
     const base = {
       eventId: null as unknown as string,
