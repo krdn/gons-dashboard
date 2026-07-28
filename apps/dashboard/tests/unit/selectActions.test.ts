@@ -74,8 +74,22 @@ describe("selectActions", () => {
     expect(guardSkip.reason).toContain("시도");
   });
 
-  it("한 이벤트에 대해 조치는 최대 하나만 계획한다", () => {
-    const r = selectActions([ev({ detail: redisDetail })], new Map(), facts, NOW);
+  it("한 이벤트에 대해 조치는 최대 하나만 계획한다 (첫 매칭 정책에서 중단)", () => {
+    // 정책 3종 모두에 매칭되는 detail 이어야 first-match break 의 회귀를
+    // 잡는다 — redisDetail 은 마지막 정책에만 매칭돼 break 를 제거해도
+    // 통과하는 무효 검증이었다. break 가 없으면 재시작 중인 컨테이너에
+    // docker exec CONFIG SET 이 겹치는 충돌이 생긴다.
+    const multiMatch = JSON.stringify({
+      containerName: "some-web",
+      containerId: "abc123def456",
+      mount: "/",
+      usedPct: 92,
+      evictionPolicy: "noeviction",
+      maxMemBytes: 1073741824,
+      target: "ais-prod",
+    });
+    const r = selectActions([ev({ detail: multiMatch })], new Map(), facts, NOW);
     expect(r.actions).toHaveLength(1);
+    expect(r.actions[0]).toMatchObject({ policyId: "restart-container" });
   });
 });

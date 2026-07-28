@@ -136,10 +136,21 @@ occurredAt, hostId` 뿐이고:
 1. `evaluateVitals` 의 `tiered()` 가 구조화된 `detail`(최소 `mount`, `usedPct`)을 생성
    — `prune-images` 활성화 조건.
 2. `monitoring-ingest` 가 datastore verdict 의 `target` 을 `detail` 에 포함해 직렬화
-   — `redis-maxmemory` 활성화 조건.
+   — `redis-maxmemory` 활성화 조건. 직렬화 시 target 컨테이너명 형식 검증(선행 `-`
+   거부, 예: `/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/`)을 함께 추가 — restart 경로의
+   CONTAINER_ID_RE 와 달리 redis 경로는 무검증이라 docker CLI 플래그 오파싱 여지
+   (최종 리뷰 지적; 현 출처는 서버측 `DATASTORE_INSTANCES` 신뢰 config 라 실위험 낮음).
 3. `source: "container"` 이벤트 생산자 신설 (containerName·containerId 를 detail 에)
    — `restart-container` 활성화 조건.
-4. 켜기 전 dry-run 보드에서 계획 검토 기간 확보 (계획서 명시 절차).
+4. **`dry_run` outcome 반복 억제 설계** — skip 은 6h reasonShape 억제, executed/failed 는
+   COUNTED 쿨다운이 있지만 dry_run 은 어느 쪽에도 안 걸린다 (`COUNTED_OUTCOMES` 제외는
+   ruling-4 의 의도지만 반복 브레이크의 대체 장치가 없다). 매칭 open 이벤트 1건당
+   5분마다 1행 = 288행/일이 쌓여 보드(LIMIT 50)가 도배되고, 활성화 전 dry-run 검토
+   절차 자체가 수행 불가해진다 (최종 리뷰 확정 3/3). 현 브랜치는 전 정책 상시 skip 이라
+   도달 불가 — dry-run 관찰 기간 시작 전에 반드시 설계.
+5. `notifyIfPermanenceNeeded` 이벤트의 해소 경로 — auto-resolve 없이 매 사이클 open
+   조회에 재유입 (현재는 회로 차단기 때문에 도달 불가, Phase 2 에서 풀리면 발현).
+6. 켜기 전 dry-run 보드에서 계획 검토 기간 확보 (계획서 명시 절차).
 
 ---
 
@@ -190,6 +201,23 @@ restart-container  [dry_run]  16:33:02
 - `monitoring-purge` 라우트에 유닛 테스트 없음 (기존 4개 case 포함). 데이터 삭제 경로.
 - `notifyIfPermanenceNeeded` 이벤트가 auto-resolve 없이 다음 사이클에 다시 잡힘 — 현재는
   `readHostAvailableMemBytes`=null 이라 도달 불가, Phase 2 에서 회로 차단기가 풀리면 재귀 형태.
+
+## 최종 브랜치 리뷰 결과 (2026-07-28)
+
+5차원(조립·보안·DB·컨벤션·테스트) 파인더 + Critical/Important 발견당 3-렌즈(반박·재현·영향)
+적대적 검증, 총 18 에이전트. 전체 diff `0869fde...HEAD` 대상.
+
+- **확정 (3/3) 2건**: ① dry_run 반복 억제 부재(→ 위 선결 조건 4로 등재), ② selectActions
+  "조치 최대 하나" 테스트가 마지막 정책에만 매칭되는 픽스처라 first-match break 제거를
+  못 잡는 무효 검증 → 정책 3종 동시 매칭 픽스처로 교체, break 제거 mutation 으로 실증.
+- **기각 (0/3) 1건**: "redis target 이 METRICS_INGEST_TOKEN 만으로 docker exec 에 도달"
+  — target 의 실출처는 서버측 `DATASTORE_INSTANCES` 신뢰 config 로 확인(에이전트 payload
+  아님). 형식 검증 비대칭만 선결 조건 2에 병기.
+- **Minor 9건**: RESTART_EXCLUDED 가 이름 기준인데 실행은 id 기준 / eventId FK cascade 가
+  이벤트 보존 기간에 종속 / settle-reap 이중 실행 창 / prune-images 의 이벤트 단위 claim /
+  restart 실패 메시지 유실 / dry-run 배지 회귀 테스트 부재 / 미지 severity 폴백 미검증 /
+  eventId 이중 캐스트 픽스처 / target 형식 검증. 전부 dry-run 기본값에서 무해 — Phase 2
+  선결 작업과 함께 처리.
 
 ## 구현 상태 (참고)
 
