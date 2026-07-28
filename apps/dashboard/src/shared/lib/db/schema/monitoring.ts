@@ -18,6 +18,7 @@ import {
   uniqueIndex,
   jsonb,
   real,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { hosts } from "./infra";
 
@@ -128,5 +129,40 @@ export const checkResults = pgTable(
     ),
     // purge (checked_at < now()-48h) 스캔용
     index("check_results_time_idx").on(t.checkedAt),
+  ],
+);
+
+export const remediationAttempts = pgTable(
+  "remediation_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id").references(() => monitoringEvents.id, {
+      onDelete: "cascade",
+    }),
+    // 시도 횟수·쿨다운 집계 키 (monitoring_events.dedup_key 와 동일 값)
+    dedupKey: text("dedup_key").notNull(),
+    policyId: text("policy_id").notNull(),
+    // 'restart-container' | 'prune-images' | 'raise-redis-maxmemory'
+    action: text("action").notNull(),
+    dryRun: boolean("dry_run").notNull().default(true),
+    // 'in_flight' | 'executed' | 'skipped' | 'failed'
+    outcome: text("outcome").notNull(),
+    // skip·실패 사유. 판단 근거 추적용.
+    reason: text("reason"),
+    // 조치 시점의 실측값 스냅샷 — 사후 오탐 분석의 근거.
+    detail: text("detail"),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("remediation_attempts_dedup_idx").on(t.dedupKey, t.attemptedAt.desc()),
+    // 같은 dedupKey 로 in-flight 시도는 하나만 — cron 주기보다 조치가 길 때
+    // 중복 실행으로 복구 중 서비스를 다시 죽이는 것을 DB 레벨에서 차단한다.
+    // monitoring_events_open_dedup_uq 와 같은 패턴.
+    uniqueIndex("remediation_in_flight_uq")
+      .on(t.dedupKey)
+      .where(sql`outcome = 'in_flight'`),
   ],
 );
