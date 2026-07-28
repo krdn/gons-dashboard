@@ -96,14 +96,30 @@ open 이벤트가 **최소 지속 시간**을 넘겨야 조치 대상이 된다.
 
 ## 조치 카탈로그
 
-| 트리거 | 조치 | 사전 조건 (실패 시 중단) |
-|---|---|---|
-| 컨테이너 unhealthy·exited 지속 | `restart` | 제외목록에 없을 것 (postgres 등 상태 보유 서비스) |
-| `disk.used_pct` ≥ 85% | `docker image prune -f` (dangling 한정) | volume·named image 절대 제외, 1일 1회 |
-| redis 사용률 ≥ 임계 + `noeviction` | maxmemory 단계 상향 | 호스트 가용 메모리 확인 + 절대 상한 캡 + 누적 2회까지 |
+| 트리거 | 조치 | 실행 경로 | 사전 조건 (실패 시 중단) |
+|---|---|---|---|
+| 컨테이너 unhealthy·exited 지속 | `restart` | `features/container-actions` 의 `restartContainer` | 제외목록에 없을 것 (postgres 등 상태 보유 서비스) |
+| `disk.used_pct` ≥ 85% | dangling 이미지 정리 | `runDocker(ctx, ["image","prune","-f"])` | volume·named image 절대 제외, 1일 1회 |
+| redis 사용률 ≥ 임계 + `noeviction` | maxmemory 단계 상향 | `runDocker(ctx, ["exec",target,"redis-cli","CONFIG","SET","maxmemory",N])` | 호스트 가용 메모리 확인 + 절대 상한 캡 + 누적 2회까지 |
 
 각 정책은 `config/policies.ts` 에 선언적으로 정의하고, 사전 조건은 실행
 직전에 **실측**으로 확인한다 (선언 시점의 가정을 신뢰하지 않는다).
+
+**실행 권한은 검증됐다**: app 컨테이너에 `/usr/bin/docker` 가 있고
+`/var/run/docker.sock` 마운트로 호스트 컨테이너 43개를 실제 조회했다
+(2026-07-28 확인). 모든 조치는 기존 `shared/lib/docker/runDocker.ts` 를
+경유한다 — 새 권한 경로를 만들지 않는다.
+
+### Redis 조치의 한계 — 런타임 전용
+
+`CONFIG SET maxmemory` 는 런타임에만 적용되고 **컨테이너 재시작 시
+원복된다.** 영구화하려면 대상 프로젝트의 compose 파일(`command:` 의
+`--maxmemory`)을 고쳐야 하는데, 이는 호스트 파일시스템에 있어 대시보드
+컨테이너에서 접근할 수 없다.
+
+따라서 이 조치는 **시간을 버는 임시 조치**로 규정하고, 실행 시 별도
+이벤트("영구화 필요 — compose 수정")를 발행해 사람이 마무리하게 한다.
+자동 조치가 근본 원인을 조용히 덮는 것을 막는 장치다.
 
 ## 안전장치
 
@@ -119,6 +135,36 @@ open 이벤트가 **최소 지속 시간**을 넘겨야 조치 대상이 된다.
 6. **관측된 사실만 조건으로** — 정책의 사전 조건은 실측값(메모리 사용량,
    healthcheck 상태, 디스크 사용률)만 쓸 수 있다. 이름·prefix·관례를 조건에
    넣지 않는다. 배경 §교훈의 두 사고를 구조적으로 막는 장치다.
+7. **원자적 실행권 획득** — 아래 §동시성 참조.
+
+### 동시성 — 원자적 실행권 획득
+
+cron 은 5분 주기인데 조치(특히 컨테이너 재시작)는 그보다 오래 걸릴 수
+있다. 앞 사이클이 끝나기 전에 다음 사이클이 같은 이벤트를 집으면 **같은
+대상에 조치가 중복 실행**된다. 재시작이 두 번 겹치면 복구 중인 서비스를
+다시 죽인다.
+
+기존 `claimEventNotification` 이 알림 이중 발송에 대해 푼 것과 같은 문제이므로
+같은 패턴을 쓴다 — **DB 레벨 원자적 claim**:
+
+```sql
+-- 같은 dedup_key 로 in-flight 시도는 하나만 존재할 수 있다
+CREATE UNIQUE INDEX remediation_in_flight_uq
+  ON remediation_attempts (dedup_key) WHERE outcome = 'in_flight';
+```
+
+실행 절차는 `recordEvent` 의 INSERT-first 패턴을 미러한다:
+
+1. `outcome='in_flight'` 로 INSERT 를 **먼저** 시도
+2. `23505` (unique 위반) → 다른 사이클이 이미 실행 중 → 이번 사이클은 skip
+3. 성공하면 실행권을 얻은 것 — 조치 수행 후 `executed`/`failed` 로 UPDATE
+
+SELECT-then-INSERT 로 확인하면 두 사이클이 같은 틈에 통과할 수 있다.
+INSERT 를 먼저 시도해 DB 가 중재하게 한다.
+
+**고아 in-flight 처리**: 프로세스가 조치 도중 죽으면 `in_flight` row 가
+남아 해당 대상이 영구히 잠긴다. 사이클 시작 시 일정 시간(조치 최대
+소요시간의 배수)이 지난 `in_flight` 를 `failed` 로 정리한다.
 
 ## 데이터 모델
 
@@ -132,7 +178,7 @@ open 이벤트가 **최소 지속 시간**을 넘겨야 조치 대상이 된다.
 | `policy` | 적용된 정책 식별자 |
 | `action` | 실행한 조치 |
 | `dry_run` | dry-run 여부 |
-| `outcome` | `executed` / `skipped` / `failed` |
+| `outcome` | `in_flight` / `executed` / `skipped` / `failed` |
 | `reason` | skip·실패 사유 (사전 조건 불충족 등) |
 | `detail` | 실측값 스냅샷 (판단 근거 보존) |
 | `attempted_at` | 시각 |
