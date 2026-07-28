@@ -115,6 +115,25 @@ describe("remediation attempts", () => {
     expect(rows).toHaveLength(2);
   });
 
+  // 모드 전환(dry-run → 실제) 직후가 로그가 현실을 반영해야 할 가장 중요한
+  // 순간이다 — dry-run 의 skip 이 실제 모드의 같은 skip 을 억제하면 보드가
+  // 최대 6시간 동안 낡은 모드를 보여준다 (findings §4).
+  it("recordSkip: 실행 모드(dryRun)가 다르면 같은 사유라도 각각 기록한다", async () => {
+    const base = {
+      eventId: null as unknown as string,
+      dedupKey: KEY,
+      policyId: "redis-maxmemory",
+      reason: "지속 시간 부족",
+    };
+    await recordSkip({ ...base, dryRun: true });
+    await recordSkip({ ...base, dryRun: false });
+    const rows = await db
+      .select()
+      .from(remediationAttempts)
+      .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
+    expect(rows).toHaveLength(2);
+  });
+
   it("recordSkip: 숫자만 다른 같은 종류의 사유는 한 번만 기록한다", async () => {
     const base = {
       eventId: null as unknown as string,

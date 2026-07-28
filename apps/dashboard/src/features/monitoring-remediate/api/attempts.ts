@@ -92,6 +92,9 @@ export async function recordSkip(input: {
       and(
         eq(remediationAttempts.dedupKey, input.dedupKey),
         eq(remediationAttempts.policyId, input.policyId),
+        // 실행 모드가 다르면 다른 skip 이다 — dry-run 의 skip 이 실제 모드의
+        // 같은 skip 을 억제하면 모드 전환 직후 보드가 낡은 모드를 보여준다.
+        eq(remediationAttempts.dryRun, input.dryRun),
         eq(remediationAttempts.outcome, "skipped"),
         gt(remediationAttempts.attemptedAt, since),
       ),
