@@ -6,6 +6,9 @@
 //   - auto-remediate : CRON_BEARER_TOKEN 으로 인증된 cron 이 호출 (시스템)
 // 무인증 실행 경로는 없다 — 신뢰 주체가 다를 뿐이다.
 //
+// "호출자에 절대 throw 하지 않음" 계약은 이제 이 함수가 진다 (_runAction 이 아님).
+// 단, host 조회(db.select())는 try 밖이라 DB 자체 장애 시 throw 하는 것은 이전과 동일.
+//
 // 의도적 설계 결정 (원래 _runAction 에 있던 근거를 함께 이전):
 //  - validate-then-lookup 순서: Zod 통과 후 DB hit (불필요한 쿼리 방지)
 //  - errorMessage 500자 제한 (DB row bloat 방지 + Docker stderr 노출 최소화)
