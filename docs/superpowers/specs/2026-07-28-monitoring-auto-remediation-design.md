@@ -110,6 +110,37 @@ open 이벤트가 **최소 지속 시간**을 넘겨야 조치 대상이 된다.
 (2026-07-28 확인). 모든 조치는 기존 `shared/lib/docker/runDocker.ts` 를
 경유한다 — 새 권한 경로를 만들지 않는다.
 
+### 인증 — cron 은 `runAction` 을 그대로 호출할 수 없다
+
+`container-actions/api/_runAction.ts` 는 보안 경계 5종을 갖는데, 그 중 앞
+두 개가 **사람 세션을 전제**한다:
+
+1. `auth()` 세션 없으면 `UNAUTHORIZED`
+2. `ADMIN_EMAILS` allowlist 미포함이면 `FORBIDDEN`
+
+cron 은 `CRON_BEARER_TOKEN` 으로 인증하고 NextAuth 세션이 없다. 따라서
+`restartContainer` 를 그대로 부르면 **항상 UNAUTHORIZED 로 실패한다.**
+
+**해결 — 인증 계층과 실행 계층 분리** (경계 우회가 아니라 재구성):
+
+```
+runAction()               ← Server Action 진입점. auth() + isAdmin() 검사 후 위임
+  └─ executeContainerAction()   ← Zod 검증 + host 조회 + runDocker + 감사 로그
+       ↑
+auto-remediate cron ────────┘   ← CRON_BEARER_TOKEN 으로 인증된 뒤 직접 호출
+```
+
+- 경계 3·4·5(입력 검증, host 검증, 감사 로그)는 **두 경로가 공유**한다.
+  이것들은 호출자가 사람이든 시스템이든 똑같이 필요하다.
+- 경계 1·2(인증, 인가)는 진입점마다 다르다. 사람은 세션+allowlist,
+  cron 은 bearer token 이 그 역할을 한다. **누구도 무인증으로 실행하지
+  않는다** — 신뢰 주체가 다를 뿐이다.
+- 감사 로그의 actor 는 `system:auto-remediate` 로 기록한다. 사람 조치와
+  자동 조치가 로그에서 구분되어야 사후 추적이 가능하다.
+
+`insertAuditLog` 가 시스템 actor 를 받을 수 있는지는 구현 시 확인하고,
+못 받으면 그 타입을 확장한다.
+
 ### Redis 조치의 한계 — 런타임 전용
 
 `CONFIG SET maxmemory` 는 런타임에만 적용되고 **컨테이너 재시작 시
