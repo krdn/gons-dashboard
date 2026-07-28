@@ -1,14 +1,15 @@
 // monitoring_events 기록·해소·조회.
 //
 // dedup 정책 (이슈 #323 §K): 동일 dedupKey 의 open(resolvedAt null) 이벤트가
-// 있으면 재기록하지 않는다. severity 가 달라지면(에스컬레이션/완화) 기존 row 를
-// 갱신한다. 정상 복귀는 resolveEvent 가 resolvedAt 을 채운다 (플래핑 감지 기반).
+// 있으면 새 row 를 만들지 않고 기존 row 를 최신 관측 내용으로 갱신한다
+// (severity·title·detail — 갱신 조건의 근거는 recordEvent 주석 참조).
+// 정상 복귀는 resolveEvent 가 resolvedAt 을 채운다 (플래핑 감지 기반).
 //
 // 동시성: monitoring_events_open_dedup_uq (dedup_key, resolved_at is null 부분
 // unique index) 가 중복 open 생성을 DB 레벨에서 차단 — insert 를 먼저 시도하고
 // unique 충돌(23505)이면 "이미 open 존재" 경로로 전환한다 (SELECT-then-INSERT
 // race 방어, Codex 리뷰 P1).
-import { and, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
 import { monitoringEvents } from "@/shared/lib/db/schema";
 import {
@@ -40,19 +41,28 @@ export async function recordEvent(input: MonitoringEventInput): Promise<void> {
     if (!isUniqueViolation(err)) throw err;
   }
 
-  // 이미 open 존재 — severity 가 달라졌을 때만 갱신 (같으면 no-op = 중복 억제).
+  // 이미 open 존재 — 최신 관측 내용으로 갱신한다.
+  //
+  // severity 뿐 아니라 title/detail 도 갱신 대상이다. severity 등급을 넘지 않는
+  // 악화(포트 드리프트 1건→3건, Redis 메모리 78%→85%)는 severity 가 그대로라,
+  // severity 변화만 갱신 조건으로 삼으면 이벤트 내용이 최초 발생 시점 값에
+  // 동결된다 — 관제가 정작 악화될 때 옛 수치를 보여준다 (2026-07-28 실측).
+  //
+  // 중복 row 억제는 여전히 monitoring_events_open_dedup_uq 가 담당하므로 이
+  // 갱신이 dedup 를 약화시키지 않는다. IS DISTINCT FROM 으로 실제 달라진
+  // 경우만 UPDATE 해 무의미한 write 를 막는다 (NULL 안전).
+  // occurredAt·notifiedAt 은 건드리지 않는다 — 지속 기간과 알림 이력이 보존된다.
+  const detail = input.detail ?? null;
   await db
     .update(monitoringEvents)
-    .set({
-      severity: input.severity,
-      title: input.title,
-      detail: input.detail ?? null,
-    })
+    .set({ severity: input.severity, title: input.title, detail })
     .where(
       and(
         eq(monitoringEvents.dedupKey, input.dedupKey),
         isNull(monitoringEvents.resolvedAt),
-        ne(monitoringEvents.severity, input.severity),
+        sql`(${monitoringEvents.severity} IS DISTINCT FROM ${input.severity}
+          OR ${monitoringEvents.title} IS DISTINCT FROM ${input.title}
+          OR ${monitoringEvents.detail} IS DISTINCT FROM ${detail}::text)`,
       ),
     );
 }

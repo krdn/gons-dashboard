@@ -45,12 +45,61 @@ describe("monitoring events", () => {
     expect(rows[0].resolvedAt).toBeNull();
   });
 
-  it("recordEvent: 동일 severity open 존재 시 skip (중복 억제)", async () => {
+  it("recordEvent: 동일 severity 재기록은 row 를 늘리지 않고 최신 내용으로 갱신", async () => {
     await recordEvent({ source: "host", severity: "warning", title: "t1", dedupKey: KEY });
     await recordEvent({ source: "host", severity: "warning", title: "t2", dedupKey: KEY });
     const rows = await openEvents(KEY);
     expect(rows).toHaveLength(1);
-    expect(rows[0].title).toBe("t1");
+    expect(rows[0].title).toBe("t2");
+  });
+
+  // 회귀 방지 (2026-07-28 실측): severity 등급을 넘지 않는 악화가 화면에 반영되지
+  // 않던 결함. 포트 드리프트가 1건→3건으로 늘었는데 severity 가 warning 으로
+  // 같아서, 이벤트 타임라인이 5일 전의 "1건" 을 계속 표시했다.
+  it("recordEvent: severity 가 같아도 악화된 title/detail 을 반영", async () => {
+    await recordEvent({
+      source: "security",
+      severity: "warning",
+      title: "허용목록 밖 리스닝 소켓 1건: tcp:0.0.0.0:3000",
+      detail: JSON.stringify({ count: 62 }),
+      dedupKey: KEY,
+    });
+    await recordEvent({
+      source: "security",
+      severity: "warning",
+      title: "허용목록 밖 리스닝 소켓 3건: tcp:0.0.0.0:3000 외 2건",
+      detail: JSON.stringify({ count: 65 }),
+      dedupKey: KEY,
+    });
+    const rows = await openEvents(KEY);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title).toContain("3건");
+    expect(rows[0].detail).toBe(JSON.stringify({ count: 65 }));
+  });
+
+  // 갱신이 "새 사건" 으로 둔갑하면 안 된다 — 지속 기간(언제부터 위험했나)이 사라진다.
+  it("recordEvent: 내용 갱신 후에도 occurredAt 은 최초 발생 시각", async () => {
+    await recordEvent({ source: "host", severity: "warning", title: "t1", dedupKey: KEY });
+    const [first] = await openEvents(KEY);
+    await recordEvent({ source: "host", severity: "warning", title: "t2", dedupKey: KEY });
+    const [after] = await openEvents(KEY);
+    expect(after.id).toBe(first.id);
+    expect(after.occurredAt.getTime()).toBe(first.occurredAt.getTime());
+  });
+
+  // 갱신이 notifiedAt 을 건드리면 sweep 이 같은 사건을 다시 알린다 (텔레그램 스팸).
+  it("recordEvent: 내용 갱신이 notifiedAt 을 되돌리지 않는다", async () => {
+    await recordEvent({ source: "host", severity: "warning", title: "t1", dedupKey: KEY });
+    const notifiedAt = new Date("2026-07-28T00:00:00.000Z");
+    await db
+      .update(monitoringEvents)
+      .set({ notifiedAt })
+      .where(eq(monitoringEvents.dedupKey, KEY));
+
+    await recordEvent({ source: "host", severity: "warning", title: "t2", dedupKey: KEY });
+    const [row] = await openEvents(KEY);
+    expect(row.title).toBe("t2");
+    expect(row.notifiedAt?.getTime()).toBe(notifiedAt.getTime());
   });
 
   it("recordEvent: severity 변경 시 기존 open row 를 갱신 (에스컬레이션)", async () => {
