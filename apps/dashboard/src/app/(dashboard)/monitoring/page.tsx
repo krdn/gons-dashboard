@@ -24,6 +24,7 @@ import {
   DatastoreBoard,
   LlmCostCard,
   RemediationBoard,
+  RemediationFlowDiagram,
   SecurityBoard,
   ServicesBoard,
   StatusDot,
@@ -169,6 +170,7 @@ export default async function MonitoringPage() {
           <LlmCostCard spend={llmSpend} budgetKrw={env.SAJU_LLM_DAILY_BUDGET_KRW} />
         </div>
         <RemediationBoard rows={remediations} now={now} />
+        <RemediationFlowDiagram />
       </div>
     </PageContainer>
   );
