@@ -2,13 +2,14 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { like } from "drizzle-orm";
 import { db } from "@/shared/lib/db/client";
-import { hosts, cronRuns } from "@/shared/lib/db/schema";
+import { hosts, cronRuns, remediationAttempts } from "@/shared/lib/db/schema";
 import {
   insertMetricSamples,
   getLatestHostMetrics,
   getLatestContainerStats,
 } from "@/entities/monitoring/api/samples";
 import { listCronRunBoard } from "@/entities/monitoring/api/cronRuns";
+import { listRecentRemediations } from "@/entities/monitoring/api/remediations";
 
 const PREFIX = `mon-q-${Date.now()}-`;
 const HOST_NAME = `${PREFIX}host`;
@@ -19,6 +20,9 @@ describe("monitoring board queries", () => {
   beforeEach(async () => {
     await db.delete(hosts).where(like(hosts.name, `${PREFIX}%`));
     await db.delete(cronRuns).where(like(cronRuns.job, `${PREFIX}%`));
+    await db
+      .delete(remediationAttempts)
+      .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
     const [h] = await db
       .insert(hosts)
       .values({ name: HOST_NAME, dockerContext: "test" })
@@ -29,6 +33,9 @@ describe("monitoring board queries", () => {
   afterAll(async () => {
     await db.delete(hosts).where(like(hosts.name, `${PREFIX}%`));
     await db.delete(cronRuns).where(like(cronRuns.job, `${PREFIX}%`));
+    await db
+      .delete(remediationAttempts)
+      .where(like(remediationAttempts.dedupKey, `${PREFIX}%`));
   });
 
   it("getLatestHostMetrics: 최신값만, container.* 제외, lastCollectedAt", async () => {
@@ -115,5 +122,43 @@ describe("monitoring board queries", () => {
 
     const b = board.find((r) => r.job === jobB);
     expect(b).toMatchObject({ lastStatus: "partial", runs24h: 1, failures24h: 1 });
+  });
+
+  it("listRecentRemediations: 최신순 반환 + limit 적용", async () => {
+    // 테이블 전체(다른 테스트 데이터 포함) 대상 정렬이라, 미래 시각을 써서
+    // 이 시도들이 항상 가장 최신임을 보장한다 — limit 절단 검증을 결정적으로 만든다.
+    const dedupKey = `${PREFIX}redis`;
+    const future = Date.now() + 365 * 24 * 3600_000;
+    await db.insert(remediationAttempts).values([
+      {
+        dedupKey,
+        policyId: "redis-maxmemory",
+        action: "a1",
+        dryRun: true,
+        outcome: "skipped",
+        attemptedAt: new Date(future),
+      },
+      {
+        dedupKey,
+        policyId: "redis-maxmemory",
+        action: "a2",
+        dryRun: true,
+        outcome: "dry_run",
+        attemptedAt: new Date(future + 1000),
+      },
+      {
+        dedupKey,
+        policyId: "redis-maxmemory",
+        action: "a3",
+        dryRun: true,
+        outcome: "failed",
+        attemptedAt: new Date(future + 2000),
+      },
+    ]);
+
+    const rows = await listRecentRemediations(2);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].action).toBe("a3"); // 가장 최신
+    expect(rows[1].action).toBe("a2");
   });
 });

@@ -12,6 +12,7 @@ import {
   listCronRunBoard,
   listLatestChecks,
   listRecentEvents,
+  listRecentRemediations,
 } from "@/entities/monitoring/server";
 import {
   AutoRefresh,
@@ -22,6 +23,7 @@ import {
   HostCronBoard,
   DatastoreBoard,
   LlmCostCard,
+  RemediationBoard,
   SecurityBoard,
   ServicesBoard,
   StatusDot,
@@ -53,16 +55,25 @@ export default async function MonitoringPage() {
   if (!session?.user?.id) redirect("/login");
 
   const now = new Date();
-  const [snapshots, containers, cronBoard, events, open, checks, llmSpend] =
-    await Promise.all([
-      getLatestHostMetrics(),
-      getLatestContainerStats(),
-      listCronRunBoard(),
-      listRecentEvents(50),
-      countOpenEvents(),
-      listLatestChecks(),
-      getSajuLlmSpend(now),
-    ]);
+  const [
+    snapshots,
+    containers,
+    cronBoard,
+    events,
+    open,
+    checks,
+    llmSpend,
+    remediations,
+  ] = await Promise.all([
+    getLatestHostMetrics(),
+    getLatestContainerStats(),
+    listCronRunBoard(),
+    listRecentEvents(50),
+    countOpenEvents(),
+    listLatestChecks(),
+    getSajuLlmSpend(now),
+    listRecentRemediations(50),
+  ]);
   const byKind = (kind: string) => checks.filter((c) => c.kind === kind);
   // 보안 kind 는 한 보드에 모아 표시한다 (kind 하나당 target 하나).
   const SECURITY_KINDS = new Set([
@@ -157,6 +168,7 @@ export default async function MonitoringPage() {
           />
           <LlmCostCard spend={llmSpend} budgetKrw={env.SAJU_LLM_DAILY_BUDGET_KRW} />
         </div>
+        <RemediationBoard rows={remediations} now={now} />
       </div>
     </PageContainer>
   );

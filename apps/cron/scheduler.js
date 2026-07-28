@@ -256,6 +256,18 @@ cron.schedule(
   { timezone: TIMEZONE },
 );
 
+// 5분마다 — 관제 자동 복구 사이클 (이슈 #352). 판정·조치는 monitoring-notify(매분)
+// 보다 여유를 둬 5분 — 재시도·쿨다운 판단이 실측 몇 사이클을 필요로 하고, 매분
+// 돌리면 in-flight 판정과 경합만 늘어난다. Phase 1 은 AUTO_REMEDIATE_ENABLED=false
+// 기본값으로 dry-run만 수행 — 실제 조치 없이 판정 로그만 쌓아 안전하게 검증한다.
+cron.schedule(
+  "*/5 * * * *",
+  () => {
+    void callCron("/api/cron/auto-remediate", "auto-remediate", 120_000);
+  },
+  { timezone: TIMEZONE },
+);
+
 // autopilot — 5분 주기로 새 이미지 감지·배포·검증·롤백 (AUTOPILOT_DEPLOY=on 일 때만).
 if (process.env.AUTOPILOT_DEPLOY === "on") {
   cron.schedule(
@@ -269,7 +281,7 @@ if (process.env.AUTOPILOT_DEPLOY === "on") {
 }
 
 console.log(
-  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST, check-http=* * * * * KST, monitoring-notify=* * * * * KST, check-ssl=53 * * * * KST",
+  "[cron] 스케줄 등록 완료. polling=*/15 * * * *, digest=*/15 * * * * KST(app-side due), daily-fortunes=1 0 * * * KST, daily-tri=5 0 * * * KST, stock-kr=30 16 * * * KST, stock-us=30 6 * * * KST, krx-master=0 6 * * 0 KST, memo-classify=23 * * * * KST, memo-digest=5 19 * * * KST, memo-action-reminders=37 * * * * KST, memo-extract-actions=41 * * * * KST, collect-docker-stats=* * * * * KST, check-http=* * * * * KST, monitoring-notify=* * * * * KST, check-ssl=53 * * * * KST, auto-remediate=*/5 * * * * KST",
 );
 
 // 시작 직후 catchup — 컨테이너가 정규 스케줄 시각에 떠있지 않았던 날(배포·재시작)

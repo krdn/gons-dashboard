@@ -351,6 +351,13 @@
       "when": 1784543774748,
       "tag": "0049_brief_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1785220283520,
+      "tag": "0050_milky_black_bolt",
+      "breakpoints": true
     }
   ]
 }

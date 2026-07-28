@@ -3,6 +3,7 @@
 //   cron_runs: 30d
 //   monitoring_events: resolved 만 90d (open 이벤트는 보존)
 //   check_results: 48h (최신 row 가 현재 상태 — 일 1회 kind 도 창 안에 남는다)
+//   remediation_attempts: 7d (자동 복구, 5분마다 적재 — 이슈 #352)
 // 다운샘플(5분 집계)은 Phase 4.
 import { and, isNotNull, lt } from "drizzle-orm";
 import { createCronHandler } from "@/shared/lib/cron/createCronHandler";
@@ -12,6 +13,7 @@ import {
   cronRuns,
   metricSamples,
   monitoringEvents,
+  remediationAttempts,
 } from "@/shared/lib/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,7 @@ const TARGETS = [
   { id: "cron_runs" },
   { id: "monitoring_events" },
   { id: "check_results" },
+  { id: "remediation_attempts" },
 ] as const;
 type PurgeTarget = (typeof TARGETS)[number];
 
@@ -57,6 +60,12 @@ async function purge(target: PurgeTarget): Promise<number> {
       const res = await db
         .delete(checkResults)
         .where(lt(checkResults.checkedAt, new Date(now - 48 * HOUR_MS)));
+      return res.count;
+    }
+    case "remediation_attempts": {
+      const res = await db
+        .delete(remediationAttempts)
+        .where(lt(remediationAttempts.attemptedAt, new Date(now - 7 * DAY_MS)));
       return res.count;
     }
   }

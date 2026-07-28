@@ -3,6 +3,7 @@ import {
   type checkResults,
   type metricSamples,
   type monitoringEvents,
+  type remediationAttempts,
 } from "@/shared/lib/db/schema";
 
 export type MetricSampleRow = typeof metricSamples.$inferSelect;
@@ -10,6 +11,7 @@ export type NewMetricSample = typeof metricSamples.$inferInsert;
 export type MonitoringEventRow = typeof monitoringEvents.$inferSelect;
 export type CheckResultRow = typeof checkResults.$inferSelect;
 export type NewCheckResult = typeof checkResults.$inferInsert;
+export type RemediationAttemptRow = typeof remediationAttempts.$inferSelect;
 
 export type CheckKind =
   | "service"

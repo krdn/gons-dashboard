@@ -33,7 +33,34 @@ vi.mock("@/shared/config/env", async () => {
   return { ...actual, env: { ...actual.env, ADMIN_EMAILS: "krdn.net@gmail.com" } };
 });
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const mockRevalidatePath = vi.fn();
+vi.mock("next/cache", () => ({
+  revalidatePath: (...a: unknown[]) => mockRevalidatePath(...a),
+}));
+
+// insertAuditLog는 기본적으로 실제 구현(실 DB insert)에 위임한다 — 기존 테스트들이
+// auditLogs 테이블을 직접 조회해 검증하므로 passthrough가 기본값이어야 한다.
+// "audit 실패가 docker 결과를 가리지 않는다" 테스트에서만 개별적으로 override한다.
+let actualInsertAuditLog: (
+  ...args: Parameters<
+    typeof import("@/features/container-actions/api/insertAuditLog").insertAuditLog
+  >
+) => ReturnType<
+  typeof import("@/features/container-actions/api/insertAuditLog").insertAuditLog
+>;
+const mockInsertAuditLog = vi.fn();
+vi.mock("@/features/container-actions/api/insertAuditLog", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/features/container-actions/api/insertAuditLog")
+  >("@/features/container-actions/api/insertAuditLog");
+  actualInsertAuditLog = actual.insertAuditLog;
+  return {
+    ...actual,
+    insertAuditLog: (
+      ...a: Parameters<typeof actual.insertAuditLog>
+    ) => mockInsertAuditLog(...a),
+  };
+});
 
 const VALID_ID = "a".repeat(64);
 
@@ -63,6 +90,11 @@ beforeEach(async () => {
   hostId = h.id;
   mockAuth.mockReset();
   mockRunDocker.mockReset();
+  mockRevalidatePath.mockReset();
+  mockInsertAuditLog.mockReset();
+  mockInsertAuditLog.mockImplementation((...a: Parameters<typeof actualInsertAuditLog>) =>
+    actualInsertAuditLog(...a),
+  );
   // ADMIN_EMAILS는 .env에서 부팅 시점에 env 모듈로 freeze (process.env 직접 변경은 무의미).
   // .env에 krdn.net@gmail.com이 admin으로 설정되어 있는 가정 위에서 테스트.
 });
@@ -100,6 +132,7 @@ describe("container-actions", () => {
     expect(logs).toHaveLength(1);
     expect(logs[0].action).toBe("restart");
     expect(logs[0].status).toBe("success");
+    expect(mockRevalidatePath).toHaveBeenCalledWith(`/servers/${HOST_NAME}`);
   });
 
   it("비admin은 거부 + audit 기록 없음", async () => {
@@ -171,5 +204,65 @@ describe("container-actions", () => {
       containerName: "x",
     });
     expect(result).toMatchObject({ ok: false, code: "UNAUTHORIZED" });
+  });
+
+  it("executeContainerAction: 세션 없이도 시스템 actor 로 실행된다", async () => {
+    const { executeContainerAction } = await import(
+      "@/features/container-actions/api/executeContainerAction"
+    );
+    const result = await executeContainerAction(
+      "restart",
+      { hostId: "00000000-0000-0000-0000-000000000000", containerId: "abc123def456", containerName: "x" },
+      "system:auto-remediate",
+    );
+    // 세션 부재가 이유인 UNAUTHORIZED 는 나오지 않아야 한다.
+    // (host 가 없으므로 HOST_NOT_FOUND 가 기대값)
+    expect(result).toMatchObject({ ok: false, code: "HOST_NOT_FOUND" });
+  });
+
+  it("executeContainerAction: containerId 형식 검증은 유지된다", async () => {
+    const { executeContainerAction } = await import(
+      "@/features/container-actions/api/executeContainerAction"
+    );
+    const result = await executeContainerAction(
+      "restart",
+      { hostId: "00000000-0000-0000-0000-000000000000", containerId: "../../etc", containerName: "x" },
+      "system:auto-remediate",
+    );
+    expect(result).toMatchObject({ ok: false, code: "INVALID_INPUT" });
+  });
+
+  it("audit insert 실패가 docker 성공 결과를 가리지 않는다", async () => {
+    mockRunDocker.mockResolvedValue("");
+    mockInsertAuditLog.mockRejectedValue(new Error("audit db down"));
+    const { executeContainerAction } = await import(
+      "@/features/container-actions/api/executeContainerAction"
+    );
+    const result = await executeContainerAction(
+      "restart",
+      { hostId, containerId: VALID_ID, containerName: "x" },
+      "system:auto-remediate",
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(result).not.toMatchObject({ code: "DOCKER_ERROR" });
+  });
+
+  it("executeContainerAction: 시스템 actor 로 성공 시 hostName 반환 + audit userEmail 기록", async () => {
+    mockRunDocker.mockResolvedValue("");
+    const { executeContainerAction } = await import(
+      "@/features/container-actions/api/executeContainerAction"
+    );
+    const result = await executeContainerAction(
+      "restart",
+      { hostId, containerId: VALID_ID, containerName: "x" },
+      "system:auto-remediate",
+    );
+    expect(result).toMatchObject({ ok: true, hostName: HOST_NAME });
+    const logs = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.hostId, hostId));
+    expect(logs).toHaveLength(1);
+    expect(logs[0].userEmail).toBe("system:auto-remediate");
   });
 });
