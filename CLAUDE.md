@@ -225,7 +225,9 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 
 ## 환경 변수
 
-전체 목록·기본값은 `apps/dashboard/.env.example`, **권위는 [`shared/config/env.ts`](apps/dashboard/src/shared/config/env.ts)** (Zod) — 부팅 시 검증해 빈 값/잘못된 형식이면 즉시 throw. **필수 여부는 그 스키마가 정의한다: `.default()` 가 없는 항목이 필수.** 새 변수는 두 파일을 함께 갱신한다.
+전체 목록·기본값은 `apps/dashboard/.env.example`, **권위는 [`shared/config/env.ts`](apps/dashboard/src/shared/config/env.ts)** (Zod) — 부팅 시 검증해 빈 값/잘못된 형식이면 즉시 throw. 새 변수는 두 파일을 함께 갱신한다.
+
+**필수 여부는 그 스키마가 정의한다: `.default()` 도 `.optional()` 도 없는 항목이 필수.** `.optional()` 인데 필수처럼 보이는 것들이 있다 — `VAPID_*`, `OPS_NOTIFY_EMAIL` 은 없어도 부팅은 되고 해당 기능만 죽는다. 빈 문자열 처리는 변수마다 다르니 (`min(1).optional()` 은 빈 값에 **실패**, 일부는 전처리로 undefined 취급) 새 변수 추가 시 env.ts 의 주변 항목 패턴을 그대로 따를 것.
 
 `.env` 만 고치면 안 되는 변수 — 값이 한 파일 밖으로 새는 것들:
 

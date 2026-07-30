@@ -38,15 +38,17 @@
 # 0. main에 push → GHA가 이미지 빌드/푸시 (~5분)
 #    https://github.com/krdn/gons-dashboard/actions 에서 확인
 git push
+```
 
-# --- 이하 전부 서버에서 ---
-ssh gon@192.168.0.5
+**이하 전부 서버에서 실행한다** — 먼저 `ssh gon@192.168.0.5` 로 접속한 뒤 아래를 붙여넣는다.
+
+```bash
 COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
 ENVF=/home/gon/projects/gon/gons-dashboard/.env
 
-# 1. 새 이미지 받기 (cron 은 이 단계로 갱신 완료, app 은 아직 아님)
+# 1. 새 이미지 받기 (app 은 digest 확인용, cron 은 이 단계로 갱신 완료)
 docker pull ghcr.io/krdn/gons-dashboard:latest
-docker pull ghcr.io/krdn/gons-dashboard-cron:latest
+docker compose -f "$COMPOSE" --env-file "$ENVF" pull cron   # APP_IMAGE_TAG 가 설정돼 있어도 맞는 태그를 받는다
 
 # 2. 새 digest 확인
 docker image inspect ghcr.io/krdn/gons-dashboard:latest --format '{{index .RepoDigests 0}}'
@@ -106,7 +108,11 @@ dcserver logs -f app
 `APP_IMAGE_TAG`(태그)를 본다. `APP_IMAGE_TAG=…` 만 바꾸면 **cron 만 롤백되고 app 은 그대로다.**
 
 ```bash
-# 서버에서. 되돌릴 digest 확인 — 이전 배포의 APP_IMAGE_REF 값, 또는:
+# 서버에서 (ssh gon@192.168.0.5).
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+
+# 되돌릴 digest 확인 — 이전 배포의 APP_IMAGE_REF 값, 또는 로컬에 남은 이미지에서:
 docker images --digests ghcr.io/krdn/gons-dashboard
 
 # 즉시 롤백 (비영속 — 다음 up 이 .env 를 다시 읽으면 되돌아온다)
