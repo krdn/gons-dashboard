@@ -55,6 +55,10 @@ describe("getModelDisplayLabel", () => {
     ["codex-latest", "Codex"],
     ["gemini-2.5-pro", "Gemini"],
     ["gemini-flash-2.0", "Gemini"],
+    // 라벨과 라우팅이 갈리지 않아야 한다 — 이 ID 는 공급사 도출(접두사)로 gemini 라
+    // 호출도 gemini 로 가는데, codex 의 부분 문자열 판정이 앞에 오면 Codex 로 표시됐다.
+    ["gemini-codex-x", "Gemini"],
+    ["claude-codex-1", "Claude"],
   ])("maps %s → %s", (modelId, label) => {
     expect(getModelDisplayLabel(modelId)).toBe(label);
   });
