@@ -6,6 +6,9 @@
 // URL search param ?model=<key>&modelId=<id> 갱신으로 페이지 전역 모델 선택을 표현.
 // router.replace 사용 — 브라우저 히스토리 무한 추가 방지 + scroll 보존.
 //
+// 같은 선택을 쿠키에도 기록한다 — param 없는 /fortune/<id> 링크로 재진입해도
+// 선택이 유지되도록 (해석 우선순위는 lib/sajuModelCookie.ts 참조).
+//
 // FSD: features/saju-model-picker — 학파 탭과 위계적·시각적으로 분리.
 //   학파 탭 (카드 내부): primary navigation (분석 관점)
 //   모델 선택 (페이지 헤더): secondary preference (분석 엔진)
@@ -20,6 +23,7 @@ import {
   deriveModelOptions,
   type ProviderModelCatalogSnapshot,
 } from "@/shared/lib/llm/provider-model-catalog";
+import { writeSajuModelCookie } from "../lib/sajuModelCookie";
 
 interface Props {
   selected: SajuModelKey;
@@ -43,7 +47,13 @@ export function SajuModelPicker({ selected, selectedModelId, snapshot }: Props) 
   const catalog = snapshot.catalog;
   const recommendations = options.recommended;
   const otherModelIds = options.other;
-  const unavailable = options.availability === "unavailable";
+  // 선택값이 옵션 목록에 없으면 브라우저가 첫 옵션을 대신 표시해 UI 와 실제 호출
+  // 모델이 갈린다 (프록시 조회 실패로 카탈로그가 기본 모델 1개로 줄 때 재현).
+  const listedModelIds =
+    recommendations.length > 0
+      ? [...recommendations.map((rec) => rec.modelId), ...otherModelIds]
+      : catalog[selected];
+  const selectedMissing = !listedModelIds.includes(selectedModelId);
 
   const replaceParams = (mutate: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -53,6 +63,7 @@ export function SajuModelPicker({ selected, selectedModelId, snapshot }: Props) 
 
   const handleProvider = (key: SajuModelKey) => {
     if (key === selected) return;
+    writeSajuModelCookie({ modelKey: key, modelId: null });
     replaceParams((params) => {
       params.set("model", key);
       params.delete("modelId"); // 공급사 전환 → registry 기본 모델로 리셋
@@ -61,6 +72,7 @@ export function SajuModelPicker({ selected, selectedModelId, snapshot }: Props) 
 
   const handleModelId = (id: string) => {
     if (id === selectedModelId) return;
+    writeSajuModelCookie({ modelKey: selected, modelId: id });
     replaceParams((params) => {
       params.set("model", selected);
       params.set("modelId", id);
@@ -99,9 +111,12 @@ export function SajuModelPicker({ selected, selectedModelId, snapshot }: Props) 
           onChange={(e) => handleModelId(e.target.value)}
           className={`${selectCls} max-w-[260px] font-mono`}
         >
-          {unavailable && (
+          {selectedMissing && (
             <option value={selectedModelId} disabled>
-              {selectedModelId} (현재 사용 불가)
+              {selectedModelId}{" "}
+              {options.availability === "unavailable"
+                ? "(현재 사용 불가)"
+                : "(목록 확인 불가)"}
             </option>
           )}
           {recommendations.length > 0 ? (

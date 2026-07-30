@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { getFortuneProfile } from "@/entities/fortune-profile/server";
@@ -20,14 +21,13 @@ import { SajuTriLifetime } from "@/widgets/saju-tri-lifetime";
 import { SajuTriYearly } from "@/widgets/saju-tri-yearly";
 import { SajuTriMonthly } from "@/widgets/saju-tri-monthly";
 import { SajuTriDaily } from "@/widgets/saju-tri-daily";
-import { parseSajuModelKey } from "@/shared/lib/llm/saju-model-registry-meta";
 import { getSajuModelRegistry } from "@/shared/lib/llm/saju-model-registry";
-import {
-  isLlmModelIdForProvider,
-  sanitizeLlmModelId,
-} from "@/shared/lib/llm/provider-model-catalog";
 import { loadProviderModelCatalog } from "@/shared/lib/llm/provider-model-catalog-server";
-import { SajuModelPicker } from "@/features/saju-model-picker";
+import {
+  SajuModelPicker,
+  SAJU_MODEL_COOKIE,
+  resolveSajuModelSelection,
+} from "@/features/saju-model-picker";
 import { TabsNav, TabPanel, TabSkeleton } from "@/shared/ui/Tabs";
 import {
   FORTUNE_TAB_KEYS,
@@ -75,30 +75,25 @@ function ageFromBirthDate(birthDate: string): number {
 export default async function SajuDetailPage({ params, searchParams }: Props) {
   const { profileId } = await params;
   const sp = await searchParams;
-  const modelKey = parseSajuModelKey(
-    Array.isArray(sp.model) ? sp.model[0] : sp.model,
-  );
   const activeTab = parseFortuneTabKey(sp.tab);
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  // 상세 모델 ID — 공급사 일치 + 형식 통과 시에만 사용, 아니면 registry 기본값
-  // (createNarrativeHandler 의 폴백 규칙과 동일).
+  // 모델 선택 — URL param > 쿠키(마지막 선택) > registry 기본값.
   const registry = await getSajuModelRegistry();
-  const requestedModelId = sanitizeLlmModelId(
-    Array.isArray(sp.modelId) ? sp.modelId[0] : sp.modelId,
-  );
-  const modelId =
-    requestedModelId !== null &&
-    isLlmModelIdForProvider(modelKey, requestedModelId)
-      ? requestedModelId
-      : registry[modelKey].id;
+  const modelDefaults = {
+    claude: registry.claude.id,
+    codex: registry.codex.id,
+    gemini: registry.gemini.id,
+  };
+  const { modelKey, modelId } = resolveSajuModelSelection({
+    rawModelKey: sp.model,
+    rawModelId: sp.modelId,
+    cookieValue: (await cookies()).get(SAJU_MODEL_COOKIE)?.value,
+    defaults: modelDefaults,
+  });
   const modelCatalogSnapshot = await loadProviderModelCatalog({
-    defaults: {
-      claude: registry.claude.id,
-      codex: registry.codex.id,
-      gemini: registry.gemini.id,
-    },
+    defaults: modelDefaults,
     defaultMode: "always",
   });
 

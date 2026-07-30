@@ -96,6 +96,10 @@ export function parseSajuModelKey(raw: unknown): SajuModelKey {
  * env 가 갱신돼 옛 row 의 modelId 가 현재 env 값과 다를 수 있으므로
  * vendor prefix 기반 휴리스틱 사용 — picker registry 와는 독립.
  * 알 수 없는 값은 modelId 원문을 그대로 반환 (디버깅 친화).
+ *
+ * deriveLlmProviderFromModelId 로 위임하지 않는다 — 그쪽은 하이픈까지 요구해
+ * (`claude-`) 더 좁고, 여기 들어오는 값은 이미 죽은 env 의 옛 row 라 형태를
+ * 보장할 수 없다. 라벨은 표시일 뿐 라우팅 결정이 아니므로 관용적인 쪽을 택한다.
  */
 export function getModelDisplayLabel(modelId: string): string {
   const id = modelId.toLowerCase();
