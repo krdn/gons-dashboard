@@ -70,10 +70,15 @@ const schema = z.object({
   // DART OpenAPI (재무제표) — KR 종목 PBR/배당/EPS/BPS overlay (PR 2)
   // 발급: opendart.fss.or.kr 회원가입 → 인증키 발급 (T+1).
   // optional — 키 없거나 STOCK_FUNDAMENTALS_SOURCES=off 면 orchestrator 가 DART 호출 skip.
-  DART_OPENAPI_AUTH_KEY: z
-    .string()
-    .min(1, "DART OpenAPI key. https://opendart.fss.or.kr/ 에서 발급.")
-    .optional(),
+  // compose 가 `${VAR:-}` 로 빈 문자열을 넘기므로(compose 108행) "" 는 미설정으로 취급해야 한다
+  // — preprocess 없이 min(1).optional() 만 쓰면 빈 값에 부팅 실패한다 (아래 Phase 2 블록과 동일 패턴).
+  DART_OPENAPI_AUTH_KEY: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z
+      .string()
+      .min(1, "DART OpenAPI key. https://opendart.fss.or.kr/ 에서 발급.")
+      .optional(),
+  ),
 
   // 펀더멘털 소스 토글 (롤백 스위치, PR 2)
   // - "yahoo+dart" (기본): yahoo-finance2 + DART overlay
@@ -136,7 +141,7 @@ const schema = z.object({
 
   // 관제 Phase 2 (전부 선택 — 미설정 시 해당 기능만 조용히 비활성/우회).
   // compose 가 `${VAR:-}` 로 빈 문자열을 넘기므로 "" 는 미설정으로 취급
-  // (min(1).optional() 만 쓰면 빈 값에 부팅 실패 — DART 키와 다른 점).
+  // (min(1).optional() 만 쓰면 빈 값에 부팅 실패 — 새 optional 변수는 반드시 이 preprocess 를 쓸 것).
   // HTTP 프로브 connect IP — 같은 호스트의 nginx 를 공인 IP 로 돌아가는
   // hairpin NAT 실패 회피 (운영=192.168.0.5). 미설정 시 도메인 DNS 로 접속.
   HTTP_CHECK_CONNECT_IP: z.preprocess(
