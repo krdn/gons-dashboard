@@ -31,14 +31,9 @@ pnpm db:seed:projects         # 프로젝트 메타(한글명/카테고리/URL) 
 pnpm dev                      # http://localhost:3020
 ```
 
-검증 명령:
-
-```bash
-pnpm typecheck                # tsc --noEmit
-pnpm lint                     # ESLint (FSD boundary 규칙 포함)
-pnpm test                     # vitest run (DB 통합은 TEST_DATABASE_URL 필요)
-pnpm build                    # 운영 production build 검증
-```
+검증 명령은 `package.json` scripts 그대로 (`typecheck` `lint` `test` `build`). 비자명한 점만:
+`lint` 는 FSD boundary 규칙을 포함하고, `test` 의 DB 통합은 `TEST_DATABASE_URL` 이 필요하며 (Gotcha #2),
+`build` 는 PR 전 1회 필수다 (Gotcha #7 — typecheck·lint 로는 server/client seam 파열을 못 잡는다).
 
 DB 정비:
 
@@ -60,19 +55,10 @@ dev DB (`localhost` / `127.0.0.1`) 면 가드 통과로 평소처럼 실행.
 
 ## 레포 레이아웃 (monorepo)
 
-pnpm workspaces 모노레포. dashboard와 cron 컨테이너가 각각 `apps/` 하위 패키지.
+pnpm workspaces 모노레포 (`apps/*` + `packages/*`). `apps/cron` 은 매시간 `/api/cron/*` 을 호출하는
+node-cron 컨테이너다.
 
 ```
-gons-dashboard/
-├── apps/
-│   ├── dashboard/   # Next.js 앱 (@gons/dashboard)
-│   └── cron/        # node-cron 컨테이너 (@gons/cron) — 매시간 /api/cron/* 호출
-└── packages/        # 도메인 라이브러리 + MCP 서버
-    ├── stock-analysis/      # @gons/stock-analysis — 페르소나 + consensus + adapter
-    ├── mcp-calendar/        # @gons/mcp-calendar — Google Calendar MCP 서버
-    ├── shared-google/       # @gons/shared-google — Google API 공통 (token mediator client)
-    └── shared-mcp-runtime/  # @gons/shared-mcp-runtime — MCP stdio + in-process 공통
-
 # 외부 GitHub 패키지 (dashboard 의존, 로컬 packages/ 아님 — 버전 핀은 package.json 이 권위):
 #   @krdn/saju        — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
 #   @krdn/tickerlens  — stock 타임프레임 adapter
@@ -91,11 +77,8 @@ root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.m
 
 ## 기술 스택
 
-- **프레임워크**: Next.js 16 (App Router, RSC + Server Actions, Turbopack)
-- **언어**: TypeScript (strict)
-- **패키지 매니저**: pnpm
-- **DB**: PostgreSQL 16 + Drizzle ORM
-- **인증**: NextAuth v5 + Drizzle adapter (Google OAuth)
+버전·의존성은 `package.json` 이 권위다. 코드만 봐선 알 수 없는 선택만 적는다:
+
 - **스타일링**: Tailwind CSS v4 + 디자인 토큰(`globals.css`) — **라이트 모드 고정** (`@variant dark (&:where(.dark, .dark *))` 로 미디어쿼리 dark variant 차단)
 - **상태**: RSC + 로컬 컴포넌트 상태 (TanStack Query·Zustand 는 실사용 없어 2026-07-16 의존성 제거)
 - **검증**: Zod (`shared/config/env.ts` 부팅 시점 검증)
@@ -107,16 +90,8 @@ root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.m
 
 `~/.claude/rules/fsd-architecture.md` + ESLint `eslint-plugin-boundaries` 로 강제.
 
-```
-src/
-├── app/         # Next.js App Router (라우팅 + 레이아웃 + API routes)
-├── widgets/     # 조합 컴포넌트 (host-dashboard, email-digest, saju-tri-*, stock-analysis, memo, skill-catalog …)
-├── features/    # 기능 (auth, email-reply, memo-transform, saju-*-tri, stock-*, container-* …)
-│   └── <name>/{ui,model,api,lib}
-├── entities/    # 엔티티 (container, email, host, project, memo, stock-analysis, saju-chart …)
-│   └── <name>/{ui,model,api}
-└── shared/     # 공유 (ui, lib, api, config)
-```
+레이어는 `apps/dashboard/src/` 하위 `app` / `widgets` / `features` / `entities` / `shared`,
+슬라이스 내부는 `{ui,model,api,lib}` 다.
 
 **의존성 방향**: `app → widgets → features → entities → shared` (상위만 하위 참조).
 각 슬라이스는 `index.ts` (barrel) 로 public API 노출.
@@ -320,8 +295,5 @@ OAuth refresh token은 `apps/dashboard`의 `accounts` 테이블에만 존재. MC
 
 ## 이메일 분류 정확도 평가 (eval)
 
-분류기(답장 필요 / 중요) 정확도 회귀를 잡는 2계층 시스템 (`apps/dashboard/tests/eval/`). 설계: `docs/superpowers/specs/2026-06-17-email-classification-eval-design.md`.
-
-- **Layer 1 (매 PR, 자동)**: deterministic recall + severity 스냅샷 + mailing-list 컷 회귀. `pnpm test`에 포함 (별도 명령 불필요). LLM 미호출이라 결정적.
-- **Layer 2 (on-prem 수동)**: `pnpm --filter @gons/dashboard eval:llm` — 실제 Haiku 호출로 precision/recall/F1 측정 + `tests/eval/reports/<date>.json` 리포트. **cli-proxy 내부망(`ANTHROPIC_BASE_URL`) 접근 필요**, GHA에서는 못 돈다. PR 차단 안 함(리포트만).
-- 임계치: `tests/eval/thresholds.json` (베이스라인 측정 후 확정 — 현재 placeholder).
+2계층 평가 시스템의 실행·해석 절차는 `.claude/skills/email-classification-eval/` 스킬에 있다
+(Layer 1 은 `pnpm test` 에 포함되어 매 PR 자동, Layer 2 는 on-prem 수동).
