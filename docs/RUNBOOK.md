@@ -10,7 +10,7 @@
 | 운영 URL | https://gons.krdn.kr (외부 도메인 + HTTPS, LAN: http://192.168.0.5:3020) |
 | 컴포즈 위치 | 로컬 `/home/gon/projects/gon/gons-dashboard/docker-compose.yml` |
 | 원격 daemon 제어 | `dserver` = `docker --context home-server` — 데몬만 원격화, 어디서 실행해도 안전 |
-| ⚠️ compose 명령 | `dcserver` = `docker compose --context home-server` — compose 파일과 `--env-file` 을 **로컬에서** 읽는다. 아래 `dcserver …` 는 **모두 서버에서 실행**할 것 (로컬 실행 시 로컬 `.env` 로 운영 컨테이너 재생성 → env 비어 Zod 실패 → 다운) |
+| ⚠️ compose 명령 | `dserver`/`dcserver` 는 **작업 PC 전용**이다 — alias 도 `home-server` context 도 서버에는 없다(서버 daemon 은 `default`). 서버에서는 `docker compose -f <abs> --env-file <abs>` 를 쓴다. **작업 PC 에서 `dcserver` 로 `up`/`pull` 금지** — `--context` 는 daemon 만 원격화하고 compose 파일·`--env-file` 은 로컬에서 읽어 로컬 `.env` 로 운영 컨테이너가 재생성된다(env 비어 Zod 실패 → 다운). 조회(`logs`·`exec`·`ps`)는 compose 를 쓰지 않는 `dserver` 로 하면 작업 PC 에서도 안전하다. |
 
 ## 컨테이너
 
@@ -29,10 +29,12 @@
    있어(compose 57행) `pull` 은 같은 digest 를 재획득할 뿐이다. **배포 = 핀을 새 digest 로 옮기는 것.**
    빠뜨리면 "머지·빌드 성공인데 운영은 며칠 전 이미지" 가 조용히 유지된다 (2026-07-27 PR #344).
    cron 은 `:${APP_IMAGE_TAG:-latest}` 태그(129행)라 pull 만으로 갱신된다.
-2. **compose 명령은 서버에서 실행한다.** `dcserver`(= `docker compose --context home-server`) 의
-   `--context` 는 데몬 접속만 원격화하고 compose 파일과 `--env-file` 은 **로컬 CLI 가 읽는다.**
-   로컬 레포에서 돌리면 로컬 compose + 로컬 `.env`(개발용 몇 키뿐) 로 운영 컨테이너가 재생성돼
-   env 가 비고 Zod 검증이 실패한다 → 운영 다운.
+2. **compose 명령은 서버에서, `--context` 없이 실행한다.** 작업 PC 의 `dcserver`
+   (= `docker compose --context home-server`) 는 daemon 접속만 원격화하고 compose 파일과
+   `--env-file` 은 **로컬 CLI 가 읽는다** — 로컬 레포에서 돌리면 로컬 compose + 로컬 `.env`
+   (개발용 몇 키뿐) 로 운영 컨테이너가 재생성돼 env 가 비고 Zod 검증이 실패한다 → 운영 다운.
+   반대로 **서버에는 `dcserver` alias 도 `home-server` context 도 없다** (daemon 이 `default`)
+   — 그래서 아래 절차는 절대경로를 쓰는 plain `docker compose` 형태다.
 
 ```bash
 # 0. main에 push → GHA가 이미지 빌드/푸시 (~5분)
@@ -93,13 +95,15 @@ curl -sS https://gons.krdn.kr/api/health      # 도메인 경유
 #      https://gons.krdn.kr/api/auth/callback/google
 #    (Google은 private IP redirect URI를 거부하므로 도메인 필수)
 
-# 3. 첫 pull + up (서버에서. 최초엔 APP_IMAGE_REF 미설정 → :latest 로 뜬다.
-#    이후 배포는 "배포 (정상 경로)" 의 digest 핀 절차를 따를 것)
-dcserver pull
-dcserver up -d
+# 3. 첫 pull + up — 서버에서 (ssh gon@192.168.0.5). 최초엔 APP_IMAGE_REF 미설정 →
+#    :latest 로 뜬다. 이후 배포는 "배포 (정상 경로)" 의 digest 핀 절차를 따를 것.
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+docker compose -f "$COMPOSE" --env-file "$ENVF" pull
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d
 
-# 4. 로그 확인
-dcserver logs -f app
+# 4. 로그 확인 (compose 를 안 쓰므로 작업 PC 에서도 안전)
+dserver logs -f gons-dashboard-app
 ```
 
 ## 롤백
@@ -146,9 +150,11 @@ APP_IMAGE_TAG=sha-<full_sha> docker compose -f "$COMPOSE" --env-file "$ENVF" up 
 # 1. 새 토큰 생성
 openssl rand -hex 32
 
-# 2. .env의 CRON_BEARER_TOKEN 업데이트
-# 3. app + cron 동시 재시작 (둘 다 같은 토큰을 봐야 함)
-dcserver up -d app cron --force-recreate
+# 2. 운영 .env 의 CRON_BEARER_TOKEN 업데이트
+# 3. app + cron 동시 재시작 (둘 다 같은 토큰을 봐야 함) — 서버에서
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps --force-recreate app cron
 ```
 
 ### NEXTAUTH_SECRET
@@ -157,9 +163,11 @@ dcserver up -d app cron --force-recreate
 # 1. 새 시크릿 생성
 openssl rand -base64 32
 
-# 2. .env 업데이트 → app 재시작
+# 2. 운영 .env 업데이트 → app 재시작 (서버에서)
 # 3. 모든 기존 세션 무효화됨 → 재로그인 필요
-dcserver up -d app --force-recreate
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps --force-recreate app
 ```
 
 ## OAuth 강제 재인증
@@ -197,7 +205,7 @@ git add drizzle/
 
 ### app 로그
 ```bash
-dcserver logs -f app | grep -E "ERROR|WARN"
+dserver logs -f gons-dashboard-app | grep -E "ERROR|WARN"
 ```
 
 ### postgres 접속
@@ -207,7 +215,7 @@ dserver exec gons-dashboard-postgres psql -U gons -d gons_dashboard
 
 ### cron 작업 확인
 ```bash
-dcserver logs cron | tail -50
+dserver logs gons-dashboard-cron | tail -50
 ```
 
 ### redis 점검
@@ -217,14 +225,14 @@ dserver exec gons-dashboard-redis redis-cli ping
 
 ## 자주 발생하는 이슈
 
-### `unauthorized` on `dcserver pull`
+### `unauthorized` on image pull
 GHCR 패키지가 private. 위의 "첫 배포 #1" 참조.
 
 ### OAuth 콜백 실패
 `NEXTAUTH_URL`과 Google OAuth Console redirect URI 불일치. 둘 다 `https://gons.krdn.kr` 기반이어야 함. Google은 private IP(192.168.x.x) redirect URI를 `device_id required` 에러로 거부하므로 LAN URL은 사용 불가.
 
 ### cron이 호출 안 됨
-- TZ=Asia/Seoul 확인: `dcserver exec cron date`
+- TZ=Asia/Seoul 확인: `dserver exec gons-dashboard-cron date`
 - CRON_BEARER_TOKEN 일치 확인 (app, cron 양쪽 동일)
 - app health: `curl -sS https://gons.krdn.kr/api/health`
 
