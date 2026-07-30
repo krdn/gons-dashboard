@@ -107,13 +107,26 @@ dcserver logs -f app
 ⚠️ **`APP_IMAGE_TAG` 는 app 을 롤백하지 않는다.** app 은 `APP_IMAGE_REF`(digest), cron 만
 `APP_IMAGE_TAG`(태그)를 본다. `APP_IMAGE_TAG=…` 만 바꾸면 **cron 만 롤백되고 app 은 그대로다.**
 
+⚠️ **`AUTOPILOT_DEPLOY=on` 이면 수동 롤백만으로는 되돌려진다.** watcher 의
+`shouldDeploy(latest, running, rolledBack)` 는 `latest !== running` 이면 배포하므로
+(`autopilot/lib.js:25`), 롤백해 두면 다음 폴링이 그 나쁜 digest 를 **다시 배포한다.**
+차단 파일에 그 digest 를 적어야 멈춘다 — watcher 는 *자기* 배포가 health 실패했을 때만
+이 파일을 쓰므로(`deploy-watcher.js:276`) **수동 롤백은 직접 적어야 한다.**
+순서: **차단 기록 → 롤백 배포.** (`AUTOPILOT_DEPLOY` 가 `off` 면 이 단계는 건너뛴다.)
+
 ```bash
 # 서버에서 (ssh gon@192.168.0.5).
 COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
 ENVF=/home/gon/projects/gon/gons-dashboard/.env
+SIGNAL=/home/gon/projects/gon/gons-dashboard/.autopilot-signal/.autopilot-rolledback
 
 # 되돌릴 digest 확인 — 이전 배포의 APP_IMAGE_REF 값, 또는 로컬에 남은 이미지에서:
 docker images --digests ghcr.io/krdn/gons-dashboard
+
+# 0. (AUTOPILOT_DEPLOY=on 일 때만) 재배포 차단 — 버리려는 쪽 digest 를 적는다.
+#    `sha256:…` bare digest 형식이다 (ref 가 아니다 — lib.js buildImageRef 가 repo@digest 로 합친다).
+echo 'sha256:<버리는_digest>' > "$SIGNAL"
+cat "$SIGNAL"
 
 # 즉시 롤백 (비영속 — 다음 up 이 .env 를 다시 읽으면 되돌아온다)
 APP_IMAGE_REF='ghcr.io/krdn/gons-dashboard@sha256:<old>' \
@@ -306,11 +319,16 @@ dserver exec gons-dashboard-app sh -c '
 
 ```bash
 # 1. .env에 서버 인프라용 환경변수 추가
-#    DOCKER_DEFAULT_CONTEXT=home-server
+#    DOCKER_DEFAULT_CONTEXT=default   ← 운영은 default 다. home-server 를 넣지 말 것.
+#      app 컨테이너는 /var/run/docker.sock 마운트로 호스트 daemon 에 붙으므로
+#      컨테이너 안에서 유효한 context 는 default 뿐이다. home-server 는 작업 PC 에만
+#      등록된 context 이름이라 컨테이너 안에 존재하지 않는다 (env.ts 주석 참조).
+#      덧붙여 이 변수는 현재 앱 코드가 읽지 않는다 — 실제 대상은 DB hosts.dockerContext.
 #    DOCKER_CMD_TIMEOUT_MS=10000
 #    ADMIN_EMAILS=krdn.net@gmail.com (콤마 구분)
 
-# 2. Docker context 등록 확인 (이미 있어야 함)
+# 2. Docker context 등록 확인 — 작업 PC 에서 dserver/dcserver 를 쓰기 위한 것
+#    (컨테이너 내부와 무관하다)
 docker context ls | grep home-server
 
 # 3. 마이그레이션 적용
