@@ -83,27 +83,27 @@ curl -sS https://gons.krdn.kr/api/health      # 도메인 경유
 
 ## 첫 배포 (one-time)
 
+**1~2 단계는 브라우저에서** (작업 PC):
+
+1. **GHCR 패키지 가시성** — https://github.com/users/krdn/packages → `gons-dashboard`,
+   `gons-dashboard-cron` → Package settings → Change visibility → **Public** (권장).
+   private 로 두려면 대신 **서버에서** `docker login ghcr.io -u krdn -p <PAT_with_read:packages>`.
+2. **Google OAuth redirect URI 등록** — https://console.cloud.google.com/apis/credentials →
+   Authorized redirect URIs 에 `https://gons.krdn.kr/api/auth/callback/google` 추가.
+   (Google 은 private IP redirect URI 를 거부하므로 도메인 필수)
+
+**3~4 단계는 서버에서** — `ssh gon@192.168.0.5` 로 접속한 뒤:
+
 ```bash
-# 1. GHCR 패키지 가시성 확인 (private면 home-server에서 PAT 로그인 필요)
-#    https://github.com/users/krdn/packages → gons-dashboard, gons-dashboard-cron
-#    → Package settings → Change visibility → Public  (권장)
-#    또는 home-server에서: docker login ghcr.io -u krdn -p <PAT_with_read:packages>
-
-# 2. Google OAuth Console에 운영 redirect URI 등록
-#    https://console.cloud.google.com/apis/credentials
-#    Authorized redirect URIs에 추가:
-#      https://gons.krdn.kr/api/auth/callback/google
-#    (Google은 private IP redirect URI를 거부하므로 도메인 필수)
-
-# 3. 첫 pull + up — 서버에서 (ssh gon@192.168.0.5). 최초엔 APP_IMAGE_REF 미설정 →
-#    :latest 로 뜬다. 이후 배포는 "배포 (정상 경로)" 의 digest 핀 절차를 따를 것.
+# 3. 첫 pull + up. 최초엔 APP_IMAGE_REF 미설정 → :latest 로 뜬다.
+#    이후 배포는 "배포 (정상 경로)" 의 digest 핀 절차를 따를 것.
 COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
 ENVF=/home/gon/projects/gon/gons-dashboard/.env
 docker compose -f "$COMPOSE" --env-file "$ENVF" pull
 docker compose -f "$COMPOSE" --env-file "$ENVF" up -d
 
-# 4. 로그 확인 (compose 를 안 쓰므로 작업 PC 에서도 안전)
-dserver logs -f gons-dashboard-app
+# 4. 로그 확인 — 서버 안이므로 plain docker (dserver 는 작업 PC alias 라 여기 없다)
+docker logs -f gons-dashboard-app
 ```
 
 ## 롤백
@@ -202,6 +202,9 @@ git add drizzle/
 ```
 
 ## 컨테이너 별 디버깅
+
+아래는 **작업 PC 에서** 실행한다 (`dserver` = `docker --context home-server`). 서버에 직접
+ssh 한 상태라면 `dserver` 를 `docker` 로 바꿔 읽을 것 — 그 alias 는 서버에 없다.
 
 ### app 로그
 ```bash
