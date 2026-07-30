@@ -236,7 +236,8 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 
 | 변수 | 빈 문자열로 두면 |
 |---|---|
-| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | **부팅 실패** — `min(1)`·`email()`·`startsWith()` 가 `""` 를 거부하는데 preprocess 가 없다 |
+| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL` | **부팅 실패** — `min(1)`·`email()`·`startsWith()` 가 `""` 를 거부하는데 preprocess 가 없다 |
+| `DART_OPENAPI_AUTH_KEY` | DART 어댑터만 skip, yahoo-finance2 로 진행 (preprocess 있음) |
 | `TELEGRAM_BOT_TOKEN`·`_CHAT_ID` | 텔레그램 발송만 skip (`shared/lib/telegram.ts` 는 throw 하지 않는다). critical 알림이 web-push 로만 간다 |
 | `HTTP_CHECK_CONNECT_IP` | HTTP/SSL 체크는 **계속 돈다** — `probeSite.ts` 가 `connectIp ?? domain` 이라 도메인으로 접속한다. hairpin NAT 회피만 못 하는 것 |
 | `GITHUB_MONITOR_TOKEN` | 동기화 cron skip + 보드가 "동기화 비활성" 을 표시한다 (기존 스냅샷은 유지) |
@@ -244,7 +245,7 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 
 즉 "optional 이면 비워도 그 기능만 죽는다" 로 뭉뚱그릴 수 없다 — 위 표처럼 변수마다 다르다.
 
-⚠️ `DART_OPENAPI_AUTH_KEY` 는 "키 없으면 skip" 으로 알려져 있지만 preprocess 가 없어 **빈 값이면 부팅이 죽는다.** env.ts 주석(`관제 Phase 2` 블록)이 DART 를 이 함정의 *예외* 로 적어둔 것은 사실과 다르다 — compose 108행이 DART 키도 `${VAR:-}` 로 넘긴다. 새 optional 변수는 preprocess 패턴을 쓸 것. 안 쓰면 문서에 "선택" 이라 적어도 실제로는 필수가 된다.
+⚠️ **새 optional 변수는 반드시 `z.preprocess((v) => (v === "" ? undefined : v), …)` 로 감쌀 것.** 안 쓰면 문서에 "선택" 이라 적어도 운영에서는 필수가 된다 — `DART_OPENAPI_AUTH_KEY` 가 그 상태였고 2026-07-30 에 이 패턴으로 고쳤다. 위 표 1행(`VAPID_*`, `OPS_NOTIFY_EMAIL`)은 아직 preprocess 가 없어 실질 필수다.
 
 `.env` 만 고치면 안 되는 변수 — 값이 한 파일 밖으로 새는 것들:
 
