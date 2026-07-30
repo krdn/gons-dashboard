@@ -100,11 +100,15 @@ export function parseSajuModelKey(raw: unknown): SajuModelKey {
  * deriveLlmProviderFromModelId 로 위임하지 않는다 — 그쪽은 하이픈까지 요구해
  * (`claude-`) 더 좁고, 여기 들어오는 값은 이미 죽은 env 의 옛 row 라 형태를
  * 보장할 수 없다. 라벨은 표시일 뿐 라우팅 결정이 아니므로 관용적인 쪽을 택한다.
+ *
+ * 단 **검사 순서가 라우팅과 어긋나면 안 된다.** codex 만 부분 문자열 판정이라
+ * (`includes`) 접두사 판정보다 뒤에 와야 한다 — 앞에 두면 "gemini-codex-x" 가
+ * gemini 로 호출되면서 Codex 로 표시돼, 표시와 실제 모델이 갈린다.
  */
 export function getModelDisplayLabel(modelId: string): string {
   const id = modelId.toLowerCase();
   if (id.startsWith("claude")) return "Claude";
-  if (id.startsWith("gpt") || id.includes("codex")) return "Codex";
   if (id.startsWith("gemini")) return "Gemini";
+  if (id.startsWith("gpt") || id.includes("codex")) return "Codex";
   return modelId;
 }
