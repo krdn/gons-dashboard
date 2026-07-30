@@ -45,6 +45,18 @@ describe("computeKrw", () => {
     expect(variant).toBe(exact);
   });
 
+  it("다른 공급사로 라우팅되는 ID 는 codex 단가로 집계하지 않는다", () => {
+    // "claude-codex-1" 은 공급사 도출(접두사)상 claude 라 claude 로 호출된다.
+    // 부분 문자열 판정이던 시절엔 codex 단가로 잡혀 — opus 보다 싸다 — 예산
+    // 사용액이 과소 계상되고 일일 가드가 늦게 끊겼다. opus 폴백이 맞다.
+    const codexRate = computeKrw("gpt-5.3-codex", 300_000, 100_000);
+    const opusRate = computeKrw("claude-opus-4-8", 300_000, 100_000);
+    const routed = computeKrw("claude-codex-1", 300_000, 100_000);
+
+    expect(routed).toBe(opusRate);
+    expect(routed).not.toBe(codexRate);
+  });
+
   it("알 수 없는 모델은 opus 단가로 폴백한다 (가장 비싼 단가로 보수적)", () => {
     const known = computeKrw("claude-opus-4-8", 500_000, 200_000);
     const unknown = computeKrw("some-future-model", 500_000, 200_000);

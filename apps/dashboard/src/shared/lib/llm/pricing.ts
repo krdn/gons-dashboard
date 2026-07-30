@@ -33,7 +33,11 @@ function pricingFor(model: string): { input: number; output: number } {
   if (model.startsWith("gemini-")) {
     return PRICING_USD_PER_M["gemini-2.5-pro"];
   }
-  if (model.startsWith("gpt-") || model.includes("codex")) {
+  // 접두사로 판정한다 — 부분 문자열(`includes("codex")`)이면 "claude-codex-1"
+  // 처럼 다른 공급사로 라우팅되는 ID 가 codex 단가로 집계돼 예산 사용액이
+  // 과소 계상된다 (codex 단가가 opus 보다 싸므로 가드가 늦게 끊긴다).
+  // 공급사 도출과 같은 규칙: isLlmModelIdForProvider 참조.
+  if (model.startsWith("gpt-") || model.startsWith("codex")) {
     return PRICING_USD_PER_M["gpt-5.3-codex"];
   }
   return OPUS_PRICING;
