@@ -225,18 +225,22 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 
 ## 환경 변수
 
-전체 목록·기본값은 `apps/dashboard/.env.example`, **권위는 [`shared/config/env.ts`](apps/dashboard/src/shared/config/env.ts)** (Zod) — 부팅 시 검증해 빈 값/잘못된 형식이면 즉시 throw. 새 변수는 두 파일을 함께 갱신한다.
+전체 목록·기본값은 `apps/dashboard/.env.example`, **권위는 [`shared/config/env.ts`](apps/dashboard/src/shared/config/env.ts)** (Zod) — 부팅 시 검증에 실패하면 즉시 throw 한다. 새 변수는 두 파일을 함께 갱신한다.
 
-**필수 여부는 두 층이 함께 정한다 — Zod 스키마만 보면 운영에서 틀린다.**
+스키마에서 `.default()` 도 `.optional()` 도 없는 항목이 필수다. **단 `.optional()` 이 "비워도 된다" 를 뜻하지는 않는다** — Zod 에서 `""` 는 `undefined` 가 아니라 `.optional()` 이 적용되지 않고 뒤의 제약(`min(1)`·`email()`·`startsWith()`)이 그대로 검사된다. 즉 키를 **아예 없애야**(undefined) 선택이 되고, **빈 문자열로 존재하면** 부팅이 죽는다.
 
-1. **스키마 층** (`env.ts`): `.default()` 도 `.optional()` 도 없는 항목이 필수. dev 는 이게 전부다.
-2. **compose 층** (운영): compose 가 11개 변수를 `${VAR:-}` 로 넘겨 **빈 문자열을 주입**한다. `""` 는 `undefined` 가 아니라서 `.optional()` 이 적용되지 않는다 → `z.preprocess((v) => (v === "" ? undefined : v), …)` 로 감싸지 **않은** optional 항목은 **운영에서 사실상 필수**다. 빈 값이면 Zod 가 throw 해 컨테이너가 부팅하지 못한다.
+두 경로가 모두 "빈 문자열로 존재" 를 만들기 때문에 자주 물린다:
 
-| 운영 실질 필수 (빈 값 = 부팅 실패) | 진짜 선택 (preprocess 있음) |
+- **운영**: compose 가 `${VAR:-}` 로 넘긴다 → `.env` 에서 줄을 지워도 `""` 가 주입된다
+- **dev**: `.env.example` 이 `KEY=` 로 비어 있다 → 복사하면 그대로 `""`
+
+| 비워두면 부팅 실패 | 비워도 되는 것 (그 이유) |
 |---|---|
-| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`·`_CHAT_ID`, `GITHUB_MONITOR_TOKEN` |
+| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`·`_CHAT_ID`, `GITHUB_MONITOR_TOKEN` — `preprocess("" → undefined)` 로 감쌌다 · `PLAYMCP_BOOTSTRAP_OTT` — 제약 없는 `optional()` 이라 `""` 도 통과 |
 
-⚠️ `DART_OPENAPI_AUTH_KEY` 는 이 문서와 env.ts 주석이 "키 없으면 skip" 이라 하지만 그건 dev 기준이다 — compose 가 빈 문자열을 넘기므로 **운영 `.env` 에서 빈 값으로 두면 부팅이 죽는다** (`.min(1).optional()`, preprocess 없음). 새 optional 변수는 반드시 preprocess 패턴을 쓸 것.
+우측 항목들은 비면 **해당 기능만** 조용히 비활성되고 부팅은 성공한다.
+
+⚠️ `DART_OPENAPI_AUTH_KEY` 는 "키 없으면 skip" 으로 알려져 있지만 preprocess 가 없어 **빈 값이면 부팅이 죽는다.** env.ts 주석(`관제 Phase 2` 블록)이 DART 를 이 함정의 *예외* 로 적어둔 것은 사실과 다르다 — compose 108행이 DART 키도 `${VAR:-}` 로 넘긴다. 새 optional 변수는 preprocess 패턴을 쓸 것. 안 쓰면 문서에 "선택" 이라 적어도 실제로는 필수가 된다.
 
 `.env` 만 고치면 안 되는 변수 — 값이 한 파일 밖으로 새는 것들:
 
@@ -246,7 +250,7 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | `MCP_DASHBOARD_TOKEN` | 4곳 — 운영 `.env`, 사용자 `~/.claude.json`, 로컬·서버 `~/.config/gons-dashboard/ingest.env` (절차: `docs/RUNBOOK.md`) |
 | `APP_IMAGE_REF` | 이 값을 옮기는 것이 배포 그 자체 — 아래 "운영 배포" 참조 |
 
-빈 값이면 **해당 기능만** 비활성 (부팅은 성공): `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`/`_CHAT_ID`, `GITHUB_MONITOR_TOKEN`/`_ORG`, `DART_OPENAPI_AUTH_KEY`. `GITHUB_MONITOR_TOKEN` 은 fine-grained PAT, read-only (Issues·PR·Actions·Metadata).
+`GITHUB_MONITOR_TOKEN` 은 fine-grained PAT, read-only (Issues·PR·Actions·Metadata).
 
 `PG_ENCRYPTION_KEY` 는 PlayMCP creds 에만 적용된다 — Gmail accounts 토큰은 평문 (아래 "MCP 도구 호출 정책" 참조).
 
