@@ -234,11 +234,15 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 - **운영**: compose 가 `${VAR:-}` 로 넘긴다 → `.env` 에서 줄을 지워도 `""` 가 주입된다
 - **dev**: `.env.example` 이 `KEY=` 로 비어 있다 → 복사하면 그대로 `""`
 
-| 비워두면 부팅 실패 | 비워도 되는 것 (그 이유) |
+| 변수 | 빈 문자열로 두면 |
 |---|---|
-| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`·`_CHAT_ID`, `GITHUB_MONITOR_TOKEN` — `preprocess("" → undefined)` 로 감쌌다 · `PLAYMCP_BOOTSTRAP_OTT` — 제약 없는 `optional()` 이라 `""` 도 통과 |
+| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | **부팅 실패** — `min(1)`·`email()`·`startsWith()` 가 `""` 를 거부하는데 preprocess 가 없다 |
+| `TELEGRAM_BOT_TOKEN`·`_CHAT_ID` | 텔레그램 발송만 skip (`shared/lib/telegram.ts` 는 throw 하지 않는다). critical 알림이 web-push 로만 간다 |
+| `HTTP_CHECK_CONNECT_IP` | HTTP/SSL 체크는 **계속 돈다** — `probeSite.ts` 가 `connectIp ?? domain` 이라 도메인으로 접속한다. hairpin NAT 회피만 못 하는 것 |
+| `GITHUB_MONITOR_TOKEN` | 동기화 cron skip + 보드가 "동기화 비활성" 을 표시한다 (기존 스냅샷은 유지) |
+| `PLAYMCP_BOOTSTRAP_OTT` | 정상 상태다 — `tiger:bootstrap` 1회 실행 후 `.env` 에서 제거하도록 설계됐다 |
 
-우측 항목들은 비면 **해당 기능만** 조용히 비활성되고 부팅은 성공한다.
+즉 "optional 이면 비워도 그 기능만 죽는다" 로 뭉뚱그릴 수 없다 — 위 표처럼 변수마다 다르다.
 
 ⚠️ `DART_OPENAPI_AUTH_KEY` 는 "키 없으면 skip" 으로 알려져 있지만 preprocess 가 없어 **빈 값이면 부팅이 죽는다.** env.ts 주석(`관제 Phase 2` 블록)이 DART 를 이 함정의 *예외* 로 적어둔 것은 사실과 다르다 — compose 108행이 DART 키도 `${VAR:-}` 로 넘긴다. 새 optional 변수는 preprocess 패턴을 쓸 것. 안 쓰면 문서에 "선택" 이라 적어도 실제로는 필수가 된다.
 
