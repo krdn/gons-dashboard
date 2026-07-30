@@ -9,7 +9,8 @@
 | 호스트 | 192.168.0.5 (docker context: `home-server`) |
 | 운영 URL | https://gons.krdn.kr (외부 도메인 + HTTPS, LAN: http://192.168.0.5:3020) |
 | 컴포즈 위치 | 로컬 `/home/gon/projects/gon/gons-dashboard/docker-compose.yml` |
-| 원격 daemon 제어 | `docker --context home-server`, alias `dserver`, `dcserver` |
+| 원격 daemon 제어 | `dserver` = `docker --context home-server` — 데몬만 원격화, 어디서 실행해도 안전 |
+| ⚠️ compose 명령 | `dcserver` = `docker compose --context home-server` — compose 파일과 `--env-file` 을 **로컬에서** 읽는다. 아래 `dcserver …` 는 **모두 서버에서 실행**할 것 (로컬 실행 시 로컬 `.env` 로 운영 컨테이너 재생성 → env 비어 Zod 실패 → 다운) |
 
 ## 컨테이너
 
@@ -17,25 +18,64 @@
 |--------|--------|------|
 | postgres | postgres:16-alpine | 5440 → 5432 |
 | redis | redis:7-alpine | 6390 → 6379 |
-| app | ghcr.io/krdn/gons-dashboard:latest | 3020 |
-| cron | ghcr.io/krdn/gons-dashboard-cron:latest | (내부) |
+| app | `${APP_IMAGE_REF}` — **digest 핀** (미설정 시 `…/gons-dashboard:latest`) | 3020 |
+| cron | ghcr.io/krdn/gons-dashboard-cron:`${APP_IMAGE_TAG:-latest}` | (내부) |
 
 ## 배포 (정상 경로)
+
+⚠️ **두 가지를 먼저 알아야 한다.**
+
+1. **app 은 `pull` 로 바뀌지 않는다.** 이미지가 `.env` 의 `APP_IMAGE_REF` 에 digest 로 핀 고정돼
+   있어(compose 57행) `pull` 은 같은 digest 를 재획득할 뿐이다. **배포 = 핀을 새 digest 로 옮기는 것.**
+   빠뜨리면 "머지·빌드 성공인데 운영은 며칠 전 이미지" 가 조용히 유지된다 (2026-07-27 PR #344).
+   cron 은 `:${APP_IMAGE_TAG:-latest}` 태그(129행)라 pull 만으로 갱신된다.
+2. **compose 명령은 서버에서 실행한다.** `dcserver`(= `docker compose --context home-server`) 의
+   `--context` 는 데몬 접속만 원격화하고 compose 파일과 `--env-file` 은 **로컬 CLI 가 읽는다.**
+   로컬 레포에서 돌리면 로컬 compose + 로컬 `.env`(개발용 몇 키뿐) 로 운영 컨테이너가 재생성돼
+   env 가 비고 Zod 검증이 실패한다 → 운영 다운.
 
 ```bash
 # 0. main에 push → GHA가 이미지 빌드/푸시 (~5분)
 #    https://github.com/krdn/gons-dashboard/actions 에서 확인
 git push
 
-# 1. 새 이미지 pull
-dcserver pull app cron
+# --- 이하 전부 서버에서 ---
+ssh gon@192.168.0.5
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
 
-# 2. 무중단 재시작
-dcserver up -d app cron
+# 1. 새 이미지 받기 (cron 은 이 단계로 갱신 완료, app 은 아직 아님)
+docker pull ghcr.io/krdn/gons-dashboard:latest
+docker pull ghcr.io/krdn/gons-dashboard-cron:latest
 
-curl -sS http://192.168.0.5:3020/api/health  # LAN 직접
+# 2. 새 digest 확인
+docker image inspect ghcr.io/krdn/gons-dashboard:latest --format '{{index .RepoDigests 0}}'
+# → ghcr.io/krdn/gons-dashboard@sha256:...
+
+# 3. .env 의 APP_IMAGE_REF 를 그 digest 로 교체
+#    sed -i 는 안 된다 — 디렉토리가 root 소유라 임시파일 생성이 거부된다(파일 자체는 gon 소유).
+#    inode 를 보존해 덮어쓴다 — 이 파일은 cron 컨테이너에 bind mount 돼 있다(compose 152행).
+NEW='ghcr.io/krdn/gons-dashboard@sha256:...'   # 2단계 출력 붙여넣기
+before=$(grep -c '=' "$ENVF"); tmp=$(mktemp)
+if grep -q '^APP_IMAGE_REF=' "$ENVF"; then
+  sed "s|^APP_IMAGE_REF=.*|APP_IMAGE_REF=$NEW|" "$ENVF" > "$tmp"
+else
+  { cat "$ENVF"; echo "APP_IMAGE_REF=$NEW"; } > "$tmp"; before=$((before + 1))
+fi
+# 빈 파일 사고 방지 — 키 개수가 같을 때만 덮어쓴다
+if [ "$(grep -c '=' "$tmp")" -eq "$before" ]; then cat "$tmp" > "$ENVF"; else echo "중단: 키 개수 불일치"; fi
+rm -f "$tmp"; grep '^APP_IMAGE_REF=' "$ENVF"
+
+# 4. 교체 (--no-deps: postgres/redis 는 건드리지 않음)
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps app cron
+
+# 5. 검증
+curl -sS http://localhost:3020/api/health     # 서버 자신
 curl -sS https://gons.krdn.kr/api/health      # 도메인 경유
 ```
+
+무인 배포기(`apps/cron/autopilot/deploy-watcher.js`)가 같은 일을 하지만
+`AUTOPILOT_DEPLOY` 가 기본 `off` 라 평시엔 위 수동 절차가 정상 경로다.
 
 ## 첫 배포 (one-time)
 
@@ -51,7 +91,8 @@ curl -sS https://gons.krdn.kr/api/health      # 도메인 경유
 #      https://gons.krdn.kr/api/auth/callback/google
 #    (Google은 private IP redirect URI를 거부하므로 도메인 필수)
 
-# 3. 첫 pull + up
+# 3. 첫 pull + up (서버에서. 최초엔 APP_IMAGE_REF 미설정 → :latest 로 뜬다.
+#    이후 배포는 "배포 (정상 경로)" 의 digest 핀 절차를 따를 것)
 dcserver pull
 dcserver up -d
 
@@ -61,9 +102,21 @@ dcserver logs -f app
 
 ## 롤백
 
+⚠️ **`APP_IMAGE_TAG` 는 app 을 롤백하지 않는다.** app 은 `APP_IMAGE_REF`(digest), cron 만
+`APP_IMAGE_TAG`(태그)를 본다. `APP_IMAGE_TAG=…` 만 바꾸면 **cron 만 롤백되고 app 은 그대로다.**
+
 ```bash
-# 특정 SHA로 롤백
-APP_IMAGE_TAG=sha-<full_sha> dcserver up -d app cron
+# 서버에서. 되돌릴 digest 확인 — 이전 배포의 APP_IMAGE_REF 값, 또는:
+docker images --digests ghcr.io/krdn/gons-dashboard
+
+# 즉시 롤백 (비영속 — 다음 up 이 .env 를 다시 읽으면 되돌아온다)
+APP_IMAGE_REF='ghcr.io/krdn/gons-dashboard@sha256:<old>' \
+  docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps app
+
+# 영속 롤백 — "배포 (정상 경로)" 3단계로 .env 의 APP_IMAGE_REF 를 옛 digest 로 되돌린다
+
+# cron 만 롤백할 때 (cron 은 태그)
+APP_IMAGE_TAG=sha-<full_sha> docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps cron
 ```
 
 ## 시크릿 회전
