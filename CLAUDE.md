@@ -227,7 +227,16 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 
 전체 목록·기본값은 `apps/dashboard/.env.example`, **권위는 [`shared/config/env.ts`](apps/dashboard/src/shared/config/env.ts)** (Zod) — 부팅 시 검증해 빈 값/잘못된 형식이면 즉시 throw. 새 변수는 두 파일을 함께 갱신한다.
 
-**필수 여부는 그 스키마가 정의한다: `.default()` 도 `.optional()` 도 없는 항목이 필수.** `.optional()` 인데 필수처럼 보이는 것들이 있다 — `VAPID_*`, `OPS_NOTIFY_EMAIL` 은 없어도 부팅은 되고 해당 기능만 죽는다. 빈 문자열 처리는 변수마다 다르니 (`min(1).optional()` 은 빈 값에 **실패**, 일부는 전처리로 undefined 취급) 새 변수 추가 시 env.ts 의 주변 항목 패턴을 그대로 따를 것.
+**필수 여부는 두 층이 함께 정한다 — Zod 스키마만 보면 운영에서 틀린다.**
+
+1. **스키마 층** (`env.ts`): `.default()` 도 `.optional()` 도 없는 항목이 필수. dev 는 이게 전부다.
+2. **compose 층** (운영): compose 가 11개 변수를 `${VAR:-}` 로 넘겨 **빈 문자열을 주입**한다. `""` 는 `undefined` 가 아니라서 `.optional()` 이 적용되지 않는다 → `z.preprocess((v) => (v === "" ? undefined : v), …)` 로 감싸지 **않은** optional 항목은 **운영에서 사실상 필수**다. 빈 값이면 Zod 가 throw 해 컨테이너가 부팅하지 못한다.
+
+| 운영 실질 필수 (빈 값 = 부팅 실패) | 진짜 선택 (preprocess 있음) |
+|---|---|
+| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`·`_CHAT_ID`, `GITHUB_MONITOR_TOKEN` |
+
+⚠️ `DART_OPENAPI_AUTH_KEY` 는 이 문서와 env.ts 주석이 "키 없으면 skip" 이라 하지만 그건 dev 기준이다 — compose 가 빈 문자열을 넘기므로 **운영 `.env` 에서 빈 값으로 두면 부팅이 죽는다** (`.min(1).optional()`, preprocess 없음). 새 optional 변수는 반드시 preprocess 패턴을 쓸 것.
 
 `.env` 만 고치면 안 되는 변수 — 값이 한 파일 밖으로 새는 것들:
 
