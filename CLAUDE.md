@@ -4,19 +4,18 @@
 
 ## 프로젝트 개요
 
-- **목표**: 개인 생산성을 높이는 통합 대시보드
-- **도메인 (현재)**:
-  - **Email 분석** — Gmail 폴링 → LLM 분류(important/reply-needed) → 위젯 표시·푸시
-  - **Server Infra Monitor** — 등록된 Docker host들의 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그)
-  - **실시간 관제 (Monitoring)** — 호스트 에이전트 push(vitals+checks) + docker stats cron + `cron_runs` 계측 + 이벤트 타임라인 + HTTP/SSL 체크 + systemd·호스트 cron 판정 + critical 알림(텔레그램/web-push) → `/monitoring` (인프라 탭) + `/monitoring/github` (krdn org 이슈·PR·Actions, 5분 폴링 — main Build 실패를 critical 이벤트로 발행) (이슈 #323, 에이전트: `scripts/monitoring-agent/`)
-  - **Saju (사주)** — 외부 빌더 `@krdn/saju` (github:krdn/saju) 소비 + Tri-nation (Korean / Chinese / Japanese) lifetime·yearly·monthly·daily 학파별 narrative
-  - **Stock Analysis (증권 종목)** — `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 (Phase 1~8 진행 중)
-  - **Memo** — 메모 작성·관리 + LLM 변환 프리셋 (`features/memo-{compose,manage,preset-manage,transform}`, `MEMO_LLM_MODEL_*`)
-  - **카탈로그 (Skill / Plugin / Agent)** — `~/.claude` 자산의 build-time JSON snapshot (`pnpm skills:snapshot` 등) + 한글화 overlay → `widgets/{skill,plugin,agent}-catalog`
-  - **Calendar / Tiger Reading / Fortune Profile / Supplement Checker / Autopilot** — `packages/mcp-calendar`, `@krdn/gons-health` 외 보조 위젯
-- **확장 방향**: 할 일, 노트 등 도메인을 점진 추가
-- **아키텍처**: FSD (Feature-Sliced Design)
-- **문서 언어**: 한국어 (코드·식별자는 영어)
+**FSD** 구조. 문서는 한국어, 코드·식별자는 영어. 도메인을 점진 추가한다 (다음 후보: 할 일, 노트).
+
+| 도메인 | 핵심 흐름 / 진입점 |
+|---|---|
+| Email 분석 | Gmail 폴링 → LLM 분류(important/reply-needed) → 위젯 표시·푸시 |
+| Server Infra Monitor | Docker host 컨테이너 상태·프로젝트 묶음·재시작 액션(감사 로그) |
+| 실시간 관제 | 호스트 에이전트 push(vitals+checks) + docker stats cron + `cron_runs` 계측 + 이벤트 타임라인 + HTTP/SSL·systemd·호스트 cron 판정 + critical 알림(텔레그램/web-push) → `/monitoring`, `/monitoring/github` (에이전트: `scripts/monitoring-agent/`) |
+| Saju (사주) | 외부 빌더 `@krdn/saju` 소비 + Tri-nation(한/중/일) lifetime·yearly·monthly·daily 학파별 narrative |
+| Stock Analysis | `packages/stock-analysis` + Yahoo Finance/KRX adapter + 페르소나 5명 + consensus + lazy fetch + flip 알림 |
+| Memo | 작성·관리 + LLM 변환 프리셋 (`features/memo-*`) |
+| 카탈로그 (Skill/Plugin/Agent) | `~/.claude` 자산의 build-time JSON snapshot (`pnpm skills:snapshot` 등) + 한글화 overlay → `widgets/*-catalog` |
+| 보조 위젯 | Calendar / Tiger Reading / Fortune Profile / Supplement Checker / Autopilot |
 
 ## Quick Start
 
@@ -74,12 +73,13 @@ gons-dashboard/
     ├── shared-google/       # @gons/shared-google — Google API 공통 (token mediator client)
     └── shared-mcp-runtime/  # @gons/shared-mcp-runtime — MCP stdio + in-process 공통
 
-# 외부 GitHub 패키지 (dashboard 의존, 로컬 packages/ 아님):
-#   @krdn/saju        (github:krdn/saju#v1.2.2)        — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
-#   @krdn/tickerlens  (github:krdn/tickerlens#v0.1.3)  — stock 타임프레임 adapter
-#   @krdn/llm-gateway (github:krdn/llm-gateway#v3.4.0) — LLM 호출 게이트웨이 (provider "claude-cli" → cli-proxy)
-#   @krdn/email       (github:krdn/email#v0.1.0)       — 이메일 도메인 타입/스키마 공용
-#   @krdn/gons-health (github:krdn/gons-health#v0.1.0) — 영양제 상호작용 (supplement-checker 위젯)
+# 외부 GitHub 패키지 (dashboard 의존, 로컬 packages/ 아님 — 버전 핀은 package.json 이 권위):
+#   @krdn/saju        — 사주 빌더 (학파별 lifetime/yearly/monthly/daily)
+#   @krdn/tickerlens  — stock 타임프레임 adapter
+#   @krdn/llm-gateway — LLM 호출 게이트웨이 (provider "claude-cli" → cli-proxy).
+#                       GHA auto-update-llm-gateway 가 버전을 자동 갱신하므로 문서에 핀을 적지 않는다
+#   @krdn/email       — 이메일 도메인 타입/스키마 공용
+#   @krdn/gons-health — 영양제 상호작용 (supplement-checker 위젯)
 ```
 
 신규 도메인/MCP 추가 패턴은 아래 "MCP 도구 호출 정책" 섹션 참조.
@@ -110,10 +110,10 @@ root의 `pnpm <script>`는 `apps/dashboard`로 위임하는 thin proxy. CLAUDE.m
 ```
 src/
 ├── app/         # Next.js App Router (라우팅 + 레이아웃 + API routes)
-├── widgets/     # 조합 컴포넌트 22개 (host-dashboard, email-digest, saju-tri-*, stock-analysis, memo, skill-catalog …)
-├── features/   # 기능 28개 (auth, email-reply, memo-transform, saju-*-tri, stock-*, container-* …)
+├── widgets/     # 조합 컴포넌트 (host-dashboard, email-digest, saju-tri-*, stock-analysis, memo, skill-catalog …)
+├── features/    # 기능 (auth, email-reply, memo-transform, saju-*-tri, stock-*, container-* …)
 │   └── <name>/{ui,model,api,lib}
-├── entities/   # 엔티티 19개 (container, email, host, project, memo, stock-analysis, saju-chart …)
+├── entities/    # 엔티티 (container, email, host, project, memo, stock-analysis, saju-chart …)
 │   └── <name>/{ui,model,api}
 └── shared/     # 공유 (ui, lib, api, config)
 ```
@@ -125,28 +125,20 @@ src/
 
 ## Gotcha (필수 — 같은 실수 반복 방지)
 
-### 1. ~~Client 컴포넌트에서 `entities/*` barrel 사용 금지~~ (해소됨)
+### 1. entity barrel — 환경(server/client)을 import path 로 분리
 
-**친구션 #3 으로 해소** — `entities/container/index.ts` 와 `entities/project/index.ts` 가 폐지되고 `server.ts` + `client.ts` 두 진입점으로 분리됨. Module interface 가 *환경 (server vs client)* 을 import path 에 명시 표현. 옛 *깊은 경로 우회* 가이드라인 불필요.
+`container` / `project` / `fortune-profile` 은 `index.ts` 가 **없다.** `server.ts` + `client.ts` 두 진입점뿐이다 — server 함수(db 의존)와 client 가 쓰는 타입·상수를 한 barrel 에 섞으면 client bundle 그래프로 함께 끌려간다.
 
-**현재 권장**:
 ```ts
 // server tree (RSC, API route, Server Action, scripts)
 import { listContainers, type ContainerSummary } from "@/entities/container/server";
-import { getProjects, type Project } from "@/entities/project/server";
-
 // client tree ("use client")
-import { ContainerRow, type ContainerSummary } from "@/entities/container/client";
-import { ProjectCard } from "@/entities/project/client";
-
-// fortune-profile 도 동일 패턴 (deepening 후보 6, PR #183)
-import { listFortuneProfiles } from "@/entities/fortune-profile/server"; // server 함수 (db 의존)
-import { RELATION_LABEL, type FortuneProfile } from "@/entities/fortune-profile/client"; // client 위젯
+import { ContainerRow } from "@/entities/container/client";
 ```
 
-`fortune-profile` 은 server 함수 (`listFortuneProfiles`/`getFortuneProfile`, db 의존) 와 client 위젯이 쓰는 타입·상수 (`RELATION_LABEL`/`RELATIONS`) 가 한 barrel 에 혼재했고, client 위젯 4개가 그 통증을 *깊은 경로 우회* 로 손수 피하고 있어 같은 패턴으로 분리됨. UI 컴포넌트는 entity 안에 없어 `client.ts` 는 타입·상수만 노출.
+다른 entity (email, host, digest, saju-chart) 는 혼재 통증이 드러나지 않아 `index.ts` 단일 barrel 을 유지한다. 새 entity 에서 혼재가 생기면 같은 패턴을 적용할 것. Design spec: `docs/superpowers/specs/2026-05-15-entity-barrel-seam-deepening.md`. (features 레이어의 같은 문제는 #7)
 
-다른 entity (email, host, digest, saju-chart) 는 *server/client 혼재 통증이 드러나지 않은 상태* — 현재 `index.ts` 단일 barrel 유지. 새 entity 추가 시 혼재가 발생하면 같은 패턴 (`server.ts` + `client.ts`) 권장. Design spec: `docs/superpowers/specs/2026-05-15-entity-barrel-seam-deepening.md`.
+⚠️ **옛 인용 주의**: 2026-05-15 이전 문서 (tiger-playmcp, saju-phase1 등) 가 "Gotcha #1" 을 *"UI 는 barrel 대신 깊은 경로로 직접 import"* 로 인용한다. 그 정책은 위 deepening 으로 **폐지됐다** — 지금은 `server.ts`/`client.ts` 진입점을 쓴다. 옛 문서의 그 지시는 따르지 말 것.
 
 ### 2. 통합 테스트는 `TEST_DATABASE_URL` 필수
 
@@ -207,7 +199,7 @@ TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test
 **복구 절차**:
 1. 로컬 레포 `docker-compose.yml` 을 운영 working_dir 에 `scp` + `sudo cp` (root 소유 디렉토리)
 2. 백업 .env 동일 위치로 복원
-3. `docker exec gons-dashboard-postgres psql -U gons -c "ALTER USER gons WITH PASSWORD '<env-pw>'"` (pg_hba.conf `local all all trust` 덕에 비밀번호 없이 접근 가능 — DB 비밀번호 잃어도 회복 가능)
+3. `docker exec gons-dashboard-postgres psql -U gons -d gons_dashboard -c "ALTER USER gons WITH PASSWORD '<env-pw>'"` (pg_hba.conf `local all all trust` 덕에 비밀번호 없이 접근 가능 — DB 비밀번호 잃어도 회복 가능). **`-d gons_dashboard` 생략 금지** — psql 이 유저명과 같은 db("gons")를 찾다 `database "gons" does not exist` 로 실패한다
 4. `docker compose -f /home/gon/projects/gon/gons-dashboard/docker-compose.yml --env-file /home/gon/projects/gon/gons-dashboard/.env up -d --force-recreate`
 5. `curl http://localhost:3020/api/health` → 200 확인
 
@@ -229,35 +221,44 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 
 ### 10. LLM Proxy ≠ NextAuth Google OAuth
 
-`ANTHROPIC_BASE_URL=http://192.168.0.5:8317` 의 cli-proxy-api 는 **LLM 추론 통합 endpoint** (Claude/Gemini/Codex 라우팅). `GOOGLE_CLIENT_ID/SECRET` 의 NextAuth Google OAuth 는 **사용자 웹 로그인 + Gmail/Calendar scope** — 둘은 서로 대체 불가. 자세한 차이는 "AI 호출 정책 — LLM Proxy 정의" 섹션의 비교 표 참조.
-
-자주 헷갈리는 시나리오: LLM 추론은 정상 동작하는데 (proxy 통해) NextAuth 로그인은 `changeme-*` placeholder 라 안 됨 → 둘은 별개 흐름이라 로그인 안 돼도 LLM 호출은 정상.
+`ANTHROPIC_BASE_URL` 의 cli-proxy-api 는 **LLM 추론** endpoint, `GOOGLE_CLIENT_ID/SECRET` 의 NextAuth 는 **사용자 로그인 + Gmail/Calendar scope** — 서로 대체 불가다. 그래서 "LLM 호출은 정상인데 로그인만 안 됨" (또는 그 반대) 이 정상적으로 존재한다. 차이 전문 → [`docs/ARCHITECTURE-llm-proxy.md`](docs/ARCHITECTURE-llm-proxy.md)
 
 ## 환경 변수
 
-`.env.example` 에 전체 목록. 부팅 시 `shared/config/env.ts` 가 Zod 로 검증해 빈 값/잘못된 형식이면 즉시 throw.
+전체 목록·기본값은 `apps/dashboard/.env.example`, **권위는 [`shared/config/env.ts`](apps/dashboard/src/shared/config/env.ts)** (Zod) — 부팅 시 검증에 실패하면 즉시 throw 한다. 새 변수는 두 파일을 함께 갱신한다.
 
-| 그룹 | 변수 | 필수 |
-|------|------|------|
-| LLM Proxy | `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY` | ✓ |
-| Google OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | ✓ |
-| NextAuth | `NEXTAUTH_SECRET`, `NEXTAUTH_URL` | ✓ |
-| DB / Cache | `DATABASE_URL`, `REDIS_URL` | ✓ |
-| Cron | `CRON_BEARER_TOKEN` | ✓ |
-| Push | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | ✓ |
-| 운영 알림 | `OPS_NOTIFY_EMAIL` | ✓ (Zod email 검증) |
-| pgcrypto | `PG_ENCRYPTION_KEY` | ✓ (PlayMCP creds at-rest — Gmail accounts 토큰은 평문, 위 "MCP 도구 호출 정책" 참조) |
-| Timezone | `TZ=Asia/Seoul` | ✓ (KST cron 정확성) |
-| Server Monitor | `DOCKER_DEFAULT_CONTEXT=home-server`, `DOCKER_CMD_TIMEOUT_MS=10000`, `ADMIN_EMAILS` | ✓ |
-| 로그인 허용 | `ALLOWLIST_EMAILS` | ✓ (로그인 허용 이메일 목록) |
-| Saju LLM | `SAJU_LLM_MODEL`, `SAJU_LLM_TEMPERATURE`, `SAJU_LLM_DAILY_BUDGET_KRW` | ✓ (saju 도메인 활성 시) |
-| LLM 모델 폴백 | `SAJU/REPLY/MEMO_LLM_MODEL_{CLAUDE,CODEX,GEMINI}` | 기본값 있음 — `resolveLatestModel` 조회 실패 시 폴백, 프록시에 실존하는 ID 여야 함 |
-| Stock | `KRX_OPENAPI_AUTH_KEY` (KRX 종목 마스터) | ✓ (stock-analysis 활성 시) |
-| Stock 펀더멘털 | `DART_OPENAPI_AUTH_KEY`, `STOCK_FUNDAMENTALS_SOURCES`, `STOCK_WATCHLIST_MAX_PER_USER` | 선택 (DART 키 없으면 skip, 기본 `yahoo+dart` / 10) |
-| MCP / PlayMCP | `MCP_DASHBOARD_TOKEN`, `PLAYMCP_GATEWAY_URL`, `PLAYMCP_CLIENT_ID`, `PLAYMCP_BOOTSTRAP_OTT` | ✓ (MCP stdio + PlayMCP 게이트웨이 사용 시) |
-| 관제 | `METRICS_INGEST_TOKEN` | ✓ (호스트 에이전트 → metrics/checks-ingest 인증, 회전 시 호스트 `/etc/default/gons-monitoring-agent` 동시 교체) |
-| 관제 Phase 2 | `HTTP_CHECK_CONNECT_IP`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | 선택 — 빈 값이면 해당 기능만 비활성 (hairpin 회피 IP / 텔레그램 알림) |
-| GitHub 관제 | `GITHUB_MONITOR_TOKEN`, `GITHUB_MONITOR_ORG` | 선택 — 미설정 시 `/monitoring/github` 보드만 비활성(기존 스냅샷 유지). Fine-grained PAT, read-only: Issues·PR·Actions·Metadata |
+스키마에서 `.default()` 도 `.optional()` 도 없는 항목이 필수다. **단 `.optional()` 이 "비워도 된다" 를 뜻하지는 않는다** — Zod 에서 `""` 는 `undefined` 가 아니라 `.optional()` 이 적용되지 않고 뒤의 제약(`min(1)`·`email()`·`startsWith()`)이 그대로 검사된다. 즉 키를 **아예 없애야**(undefined) 선택이 되고, **빈 문자열로 존재하면** 부팅이 죽는다.
+
+두 경로가 모두 "빈 문자열로 존재" 를 만들기 때문에 자주 물린다:
+
+- **운영**: compose 가 `${VAR:-}` 로 넘긴다 → `.env` 에서 줄을 지워도 `""` 가 주입된다
+- **dev**: `.env.example` 이 `KEY=` 로 비어 있다 → 복사하면 그대로 `""`
+
+| 변수 | 빈 문자열로 두면 |
+|---|---|
+| `VAPID_PUBLIC_KEY`·`_PRIVATE_KEY`·`_SUBJECT`, `OPS_NOTIFY_EMAIL`, `DART_OPENAPI_AUTH_KEY` | **부팅 실패** — `min(1)`·`email()`·`startsWith()` 가 `""` 를 거부하는데 preprocess 가 없다 |
+| `TELEGRAM_BOT_TOKEN`·`_CHAT_ID` | 텔레그램 발송만 skip (`shared/lib/telegram.ts` 는 throw 하지 않는다). critical 알림이 web-push 로만 간다 |
+| `HTTP_CHECK_CONNECT_IP` | HTTP/SSL 체크는 **계속 돈다** — `probeSite.ts` 가 `connectIp ?? domain` 이라 도메인으로 접속한다. hairpin NAT 회피만 못 하는 것 |
+| `GITHUB_MONITOR_TOKEN` | 동기화 cron skip + 보드가 "동기화 비활성" 을 표시한다 (기존 스냅샷은 유지) |
+| `PLAYMCP_BOOTSTRAP_OTT` | 정상 상태다 — `tiger:bootstrap` 1회 실행 후 `.env` 에서 제거하도록 설계됐다 |
+
+즉 "optional 이면 비워도 그 기능만 죽는다" 로 뭉뚱그릴 수 없다 — 위 표처럼 변수마다 다르다.
+
+⚠️ `DART_OPENAPI_AUTH_KEY` 는 "키 없으면 skip" 으로 알려져 있지만 preprocess 가 없어 **빈 값이면 부팅이 죽는다.** env.ts 주석(`관제 Phase 2` 블록)이 DART 를 이 함정의 *예외* 로 적어둔 것은 사실과 다르다 — compose 108행이 DART 키도 `${VAR:-}` 로 넘긴다. 새 optional 변수는 preprocess 패턴을 쓸 것. 안 쓰면 문서에 "선택" 이라 적어도 실제로는 필수가 된다.
+
+`.env` 만 고치면 안 되는 변수 — 값이 한 파일 밖으로 새는 것들:
+
+| 변수 | 동시에 갱신할 곳 |
+|---|---|
+| `METRICS_INGEST_TOKEN` | 호스트 에이전트 `/etc/default/gons-monitoring-agent` |
+| `MCP_DASHBOARD_TOKEN` | 4곳 — 운영 `.env`, 사용자 `~/.claude.json`, 로컬·서버 `~/.config/gons-dashboard/ingest.env` (절차: `docs/RUNBOOK.md`) |
+| `APP_IMAGE_REF` | 이 값을 옮기는 것이 배포 그 자체 — 아래 "운영 배포" 참조 |
+
+`GITHUB_MONITOR_TOKEN` 은 fine-grained PAT, read-only (Issues·PR·Actions·Metadata).
+
+`PG_ENCRYPTION_KEY` 는 PlayMCP creds 에만 적용된다 — Gmail accounts 토큰은 평문 (아래 "MCP 도구 호출 정책" 참조).
+
+⚠️ **운영에서 안 먹는 env 가 있다.** `*_LLM_MODEL_*` 계열은 `docker-compose.yml` app `environment:` 블록에 전달 행이 없어 **운영 `.env` 에 넣어도 컨테이너에 도달하지 않는다** — env.ts 의 `.default()` 가 그대로 쓰인다. (폴백 전용이라 실질 영향은 작지만 "값을 바꿨는데 안 바뀐다" 함정이다.) `SAJU_LLM_DAILY_BUDGET_KRW` 는 전달되며 compose 기본값 `20000` 이 env.ts 기본값 `1000` 을 덮는다.
 
 **시크릿은 어떤 형태로도 저장소에 커밋 금지** — README, 주석, 마크다운 본문 포함.
 
@@ -268,65 +269,27 @@ Drizzle 0.30+ 의 `generatedAlwaysAs(sql\`...\`)` API 로 schema 표현 가능. 
 | 운영 서버 | `192.168.0.5` (docker context `home-server`, alias `dserver` / `dcserver`) |
 | 외부 URL | `https://gons.krdn.kr` |
 | compose 경로 (서버) | `/home/gon/projects/gon/gons-dashboard/docker-compose.yml` |
-| 이미지 | `ghcr.io/krdn/gons-dashboard:latest` (app), `ghcr.io/krdn/gons-dashboard-cron:latest` (cron) |
+| 이미지 | app = `.env` 의 `APP_IMAGE_REF` **digest 핀** (compose 57행), cron = `:${APP_IMAGE_TAG:-latest}` 태그 (129행) |
 | 포트 | app `3020`, postgres `5440`, redis `6390` |
 | CI | GitHub Actions `CI` 워크플로 (Lint & Type Check → Build & Push Docker Images on main) |
 
-배포 흐름 (PR 머지 후):
+⚠️ **`pull` 은 배포가 아니다.** app 이미지는 digest 로 핀 고정돼 있어 `compose pull app` 은 같은 digest 를 재획득할 뿐이다. **배포 = `.env` 의 `APP_IMAGE_REF` 를 새 digest 로 옮기는 것.** 빠뜨리면 "PR 머지됨 + CI 빌드 성공 + 그런데 운영은 며칠 전 이미지" 가 조용히 유지된다 (2026-07-27 PR #344 — 신규 UI 가 안 보였다). cron 은 태그라 pull 만으로 갱신된다 — **app 과 cron 의 배포 방식이 다르다.**
 
-```bash
-gh run watch                                                              # Build & Push 완료 대기
-docker --context home-server compose -f $COMPOSE pull app cron            # 새 이미지 받기
-docker --context home-server compose -f $COMPOSE up -d app cron           # 교체 + healthcheck
-ssh gon@192.168.0.5 "curl -s http://localhost:3020/api/health"            # {"status":"ok"} 확인
-```
+⚠️ **compose 명령은 서버에서 실행한다.** `--context` 는 데몬 접속만 원격화하고 `-f` / `--env-file` 은 로컬 CLI 가 읽는다. 로컬에서 `dcserver up -d app` 을 돌리면 **로컬 레포의 compose + 로컬 `.env`** 로 운영 컨테이너가 재생성돼 env 가 비고 Zod 검증이 실패한다 → 운영 다운 (Gotcha #8 과 같은 결과).
 
-(`$COMPOSE` = `/home/gon/projects/gon/gons-dashboard/docker-compose.yml`)
+절차 전문 (digest 획득, `.env` in-place 갱신, 검증) — `docs/RUNBOOK.md` "배포 (정상 경로)".
+무인 배포는 cron 컨테이너의 `autopilot/deploy-watcher.js` 담당, `AUTOPILOT_DEPLOY` 기본 `off`.
 
-## AI 호출 정책 — LLM Proxy 정의
+## AI 호출 정책
 
-### LLM Proxy 란
+모든 LLM 추론은 운영 서버의 `cli-proxy-api` (`ANTHROPIC_BASE_URL`) 를 지난다 — Claude/Codex/Gemini 를 단일 endpoint 로 묶은 프록시로, API key 없이 각 CLI 의 OAuth auth file 로 동작한다.
 
-운영 서버에서 도는 **`cli-proxy-api`** 컨테이너 (`192.168.0.5:8317`, image `eceasy/cli-proxy-api`). Claude / Codex / Gemini 셋을 **단일 OpenAI/Anthropic 호환 endpoint** 로 묶어 제공.
+편집 시 틀리기 쉬운 두 가지:
 
-- **인증 방식**: 각 모델의 CLI tool (Claude Code CLI, Codex CLI, Gemini CLI) 이 사전에 OAuth 로 로그인해 발급한 **auth file** (`/home/gon/projects/cli-proxy-api/auths/{claude,gemini,codex}-krdn.net@gmail.com-*.json`) 을 proxy 가 읽어 토큰 자동 갱신.
-- **결과**: dashboard 는 **API key 발급 없이** Claude/Gemini/Codex 모두 사용. 토큰 비용은 CLI 의 사용 한도 (예: Claude Code 의 Pro/Max plan) 안에서 처리.
-- **dashboard `.env`** 의 `ANTHROPIC_BASE_URL=http://192.168.0.5:8317` + `ANTHROPIC_API_KEY` 만 설정 → `@krdn/llm-gateway` 가 이 값으로 proxy 를 호출.
+- **`provider` 는 `"claude-cli"`** 여야 한다 (`shared/lib/llm/anthropic.ts`). `"anthropic"` 으로 두면 `/v1` 경로가 누락돼 404.
+- **모델 ID 를 코드에 박지 않는다.** 프록시 사정으로 소멸한다 (2026-07-05 `gpt-5.3-codex` 사고). `resolveLatestModel(tier)` 가 런타임 선택하고 `*_LLM_MODEL_*` env 는 조회 실패 시 폴백일 뿐이다. 모델 선택 지점 — saju: [`saju-model-registry.ts`](apps/dashboard/src/shared/lib/llm/saju-model-registry.ts) + `features/saju-model-picker`, stock: [`persona-router.ts`](apps/dashboard/src/entities/stock-analysis/api/persona-router.ts).
 
-```typescript
-// shared/lib/llm/anthropic.ts — 실제 호출은 @krdn/llm-gateway 경유
-import { type AIGatewayOptions } from "@krdn/llm-gateway/gateway";
-export const gatewayDefaults: Pick<AIGatewayOptions, "provider" | "baseUrl" | "apiKey"> = {
-  provider: "claude-cli", // ⚠️ "anthropic" 이면 /v1 경로 누락 → 404
-  baseUrl: env.ANTHROPIC_BASE_URL,
-  apiKey: env.ANTHROPIC_API_KEY,
-};
-```
-
-### 모델 라우팅 — proxy 가 `model` 문자열로 분기
-
-- `claude-opus-4-8`, `claude-sonnet-5`, `claude-haiku-4-5-*` → Claude Code CLI auth
-- `gpt-5.5` → Codex CLI auth
-- `gemini-pro-latest` (alias) → Gemini CLI auth
-
-모델 ID 는 프록시 사정으로 소멸할 수 있다 (2026-07-05 `gpt-5.3-codex` 소멸 사고). 정상 경로는 `resolveLatestModel(tier)` 가 프록시 `/v1/models` 에서 최신 안정 모델을 런타임 선택 (tier 별 6h 캐시), `*_LLM_MODEL_*` env 는 조회 실패 시 폴백.
-
-`SAJU_LLM_MODEL_CLAUDE/CODEX/GEMINI` 가 페르소나/학파별로 분기. saju 는 [`shared/lib/llm/saju-model-registry.ts`](apps/dashboard/src/shared/lib/llm/saju-model-registry.ts) + `features/saju-model-picker` 가 모델 선택, stock-analysis 는 [`entities/stock-analysis/api/persona-router.ts`](apps/dashboard/src/entities/stock-analysis/api/persona-router.ts) 가 페르소나별 override 적용.
-
-### ⚠️ NextAuth Google OAuth 와 LLM Proxy 는 **완전히 별개**
-
-같이 헷갈리지 말 것 — 두 흐름은 목적도 인증 주체도 다르다:
-
-| 항목 | NextAuth Google OAuth | LLM Proxy (cli-proxy-api) |
-|---|---|---|
-| 환경변수 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET` | `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY` |
-| 목적 | 사용자 웹 **로그인** + Gmail/Calendar API scope | LLM **추론** API 호출 (Claude/Gemini/Codex) |
-| 인증 주체 | 사용자 본인 브라우저 | 운영 컨테이너 (server-to-server) |
-| OAuth Client | Google Cloud Console 에 별도 발급 | (proxy 내부에서 Gemini CLI 가 자체 발급한 Client 와 token 사용) |
-| 만료/갱신 | refresh token 으로 events.signIn 시 자동 갱신 | proxy 가 auth file watch + 15분 주기 자동 갱신 |
-| Down 시 영향 | 사용자 로그인 불가 | LLM 호출 불가 (페르소나 분석, 사주 narrative 모두 fail) |
-
-**한 쪽을 다른 쪽으로 대체할 수 없다.** LLM Proxy 의 auth file 에 들어있는 `client_id` / `client_secret` 은 Gemini CLI 가 자체 발급한 OAuth Client 의 자격이라 redirect URI 가 NextAuth 와 다르고, scope 도 (`cloud-platform`, `userinfo.email`) NextAuth Google provider 의 (`openid email profile`) 와 다름. 재사용 시도하면 redirect URI 추가가 필요한데 그 Client 자체가 Gemini CLI 가 관리하는 자동 생성 프로젝트라 수정 위험.
+proxy 구조·인증 방식·NextAuth Google OAuth 와의 차이 전문 → [`docs/ARCHITECTURE-llm-proxy.md`](docs/ARCHITECTURE-llm-proxy.md)
 
 ## MCP 도구 호출 정책
 
@@ -352,16 +315,7 @@ OAuth refresh token은 `apps/dashboard`의 `accounts` 테이블에만 존재. MC
 
 ## 응답 규칙
 
-- 한국어 응답 + 코드 영어는 글로벌 `~/.claude/rules/korean-response.md` 가 강제 (별도 명시 불필요).
-- **시크릿은 메모리/메시지에 평문으로 남기지 않는다** — 항상 `.env` 와 변수명으로만 지칭.
-
-## Health Stack
-
-`/health` 스킬이 사용하는 도구 목록.
-
-- typecheck: `pnpm typecheck`
-- lint: `pnpm lint`
-- test: `TEST_DATABASE_URL="postgres://test:test@127.0.0.1:5999/test_dummy" pnpm test` (로컬 DB 미기동 시 통합 13개 ECONNREFUSED — Gotcha #2 참조)
+**시크릿은 메모리/메시지에 평문으로 남기지 않는다** — 항상 `.env` 와 변수명으로만 지칭. (한국어 응답·코드 영어는 글로벌 `~/.claude/rules/korean-response.md` 가 이미 강제.)
 
 ## 이메일 분류 정확도 평가 (eval)
 

@@ -9,7 +9,8 @@
 | 호스트 | 192.168.0.5 (docker context: `home-server`) |
 | 운영 URL | https://gons.krdn.kr (외부 도메인 + HTTPS, LAN: http://192.168.0.5:3020) |
 | 컴포즈 위치 | 로컬 `/home/gon/projects/gon/gons-dashboard/docker-compose.yml` |
-| 원격 daemon 제어 | `docker --context home-server`, alias `dserver`, `dcserver` |
+| 원격 daemon 제어 | `dserver` = `docker --context home-server` — 데몬만 원격화, 어디서 실행해도 안전 |
+| ⚠️ compose 명령 | `dserver`/`dcserver` 는 **작업 PC 전용**이다 — alias 도 `home-server` context 도 서버에는 없다(서버 daemon 은 `default`). 서버에서는 `docker compose -f <abs> --env-file <abs>` 를 쓴다. **작업 PC 에서 `dcserver` 로 `up`/`pull` 금지** — `--context` 는 daemon 만 원격화하고 compose 파일·`--env-file` 은 로컬에서 읽어 로컬 `.env` 로 운영 컨테이너가 재생성된다(env 비어 Zod 실패 → 다운). 조회(`logs`·`exec`·`ps`)는 compose 를 쓰지 않는 `dserver` 로 하면 작업 PC 에서도 안전하다. |
 
 ## 컨테이너
 
@@ -17,53 +18,128 @@
 |--------|--------|------|
 | postgres | postgres:16-alpine | 5440 → 5432 |
 | redis | redis:7-alpine | 6390 → 6379 |
-| app | ghcr.io/krdn/gons-dashboard:latest | 3020 |
-| cron | ghcr.io/krdn/gons-dashboard-cron:latest | (내부) |
+| app | `${APP_IMAGE_REF}` — **digest 핀** (미설정 시 `…/gons-dashboard:latest`) | 3020 |
+| cron | ghcr.io/krdn/gons-dashboard-cron:`${APP_IMAGE_TAG:-latest}` | (내부) |
 
 ## 배포 (정상 경로)
+
+⚠️ **두 가지를 먼저 알아야 한다.**
+
+1. **app 은 `pull` 로 바뀌지 않는다.** 이미지가 `.env` 의 `APP_IMAGE_REF` 에 digest 로 핀 고정돼
+   있어(compose 57행) `pull` 은 같은 digest 를 재획득할 뿐이다. **배포 = 핀을 새 digest 로 옮기는 것.**
+   빠뜨리면 "머지·빌드 성공인데 운영은 며칠 전 이미지" 가 조용히 유지된다 (2026-07-27 PR #344).
+   cron 은 `:${APP_IMAGE_TAG:-latest}` 태그(129행)라 pull 만으로 갱신된다.
+2. **compose 명령은 서버에서, `--context` 없이 실행한다.** 작업 PC 의 `dcserver`
+   (= `docker compose --context home-server`) 는 daemon 접속만 원격화하고 compose 파일과
+   `--env-file` 은 **로컬 CLI 가 읽는다** — 로컬 레포에서 돌리면 로컬 compose + 로컬 `.env`
+   (개발용 몇 키뿐) 로 운영 컨테이너가 재생성돼 env 가 비고 Zod 검증이 실패한다 → 운영 다운.
+   반대로 **서버에는 `dcserver` alias 도 `home-server` context 도 없다** (daemon 이 `default`)
+   — 그래서 아래 절차는 절대경로를 쓰는 plain `docker compose` 형태다.
 
 ```bash
 # 0. main에 push → GHA가 이미지 빌드/푸시 (~5분)
 #    https://github.com/krdn/gons-dashboard/actions 에서 확인
 git push
+```
 
-# 1. 새 이미지 pull
-dcserver pull app cron
+**이하 전부 서버에서 실행한다** — 먼저 `ssh gon@192.168.0.5` 로 접속한 뒤 아래를 붙여넣는다.
 
-# 2. 무중단 재시작
-dcserver up -d app cron
+```bash
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
 
-curl -sS http://192.168.0.5:3020/api/health  # LAN 직접
+# 1. 새 이미지 받기 (app 은 digest 확인용, cron 은 이 단계로 갱신 완료)
+docker pull ghcr.io/krdn/gons-dashboard:latest
+docker compose -f "$COMPOSE" --env-file "$ENVF" pull cron   # APP_IMAGE_TAG 가 설정돼 있어도 맞는 태그를 받는다
+
+# 2. 새 digest 확인
+docker image inspect ghcr.io/krdn/gons-dashboard:latest --format '{{index .RepoDigests 0}}'
+# → ghcr.io/krdn/gons-dashboard@sha256:...
+
+# 3. .env 의 APP_IMAGE_REF 를 그 digest 로 교체
+#    sed -i 는 안 된다 — 디렉토리가 root 소유라 임시파일 생성이 거부된다(파일 자체는 gon 소유).
+#    inode 를 보존해 덮어쓴다 — 이 파일은 cron 컨테이너에 bind mount 돼 있다(compose 152행).
+NEW='ghcr.io/krdn/gons-dashboard@sha256:...'   # 2단계 출력 붙여넣기
+before=$(grep -c '=' "$ENVF"); tmp=$(mktemp)
+if grep -q '^APP_IMAGE_REF=' "$ENVF"; then
+  sed "s|^APP_IMAGE_REF=.*|APP_IMAGE_REF=$NEW|" "$ENVF" > "$tmp"
+else
+  { cat "$ENVF"; echo "APP_IMAGE_REF=$NEW"; } > "$tmp"; before=$((before + 1))
+fi
+# 빈 파일 사고 방지 — 키 개수가 같을 때만 덮어쓴다
+if [ "$(grep -c '=' "$tmp")" -eq "$before" ]; then cat "$tmp" > "$ENVF"; else echo "중단: 키 개수 불일치"; fi
+rm -f "$tmp"; grep '^APP_IMAGE_REF=' "$ENVF"
+
+# 4. 교체 (--no-deps: postgres/redis 는 건드리지 않음)
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps app cron
+
+# 5. 검증
+curl -sS http://localhost:3020/api/health     # 서버 자신
 curl -sS https://gons.krdn.kr/api/health      # 도메인 경유
 ```
 
+무인 배포기(`apps/cron/autopilot/deploy-watcher.js`)가 같은 일을 하지만
+`AUTOPILOT_DEPLOY` 가 기본 `off` 라 평시엔 위 수동 절차가 정상 경로다.
+
 ## 첫 배포 (one-time)
 
+**1~2 단계는 브라우저에서** (작업 PC):
+
+1. **GHCR 패키지 가시성** — https://github.com/users/krdn/packages → `gons-dashboard`,
+   `gons-dashboard-cron` → Package settings → Change visibility → **Public** (권장).
+   private 로 두려면 대신 **서버에서** `docker login ghcr.io -u krdn -p <PAT_with_read:packages>`.
+2. **Google OAuth redirect URI 등록** — https://console.cloud.google.com/apis/credentials →
+   Authorized redirect URIs 에 `https://gons.krdn.kr/api/auth/callback/google` 추가.
+   (Google 은 private IP redirect URI 를 거부하므로 도메인 필수)
+
+**3~4 단계는 서버에서** — `ssh gon@192.168.0.5` 로 접속한 뒤:
+
 ```bash
-# 1. GHCR 패키지 가시성 확인 (private면 home-server에서 PAT 로그인 필요)
-#    https://github.com/users/krdn/packages → gons-dashboard, gons-dashboard-cron
-#    → Package settings → Change visibility → Public  (권장)
-#    또는 home-server에서: docker login ghcr.io -u krdn -p <PAT_with_read:packages>
+# 3. 첫 pull + up. 최초엔 APP_IMAGE_REF 미설정 → :latest 로 뜬다.
+#    이후 배포는 "배포 (정상 경로)" 의 digest 핀 절차를 따를 것.
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+docker compose -f "$COMPOSE" --env-file "$ENVF" pull
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d
 
-# 2. Google OAuth Console에 운영 redirect URI 등록
-#    https://console.cloud.google.com/apis/credentials
-#    Authorized redirect URIs에 추가:
-#      https://gons.krdn.kr/api/auth/callback/google
-#    (Google은 private IP redirect URI를 거부하므로 도메인 필수)
-
-# 3. 첫 pull + up
-dcserver pull
-dcserver up -d
-
-# 4. 로그 확인
-dcserver logs -f app
+# 4. 로그 확인 — 서버 안이므로 plain docker (dserver 는 작업 PC alias 라 여기 없다)
+docker logs -f gons-dashboard-app
 ```
 
 ## 롤백
 
+⚠️ **`APP_IMAGE_TAG` 는 app 을 롤백하지 않는다.** app 은 `APP_IMAGE_REF`(digest), cron 만
+`APP_IMAGE_TAG`(태그)를 본다. `APP_IMAGE_TAG=…` 만 바꾸면 **cron 만 롤백되고 app 은 그대로다.**
+
+⚠️ **`AUTOPILOT_DEPLOY=on` 이면 수동 롤백만으로는 되돌려진다.** watcher 의
+`shouldDeploy(latest, running, rolledBack)` 는 `latest !== running` 이면 배포하므로
+(`autopilot/lib.js:25`), 롤백해 두면 다음 폴링이 그 나쁜 digest 를 **다시 배포한다.**
+차단 파일에 그 digest 를 적어야 멈춘다 — watcher 는 *자기* 배포가 health 실패했을 때만
+이 파일을 쓰므로(`deploy-watcher.js:276`) **수동 롤백은 직접 적어야 한다.**
+순서: **차단 기록 → 롤백 배포.** (`AUTOPILOT_DEPLOY` 가 `off` 면 이 단계는 건너뛴다.)
+
 ```bash
-# 특정 SHA로 롤백
-APP_IMAGE_TAG=sha-<full_sha> dcserver up -d app cron
+# 서버에서 (ssh gon@192.168.0.5).
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+SIGNAL=/home/gon/projects/gon/gons-dashboard/.autopilot-signal/.autopilot-rolledback
+
+# 되돌릴 digest 확인 — 이전 배포의 APP_IMAGE_REF 값, 또는 로컬에 남은 이미지에서:
+docker images --digests ghcr.io/krdn/gons-dashboard
+
+# 0. (AUTOPILOT_DEPLOY=on 일 때만) 재배포 차단 — 버리려는 쪽 digest 를 적는다.
+#    `sha256:…` bare digest 형식이다 (ref 가 아니다 — lib.js buildImageRef 가 repo@digest 로 합친다).
+echo 'sha256:<버리는_digest>' > "$SIGNAL"
+cat "$SIGNAL"
+
+# 즉시 롤백 (비영속 — 다음 up 이 .env 를 다시 읽으면 되돌아온다)
+APP_IMAGE_REF='ghcr.io/krdn/gons-dashboard@sha256:<old>' \
+  docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps app
+
+# 영속 롤백 — "배포 (정상 경로)" 3단계로 .env 의 APP_IMAGE_REF 를 옛 digest 로 되돌린다
+
+# cron 만 롤백할 때 (cron 은 태그)
+APP_IMAGE_TAG=sha-<full_sha> docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps cron
 ```
 
 ## 시크릿 회전
@@ -74,9 +150,11 @@ APP_IMAGE_TAG=sha-<full_sha> dcserver up -d app cron
 # 1. 새 토큰 생성
 openssl rand -hex 32
 
-# 2. .env의 CRON_BEARER_TOKEN 업데이트
-# 3. app + cron 동시 재시작 (둘 다 같은 토큰을 봐야 함)
-dcserver up -d app cron --force-recreate
+# 2. 운영 .env 의 CRON_BEARER_TOKEN 업데이트
+# 3. app + cron 동시 재시작 (둘 다 같은 토큰을 봐야 함) — 서버에서
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps --force-recreate app cron
 ```
 
 ### NEXTAUTH_SECRET
@@ -85,9 +163,11 @@ dcserver up -d app cron --force-recreate
 # 1. 새 시크릿 생성
 openssl rand -base64 32
 
-# 2. .env 업데이트 → app 재시작
+# 2. 운영 .env 업데이트 → app 재시작 (서버에서)
 # 3. 모든 기존 세션 무효화됨 → 재로그인 필요
-dcserver up -d app --force-recreate
+COMPOSE=/home/gon/projects/gon/gons-dashboard/docker-compose.yml
+ENVF=/home/gon/projects/gon/gons-dashboard/.env
+docker compose -f "$COMPOSE" --env-file "$ENVF" up -d --no-deps --force-recreate app
 ```
 
 ## OAuth 강제 재인증
@@ -123,9 +203,12 @@ git add drizzle/
 
 ## 컨테이너 별 디버깅
 
+아래는 **작업 PC 에서** 실행한다 (`dserver` = `docker --context home-server`). 서버에 직접
+ssh 한 상태라면 `dserver` 를 `docker` 로 바꿔 읽을 것 — 그 alias 는 서버에 없다.
+
 ### app 로그
 ```bash
-dcserver logs -f app | grep -E "ERROR|WARN"
+dserver logs -f gons-dashboard-app | grep -E "ERROR|WARN"
 ```
 
 ### postgres 접속
@@ -135,7 +218,7 @@ dserver exec gons-dashboard-postgres psql -U gons -d gons_dashboard
 
 ### cron 작업 확인
 ```bash
-dcserver logs cron | tail -50
+dserver logs gons-dashboard-cron | tail -50
 ```
 
 ### redis 점검
@@ -145,14 +228,14 @@ dserver exec gons-dashboard-redis redis-cli ping
 
 ## 자주 발생하는 이슈
 
-### `unauthorized` on `dcserver pull`
+### `unauthorized` on image pull
 GHCR 패키지가 private. 위의 "첫 배포 #1" 참조.
 
 ### OAuth 콜백 실패
 `NEXTAUTH_URL`과 Google OAuth Console redirect URI 불일치. 둘 다 `https://gons.krdn.kr` 기반이어야 함. Google은 private IP(192.168.x.x) redirect URI를 `device_id required` 에러로 거부하므로 LAN URL은 사용 불가.
 
 ### cron이 호출 안 됨
-- TZ=Asia/Seoul 확인: `dcserver exec cron date`
+- TZ=Asia/Seoul 확인: `dserver exec gons-dashboard-cron date`
 - CRON_BEARER_TOKEN 일치 확인 (app, cron 양쪽 동일)
 - app health: `curl -sS https://gons.krdn.kr/api/health`
 
@@ -247,11 +330,16 @@ dserver exec gons-dashboard-app sh -c '
 
 ```bash
 # 1. .env에 서버 인프라용 환경변수 추가
-#    DOCKER_DEFAULT_CONTEXT=home-server
+#    DOCKER_DEFAULT_CONTEXT=default   ← 운영은 default 다. home-server 를 넣지 말 것.
+#      app 컨테이너는 /var/run/docker.sock 마운트로 호스트 daemon 에 붙으므로
+#      컨테이너 안에서 유효한 context 는 default 뿐이다. home-server 는 작업 PC 에만
+#      등록된 context 이름이라 컨테이너 안에 존재하지 않는다 (env.ts 주석 참조).
+#      덧붙여 이 변수는 현재 앱 코드가 읽지 않는다 — 실제 대상은 DB hosts.dockerContext.
 #    DOCKER_CMD_TIMEOUT_MS=10000
 #    ADMIN_EMAILS=krdn.net@gmail.com (콤마 구분)
 
-# 2. Docker context 등록 확인 (이미 있어야 함)
+# 2. Docker context 등록 확인 — 작업 PC 에서 dserver/dcserver 를 쓰기 위한 것
+#    (컨테이너 내부와 무관하다)
 docker context ls | grep home-server
 
 # 3. 마이그레이션 적용
