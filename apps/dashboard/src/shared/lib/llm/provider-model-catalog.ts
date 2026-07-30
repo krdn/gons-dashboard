@@ -37,7 +37,19 @@ export const LLM_PROVIDER_META: Record<
   gemini: { label: "Google (Gemini)", shortLabel: "Gemini" },
 };
 
-/** 프록시 모델 ID가 해당 공급사 계열인지 확인한다. */
+/**
+ * 프록시 모델 ID가 해당 공급사 계열인지 확인한다.
+ *
+ * **세 술어는 상호 배타여야 한다** — 전부 접두사 판정인 이유다. 하나라도 부분
+ * 문자열 판정이면 한 모델이 두 공급사에 걸리고, 그때 공급사 도출은 선언 순서에
+ * 좌우된다 (`includes("codex")` 시절 "gemini-codex-x" 가 codex 로 렌더된 것이
+ * 사주 모델 선택 버그 3회 재발의 뿌리). 배타성은 provider-model-catalog.test.ts
+ * 가 property 로 고정한다.
+ *
+ * codex 는 접두사가 셋 (`gpt-` · `o<digit>` · `codex`) — 프록시가 세 형태를 모두
+ * 노출한다 (gpt-5.5, o3-mini, codex-auto-review). 실측(2026-07-30, 모델 57개)상
+ * `codex` 를 포함하면서 이 셋 중 어느 접두사도 아닌 ID 는 없다.
+ */
 export function isLlmModelIdForProvider(
   provider: LlmProviderKey,
   modelId: string,
@@ -47,10 +59,27 @@ export function isLlmModelIdForProvider(
     case "claude":
       return id.startsWith("claude-");
     case "codex":
-      return id.startsWith("gpt-") || /^o\d/.test(id) || id.includes("codex");
+      return id.startsWith("gpt-") || /^o\d/.test(id) || id.startsWith("codex");
     case "gemini":
       return id.startsWith("gemini-");
   }
+}
+
+/**
+ * 모델 ID 하나에서 공급사를 도출한다. `find` 로 첫 매칭을 취해도 안전한 근거는
+ * `isLlmModelIdForProvider` 의 배타성이다 — 매칭은 0개 아니면 1개다.
+ *
+ * 지원 공급사 계열이 아니면 null. 프록시는 grok-* 처럼 대시보드가 다루지 않는
+ * 계열도 노출하므로 이 null 은 정상 경로이며, 호출자가 각자의 정책으로 처리한다.
+ */
+export function deriveLlmProviderFromModelId(
+  modelId: string,
+): LlmProviderKey | null {
+  return (
+    LLM_PROVIDER_KEYS.find((provider) =>
+      isLlmModelIdForProvider(provider, modelId),
+    ) ?? null
+  );
 }
 
 export interface LlmModelRecommendation {

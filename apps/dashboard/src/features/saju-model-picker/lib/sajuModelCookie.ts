@@ -18,6 +18,7 @@ import {
   type SajuModelKey,
 } from "@/shared/lib/llm/saju-model-registry-meta";
 import {
+  deriveLlmProviderFromModelId,
   isLlmModelIdForProvider,
   sanitizeLlmModelId,
 } from "@/shared/lib/llm/provider-model-catalog";
@@ -119,23 +120,17 @@ export function resolveSajuModelSelection({
 
   // ?modelId= 만 담긴 링크도 자족적이어야 한다 — 공급사를 쿠키에서 가져오면
   // 같은 링크가 수신자마다 다른 모델로 열린다. 그래서 모델 자체에서 도출한다.
-  //
-  // 단 공급사 판정은 배타적이지 않다 — codex 규칙만 접두사가 아니라 부분 문자열
-  // (`includes("codex")`) 이라 "gemini-codex-x" 가 gemini·codex 양쪽에 걸린다.
-  // 유일하게 결정될 때만 도출하고 모호하면 포기한다: SAJU_MODEL_KEYS 배열 순서로
-  // 조용히 정하면 gemini 모델이 codex 공급사로 렌더된다.
-  const derivedCandidates =
-    urlModelId === null
-      ? []
-      : SAJU_MODEL_KEYS.filter((key) =>
-          isLlmModelIdForProvider(key, urlModelId),
-        );
+  // 도출 결과는 유일하다 (isLlmModelIdForProvider 술어가 상호 배타). 대시보드가
+  // 다루지 않는 계열(프록시가 노출하는 grok-* 등)이면 null 이고, 그때는 아래
+  // urlHasAuthority 규칙이 기본 공급사로 떨어뜨린다 — 지정한 모델은 버려진다.
   const derivedModelKey =
-    derivedCandidates.length === 1 ? derivedCandidates[0] : undefined;
+    urlModelId === null
+      ? undefined
+      : (deriveLlmProviderFromModelId(urlModelId) ?? undefined);
 
   // URL 이 모델 권위를 담고 있으면 — 공급사 키든 문법상 유효한 modelId 든 —
-  // 쿠키는 일절 참여하지 않는다. 절반만 적용하면(예: 공급사를 도출하지 못한 모호한
-  // modelId) 같은 링크가 수신자 쿠키에 따라 다른 공급사로 열린다.
+  // 쿠키는 일절 참여하지 않는다. 절반만 적용하면(예: 공급사를 도출하지 못한
+  // 지원 밖 modelId) 같은 링크가 수신자 쿠키에 따라 다른 공급사로 열린다.
   // 공급사만 바꾸는 본인 흐름은 handleProvider 가 ?model= 세팅과 동시에 쿠키를
   // `<provider>|` 로 리셋하므로, 이 배타 규칙은 본인에게 무해하다.
   const urlHasAuthority = urlModelKey !== undefined || urlModelId !== null;

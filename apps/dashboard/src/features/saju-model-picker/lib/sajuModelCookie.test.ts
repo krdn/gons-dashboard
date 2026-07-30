@@ -122,10 +122,10 @@ describe("resolveSajuModelSelection", () => {
     ).toEqual({ modelKey: "claude", modelId: "claude-sonnet-5" });
   });
 
-  it("공급사가 모호한 modelId 는 쿠키와 무관하게 같은 결과로 떨어진다", () => {
-    // codex 판정만 부분 문자열(`includes("codex")`)이라 "gemini-codex-x" 는
-    // gemini·codex 양쪽에 걸린다. 배열 순서로 정하면 gemini 모델이 codex 로
-    // 렌더되고, 쿠키로 정하면 같은 링크가 수신자마다 다르게 열린다 — 둘 다 피한다.
+  it("공급사는 접두사가 정한다 — 다른 공급사 이름을 품은 modelId 도 보존된다", () => {
+    // "gemini-codex-x" 는 codex 판정이 부분 문자열이던 시절 gemini·codex 양쪽에
+    // 걸려, 도출을 포기하고 claude 기본값으로 치환됐다(지정한 모델 유실).
+    // 술어가 배타가 된 뒤로는 gemini 로 유일하게 도출되고 모델이 그대로 남는다.
     const withGemini = resolveSajuModelSelection({
       rawModelKey: undefined,
       rawModelId: "gemini-codex-x",
@@ -139,8 +139,39 @@ describe("resolveSajuModelSelection", () => {
       defaults: DEFAULTS,
     });
 
+    // 쿠키가 무엇이든 같은 링크는 같은 모델로 열린다.
     expect(withGemini).toEqual(withCodex);
-    expect(withGemini).toEqual({ modelKey: "claude", modelId: DEFAULTS.claude });
+    expect(withGemini).toEqual({
+      modelKey: "gemini",
+      modelId: "gemini-codex-x",
+    });
+  });
+
+  it("지원하지 않는 공급사의 modelId 는 기본 공급사 기본값으로 떨어진다", () => {
+    // 프록시는 grok-* 도 노출하지만 대시보드는 claude/codex/gemini 만 지원한다.
+    // 문법은 유효해 sanitize 를 통과하므로 URL 권위는 인정되고(쿠키 배제) 공급사
+    // 도출만 실패한다 — 지정한 모델을 버리고 기본 공급사로 떨어지는 것이 의도된
+    // 동작이다. 쿠키를 참여시키면 같은 링크가 수신자마다 다르게 열리고, 모델을
+    // 그대로 통과시키면 치환이 createNarrativeHandler 로 옮겨갈 뿐이다.
+    const withCookie = resolveSajuModelSelection({
+      rawModelKey: undefined,
+      rawModelId: "grok-4.3",
+      cookieValue: `gemini|${DEFAULTS.gemini}`,
+      defaults: DEFAULTS,
+    });
+
+    expect(withCookie).toEqual({
+      modelKey: "claude",
+      modelId: DEFAULTS.claude,
+    });
+    expect(
+      resolveSajuModelSelection({
+        rawModelKey: undefined,
+        rawModelId: "grok-4.3",
+        cookieValue: undefined,
+        defaults: DEFAULTS,
+      }),
+    ).toEqual(withCookie);
   });
 
   it("URL·쿠키 모두 없으면 registry 기본값을 쓴다", () => {

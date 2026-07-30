@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  LLM_PROVIDER_KEYS,
+  deriveLlmProviderFromModelId,
   deriveModelOptions,
   isLlmModelIdForProvider,
   sanitizeLlmModelId,
@@ -22,13 +24,60 @@ describe("isLlmModelIdForProvider", () => {
     ["codex", "gpt-5.3-codex", true],
     ["codex", "gpt-oss-120b-medium", true],
     ["codex", "o3-mini", true],
+    // codex 접두사 형태 — gpt- 로도 o<digit> 으로도 안 잡히는 유일한 실물 계열.
+    // 이 행이 codex 접두사 분기의 존재 이유다 (지우면 카탈로그에서 조용히 빠진다).
+    ["codex", "codex-auto-review", true],
     ["codex", "gemini-2.5-pro", false],
     ["gemini", "gemini-2.5-flash", true],
     ["gemini", "claude-sonnet-5", false],
+    // 지원 밖 계열 (프록시가 노출하지만 대시보드는 안 다룬다) — 어느 쪽도 아니다.
+    ["claude", "grok-4.3", false],
+    ["codex", "grok-4.3", false],
+    ["gemini", "grok-4.3", false],
   ] as const)("%s × %s → %s", (provider, id, expected) => {
     expect(isLlmModelIdForProvider(provider as LlmProviderKey, id)).toBe(
       expected,
     );
+  });
+
+  // 개별 행이 아니라 술어 집합의 성질을 고정한다 — 이 성질이 깨지면 공급사 도출이
+  // LLM_PROVIDER_KEYS 선언 순서에 좌우된다 (사주 모델 선택 버그 3회 재발의 뿌리).
+  it.each([
+    "claude-opus-4-8",
+    "gpt-5.5",
+    "gpt-5.3-codex-spark",
+    "o3-mini",
+    "codex-auto-review",
+    "gemini-pro-latest",
+    "grok-4.3",
+    // 옛 부분 문자열 판정의 반례 — 실물엔 없지만 배타성이 무너지면 즉시 재현된다.
+    "gemini-codex-x",
+    "claude-codex-1",
+  ])("%s 는 최대 한 공급사에만 매칭된다", (id) => {
+    const matched = LLM_PROVIDER_KEYS.filter((provider) =>
+      isLlmModelIdForProvider(provider, id),
+    );
+    expect(matched.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("deriveLlmProviderFromModelId", () => {
+  it.each([
+    ["claude-opus-5", "claude"],
+    ["gpt-5.5", "codex"],
+    ["o3-mini", "codex"],
+    ["codex-auto-review", "codex"],
+    ["gemini-pro-latest", "gemini"],
+    // 옛 부분 문자열 판정이 codex 로 훔쳐가던 형태 — 접두사가 공급사를 정한다.
+    ["gemini-codex-x", "gemini"],
+    ["claude-codex-1", "claude"],
+  ] as const)("%s → %s", (id, expected) => {
+    expect(deriveLlmProviderFromModelId(id)).toBe(expected);
+  });
+
+  it("지원하지 않는 계열은 null (프록시의 grok-*, 오타 등)", () => {
+    expect(deriveLlmProviderFromModelId("grok-4.3")).toBeNull();
+    expect(deriveLlmProviderFromModelId("gpt5.5")).toBeNull();
   });
 });
 
