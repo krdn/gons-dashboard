@@ -42,14 +42,14 @@ importers:
         specifier: github:krdn/gons-health#v0.1.0
         version: https://codeload.github.com/krdn/gons-health/tar.gz/623149c4bafa1813fdbc07f0a47728f570ab1529
       '@krdn/llm-gateway':
-        specifier: github:krdn/llm-gateway#v5.0.0
-        version: https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
+        specifier: github:krdn/llm-gateway#v5.1.0
+        version: https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
       '@krdn/saju':
         specifier: github:krdn/saju#v1.2.2
         version: https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770
       '@krdn/tickerlens':
         specifier: github:krdn/tickerlens#v0.1.4
-        version: https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)
+        version: https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -967,6 +967,7 @@ packages:
   '@google-cloud/opentelemetry-cloud-monitoring-exporter@0.21.0':
     resolution: {integrity: sha512-+lAew44pWt6rA4l8dQ1gGhH7Uo95wZKfq/GBf9aEyuNDDLQ2XppGEEReu6ujesSqTtZ8ueQFt73+7SReSHbwqg==}
     engines: {node: '>=18'}
+    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/api': ^1.9.0
       '@opentelemetry/core': ^2.0.0
@@ -976,6 +977,7 @@ packages:
   '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0':
     resolution: {integrity: sha512-mUfLJBFo+ESbO0dAGboErx2VyZ7rbrHcQvTP99yH/J72dGaPbH2IzS+04TFbTbEd1VW5R9uK3xq2CqawQaG+1Q==}
     engines: {node: '>=18'}
+    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
       '@opentelemetry/core': ^2.0.0
@@ -985,6 +987,7 @@ packages:
   '@google-cloud/opentelemetry-resource-util@3.0.0':
     resolution: {integrity: sha512-CGR/lNzIfTKlZoZFfS6CkVzx+nsC9gzy6S8VcyaLegfEJbiPjxbMLP7csyhJTvZe/iRRcQJxSk0q8gfrGqD3/Q==}
     engines: {node: '>=18'}
+    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/core': ^2.0.0
       '@opentelemetry/resources': ^2.0.0
@@ -1255,9 +1258,9 @@ packages:
     resolution: {tarball: https://codeload.github.com/krdn/gons-health/tar.gz/623149c4bafa1813fdbc07f0a47728f570ab1529}
     version: 0.1.0
 
-  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61':
-    resolution: {tarball: https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61}
-    version: 5.0.0
+  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055':
+    resolution: {tarball: https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055}
+    version: 5.1.0
     engines: {node: '>=22.0.0'}
     peerDependencies:
       ai-sdk-provider-gemini-cli: ^2.0.1
@@ -2605,6 +2608,7 @@ packages:
   ai-sdk-provider-gemini-cli@2.0.1:
     resolution: {integrity: sha512-v9Oc9irtWalFjODdj6nUFg0ifNJYm6IiWoafNdsJINmgE2k5JC0gEouypPsGoX9RAkIlOsJiE3ujbd+6nUqXxw==}
     engines: {node: '>=20'}
+    deprecated: 'Deprecated: Google ended Gemini CLI support for individual accounts on 2026-06-18 (transition to Antigravity CLI), removing this package''s core use case (oauth-personal). Use @ai-sdk/google (Gemini API key) or @ai-sdk/google-vertex (Vertex AI) instead. No longer maintained.'
     peerDependencies:
       zod: ^3.0.0 || ^4.0.0
 
@@ -6924,7 +6928,7 @@ snapshots:
       simple-git: 3.36.0
       strip-ansi: 7.2.0
       tree-sitter-bash: 0.25.1
-      undici: 7.25.0
+      undici: 7.29.0
       web-tree-sitter: 0.25.10
       ws: 8.21.0
       zod: 3.25.76
@@ -7151,7 +7155,7 @@ snapshots:
 
   '@krdn/gons-health@https://codeload.github.com/krdn/gons-health/tar.gz/623149c4bafa1813fdbc07f0a47728f570ab1529': {}
 
-  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
+  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@ai-sdk/anthropic': 4.0.37(zod@3.25.76)
       '@ai-sdk/google': 4.0.40(zod@3.25.76)
@@ -7168,9 +7172,9 @@ snapshots:
       lunar-javascript: 1.7.7
       zod: 3.25.76
 
-  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)':
+  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@krdn/llm-gateway': https://codeload.github.com/krdn/llm-gateway/tar.gz/c642c4282bb770ff9ac5bbf8b83a240a2fca4d61(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
+      '@krdn/llm-gateway': https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
       yahoo-finance2: 3.14.1
       zod: 3.25.76
     transitivePeerDependencies:
