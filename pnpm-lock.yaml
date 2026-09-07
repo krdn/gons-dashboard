@@ -42,14 +42,14 @@ importers:
         specifier: github:krdn/gons-health#v0.1.0
         version: https://codeload.github.com/krdn/gons-health/tar.gz/623149c4bafa1813fdbc07f0a47728f570ab1529
       '@krdn/llm-gateway':
-        specifier: github:krdn/llm-gateway#v5.1.0
-        version: https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
+        specifier: github:krdn/llm-gateway#v5.1.1
+        version: https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
       '@krdn/saju':
         specifier: github:krdn/saju#v1.2.2
         version: https://codeload.github.com/krdn/saju/tar.gz/83e387efb454cce49d0b5e853ce6aad0a80be770
       '@krdn/tickerlens':
         specifier: github:krdn/tickerlens#v0.1.4
-        version: https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)
+        version: https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -250,26 +250,26 @@ importers:
 
 packages:
 
-  '@ai-sdk/anthropic@4.0.37':
-    resolution: {integrity: sha512-3JVFoPkuVyW/TkUrsNpugQDwJa5RUnExK/J3LKhKece+qFv7MRR33URvmLbND/5yg2qXZ9rf+Wf97adGMltn0g==}
+  '@ai-sdk/anthropic@4.0.49':
+    resolution: {integrity: sha512-fzy2sLrs3vNsliIgx65fuovsa6a7OTXd6DllKUgLuVmPyqLnvoZCv9NlKgq+krzDzSxLb9d0zTaJJpsjBVLNyA==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@4.0.47':
-    resolution: {integrity: sha512-BuWWlA8atWEnEJzN4eamCpGZWkoK9V3TCyNaMwgRIazhqkgWkA1Wp36si3j2JeVYzlvlEAOWrJ92dr92j/Vkqg==}
+  '@ai-sdk/gateway@4.0.75':
+    resolution: {integrity: sha512-HOnhw3oXtBnboBF7kAKipjToCN6+5w6EuukiUKiULcxBitS+vbHRRv9IUBcq+Z1wkXcJjfywKrt5r++I6OYyXg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/google@4.0.40':
-    resolution: {integrity: sha512-C5pGh7Smit0tcdgy5d1lUPu82iWJSaJXvAk98x8npPz5ogUf0TIvn0tUudNTMK+AXiPcKRptVVj2BMRdsRWicQ==}
+  '@ai-sdk/google@4.0.64':
+    resolution: {integrity: sha512-D8+74xfXkzPi5qCe7iRzQRH/1WW805gBrXfwz7KKEBa0SMY2TENdsTrJnVqFZaT7UYow1Ls6qroaklLd9veU9w==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai@4.0.37':
-    resolution: {integrity: sha512-rQIdkvqHaqyu94zMJKkhucRwsyTpYUmI+vrH/Dm1Erc6ypURikOV+9e51Pni6RL8IxFlu2bv6y8hA1ghzCy7Gw==}
+  '@ai-sdk/openai@4.0.60':
+    resolution: {integrity: sha512-Wx8bRN/zD+jDujT7HDbU1tC66h0a5kNEMG1DDrILfUgil56IJ9JMeBrzGqDw56IspmcXFG6uRpRnuK8AEQeKgg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -280,8 +280,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@5.0.26':
-    resolution: {integrity: sha512-0mqhqx+Dcv+msI84+zkbLXmnCHb/mpkYJ9DU3HBvB1px+UjFQss4lLZqRCSzJ0w3NxwQk4Ishk7cP0r8wEQD5w==}
+  '@ai-sdk/provider-utils@5.0.36':
+    resolution: {integrity: sha512-MFXBn6XDyf37PNQAge/HTatPJE8Vmg/g/w4WPtjSV53jq8FKAzoaN5+43hsdQa9bqgN+/13jxug9ChvsG+godQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -290,8 +290,8 @@ packages:
     resolution: {integrity: sha512-Q3BZ27qfpYqnCYGvE3vt+Qi6LGOF9R5Nmzn+9JoM1lCRsD9mYaIhfJLkSunN48nfGXJ6n+XNV0J/XVpqGQl7Dw==}
     engines: {node: '>=18'}
 
-  '@ai-sdk/provider@4.0.7':
-    resolution: {integrity: sha512-6or44XprPzKbr8zkmzosowSE0pxkvJcoojBL+mCZvPUt3kvXp3XSNqeVun9golb1acEfSo6yaEBRT18h2VU+1Q==}
+  '@ai-sdk/provider@4.0.10':
+    resolution: {integrity: sha512-fX2ENAc7iDpZ+Wp4+Rk06Usn/Ys7dI9uAkGv0jlF6XVrW13NkRWx5Ou+U6lIM2E1fTLkCs16GGrUAaVvroag7A==}
     engines: {node: '>=22'}
 
   '@alloc/quick-lru@5.2.0':
@@ -1258,9 +1258,9 @@ packages:
     resolution: {tarball: https://codeload.github.com/krdn/gons-health/tar.gz/623149c4bafa1813fdbc07f0a47728f570ab1529}
     version: 0.1.0
 
-  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055':
-    resolution: {tarball: https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055}
-    version: 5.1.0
+  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397':
+    resolution: {tarball: https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397}
+    version: 5.1.1
     engines: {node: '>=22.0.0'}
     peerDependencies:
       ai-sdk-provider-gemini-cli: ^2.0.1
@@ -2612,8 +2612,8 @@ packages:
     peerDependencies:
       zod: ^3.0.0 || ^4.0.0
 
-  ai@7.0.59:
-    resolution: {integrity: sha512-p10cqg8KvLIZi7Gk+XsQjoYoLENoDdEYvehP0rSo6Wg15nbCmP+nwIy1rOIX+WGIDWGdI+jmhjVx5fXShBVC3w==}
+  ai@7.0.93:
+    resolution: {integrity: sha512-CJss6zb9mlltk/mCr8qom20NBnqEQxVawkqwtT62tCwsxilZpXfHNRMRwcS3XRpzdP1kEluVuDBUayYWEEd95g==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -6248,29 +6248,29 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/anthropic@4.0.37(zod@3.25.76)':
+  '@ai-sdk/anthropic@4.0.49(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.26(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       zod: 3.25.76
 
-  '@ai-sdk/gateway@4.0.47(zod@3.25.76)':
+  '@ai-sdk/gateway@4.0.75(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.26(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       '@vercel/oidc': 3.2.0
       zod: 3.25.76
 
-  '@ai-sdk/google@4.0.40(zod@3.25.76)':
+  '@ai-sdk/google@4.0.64(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.26(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       zod: 3.25.76
 
-  '@ai-sdk/openai@4.0.37(zod@3.25.76)':
+  '@ai-sdk/openai@4.0.60(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.26(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@4.0.27(zod@3.25.76)':
@@ -6281,9 +6281,9 @@ snapshots:
       zod: 3.25.76
     optional: true
 
-  '@ai-sdk/provider-utils@5.0.26(zod@3.25.76)':
+  '@ai-sdk/provider-utils@5.0.36(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.7
+      '@ai-sdk/provider': 4.0.10
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
@@ -6295,7 +6295,7 @@ snapshots:
       json-schema: 0.4.0
     optional: true
 
-  '@ai-sdk/provider@4.0.7':
+  '@ai-sdk/provider@4.0.10':
     dependencies:
       json-schema: 0.4.0
 
@@ -7155,12 +7155,12 @@ snapshots:
 
   '@krdn/gons-health@https://codeload.github.com/krdn/gons-health/tar.gz/623149c4bafa1813fdbc07f0a47728f570ab1529': {}
 
-  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
+  '@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/anthropic': 4.0.37(zod@3.25.76)
-      '@ai-sdk/google': 4.0.40(zod@3.25.76)
-      '@ai-sdk/openai': 4.0.37(zod@3.25.76)
-      ai: 7.0.59(zod@3.25.76)
+      '@ai-sdk/anthropic': 4.0.49(zod@3.25.76)
+      '@ai-sdk/google': 4.0.64(zod@3.25.76)
+      '@ai-sdk/openai': 4.0.60(zod@3.25.76)
+      ai: 7.0.93(zod@3.25.76)
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
     optionalDependencies:
@@ -7172,9 +7172,9 @@ snapshots:
       lunar-javascript: 1.7.7
       zod: 3.25.76
 
-  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)':
+  '@krdn/tickerlens@https://codeload.github.com/krdn/tickerlens/tar.gz/bb5cc8aa51cccd831a215aaad000d8d83b4af045(@krdn/llm-gateway@https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@krdn/llm-gateway': https://codeload.github.com/krdn/llm-gateway/tar.gz/0d2dd237377949de58db4c8662b23a9b5b4ec055(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
+      '@krdn/llm-gateway': https://codeload.github.com/krdn/llm-gateway/tar.gz/0123d1f077239ea4e7b1b2a8e0343cdb42d9f397(ai-sdk-provider-gemini-cli@2.0.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.0.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.1))(zod@3.25.76))(zod@3.25.76)
       yahoo-finance2: 3.14.1
       zod: 3.25.76
     transitivePeerDependencies:
@@ -8485,11 +8485,11 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  ai@7.0.59(zod@3.25.76):
+  ai@7.0.93(zod@3.25.76):
     dependencies:
-      '@ai-sdk/gateway': 4.0.47(zod@3.25.76)
-      '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.26(zod@3.25.76)
+      '@ai-sdk/gateway': 4.0.75(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       zod: 3.25.76
 
   ajv-formats@3.0.1(ajv@8.20.0):
