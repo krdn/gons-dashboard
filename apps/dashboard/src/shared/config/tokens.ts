@@ -4,15 +4,15 @@
 
 export const tokens = {
   color: {
-    bg: "oklch(98.4% 0.003 264)",
+    bg: "oklch(98% 0.004 170)",
     surface: "oklch(100% 0 0)",
-    surface2: "oklch(96.5% 0.003 264)",
-    hairline: "oklch(91% 0.005 264)",
-    hairlineStrong: "oklch(85% 0.005 264)",
-    text: "oklch(20% 0.01 264)",
-    textMuted: "oklch(48% 0.01 264)",
-    textSubtle: "oklch(62% 0.01 264)",
-    accent: "oklch(54% 0.18 256)",
+    surface2: "oklch(96.5% 0.005 170)",
+    hairline: "oklch(91% 0.006 170)",
+    hairlineStrong: "oklch(84% 0.007 170)",
+    text: "oklch(25% 0.018 190)",
+    textMuted: "oklch(47% 0.013 190)",
+    textSubtle: "oklch(52% 0.01 190)",
+    accent: "oklch(45% 0.085 180)",
     severityHigh: "oklch(58% 0.19 28)",
     severityMed: "oklch(65% 0.13 70)",
     severityLow: "oklch(60% 0.02 264)",

@@ -25,7 +25,7 @@ describe("Sidebar 트리 네비게이션", () => {
     // 초기엔 닫혀 있어 자식(스킬) 안 보임
     expect(screen.queryByText("스킬")).toBeNull();
 
-    const claudeHeader = screen.getByRole("button", { name: /Claude Code/ });
+    const claudeHeader = screen.getByRole("button", { name: /AI 도구/ });
     fireEvent.click(claudeHeader);
     expect(screen.getByText("스킬")).toBeTruthy();
     expect(screen.getByText("플러그인")).toBeTruthy();
@@ -40,7 +40,7 @@ describe("Sidebar 트리 네비게이션", () => {
 
     // /plugins 가 Claude Code 그룹 소속 → 자동 펼침
     expect(screen.getByText("플러그인")).toBeTruthy();
-    const claudeHeader = screen.getByRole("button", { name: /Claude Code/ });
+    const claudeHeader = screen.getByRole("button", { name: /AI 도구/ });
     expect(claudeHeader.getAttribute("aria-expanded")).toBe("true");
 
     // 다른 그룹(개인)은 닫힘
@@ -60,7 +60,7 @@ describe("Sidebar 트리 네비게이션", () => {
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href")).sort();
     expect(hrefs).toEqual(
-      ["/", "/monitoring", "/agents", "/fortune", "/memos", "/plugins", "/skills", "/stocks", "/tiger"].sort(),
+      ["/", "/projects", "/knowledge", "/handoff", "/personal", "/monitoring", "/agents", "/fortune", "/memos", "/plugins", "/skills", "/stocks", "/tiger"].sort(),
     );
   });
 });

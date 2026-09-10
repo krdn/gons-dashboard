@@ -35,14 +35,16 @@ export interface NavGroup {
 export type NavNode = NavLeaf | NavGroup;
 
 export const NAV_TREE: NavNode[] = [
-  { kind: "leaf", href: "/", label: "홈", icon: "home" },
-  // 관제는 고빈도 operational 조회 — 그룹에 숨기지 않고 홈 직하 top-level (이슈 #323).
-  { kind: "leaf", href: "/monitoring", label: "관제", icon: "monitoring" },
+  { kind: "leaf", href: "/", label: "워크스페이스", icon: "home" },
+  { kind: "leaf", href: "/projects", label: "프로젝트", icon: "server" },
+  { kind: "leaf", href: "/monitoring", label: "운영 관제", icon: "monitoring" },
+  { kind: "leaf", href: "/knowledge", label: "지식 보관함", icon: "memo" },
+  { kind: "leaf", href: "/handoff", label: "AI 인계 · 문서", icon: "agent" },
   {
     kind: "group",
     id: "claude-code",
-    label: "Claude Code",
-    icon: "claude",
+    label: "AI 도구",
+    icon: "skill",
     children: [
       { kind: "leaf", href: "/skills", label: "스킬", icon: "skill" },
       { kind: "leaf", href: "/plugins", label: "플러그인", icon: "plugin" },
@@ -52,14 +54,23 @@ export const NAV_TREE: NavNode[] = [
   {
     kind: "group",
     id: "personal",
-    label: "개인",
+    label: "개인 공간",
     icon: "personal",
     children: [
+      { kind: "leaf", href: "/personal", label: "나의 하루", icon: "personal" },
+      { kind: "leaf", href: "/memos", label: "메모", icon: "memo" },
       { kind: "leaf", href: "/stocks", label: "주식", icon: "chart" },
       { kind: "leaf", href: "/fortune", label: "운세", icon: "fortune" },
       { kind: "leaf", href: "/tiger", label: "호상담", icon: "tiger" },
-      { kind: "leaf", href: "/memos", label: "메모", icon: "memo" },
-      // { kind: "leaf", href: "/servers", label: "서버", icon: "server" }, // /servers 인덱스 라우트 미존재(servers/[hostName] 동적 라우트만). 인덱스 신설 시 활성화.
     ],
   },
 ];
+
+export const NAV_LEAVES: NavLeaf[] = NAV_TREE.flatMap((node) =>
+  node.kind === "leaf" ? [node] : node.children,
+);
+export function isNavActive(href: string, pathname: string): boolean {
+  return href === "/"
+    ? pathname === "/"
+    : pathname === href || pathname.startsWith(`${href}/`);
+}

@@ -4,23 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   NAV_TREE,
+  isNavActive,
   type NavLeaf,
   type NavGroup,
 } from "@/shared/config/navigation";
 import { ChevronRightIcon } from "@/shared/ui/icons";
 import { NavIcon } from "./navIcon";
 
-// 현재 경로가 이 잎을 가리키는지 — "/" 는 정확히 일치, 나머지는 prefix
-function isLeafActive(href: string, pathname: string): boolean {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
-}
-
 // 그룹 중 현재 경로의 자식을 품은 그룹 id 집합 (초기 자동 펼침용)
 function activeGroupIds(pathname: string): Record<string, boolean> {
   const open: Record<string, boolean> = {};
   for (const node of NAV_TREE) {
     if (node.kind === "group") {
-      open[node.id] = node.children.some((c) => isLeafActive(c.href, pathname));
+      open[node.id] = node.children.some((c) => isNavActive(c.href, pathname));
     }
   }
   return open;
@@ -31,7 +27,7 @@ function leafClassName(active: boolean, indent: boolean): string {
     indent ? "pl-9 pr-3" : "px-3"
   } ${
     active
-      ? "bg-[var(--color-surface-2)] font-semibold text-[var(--color-text)]"
+      ? "hub-nav-active font-semibold text-[var(--color-text)]"
       : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
   }`;
 }
@@ -47,16 +43,15 @@ function LeafLink({
   collapsed: boolean;
   indent: boolean;
 }) {
-  const active = isLeafActive(leaf.href, pathname);
+  const active = isNavActive(leaf.href, pathname);
   return (
     <Link
       href={leaf.href}
       aria-current={active ? "page" : undefined}
       title={collapsed ? leaf.label : undefined}
+      aria-label={leaf.label}
       className={
-        collapsed
-          ? leafClassName(active, false)
-          : leafClassName(active, indent)
+        collapsed ? leafClassName(active, false) : leafClassName(active, indent)
       }
     >
       <NavIcon icon={leaf.icon} className="shrink-0" />

@@ -1,121 +1,80 @@
-// 메인 대시보드.
-// 와이어프레임 reference:
-//   ~/.gstack/projects/krdn-gons-dashboard/designs/main-dashboard-20260509/wireframe-v1.html
-//
-// 좌(7) + 우(4) 비대칭 그리드. 위젯은 WIDGET_REGISTRY 기반 선언적 배치(renderEntry).
-// 비로그인 상태면 /login으로 리다이렉트.
-
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { auth, signOut } from "@/shared/lib/auth";
-import { PushSubscribeButton } from "@/widgets/email-digest";
+import { auth } from "@/shared/lib/auth";
+import { WorkspaceHome } from "@/widgets/workspace";
 import { WIDGET_REGISTRY } from "@/app/_widgets/registry";
 import { renderEntry } from "@/app/_widgets/renderEntry";
-
 export const dynamic = "force-dynamic";
-
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-
-  const greetingName = session.user.name ?? session.user.email ?? "";
-
-  // KST 시각 — Server에서 Asia/Seoul로 강제 (TZ env).
-  const nowKst = new Intl.DateTimeFormat("ko-KR", {
+  const date = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+    month: "long",
+    day: "numeric",
+    weekday: "long",
   }).format(new Date());
-
   return (
-    <main className="mx-auto w-full max-w-[1240px] px-6 py-12">
-      <header className="mb-12">
-        <h1 className="text-display font-bold tracking-tight">
-          gons<span className="text-[var(--color-accent)]">.</span>dashboard
-        </h1>
-        <div className="mt-2 flex items-baseline gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
-          <span>{nowKst} KST</span>
-          {greetingName && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{greetingName}</span>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/login" });
-                }}
-              >
-                <button
-                  type="submit"
-                  className="rounded border border-[var(--color-hairline)] px-2 py-0.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
-                  aria-label="로그아웃"
-                >
-                  로그아웃
-                </button>
-              </form>
-            </>
-          )}
+    <main className="hub-page">
+      <header className="hub-page-heading">
+        <div>
+          <span className="hub-eyebrow">YOUR PROJECT WORKSPACE</span>
+          <h1>만든 것들을, 그다음으로.</h1>
+          <p>프로젝트를 살피고, 지식을 쌓고, AI와 다음 작업을 이어가세요.</p>
+        </div>
+        <div className="hub-heading-actions">
+          <time>{date} · KST</time>
+          <Link className="hub-button primary" href="/handoff?template=project">
+            + 프로젝트 브리프
+          </Link>
         </div>
       </header>
-
-      <section className="mb-12">
-        <h2 className="text-[28px] font-bold tracking-tight md:text-display">
-          좋은 아침입니다{" "}
-          <em className="not-italic font-semibold text-[var(--color-text-muted)]">
-            — 오늘도 조금 챙길 일이 있어요
-          </em>
-        </h2>
-      </section>
-
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
-        <div className="flex flex-col gap-10">
-          {WIDGET_REGISTRY.filter((w) => w.column === "main").map(renderEntry)}
-          <Link
-            href="/stocks"
-            className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] px-5 py-4 transition-colors hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-2)]"
+      <nav className="hub-shortcuts" aria-label="빠른 작업">
+        <Link href="/projects">
+          <span aria-hidden="true">↗</span> 프로젝트 살펴보기
+        </Link>
+        <Link href="/handoff?template=manual">
+          <span aria-hidden="true">≡</span> 매뉴얼 작성
+        </Link>
+        <Link href="/handoff?template=learning">
+          <span aria-hidden="true">＋</span> 학습 기록
+        </Link>
+        <Link href="/memos">
+          <span aria-hidden="true">✎</span> 빠른 메모
+        </Link>
+      </nav>
+      <Suspense
+        fallback={
+          <div
+            className="hub-loading"
+            role="status"
+            aria-label="워크스페이스 불러오는 중"
           >
-            <h3 className="text-sm font-semibold">주식 타임프레임 분석</h3>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              US 티커 페르소나 × 장/중/단기 관점 분석 →
-            </p>
-          </Link>
-          <Link
-            href="/skills"
-            className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] px-5 py-4 transition-colors hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-2)]"
-          >
-            <h3 className="text-sm font-semibold">Claude Code 스킬</h3>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              설치된 스킬의 사용법·출처 카탈로그 →
-            </p>
+            <div />
+            <div />
+            <div />
+          </div>
+        }
+      >
+        <WorkspaceHome userId={session.user.id} />
+      </Suspense>
+      <section className="mt-9">
+        <div className="hub-section-heading">
+          <div>
+            <span className="hub-eyebrow">OPERATIONS</span>
+            <h2>운영 체크포인트</h2>
+          </div>
+          <Link className="hub-text-link" href="/monitoring">
+            관제 보드 →
           </Link>
         </div>
-
-        <aside aria-label="우측 위젯" className="flex flex-col gap-4">
-          {WIDGET_REGISTRY.filter((w) => w.column === "aside").map(renderEntry)}
-          <div className="rounded-xl border border-dashed border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-5 py-5 text-[var(--color-text-subtle)]">
-            <h3 className="mb-2 text-sm font-medium text-[var(--color-text-muted)]">
-              Tasks
-            </h3>
-            <p className="m-0 text-xs">마감이 임박한 할 일 TOP 3.</p>
-          </div>
-        </aside>
-      </div>
-
-      <footer className="mt-12 flex items-center justify-between border-t border-[var(--color-hairline)] pt-4 text-xs text-[var(--color-text-subtle)]">
-        <PushSubscribeButton />
-        <a
-          href="https://mail.google.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[var(--color-text-muted)] hover:underline hover:underline-offset-2"
-        >
-          Gmail에서 보기 →
-        </a>
-      </footer>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {WIDGET_REGISTRY.filter((w) =>
+            ["monitoring-summary", "autopilot"].includes(w.id),
+          ).map(renderEntry)}
+        </div>
+      </section>
     </main>
   );
 }

@@ -21,7 +21,7 @@ import type { MemoCategory } from "../model/category";
 import { tokenizeSearchQuery, escapeLike, SEARCH_MEMOS_LIMIT } from "../model/search";
 
 // 개인 대시보드 규모 상한 — 페이지네이션 도입 전까지 unbounded 쿼리 방지.
-const LIST_MEMOS_LIMIT = 200;
+export const LIST_MEMOS_LIMIT = 200;
 
 export function listMemos(userId: string, category: MemoCategory | null = null): Promise<Memo[]> {
   return db
@@ -137,15 +137,35 @@ export async function createMemo(input: CreateMemoInput): Promise<Memo> {
   return rows[0];
 }
 
+/** 네트워크 재시도용 문서 생성. 분류와 문서를 함께 저장하고 같은 요청 id를 재사용한다. */
+export async function createMemoOnce(input: CreateMemoInput, id: string, category?: { id: string; labelKo: string }): Promise<Memo | null> {
+  const created = await db.transaction(async (tx) => {
+    if (category) await tx.insert(memoCategories).values({ id: category.id, labelKo: category.labelKo, isSeed: false }).onConflictDoNothing({ target: memoCategories.id });
+    const rows = await tx.insert(memos).values({ ...input, id, ...(category ? { category: category.id } : {}) }).onConflictDoNothing({ target: memos.id }).returning();
+    return rows[0] ?? null;
+  });
+  if (created) return created;
+  const existing = await getMemo(input.userId, id);
+  return existing && existing.title === input.title && existing.rawContent === input.rawContent && existing.cleanedContent === input.cleanedContent && (!category || existing.category === category.id) ? existing : null;
+}
+
+/** 홈·보관함의 목록에는 본문을 로드하지 않는다. */
+export function listMemoSummaries(userId: string, category: MemoCategory | null = null) {
+  return db.select({ id: memos.id, title: memos.title, category: memos.category, source: memos.source, createdAt: memos.createdAt, updatedAt: memos.updatedAt })
+    .from(memos).where(and(eq(memos.userId, userId), ...(category === null ? [] : [eq(memos.category, category)])))
+    .orderBy(desc(memos.createdAt)).limit(LIST_MEMOS_LIMIT);
+}
+
 export async function updateMemo(
   userId: string,
   id: string,
   patch: { title: string; cleanedContent: string },
+  expected?: { title: string; cleanedContent: string },
 ): Promise<Memo | null> {
   const rows = await db
     .update(memos)
     .set({ title: patch.title, cleanedContent: patch.cleanedContent, updatedAt: new Date() })
-    .where(and(eq(memos.id, id), eq(memos.userId, userId)))
+    .where(and(eq(memos.id, id), eq(memos.userId, userId), ...(expected ? [eq(memos.title, expected.title), eq(memos.cleanedContent, expected.cleanedContent)] : [])))
     .returning();
   return rows[0] ?? null;
 }

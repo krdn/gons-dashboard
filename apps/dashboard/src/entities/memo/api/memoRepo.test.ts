@@ -5,7 +5,9 @@ import { users } from "@/shared/lib/db/schema";
 import { eq } from "drizzle-orm";
 import {
   createMemo,
+  createMemoOnce,
   listMemos,
+  listMemoSummaries,
   getMemo,
   updateMemo,
   deleteMemo,
@@ -31,6 +33,42 @@ afterEach(async () => {
 
 describe("memoRepo", () => {
   const base = { userId: USER_ID, source: "text" as const, title: "제목", rawContent: "원문", cleanedContent: "원문" };
+
+  it("document retries and concurrent creates reuse one owned row", async () => {
+    const id = crypto.randomUUID();
+    const [first, second] = await Promise.all([createMemoOnce(base, id), createMemoOnce(base, id)]);
+    expect(first?.id).toBe(id);
+    expect(second?.id).toBe(id);
+    expect((await listMemos(USER_ID)).length).toBe(1);
+    expect(await createMemoOnce({ ...base, title: "different" }, id)).toBeNull();
+  });
+
+  it("an id collision cannot reveal or overwrite another owner's document", async () => {
+    const otherId = "00000000-0000-0000-0000-000000000f01";
+    await db.insert(users).values({ id: otherId, email: "memo-retry-other@example.com" }).onConflictDoNothing();
+    const created = await createMemo(base);
+    expect(await createMemoOnce({ ...base, userId: otherId }, created.id)).toBeNull();
+    expect((await getMemo(USER_ID, created.id))?.title).toBe(base.title);
+  });
+
+  it("project briefs remain discoverable after a title edit without loading bodies", async () => {
+    const brief = await createMemoOnce(base, crypto.randomUUID(), { id: "workspace-project", labelKo: "프로젝트 브리프" });
+    await updateMemo(USER_ID, brief!.id, { title: "이름 변경", cleanedContent: "새 본문" });
+    const rows = await listMemoSummaries(USER_ID, "workspace-project");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title).toBe("이름 변경");
+    expect(rows[0]).not.toHaveProperty("rawContent");
+    expect(rows[0]).not.toHaveProperty("cleanedContent");
+    expect(await listMemoSummaries("00000000-0000-0000-0000-000000000fff", "workspace-project")).toHaveLength(0);
+  });
+
+  it("conditional edits do not overwrite changes from another tab", async () => {
+    const memo = await createMemo(base);
+    const original = { title: base.title, cleanedContent: base.cleanedContent };
+    expect(await updateMemo(USER_ID, memo.id, { title: "첫 수정", cleanedContent: "첫 내용" }, original)).not.toBeNull();
+    expect(await updateMemo(USER_ID, memo.id, { title: "뒤늦은 수정", cleanedContent: "뒤늦은 내용" }, original)).toBeNull();
+    expect((await getMemo(USER_ID, memo.id))?.cleanedContent).toBe("첫 내용");
+  });
 
   it("createMemo → getMemo 왕복", async () => {
     const created = await createMemo(base);
