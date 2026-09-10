@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="900" viewBox="0 0 1000 900" role="img" aria-labelledby="title desc">
+  <title id="title">Astra와 Fable의 Orca 작업 분담</title>
+  <desc id="desc">Astra가 설계와 완료 조건을 정하고 작은 작업 명세를 전달한다. Fable은 새 세션에서 구현과 검증을 수행하고 증거를 반환한다. Astra가 최종 판단하며 후속 수정에는 같은 워커를 재사용한다. 독립 작업만 새 세션으로 시작한다.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+  </defs>
+  <rect width="1000" height="900" rx="24" fill="#f8fafc"/>
+  <g font-family="Noto Sans CJK KR, Noto Sans KR, sans-serif">
+    <text x="48" y="58" fill="#0f172a" font-size="28" font-weight="700">설계는 Astra · 실행은 Fable · 연결은 Orca</text>
+    <text x="48" y="91" fill="#475569" font-size="17">작은 명세를 보내고, 결과와 증거를 돌려받습니다.</text>
+    <rect x="48" y="122" width="700" height="106" rx="16" fill="#e0e7ff" stroke="#818cf8"/>
+    <text x="72" y="159" fill="#312e81" font-size="21" font-weight="700">1  Astra — 설계와 배정</text>
+    <text x="72" y="192" fill="#334155" font-size="17">목표 · 인터페이스 · 담당 파일 · 완료 조건 결정</text>
+    <path d="M398 228V262" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="48" y="270" width="700" height="86" rx="16" fill="#fff" stroke="#cbd5e1"/>
+    <text x="72" y="305" fill="#0f172a" font-size="21" font-weight="700">2  작업 명세 — 필요한 문맥만</text>
+    <text x="72" y="334" fill="#475569" font-size="17">확정된 결정 + 참고 경로 + 제약 + 검증 기준</text>
+    <path d="M398 356V390" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="48" y="398" width="700" height="106" rx="16" fill="#ccfbf1" stroke="#2dd4bf"/>
+    <text x="72" y="435" fill="#115e59" font-size="21" font-weight="700">3  Fable — 새 세션에서 구현과 검증</text>
+    <text x="72" y="468" fill="#334155" font-size="17">기능 하나를 끝까지 담당 · 기본 워커 1개 · 재위임 없음</text>
+    <path d="M398 504V538" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="48" y="546" width="700" height="86" rx="16" fill="#fff" stroke="#cbd5e1"/>
+    <text x="72" y="581" fill="#0f172a" font-size="21" font-weight="700">4  결과 회수 — 요약과 확인 가능한 증거</text>
+    <text x="72" y="610" fill="#475569" font-size="17">변경 파일 · 검증 결과 · 남은 문제 · 상세 로그 경로</text>
+    <path d="M398 632V666" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="48" y="674" width="700" height="86" rx="16" fill="#e0e7ff" stroke="#818cf8"/>
+    <text x="72" y="709" fill="#312e81" font-size="21" font-weight="700">5  Astra — 수용·수정·보류 판단</text>
+    <text x="72" y="738" fill="#334155" font-size="17">필요한 증거 확인 → 통합 → 사용자에게 최종 보고</text>
+    <path d="M748 717H810V451H758" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <text x="834" y="550" fill="#334155" font-size="17" font-weight="700">수정이 필요하면</text>
+    <text x="834" y="580" fill="#475569" font-size="16">같은 워커에</text>
+    <text x="834" y="608" fill="#475569" font-size="16">후속 Task 배정</text>
+    <rect x="48" y="796" width="904" height="72" rx="14" fill="#fef3c7"/>
+    <text x="72" y="826" fill="#78350f" font-size="18" font-weight="700">절약의 기준은 에이전트 수가 아니라 중복 작업 감소입니다.</text>
+    <text x="72" y="853" fill="#78350f" font-size="16">독립 작업은 새 세션 · 후속 수정은 문맥 재사용 · 전체 비용과 통과율 함께 측정</text>
+  </g>
+</svg>

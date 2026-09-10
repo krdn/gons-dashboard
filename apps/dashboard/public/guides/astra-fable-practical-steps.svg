@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="2050" viewBox="0 0 1200 2050" role="img" aria-labelledby="title desc">
+<title id="title">Orca 실전 운영: 시작부터 결과 회수까지 8단계</title>
+<desc id="desc">각 단계마다 사용자와 Astra 또는 Fable이 할 일, 다음 단계로 넘어갈 조건을 설명한다. 준비, 요청, 명세, 실행, 진행, 판정, 수정 분기, 마무리 순서다.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<rect width="1200" height="2050" rx="24" fill="#f8fafc"/>
+<g font-family="Noto Sans CJK KR, Noto Sans KR, sans-serif">
+<text x="40" y="52" font-size="28" font-weight="700" fill="#0f172a">처음부터 끝까지: 사용자는 Astra에게, 실행은 Fable에게</text>
+<text x="40" y="87" font-size="18" fill="#475569">아래 순서로 한 번 진행하세요. 사용자가 모든 CLI 명령을 직접 입력할 필요는 없습니다.</text>
+<rect x="40" y="115" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="115" width="1120" height="52" rx="16" fill="#e0e7ff"/>
+<text x="62" y="149" font-size="21" font-weight="700" fill="#0f172a">00  준비  /  Orca에서 프로젝트와 Astra 세션 열기</text>
+<path d="M600 184V293" stroke="#e2e8f0"/>
+<text x="64" y="202" font-size="18" font-weight="700" fill="#0f766e">사용자</text>
+<text x="64" y="237" font-size="17" fill="#334155">원하는 프로젝트를 열고 기존 변경을 확인합니다.</text>
+<text x="64" y="269" font-size="17" fill="#334155">Astra에게 아래 준비 프롬프트를 전달합니다.</text>
+<text x="626" y="202" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="626" y="237" font-size="17" fill="#334155">CLI 안내·런타임·모델 옵션을 읽기 전용 확인합니다.</text>
+<text x="626" y="269" font-size="17" fill="#334155">정상 상태와 실행 가능한 문법이 확인되면 시작합니다.</text>
+<path d="M600 315V337" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="341" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="341" width="1120" height="52" rx="16" fill="#e0e7ff"/>
+<text x="62" y="375" font-size="21" font-weight="700" fill="#0f172a">01  요청  /  목표 + Fable 지정 + 결과 회수 지시</text>
+<path d="M600 410V519" stroke="#e2e8f0"/>
+<text x="64" y="428" font-size="18" font-weight="700" fill="#0f766e">사용자</text>
+<text x="64" y="463" font-size="17" fill="#334155">“설계는 Astra, 구현은 새 Fable 세션”이라고 말합니다.</text>
+<text x="64" y="495" font-size="17" fill="#334155">“완료 결과를 기다려 통합”을 반드시 포함합니다.</text>
+<text x="626" y="428" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="626" y="463" font-size="17" fill="#334155">직접 처리할 작은 일인지, 위임할 일인지 판단합니다.</text>
+<text x="626" y="495" font-size="17" fill="#334155">범위·완료 조건·커밋/배포 권한을 정리합니다.</text>
+<path d="M600 541V563" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="567" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="567" width="1120" height="52" rx="16" fill="#e0e7ff"/>
+<text x="62" y="601" font-size="21" font-weight="700" fill="#0f172a">02  명세  /  작은 작업 계약 만들기</text>
+<path d="M600 636V745" stroke="#e2e8f0"/>
+<text x="64" y="654" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="64" y="689" font-size="17" fill="#334155">담당 파일·설계 결정·검증 기준을 작성합니다.</text>
+<text x="64" y="721" font-size="17" fill="#334155">전체 대화 대신 필요한 코드와 문서 경로를 보냅니다.</text>
+<text x="626" y="654" font-size="18" font-weight="700" fill="#0f766e">확인 기준</text>
+<text x="626" y="689" font-size="17" fill="#334155">각 워커가 무엇을 고치고 언제 끝낼지 명확해야 합니다.</text>
+<text x="626" y="721" font-size="17" fill="#334155">같은 파일을 두 워커가 동시에 수정하지 않습니다.</text>
+<path d="M600 767V789" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="793" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="793" width="1120" height="52" rx="16" fill="#ccfbf1"/>
+<text x="62" y="827" font-size="21" font-weight="700" fill="#0f172a">03  실행  /  Orca가 새 Fable 워커를 시작</text>
+<path d="M600 862V971" stroke="#e2e8f0"/>
+<text x="64" y="880" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="64" y="915" font-size="17" fill="#334155">run-create → worker-start --spec 순서로 실행합니다.</text>
+<text x="64" y="947" font-size="17" fill="#334155">모델·effort·현재 작업 위치를 명시합니다.</text>
+<text x="626" y="880" font-size="18" font-weight="700" fill="#0f766e">Fable</text>
+<text x="626" y="915" font-size="17" fill="#334155">배정된 명세만 받아 구현과 관련 검증을 시작합니다.</text>
+<text x="626" y="947" font-size="17" fill="#334155">실제 모델은 요청 인자와 실행 기록을 함께 확인합니다.</text>
+<path d="M600 993V1015" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="1019" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="1019" width="1120" height="52" rx="16" fill="#ccfbf1"/>
+<text x="62" y="1053" font-size="21" font-weight="700" fill="#0f172a">04  진행  /  질문은 Astra가 답하고 결과를 기다리기</text>
+<path d="M600 1088V1197" stroke="#e2e8f0"/>
+<text x="64" y="1106" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="64" y="1141" font-size="17" fill="#334155">check --wait로 완료·질문·상향 보고를 받습니다.</text>
+<text x="64" y="1173" font-size="17" fill="#334155">기다리는 동안 같은 작업을 다시 구현하지 않습니다.</text>
+<text x="626" y="1106" font-size="18" font-weight="700" fill="#0f766e">사용자</text>
+<text x="626" y="1141" font-size="17" fill="#334155">추가 조건은 Astra에게 한 번 전달하면 됩니다.</text>
+<text x="626" y="1173" font-size="17" fill="#334155">시간 초과만으로 새 워커를 중복 실행하지 않습니다.</text>
+<path d="M600 1219V1241" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="1245" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="1245" width="1120" height="52" rx="16" fill="#e0e7ff"/>
+<text x="62" y="1279" font-size="21" font-weight="700" fill="#0f172a">05  판정  /  완료 보고와 증거 확인</text>
+<path d="M600 1314V1423" stroke="#e2e8f0"/>
+<text x="64" y="1332" font-size="18" font-weight="700" fill="#0f766e">Fable</text>
+<text x="64" y="1367" font-size="17" fill="#334155">변경 파일·검증 결과·남은 문제를 보고합니다.</text>
+<text x="64" y="1399" font-size="17" fill="#334155">주입된 지침대로 worker_done을 보내고 대기합니다.</text>
+<text x="626" y="1332" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="626" y="1367" font-size="17" fill="#334155">요약뿐 아니라 diff와 검증 증거를 확인합니다.</text>
+<text x="626" y="1399" font-size="17" fill="#334155">적용 정책에 필요한 외부 리뷰를 거쳐 판정합니다.</text>
+<path d="M600 1445V1467" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="1471" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="1471" width="1120" height="52" rx="16" fill="#ccfbf1"/>
+<text x="62" y="1505" font-size="21" font-weight="700" fill="#0f172a">06  분기  /  수정이면 재사용 · 다른 목표면 새 세션</text>
+<path d="M600 1540V1649" stroke="#e2e8f0"/>
+<text x="64" y="1558" font-size="18" font-weight="700" fill="#0f766e">수정 필요</text>
+<text x="64" y="1593" font-size="17" fill="#334155">같은 워커에 새 Task를 배정합니다.</text>
+<text x="64" y="1625" font-size="17" fill="#334155">기존 문맥을 유지하며 실패한 부분만 수정합니다.</text>
+<text x="626" y="1558" font-size="18" font-weight="700" fill="#0f766e">다른 목표</text>
+<text x="626" y="1593" font-size="17" fill="#334155">필요한 결과만 인계하고 새 세션에서 시작합니다.</text>
+<text x="626" y="1625" font-size="17" fill="#334155">워커가 종료됐다면 체크포인트로 새 워커를 만듭니다.</text>
+<path d="M600 1671V1693" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="1697" width="1120" height="198" rx="16" fill="white" stroke="#cbd5e1"/>
+<rect x="40" y="1697" width="1120" height="52" rx="16" fill="#e0e7ff"/>
+<text x="62" y="1731" font-size="21" font-weight="700" fill="#0f172a">07  마무리  /  정리 → 수신 승인 → 사용자 보고</text>
+<path d="M600 1766V1875" stroke="#e2e8f0"/>
+<text x="64" y="1784" font-size="18" font-weight="700" fill="#0f766e">Astra</text>
+<text x="64" y="1819" font-size="17" fill="#334155">완료 워커는 재사용·명시 보존·release 중 하나를 선택합니다.</text>
+<text x="64" y="1851" font-size="17" fill="#334155">모든 메시지를 처리한 뒤 Delivery를 ack합니다.</text>
+<text x="626" y="1784" font-size="18" font-weight="700" fill="#0f766e">사용자</text>
+<text x="626" y="1819" font-size="17" fill="#334155">결과·검증·남은 문제·실제 사용량을 받습니다.</text>
+<text x="626" y="1851" font-size="17" fill="#334155">다음 작업은 새 목표와 완료 조건으로 요청합니다.</text>
+<rect x="40" y="1940" width="1120" height="70" rx="14" fill="#fef3c7"/>
+<text x="64" y="1969" font-size="18" font-weight="700" fill="#78350f">완료 기준: 모든 작업의 결과 + 검증 증거 + 워커 정리 여부를 확인합니다.</text>
+<text x="64" y="1996" font-size="17" fill="#78350f">세션 분리는 한도 초기화가 아닙니다. Astra 사용량과 전체 비용·재작업을 따로 측정하세요.</text>
+</g></svg>

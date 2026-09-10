@@ -108,6 +108,8 @@ gons-dashboard/
 
 ## 문서
 
+- [Astra–Fable Orca 운영 가이드](docs/agents/astra-fable-orchestration.md) — 역할 분담 시각화, 세션 선택, 작업 명세, 결과 회수와 비용 검증
+- [Astra–Fable 실전 사용법](docs/agents/astra-fable-practical-guide.md) — 시작부터 종료까지 단계별 도식, 설정, 복사할 프롬프트와 CLI 예시
 - `CLAUDE.md` — 프로젝트 컨텍스트 + Gotcha
 - `docs/RUNBOOK.md` — 운영 절차 (시크릿 회전, OAuth 갱신 등)
 - `docs/agents/` — Issue tracker, triage labels, 도메인 결정
