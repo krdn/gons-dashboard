@@ -41,6 +41,24 @@ describe("pickLatestModel", () => {
     it("매칭 후보 0건이면 null", () => {
       expect(pickLatestModel(["claude-sonnet-5", "gpt-5.5"], "opus")).toBeNull();
     });
+
+    it("claude-opus-latest alias 가 목록에 있으면 버전 파싱보다 우선한다", () => {
+      // 회귀 (2026-09-23): 프록시 v7.3.14 가 claude-opus-5-5 를 카탈로그에 노출했지만
+      // 호출은 400 이었다(업스트림 #6054). 버전 파싱은 그것을 골랐고, 프록시의
+      // promote_aliases 는 실호출 검증에서 거부해 alias 를 claude-opus-5 에 두었다.
+      // 아래는 그날의 실제 카탈로그 opus 발췌.
+      const ids = [
+        "claude-opus-4-20250514",
+        "claude-opus-4-5-20251101",
+        "claude-opus-4-6",
+        "claude-opus-4-7",
+        "claude-opus-4-8",
+        "claude-opus-5",
+        "claude-opus-5-5",
+        "claude-opus-latest",
+      ];
+      expect(pickLatestModel(ids, "opus")).toBe("claude-opus-latest");
+    });
   });
 
   describe("gpt tier (codex)", () => {

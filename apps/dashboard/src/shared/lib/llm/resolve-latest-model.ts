@@ -3,7 +3,9 @@
 // 기존 resolveClaudeModel(claude opus 전용, 2-segment dated 오독 버그)을 대체.
 // 파싱은 pickLatestModel(순수 함수)에 위임하고, 여기서는 fetch + tier 별 6h 캐시 + env 폴백만 담당.
 //
-// alias(-latest)는 한 세대 뒤처져("항상 최신" 위반) 목록 직접 파싱으로 결정.
+// tier 에 프록시 alias(-latest)가 있으면 그것을 우선한다 — 프록시가 실호출 검증 후에만 옮기므로
+// "카탈로그 노출 ≠ 호출 가능" 문제를 피한다 (2026-09-23 claude-opus-5-5 400). 목록 직접 파싱은
+// alias 가 없을 때의 폴백이다. (7월에는 alias 가 정적 핀이라 뒤처졌지만 프록시가 08-07 부터 자동 승격한다.)
 // spec: docs/superpowers/specs/2026-07-05-latest-model-auto-resolution-design.md
 
 import "server-only";

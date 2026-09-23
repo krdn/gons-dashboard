@@ -19,7 +19,11 @@ interface TierRule {
 
 // tier 별 매칭 규칙. $ 앵커가 부적합 변종(-mini, -preview, -flash, -codex, dated 3-segment)을 걸러낸다.
 const TIER_RULES: Record<ModelTier, TierRule> = {
-  opus: { pattern: /^claude-opus-(\d+)-(\d+)$/ },
+  // opus 도 프록시 alias 를 1순위로 쓴다 (2026-09-23). 프록시 promote_aliases(2026-08-07~)가
+  // 새 세대를 실호출·응답 model 필드로 검증한 뒤에만 alias 를 옮기므로 더 이상 정적 핀이 아니다.
+  // 버전 파싱은 "카탈로그 노출 = 호출 가능"을 가정해 400 인 claude-opus-5-5 를 골랐고,
+  // 1-segment claude-opus-5 는 패턴에 맞지 않아 몇 달간 4-8 에 머물렀다.
+  opus: { pattern: /^claude-opus-(\d+)-(\d+)$/, alias: "claude-opus-latest" },
   gpt: { pattern: /^gpt-(\d+)\.(\d+)$/ },
   // gemini 는 인증 변경(2026-07-06)으로 안정 gemini-N.N-pro 가 사라지고 3.1 이 -preview/-low
   // 로만 존재 → 프록시 관리 alias gemini-pro-latest 를 1순위로 쓴다. spec 2026-07-05 §gemini.
