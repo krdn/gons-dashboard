@@ -1,12 +1,5 @@
-// resolveLatestModel — 프록시(/v1/models)에서 tier 별 최신 안정 모델을 런타임 선택.
-//
-// 기존 resolveClaudeModel(claude opus 전용, 2-segment dated 오독 버그)을 대체.
-// 파싱은 pickLatestModel(순수 함수)에 위임하고, 여기서는 fetch + tier 별 6h 캐시 + env 폴백만 담당.
-//
-// tier 에 프록시 alias(-latest)가 있으면 그것을 우선한다 — 프록시가 실호출 검증 후에만 옮기므로
-// "카탈로그 노출 ≠ 호출 가능" 문제를 피한다 (2026-09-23 claude-opus-5-5 400). 목록 직접 파싱은
-// alias 가 없을 때의 폴백이다. (7월에는 alias 가 정적 핀이라 뒤처졌지만 프록시가 08-07 부터 자동 승격한다.)
-// spec: docs/superpowers/specs/2026-07-05-latest-model-auto-resolution-design.md
+// 프록시의 관리 별칭 선택 + tier별 6시간 캐시. 별칭이 없거나 조회에 실패하면
+// 환경설정의 모델을 사용한다. 숫자 최댓값으로 미검증 모델을 고르지 않는다.
 
 import "server-only";
 import { env } from "@/shared/config/env";
@@ -34,11 +27,11 @@ interface ModelsResponse {
 }
 
 /**
- * 프록시 /v1/models 에서 tier 의 최신 안정 모델 id 를 선택한다.
+ * 프록시 /v1/models 에서 tier 의 관리 별칭을 선택한다.
  *
  * 1. tier 캐시 TTL 히트 → 즉시 반환
  * 2. 미스 → GET ${ANTHROPIC_BASE_URL}/v1/models (타임아웃 3초, no-store)
- * 3. pickLatestModel(ids, tier) 로 최신 안정 선택
+ * 3. pickLatestModel(ids, tier) 로 관리 별칭 선택
  * 4. 성공 → 캐시 저장 + 반환
  * 5. 실패(네트워크/타임아웃/후보 0건) → env 폴백, 캐시하지 않음(다음 호출 재시도)
  */
@@ -79,7 +72,10 @@ export async function resolveLatestModel(tier: ModelTier): Promise<string> {
     return picked;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.warn("llm/resolve-latest-model", "fetch-exception", { tier, message });
+    logger.warn("llm/resolve-latest-model", "fetch-exception", {
+      tier,
+      message,
+    });
     return TIER_FALLBACK[tier];
   }
 }

@@ -1,3 +1,5 @@
+> 2026-09-24: 아래는 과거 결정 이력이다. 현재 구현은 숫자 최댓값 선택을 폐기하고 관리 별칭 → 환경설정 모델 폴백을 사용한다. 현재 계약은 `docs/ARCHITECTURE-llm-proxy.md` 참조.
+
 # provider별 최신 모델 자동 선택 (resolveLatestModel)
 
 **날짜**: 2026-07-05

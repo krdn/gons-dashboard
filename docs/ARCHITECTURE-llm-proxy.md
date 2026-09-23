@@ -32,7 +32,7 @@ export const gatewayDefaults: Pick<AIGatewayOptions, "provider" | "baseUrl" | "a
 - `gemini-pro-latest` (alias) → Gemini CLI auth
 
 모델 ID 는 프록시 사정으로 소멸할 수 있다 (2026-07-05 `gpt-5.3-codex` 소멸 사고). 정상 경로는
-`resolveLatestModel(tier)` 가 프록시 `/v1/models` 에서 최신 안정 모델을 런타임 선택하고
+`resolveLatestModel(tier)` 가 프록시 `/v1/models` 에서 관리 별칭을 선택하고
 (tier 별 6h 캐시), `*_LLM_MODEL_*` env 는 그 조회가 실패했을 때의 폴백이다.
 
 도메인별 모델 선택 지점:
@@ -63,3 +63,16 @@ Gemini CLI 가 관리하는 자동 생성 프로젝트라 수정이 위험하다
 
 자주 헷갈리는 시나리오: LLM 추론은 정상인데 NextAuth 로그인이 안 된다 (`changeme-*` placeholder)
 → 둘은 별개 흐름이므로 로그인이 안 돼도 LLM 호출은 정상이다.
+
+
+## 소비자 계약 검사
+
+`pnpm --filter @gons/dashboard test:llm-contract`는 앱의 `.env.local`/`.env`, 실제 resolver와
+설치된 llm-gateway를 사용한다. Opus/GPT/Gemini 텍스트와 Haiku 구조화 출력의 대표 4경로만
+합성 입력으로 검사한다. DB나 업무 데이터는 사용하지 않는다. 별칭이 없으면 실제 resolver와
+같이 환경설정 모델로 폴백하며 카탈로그 숫자 최댓값을 고르지 않는다.
+
+JSON 결과의 `source`에는 checkout SHA, dirty 여부, 설치된 gateway 버전이 있다.
+이는 배포 이미지와의 일치 증명이 아니며 운영 프로세스의 기존 캐시도 검사하지 않는다.
+429·일시 장애는 UNKNOWN이다. 출력 전체를 보관하되 원본 SDK 오류/키/환경값은 기록하지 않는다.
+프록시 운영 저장소는 이 명령의 결과를 수집하고 상태 변화 통지만 담당한다.
