@@ -32,12 +32,12 @@ const schema = z.object({
 
   // 사주 상세 읽기 — features/saju-reading (spec §7, 2026-06-14)
   // resolveLatestModel("opus") 로 런타임 선택, 실패 시 이 env 값으로 폴백.
-  // 폴백값은 concrete version 유지 — 정상 경로는 프록시 alias claude-opus-latest (pick-latest-model 참조).
+  // 관리 별칭이 없으면 이 고정값을 사용한다.
   SAJU_LLM_MODEL: z.string().default("claude-opus-4-8"),
   // 사주 narrative + stock 분석 모델 선택 — 3종 백엔드별 폴백 모델 ID.
   // 프록시(ANTHROPIC_BASE_URL=:8317)가 model 문자열을 보고 Claude/Codex/Gemini로 라우팅.
-  // 정상 경로는 resolveLatestModel(tier) 이 /v1/models 에서 최신 안정 모델을 런타임 선택하고,
-  // 아래 env 값은 조회 실패 시에만 쓰이는 폴백이다 (캐시하지 않음 → 다음 호출 재시도).
+  // 정상 경로는 resolveLatestModel(tier) 이 /v1/models 에서 관리 별칭을 선택하고,
+  // 아래 env 값은 별칭 없음/조회 실패 시 쓰이는 폴백이다 (캐시하지 않음 → 다음 호출 재시도).
   // 폴백값도 프록시에 실존하는 값이어야 한다 (spec 2026-07-05: gpt-5.3-codex 소멸 사고).
   // 인증 변경(2026-07-06)으로 gemini 안정 -pro 가 사라짐 → alias gemini-pro-latest 로 갱신.
   SAJU_LLM_MODEL_CLAUDE: z.string().default("claude-opus-4-8"),

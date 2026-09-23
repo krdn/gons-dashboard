@@ -22,6 +22,7 @@
     "agents:snapshot": "tsx --conditions=react-server src/scripts/snapshot-agents.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:llm-contract": "node --conditions=react-server --conditions=import --import tsx src/scripts/llm-contract.ts",
     "eval:llm": "tsx --conditions=react-server --conditions=import tests/eval/run-llm-eval.ts"
   },
   "dependencies": {
