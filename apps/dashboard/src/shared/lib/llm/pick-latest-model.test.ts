@@ -74,6 +74,13 @@ describe("pickLatestModel", () => {
       expect(pickLatestModel(ids, "gpt")).toBe("gpt-5.5");
     });
 
+    it("gpt-latest alias 가 목록에 있으면 버전 파싱보다 우선한다", () => {
+      // 2026-09-23 카탈로그: 접미사 붙은 새 세대는 패턴이 못 읽고, 넓히면 luna/sol/terra/astra
+      // 처럼 순서 없는 용도별 이름을 비교하게 된다. 프록시가 수동 관리하는 alias 를 쓴다.
+      const ids = ["gpt-5.5", "gpt-5.6-sol", "gpt-6-astra", "gpt-6-sol", "gpt-latest"];
+      expect(pickLatestModel(ids, "gpt")).toBe("gpt-latest");
+    });
+
     it("죽은 gpt-5.3-codex 형식(접미사 있음)은 매칭 안 함", () => {
       const ids = ["gpt-5.3-codex", "gpt-5.4"];
       expect(pickLatestModel(ids, "gpt")).toBe("gpt-5.4");
