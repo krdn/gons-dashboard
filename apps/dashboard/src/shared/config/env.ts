@@ -32,7 +32,7 @@ const schema = z.object({
 
   // 사주 상세 읽기 — features/saju-reading (spec §7, 2026-06-14)
   // resolveLatestModel("opus") 로 런타임 선택, 실패 시 이 env 값으로 폴백.
-  // (claude-opus-latest 는 프록시 정적 핀이므로 stale — concrete version 유지)
+  // 폴백값은 concrete version 유지 — 정상 경로는 프록시 alias claude-opus-latest (pick-latest-model 참조).
   SAJU_LLM_MODEL: z.string().default("claude-opus-4-8"),
   // 사주 narrative + stock 분석 모델 선택 — 3종 백엔드별 폴백 모델 ID.
   // 프록시(ANTHROPIC_BASE_URL=:8317)가 model 문자열을 보고 Claude/Codex/Gemini로 라우팅.
